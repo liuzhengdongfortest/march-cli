@@ -13,7 +13,8 @@
   ],
   "scripts": {
     "dev": "node bin/march.mjs",
-    "test": "node test/smoke.test.mjs"
+    "test": "node test/smoke.test.mjs",
+    "context": "node scripts/dump-context.mjs"
   },
   "dependencies": {
     "@mariozechner/pi-ai": "^0.73.0",
