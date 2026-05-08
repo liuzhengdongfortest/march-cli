@@ -225,6 +225,7 @@ export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins, 
         engine.recordTurn({
           userMessage: userMessage ?? prompt.slice(0, 300),
           summary: turnState.summary ?? "(no summary)",
+          assistantMessage: draft,
         });
 
         return { draft, summary: turnState.summary };
