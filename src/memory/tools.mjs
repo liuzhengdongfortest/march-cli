@@ -1,7 +1,7 @@
 import { defineTool } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
 
-export function createMemoryTools(graph, glossary) {
+export function createMemoryTools(graph, glossary, searchIndexer = null) {
   return [
     defineTool({
       name: "read_memory",
@@ -136,11 +136,11 @@ export function createMemoryTools(graph, glossary) {
             return toolText("Error: keyword and path are required for 'add' action.", { error: true });
           }
           const domain = params.domain ?? "core";
-          const resolved = graph.#resolvePath(params.path, domain);
-          if (!resolved) {
+          const memory = graph.getMemoryByPath(params.path, domain);
+          if (!memory) {
             return toolText(`Error: path not found: ${domain}://${params.path}`, { error: true });
           }
-          glossary.addKeyword(params.keyword, resolved.node_uuid);
+          glossary.addKeyword(params.keyword, memory.node_uuid);
           return toolText(`Keyword '${params.keyword}' bound to ${domain}://${params.path}`);
         }
 
@@ -159,13 +159,30 @@ export function createMemoryTools(graph, glossary) {
     defineTool({
       name: "search_memory",
       label: "Search Memory",
-      description: "Search memories by content. Returns matching entries with paths.",
+      description: "Full-text search across all memory content. Returns ranked results with snippets.",
       parameters: Type.Object({
         query: Type.String({ description: "Search query" }),
         limit: Type.Optional(Type.Number({ description: "Max results. Default: 10" })),
       }),
       execute: async (_toolCallId, params) => {
         const limit = params.limit ?? 10;
+
+        if (searchIndexer) {
+          const results = searchIndexer.search(params.query, { limit });
+          if (results.length === 0) {
+            return toolText(`No memories matching "${params.query}".`);
+          }
+          const lines = results.map((r) => {
+            const paths = graph.getPathsForNode(r.node_uuid);
+            const uri = paths.length > 0
+              ? `${paths[0].domain}://${paths[0].path}`
+              : `node:${r.node_uuid}`;
+            return `--- ${uri} (score: ${r.score?.toFixed(1) ?? "?"}) ---\n${r.snippet ?? r.content?.slice(0, 200)}`;
+          });
+          return toolText(`${results.length} results for "${params.query}":\n\n${lines.join("\n\n")}`, { results });
+        }
+
+        // Fallback: return recent memories
         const recent = graph.getRecentMemories(limit);
         if (recent.length === 0) {
           return toolText("No memories found. The memory graph is empty.");

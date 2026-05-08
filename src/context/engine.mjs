@@ -100,7 +100,7 @@ export class ContextEngine {
   hasPin(path) { return this.pins.has(path); }
   getPins() { return [...this.pins]; }
 
-  setSkills(skills) { this.skills = [...skills]; }
+  setSkills(skills) { this.skills = skills; }
 
   // ── Layer 1: system_core ───────────────────────────────────────────
   #buildSystemCore() {
@@ -189,36 +189,32 @@ ${tree}`;
     const entries = [];
     const seen = new Set();
 
-    // Boot: load project://boot children (first turn only)
+    // Boot: load project://boot children on first turn
     if (this.turns.length === 0) {
       try {
         const bootKids = this.graph.getChildren(ROOT_NODE_UUID);
         for (const kid of bootKids) {
-          if (seen.has(kid.child_uuid) || !kid.content) continue;
+          if (seen.has(kid.child_uuid)) continue;
+          const mem = this.graph.getMemoryByPath(kid.path, kid.domain);
+          if (!mem?.content) continue;
           seen.add(kid.child_uuid);
-          entries.push(`--- project://boot/${kid.name} (boot) ---\n${kid.content}`);
+          entries.push(`--- project://boot/${kid.name} (boot) ---\n${mem.content}`);
         }
       } catch {}
     }
 
-    // Glossary keyword match → resolve node to path → get memory
+    // Glossary keyword match against user message
     if (this.glossary && userMessage) {
       try {
         const matches = this.glossary.findInContent(userMessage);
         for (const m of matches) {
           if (seen.has(m.node_uuid)) continue;
           seen.add(m.node_uuid);
-          // Query paths for this node to build a URI
-          const pathRows = this.graph.db.prepare(
-            "SELECT domain, path FROM paths WHERE node_uuid = ? LIMIT 1",
-          ).all(m.node_uuid);
+          const pathRows = this.graph.getPathsForNode(m.node_uuid);
           const uri = pathRows.length > 0
             ? `${pathRows[0].domain}://${pathRows[0].path}`
             : `node:${m.node_uuid}`;
-          // Get current memory content via DB
-          const mem = this.graph.db.prepare(
-            "SELECT content FROM memories WHERE node_uuid = ? AND deprecated = 0 ORDER BY id DESC LIMIT 1",
-          ).get(m.node_uuid);
+          const mem = this.graph.getCurrentMemory(m.node_uuid);
           if (mem?.content) {
             const truncated = mem.content.length > 800 ? mem.content.slice(0, 800) + "\n...(truncated)" : mem.content;
             entries.push(`--- ${uri} (match) ---\n${truncated}`);
@@ -229,16 +225,20 @@ ${tree}`;
 
     // session://current/* — all children of session root
     try {
-      const sessionRoot = this.graph.getMemoryByPath("", "current", "session");
-      if (sessionRoot) {
-        const sessionKids = this.graph.getChildren(sessionRoot.node_uuid);
-        for (const kid of sessionKids) {
-          if (seen.has(kid.child_uuid) || !kid.content) continue;
-          seen.add(kid.child_uuid);
-          entries.push(`--- session://current/${kid.name} ---\n${kid.content}`);
-        }
+      const sessionKids = this.graph.getChildren(ROOT_NODE_UUID, "current", null, "session");
+      for (const kid of sessionKids) {
+        if (seen.has(kid.child_uuid)) continue;
+        const mem = this.graph.getMemoryByPath(kid.path, kid.domain);
+        if (!mem?.content) continue;
+        seen.add(kid.child_uuid);
+        entries.push(`--- session://current/${kid.name} ---\n${mem.content}`);
       }
     } catch {}
+
+    // Touch accessed nodes
+    for (const uuid of seen) {
+      try { this.graph.touchNode(uuid); } catch {}
+    }
 
     if (entries.length === 0) return "";
     return `[memory]\n${entries.join("\n\n")}`;
@@ -246,8 +246,15 @@ ${tree}`;
 
   // ── Layer 5: active_skills ─────────────────────────────────────────
   #buildActiveSkills() {
-    const lines = this.skills.map((s) => `- ${s}`);
-    return `[active_skills]\n${lines.join("\n")}`;
+    const blocks = this.skills.map((s) => {
+      const name = typeof s === "string" ? s : s.name;
+      const body = typeof s === "string" ? null : s.raw;
+      if (body) {
+        return `--- skill: ${name} ---\n${body}`;
+      }
+      return `- ${name}`;
+    });
+    return `[active_skills]\n${blocks.join("\n\n")}`;
   }
 
   // ── Layer 5: open_files ────────────────────────────────────────────

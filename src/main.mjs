@@ -10,6 +10,8 @@ import { GlossaryService } from "./memory/glossary.mjs";
 import { ChangesetStore } from "./memory/snapshot.mjs";
 import { SearchIndexer } from "./memory/search.mjs";
 import { createMemoryTools } from "./memory/tools.mjs";
+import { scanSkillDir, loadSkillFromFile } from "./skills/loader.mjs";
+import { createSkillTools } from "./skills/tools.mjs";
 
 export async function run(argv) {
   const args = parseCliArgs(argv);
@@ -31,7 +33,20 @@ export async function run(argv) {
   const searchIndexer = new SearchIndexer(memoryDb);
   const graph = new GraphService(memoryDb, { changesetStore, searchIndexer });
   const glossary = new GlossaryService(memoryDb);
-  const memoryTools = createMemoryTools(graph, glossary);
+  const memoryTools = createMemoryTools(graph, glossary, searchIndexer);
+
+  // Skills system: scan .march/skills/ + --skill flags
+  const skillPool = scanSkillDir(resolve(cwd, ".march", "skills"));
+  for (const skillPath of args.skills) {
+    try {
+      const skill = loadSkillFromFile(skillPath);
+      if (!skillPool.find(s => s.name === skill.name)) {
+        skillPool.push(skill);
+      }
+    } catch {}
+  }
+  const skillState = { active: [], engine: null };
+  const skillTools = createSkillTools(skillState, skillPool);
 
   const ui = createUI({ json: args.json });
 
@@ -52,7 +67,22 @@ export async function run(argv) {
     graph,
     glossary,
     memoryTools,
+    skillTools,
   });
+
+  // Wire back-reference for skill tools → engine
+  skillState.engine = runner.engine;
+  // Auto-activate skills from --skill flags
+  if (args.skills.length > 0) {
+    for (const skill of skillPool) {
+      if (args.skills.includes(skill.path)) {
+        skillState.active.push(skill);
+      }
+    }
+    if (skillState.active.length > 0) {
+      runner.engine.setSkills([...skillState.active]);
+    }
+  }
 
   // Single-shot mode
   if (args.prompt) {

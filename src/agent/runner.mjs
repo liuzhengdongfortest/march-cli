@@ -14,7 +14,7 @@ import { ContextEngine } from "../context/engine.mjs";
 
 const LINE_RANGE_RE = /^(\d+)(?:\s*-\s*(\d+))?$/;
 
-export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins, graph = null, glossary = null, memoryTools = [] }) {
+export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins, graph = null, glossary = null, memoryTools = [], skillTools = [] }) {
   const provider = "deepseek";
   const authStorage = AuthStorage.create();
   authStorage.setRuntimeApiKey(provider, process.env.DEEPSEEK_API_KEY);
@@ -158,7 +158,7 @@ export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins, 
     },
   });
 
-  const customTools = [summaryTool, openFileTool, closeFileTool, editFileTool, ...memoryTools];
+  const customTools = [summaryTool, openFileTool, closeFileTool, editFileTool, ...memoryTools, ...skillTools];
 
   const { session } = await createAgentSession({
     cwd,
