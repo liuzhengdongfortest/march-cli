@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { parseCliArgs, showHelp } from "./cli/args.mjs";
 import { createUI } from "./cli/ui.mjs";
 import { createRunner } from "./agent/runner.mjs";
@@ -25,6 +25,11 @@ export async function run(argv) {
   }
 
   const cwd = process.cwd();
+
+  // Load .env from project root (CONVENTIONS: API keys live in .env)
+  loadDotEnv(resolve(cwd, ".env"));
+  loadDotEnv(resolve(homedir(), ".march", ".env"));
+
   const stateRoot = join(homedir(), ".march");
   if (!existsSync(stateRoot)) mkdirSync(stateRoot, { recursive: true });
 
@@ -192,4 +197,25 @@ export async function run(argv) {
   runner.dispose();
   ui.close();
   return 0;
+}
+
+function loadDotEnv(filePath) {
+  try {
+    const content = readFileSync(filePath, "utf8");
+    for (const line of content.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const eqIdx = trimmed.indexOf("=");
+      if (eqIdx === -1) continue;
+      const key = trimmed.slice(0, eqIdx).trim();
+      const value = trimmed.slice(eqIdx + 1).trim();
+      // Normalize to uppercase for case-insensitive matching (env vars are case-sensitive on Linux)
+      const normalizedKey = key.toUpperCase();
+      if (!process.env[key] && !process.env[normalizedKey]) {
+        process.env[normalizedKey] = value;
+      }
+    }
+  } catch {
+    // .env file not found or unreadable — not an error
+  }
 }
