@@ -11,6 +11,11 @@ import {
 } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
 import { ContextEngine } from "../context/engine.mjs";
+import { openDatabase } from "../memory/database.mjs";
+import { GraphService } from "../memory/graph.mjs";
+import { GlossaryService } from "../memory/glossary.mjs";
+import { createMemoryTools } from "../memory/tools.mjs";
+import { join } from "node:path";
 
 const LINE_RANGE_RE = /^(\d+)(?:\s*-\s*(\d+))?$/;
 
@@ -28,7 +33,12 @@ export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins }
     retry: { enabled: true, maxRetries: 1 },
   });
 
-  const engine = new ContextEngine({ cwd, modelId, provider, skills, pins });
+  // Memory system
+  const db = openDatabase(join(stateRoot, "memory.db"));
+  const graph = new GraphService(db);
+  const glossary = new GlossaryService(db);
+
+  const engine = new ContextEngine({ cwd, modelId, provider, skills, pins, graph, glossary });
   const turnState = { summary: null, summaryCalled: false };
 
   // ── Custom tools ───────────────────────────────────────────────────
@@ -158,7 +168,7 @@ export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins }
     },
   });
 
-  const customTools = [summaryTool, openFileTool, closeFileTool, editFileTool];
+  const customTools = [summaryTool, openFileTool, closeFileTool, editFileTool, ...createMemoryTools(graph, glossary)];
 
   const { session } = await createAgentSession({
     cwd,
@@ -223,6 +233,7 @@ export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins }
 
     dispose() {
       session.dispose();
+      db.close();
     },
   };
 }

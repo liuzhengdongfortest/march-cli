@@ -1,28 +1,34 @@
 import { homedir } from "node:os";
 import { isAbsolute, resolve, sep } from "node:path";
 import { readdirSync, readFileSync, existsSync } from "node:fs";
+import { ROOT_NODE_UUID } from "../memory/database.mjs";
 
 export class ContextEngine {
-  constructor({ cwd, modelId, provider = "deepseek", skills = [], pins = [] }) {
+  constructor({ cwd, modelId, provider = "deepseek", skills = [], pins = [], graph = null, glossary = null }) {
     this.cwd = cwd;
     this.modelId = modelId;
     this.provider = provider;
     this.skills = [...skills];
     this.pins = new Set(pins);
     this.turns = [];
-    // path (absolute) → { content, lineCount, pinned }
     this.openFiles = new Map();
+    this.graph = graph;
+    this.glossary = glossary;
   }
 
   // ── Public API ──────────────────────────────────────────────────────
 
-  buildContext() {
+  buildContext(userMessage = "") {
     this.#refreshOpenFiles();
     const layers = [
       this.#buildSystemCore(),
       this.#buildInjections(),
       this.#buildSessionStatus(),
     ];
+
+    if (this.graph) {
+      layers.push(this.#buildMemory(userMessage));
+    }
 
     if (this.skills.length > 0) {
       layers.push(this.#buildActiveSkills());
@@ -177,7 +183,68 @@ ${tree}`;
     return lines.join("\n") || "(empty)";
   }
 
-  // ── Layer 4: active_skills ─────────────────────────────────────────
+  // ── Layer 4: memory ────────────────────────────────────────────────
+  #buildMemory(userMessage) {
+    if (!this.graph) return "";
+    const entries = [];
+    const seen = new Set();
+
+    // Boot: load project://boot children (first turn only)
+    if (this.turns.length === 0) {
+      try {
+        const bootKids = this.graph.getChildren(ROOT_NODE_UUID);
+        for (const kid of bootKids) {
+          if (seen.has(kid.child_uuid) || !kid.content) continue;
+          seen.add(kid.child_uuid);
+          entries.push(`--- project://boot/${kid.name} (boot) ---\n${kid.content}`);
+        }
+      } catch {}
+    }
+
+    // Glossary keyword match → resolve node to path → get memory
+    if (this.glossary && userMessage) {
+      try {
+        const matches = this.glossary.findInContent(userMessage);
+        for (const m of matches) {
+          if (seen.has(m.node_uuid)) continue;
+          seen.add(m.node_uuid);
+          // Query paths for this node to build a URI
+          const pathRows = this.graph.db.prepare(
+            "SELECT domain, path FROM paths WHERE node_uuid = ? LIMIT 1",
+          ).all(m.node_uuid);
+          const uri = pathRows.length > 0
+            ? `${pathRows[0].domain}://${pathRows[0].path}`
+            : `node:${m.node_uuid}`;
+          // Get current memory content via DB
+          const mem = this.graph.db.prepare(
+            "SELECT content FROM memories WHERE node_uuid = ? AND deprecated = 0 ORDER BY id DESC LIMIT 1",
+          ).get(m.node_uuid);
+          if (mem?.content) {
+            const truncated = mem.content.length > 800 ? mem.content.slice(0, 800) + "\n...(truncated)" : mem.content;
+            entries.push(`--- ${uri} (match) ---\n${truncated}`);
+          }
+        }
+      } catch {}
+    }
+
+    // session://current/* — all children of session root
+    try {
+      const sessionRoot = this.graph.getMemoryByPath("", "current", "session");
+      if (sessionRoot) {
+        const sessionKids = this.graph.getChildren(sessionRoot.node_uuid);
+        for (const kid of sessionKids) {
+          if (seen.has(kid.child_uuid) || !kid.content) continue;
+          seen.add(kid.child_uuid);
+          entries.push(`--- session://current/${kid.name} ---\n${kid.content}`);
+        }
+      }
+    } catch {}
+
+    if (entries.length === 0) return "";
+    return `[memory]\n${entries.join("\n\n")}`;
+  }
+
+  // ── Layer 5: active_skills ─────────────────────────────────────────
   #buildActiveSkills() {
     const lines = this.skills.map((s) => `- ${s}`);
     return `[active_skills]\n${lines.join("\n")}`;

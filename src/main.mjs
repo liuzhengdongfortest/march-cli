@@ -37,7 +37,7 @@ export async function run(argv) {
 
   // Single-shot mode
   if (args.prompt) {
-    const context = runner.engine.buildContext();
+    const context = runner.engine.buildContext(args.prompt || trimmed);
     const fullPrompt = `${context}\n\n[user]\n${args.prompt}`;
     await runner.runTurn(fullPrompt);
     runner.dispose();
@@ -92,7 +92,7 @@ export async function run(argv) {
       continue;
     }
 
-    const context = runner.engine.buildContext();
+    const context = runner.engine.buildContext(args.prompt || trimmed);
     const fullPrompt = `${context}\n\n[user]\n${trimmed}`;
     try {
       await runner.runTurn(fullPrompt);
