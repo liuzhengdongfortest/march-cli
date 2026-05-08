@@ -1,9 +1,15 @@
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { existsSync, mkdirSync } from "node:fs";
 import { parseCliArgs, showHelp } from "./cli/args.mjs";
 import { createUI } from "./cli/ui.mjs";
 import { createRunner } from "./agent/runner.mjs";
+import { openDatabase } from "./memory/database.mjs";
+import { GraphService } from "./memory/graph.mjs";
+import { GlossaryService } from "./memory/glossary.mjs";
+import { ChangesetStore } from "./memory/snapshot.mjs";
+import { SearchIndexer } from "./memory/search.mjs";
+import { createMemoryTools } from "./memory/tools.mjs";
 
 export async function run(argv) {
   const args = parseCliArgs(argv);
@@ -16,6 +22,16 @@ export async function run(argv) {
   const cwd = process.cwd();
   const stateRoot = join(homedir(), ".march");
   if (!existsSync(stateRoot)) mkdirSync(stateRoot, { recursive: true });
+
+  // Memory system: project-bound SQLite database
+  const projectMarchDir = resolve(cwd, ".march");
+  if (!existsSync(projectMarchDir)) mkdirSync(projectMarchDir, { recursive: true });
+  const memoryDb = openDatabase(resolve(projectMarchDir, "memory.db"));
+  const changesetStore = new ChangesetStore(memoryDb);
+  const searchIndexer = new SearchIndexer(memoryDb);
+  const graph = new GraphService(memoryDb, { changesetStore, searchIndexer });
+  const glossary = new GlossaryService(memoryDb);
+  const memoryTools = createMemoryTools(graph, glossary);
 
   const ui = createUI({ json: args.json });
 
@@ -33,6 +49,9 @@ export async function run(argv) {
     ui,
     skills: args.skills,
     pins: args.pins,
+    graph,
+    glossary,
+    memoryTools,
   });
 
   // Single-shot mode

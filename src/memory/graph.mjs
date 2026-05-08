@@ -2,9 +2,10 @@ import { randomUUID } from "node:crypto";
 import { ROOT_NODE_UUID } from "./database.mjs";
 
 export class GraphService {
-  constructor(db, { changesetStore = null } = {}) {
+  constructor(db, { changesetStore = null, searchIndexer = null } = {}) {
     this.db = db;
     this.changesetStore = changesetStore;
+    this.searchIndexer = searchIndexer;
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -520,6 +521,9 @@ export class GraphService {
     if (this.changesetStore) {
       this.changesetStore.record({ memoryId: memory.id, nodeUuid: newUuid, beforeContent: null, afterContent: content });
     }
+    if (this.searchIndexer) {
+      this.searchIndexer.index(newUuid, content, namespace);
+    }
 
     return {
       id: memory.id, node_uuid: newUuid, domain, path: finalPath,
@@ -565,12 +569,15 @@ export class GraphService {
         "UPDATE memories SET deprecated = 0, migrated_to = NULL WHERE id = ?"
       ).run(newMemoryId);
 
-      // Record changeset
+      // Record changeset + re-index
       if (this.changesetStore) {
         const oldContent = oldMemoryId
           ? this.db.prepare("SELECT content FROM memories WHERE id = ?").get(oldMemoryId)?.content ?? null
           : null;
         this.changesetStore.record({ memoryId: newMemoryId, nodeUuid, beforeContent: oldContent, afterContent: content });
+      }
+      if (this.searchIndexer) {
+        this.searchIndexer.index(nodeUuid, content, namespace);
       }
     }
 
