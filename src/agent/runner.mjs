@@ -151,6 +151,7 @@ export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins, 
         writeFileSync(absPath, newContent, "utf8");
         // Refresh cached content
         engine.openFile(absPath);
+        ui.editDiff(absPath, formatDiff(oldText, params.newString));
         return toolText(`Edited ${absPath}`, { path: absPath });
       } catch (err) {
         return toolText(`Error writing ${absPath}: ${err.message}`, { error: true });
@@ -159,6 +160,12 @@ export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins, 
   });
 
   const customTools = [summaryTool, openFileTool, closeFileTool, editFileTool, ...memoryTools, ...skillTools];
+
+  engine.setToolDefs(customTools.map((t) => ({
+    name: t.name,
+    description: t.description,
+    parameters: t.parameters ? describeParams(t.parameters) : null,
+  })));
 
   const { session } = await createAgentSession({
     cwd,
@@ -180,6 +187,7 @@ export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins, 
       turnState.summary = null;
       turnState.summaryCalled = false;
       let draft = "";
+      ui.turnStart();
 
       const unsubscribe = session.subscribe((event) => {
         if (event.type === "message_update" && event.assistantMessageEvent?.type === "text_delta") {
@@ -217,6 +225,7 @@ export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins, 
 
         return { draft, summary: turnState.summary };
       } finally {
+        ui.turnEnd();
         unsubscribe();
       }
     },
@@ -229,4 +238,64 @@ export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins, 
 
 function toolText(text, details = {}) {
   return { content: [{ type: "text", text }], details };
+}
+
+function describeParams(schema) {
+  if (!schema || !schema.properties) return {};
+  const out = {};
+  for (const [key, prop] of Object.entries(schema.properties)) {
+    out[key] = prop.description ?? key;
+  }
+  return out;
+}
+
+function formatDiff(oldText, newText) {
+  const oldLines = oldText.split("\n");
+  const newLines = newText.split("\n");
+
+  // Find common prefix
+  let prefix = 0;
+  while (prefix < oldLines.length && prefix < newLines.length && oldLines[prefix] === newLines[prefix]) {
+    prefix++;
+  }
+
+  // Find common suffix
+  let suffix = 0;
+  while (
+    suffix < oldLines.length - prefix &&
+    suffix < newLines.length - prefix &&
+    oldLines[oldLines.length - 1 - suffix] === newLines[newLines.length - 1 - suffix]
+  ) {
+    suffix++;
+  }
+
+  const ctx = 3;
+  const result = [];
+
+  // Pre-context
+  const ctxStart = Math.max(0, prefix - ctx);
+  for (let i = ctxStart; i < prefix; i++) {
+    result.push({ type: "ctx", text: oldLines[i] });
+  }
+
+  // Removed lines
+  const oldEnd = oldLines.length - suffix;
+  for (let i = prefix; i < oldEnd; i++) {
+    result.push({ type: "del", text: oldLines[i] });
+  }
+
+  // Added lines
+  const newEnd = newLines.length - suffix;
+  for (let i = prefix; i < newEnd; i++) {
+    result.push({ type: "add", text: newLines[i] });
+  }
+
+  // Post-context
+  const postStart = oldLines.length - suffix;
+  const postEnd = Math.min(oldLines.length, postStart + ctx);
+  for (let i = postStart; i < postEnd; i++) {
+    result.push({ type: "ctx", text: oldLines[i] });
+  }
+
+  return result;
 }

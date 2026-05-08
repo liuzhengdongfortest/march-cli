@@ -75,9 +75,9 @@ export class GlossaryService {
 
   addKeyword(keyword, nodeUuid, namespace = "") {
     this.db.prepare(
-      "INSERT INTO glossary_keywords (keyword, node_uuid, namespace) VALUES (?, ?, ?)"
+      "INSERT OR IGNORE INTO glossary_keywords (keyword, node_uuid, namespace) VALUES (?, ?, ?)"
     ).run(keyword, nodeUuid, namespace);
-    this.fingerprint = null; // invalidate cache
+    this.fingerprint = null;
   }
 
   removeKeyword(keywordId) {

@@ -12,7 +12,8 @@
     "src/"
   ],
   "scripts": {
-    "dev": "node bin/march.mjs"
+    "dev": "node bin/march.mjs",
+    "test": "node test/smoke.test.mjs"
   },
   "dependencies": {
     "@mariozechner/pi-ai": "^0.73.0",
