@@ -42,9 +42,13 @@ export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins, 
       summary: Type.String({ description: "Concise summary (1-5 sentences)" }),
     }),
     execute: async (_toolCallId, params) => {
+      if (turnState.summaryCalled) {
+        turnState.summary = params.summary;
+        return toolText("Summary updated. Turn is complete — do not call this tool again.", { summary: params.summary });
+      }
       turnState.summary = params.summary;
       turnState.summaryCalled = true;
-      return toolText("Turn summary recorded.", { summary: params.summary });
+      return toolText("Turn summary recorded. Turn is complete.", { summary: params.summary });
     },
   });
 
@@ -209,7 +213,7 @@ export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins, 
           ui.status("send_turn_summary not called — enforcing");
           try {
             await session.prompt(
-              "[system]\nYou forgot to call send_turn_summary. Call it NOW with a summary. Do nothing else.",
+              "[system]\nYou forgot to call send_turn_summary. Call it ONCE with a summary, then stop — the turn ends after the tool result.",
             );
           } catch {
             if (!turnState.summary) {
