@@ -338,11 +338,12 @@ ${tree}`;
     const entries = [];
     for (const turn of this.turns) {
       let block = `## Turn ${turn.index}\n` +
-        `[user]\n${this.#truncate(turn.userMessage, 2000)}\n`;
+        `[user]\n${this.#truncate(turn.userMessage, 2000)}\n\n` +
+        `[March]\n` +
+        `<WorkSummary>${turn.summary || "(no summary)"}</WorkSummary>\n`;
       if (turn.assistantMessage) {
-        block += `\n[March]\n${this.#truncate(turn.assistantMessage, 2000)}\n`;
+        block += `\n${this.#truncate(turn.assistantMessage, 2000)}\n`;
       }
-      block += `\n[summary]\n${this.#truncate(turn.summary, 500)}\n`;
       entries.push(block);
     }
     return `[recent_chat]\n${entries.join("\n\n")}`;
