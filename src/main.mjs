@@ -13,6 +13,7 @@ import { createMemoryTools } from "./memory/tools.mjs";
 import { SystemViews } from "./memory/system-views.mjs";
 import { scanSkillDir, loadSkillFromFile } from "./skills/loader.mjs";
 import { createSkillTools } from "./skills/tools.mjs";
+import { loadConfig } from "./config/loader.mjs";
 
 export async function run(argv) {
   const args = parseCliArgs(argv);
@@ -26,6 +27,12 @@ export async function run(argv) {
   const stateRoot = join(homedir(), ".march");
   if (!existsSync(stateRoot)) mkdirSync(stateRoot, { recursive: true });
 
+  // Load config (CLI args override config file values)
+  const config = loadConfig(cwd);
+  const model = args.model ?? config.model ?? "deepseek-v4-pro";
+  const skills = [...config.skills, ...args.skills];
+  const pins = [...config.pins, ...args.pins];
+
   // Memory system: project-bound SQLite database
   const projectMarchDir = resolve(cwd, ".march");
   if (!existsSync(projectMarchDir)) mkdirSync(projectMarchDir, { recursive: true });
@@ -37,9 +44,9 @@ export async function run(argv) {
   const systemViews = new SystemViews(memoryDb, graph, glossary);
   const memoryTools = createMemoryTools(graph, glossary, searchIndexer, systemViews);
 
-  // Skills system: scan .march/skills/ + --skill flags
+  // Skills system: scan .march/skills/ + --skill flags + config
   const skillPool = scanSkillDir(resolve(cwd, ".march", "skills"));
-  for (const skillPath of args.skills) {
+  for (const skillPath of skills) {
     try {
       const skill = loadSkillFromFile(skillPath);
       if (!skillPool.find(s => s.name === skill.name)) {
@@ -61,11 +68,11 @@ export async function run(argv) {
 
   const runner = await createRunner({
     cwd,
-    modelId: args.model,
+    modelId: model,
     stateRoot,
     ui,
-    skills: args.skills,
-    pins: args.pins,
+    skills: skills,
+    pins: pins,
     graph,
     glossary,
     memoryTools,
@@ -74,7 +81,7 @@ export async function run(argv) {
 
   // Wire back-reference for skill tools → engine
   skillState.engine = runner.engine;
-  // Auto-activate skills from --skill flags
+  // Auto-activate skills from --skill CLI flags
   if (args.skills.length > 0) {
     for (const skill of skillPool) {
       if (args.skills.includes(skill.path)) {
