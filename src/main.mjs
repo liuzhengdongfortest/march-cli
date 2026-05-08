@@ -129,11 +129,13 @@ export async function run(argv) {
   // Single-shot mode
   if (args.prompt) {
     const context = runner.engine.buildContext(args.prompt);
-    if (args.dumpContext) {
-      writeFileSync(resolve(projectMarchDir, "context-snapshot.txt"), context, "utf8");
-    }
     const fullPrompt = `${context}\n\n[user]\n${args.prompt}`;
-    await runner.runTurn(fullPrompt);
+    await runner.runTurn(fullPrompt, args.prompt);
+    // Post-turn dump: context with this turn in recent_chat
+    if (args.dumpContext) {
+      const postCtx = runner.engine.buildContext("");
+      writeFileSync(resolve(projectMarchDir, "context-snapshot.txt"), postCtx, "utf8");
+    }
     saveSession(sessionDir, runner.engine);
     runner.dispose();
     ui.writeln("");
@@ -213,12 +215,14 @@ export async function run(argv) {
     }
 
     const context = runner.engine.buildContext(args.prompt || trimmed);
-    if (args.dumpContext) {
-      writeFileSync(resolve(projectMarchDir, "context-snapshot.txt"), context, "utf8");
-    }
     const fullPrompt = `${context}\n\n[user]\n${trimmed}`;
     try {
-      await runner.runTurn(fullPrompt);
+      await runner.runTurn(fullPrompt, trimmed);
+      // Post-turn dump: includes this turn in recent_chat
+      if (args.dumpContext) {
+        const postCtx = runner.engine.buildContext("");
+        writeFileSync(resolve(projectMarchDir, "context-snapshot.txt"), postCtx, "utf8");
+      }
       ui.writeln("");
     } catch (err) {
       ui.writeln(`Error: ${err.message}`);

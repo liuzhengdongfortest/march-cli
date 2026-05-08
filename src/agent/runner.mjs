@@ -187,7 +187,7 @@ export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins, 
     engine,
     session,
 
-    async runTurn(prompt) {
+    async runTurn(prompt, userMessage) {
       turnState.summary = null;
       turnState.summaryCalled = false;
       let draft = "";
@@ -223,7 +223,7 @@ export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins, 
         }
 
         engine.recordTurn({
-          userMessage: prompt,
+          userMessage: userMessage ?? prompt.slice(0, 300),
           summary: turnState.summary ?? "(no summary)",
         });
 
