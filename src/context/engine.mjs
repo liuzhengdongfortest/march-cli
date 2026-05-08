@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
-import { relative, sep } from "node:path";
-import { readdirSync, statSync } from "node:fs";
+import { isAbsolute, resolve, sep } from "node:path";
+import { readdirSync, readFileSync, existsSync } from "node:fs";
 
 export class ContextEngine {
   constructor({ cwd, modelId, provider = "deepseek", skills = [], pins = [] }) {
@@ -8,11 +8,16 @@ export class ContextEngine {
     this.modelId = modelId;
     this.provider = provider;
     this.skills = [...skills];
-    this.pins = [...pins];
+    this.pins = new Set(pins);
     this.turns = [];
+    // path (absolute) → { content, lineCount, pinned }
+    this.openFiles = new Map();
   }
 
+  // ── Public API ──────────────────────────────────────────────────────
+
   buildContext() {
+    this.#refreshOpenFiles();
     const layers = [
       this.#buildSystemCore(),
       this.#buildInjections(),
@@ -21,6 +26,10 @@ export class ContextEngine {
 
     if (this.skills.length > 0) {
       layers.push(this.#buildActiveSkills());
+    }
+
+    if (this.openFiles.size > 0) {
+      layers.push(this.#buildOpenFiles());
     }
 
     layers.push(
@@ -42,7 +51,49 @@ export class ContextEngine {
     }
   }
 
-  setPins(pins) { this.pins = [...pins]; }
+  resolvePath(raw) {
+    return isAbsolute(raw) ? raw : resolve(this.cwd, raw);
+  }
+
+  // ── openFiles management ────────────────────────────────────────────
+
+  openFile(absPath) {
+    const content = readFileSync(absPath, "utf8");
+    const lineCount = content.split("\n").length;
+    const pinned = this.pins.has(absPath);
+    this.openFiles.set(absPath, { content, lineCount, pinned });
+    return { content, lineCount, pinned };
+  }
+
+  closeFile(absPath) {
+    const entry = this.openFiles.get(absPath);
+    if (entry?.pinned) return false;
+    return this.openFiles.delete(absPath);
+  }
+
+  isOpen(absPath) {
+    return this.openFiles.has(absPath);
+  }
+
+  getOpenFile(absPath) {
+    return this.openFiles.get(absPath);
+  }
+
+  // ── Pin management ─────────────────────────────────────────────────
+
+  addPin(path) {
+    this.pins.add(path);
+    const entry = this.openFiles.get(path);
+    if (entry) entry.pinned = true;
+  }
+  removePin(path) {
+    this.pins.delete(path);
+    const entry = this.openFiles.get(path);
+    if (entry) entry.pinned = false;
+  }
+  hasPin(path) { return this.pins.has(path); }
+  getPins() { return [...this.pins]; }
+
   setSkills(skills) { this.skills = [...skills]; }
 
   // ── Layer 1: system_core ───────────────────────────────────────────
@@ -58,8 +109,13 @@ You are March, a terminal-native coding agent. You operate in the user's project
 - Default to writing no comments. Only add one when the WHY is non-obvious.
 - Avoid backwards-compatibility hacks.
 
+## File editing
+- Use open_file to add files to your working set. Files in [open_files] are always current.
+- Use edit_file(path, oldString, newString) to edit. oldString can be a line range ("55-64" or "55") — you do NOT need to reproduce the original text.
+- edit_file only works on files in [open_files]. Use write_file for new files or full overwrites.
+
 ## Turn discipline
-At the END of every turn, you MUST call send_turn_summary with a concise summary of what you accomplished. This is mandatory — your turn is not complete without it. The summary is embedded in recent_chat for your next turn's context.`;
+At the END of every turn, you MUST call send_turn_summary with a concise summary of what you accomplished. This is mandatory — your turn is not complete without it.`;
   }
 
   // ── Layer 2: injections ────────────────────────────────────────────
@@ -127,7 +183,19 @@ ${tree}`;
     return `[active_skills]\n${lines.join("\n")}`;
   }
 
-  // ── Layer 5: runtime_status ────────────────────────────────────────
+  // ── Layer 5: open_files ────────────────────────────────────────────
+  #buildOpenFiles() {
+    const blocks = [];
+    for (const [path, entry] of this.openFiles) {
+      const marker = entry.pinned ? " (pinned)" : "";
+      blocks.push(
+        `--- ${path} (1-${entry.lineCount})${marker} ---\n${entry.content}`,
+      );
+    }
+    return `[open_files]\n${blocks.join("\n\n")}`;
+  }
+
+  // ── Layer 6: runtime_status ────────────────────────────────────────
   #buildRuntimeStatus() {
     const now = new Date().toISOString();
     const turnCount = this.turns.length;
@@ -137,7 +205,8 @@ ${tree}`;
       `turn: ${turnCount + 1}`,
       `context_pressure: ${pressure}`,
     ];
-    if (this.pins.length > 0) {
+    parts.push(`open_files: ${this.openFiles.size}`);
+    if (this.pins.size > 0) {
       parts.push(`pinned_files:`);
       for (const p of this.pins) {
         parts.push(`  - ${p}`);
@@ -146,7 +215,7 @@ ${tree}`;
     return `[runtime_status]\n${parts.join("\n")}`;
   }
 
-  // ── Layer 6: recent_chat ───────────────────────────────────────────
+  // ── Layer 7: recent_chat ───────────────────────────────────────────
   #buildRecentChat() {
     if (this.turns.length === 0) {
       return `[recent_chat]
@@ -161,6 +230,21 @@ ${tree}`;
       );
     }
     return `[recent_chat]\n${entries.join("\n\n")}`;
+  }
+
+  // ── Internal ────────────────────────────────────────────────────────
+
+  #refreshOpenFiles() {
+    for (const [path, entry] of this.openFiles) {
+      try {
+        const content = readFileSync(path, "utf8");
+        entry.content = content;
+        entry.lineCount = content.split("\n").length;
+      } catch {
+        // File may have been deleted — keep stale content but mark
+        entry.stale = true;
+      }
+    }
   }
 
   #truncate(text, maxLen) {

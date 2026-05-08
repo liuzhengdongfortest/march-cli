@@ -62,23 +62,33 @@ export async function run(argv) {
     }
     if (trimmed === "/status") {
       const s = runner.engine;
-      ui.writeln(`model: ${s.modelId}  turns: ${s.turns.length}  skills: ${s.skills.join(", ") || "(none)"}  pins: ${s.pins.join(", ") || "(none)"}`);
+      ui.writeln(`model: ${s.modelId}  turns: ${s.turns.length}  open: ${s.openFiles.size}  skills: ${s.skills.join(", ") || "(none)"}  pins: ${s.getPins().join(", ") || "(none)"}`);
       continue;
     }
     if (trimmed.startsWith("/pin ")) {
-      const path = trimmed.slice(5).trim();
-      runner.engine.setPins([...runner.engine.pins, path]);
-      ui.writeln(`Pinned: ${path}`);
+      const raw = trimmed.slice(5).trim();
+      const absPath = runner.engine.resolvePath(raw);
+      runner.engine.addPin(absPath);
+      if (!runner.engine.isOpen(absPath)) {
+        try {
+          runner.engine.openFile(absPath);
+        } catch {
+          // File can't be opened yet — just pin it
+        }
+      }
+      ui.writeln(`Pinned: ${absPath}`);
       continue;
     }
     if (trimmed === "/pins") {
-      ui.writeln(runner.engine.pins.length > 0 ? runner.engine.pins.join("\n") : "(no pinned files)");
+      const pins = runner.engine.getPins();
+      ui.writeln(pins.length > 0 ? pins.join("\n") : "(no pinned files)");
       continue;
     }
     if (trimmed.startsWith("/unpin ")) {
-      const path = trimmed.slice(7).trim();
-      runner.engine.setPins(runner.engine.pins.filter((p) => p !== path));
-      ui.writeln(`Unpinned: ${path}`);
+      const raw = trimmed.slice(7).trim();
+      const absPath = runner.engine.resolvePath(raw);
+      runner.engine.removePin(absPath);
+      ui.writeln(`Unpinned: ${absPath}`);
       continue;
     }
 
