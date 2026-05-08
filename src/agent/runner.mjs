@@ -11,15 +11,10 @@ import {
 } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
 import { ContextEngine } from "../context/engine.mjs";
-import { openDatabase } from "../memory/database.mjs";
-import { GraphService } from "../memory/graph.mjs";
-import { GlossaryService } from "../memory/glossary.mjs";
-import { createMemoryTools } from "../memory/tools.mjs";
-import { join } from "node:path";
 
 const LINE_RANGE_RE = /^(\d+)(?:\s*-\s*(\d+))?$/;
 
-export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins }) {
+export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins, graph = null, glossary = null, memoryTools = [] }) {
   const provider = "deepseek";
   const authStorage = AuthStorage.create();
   authStorage.setRuntimeApiKey(provider, process.env.DEEPSEEK_API_KEY);
@@ -32,11 +27,6 @@ export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins }
     compaction: { enabled: false },
     retry: { enabled: true, maxRetries: 1 },
   });
-
-  // Memory system
-  const db = openDatabase(join(stateRoot, "memory.db"));
-  const graph = new GraphService(db);
-  const glossary = new GlossaryService(db);
 
   const engine = new ContextEngine({ cwd, modelId, provider, skills, pins, graph, glossary });
   const turnState = { summary: null, summaryCalled: false };
@@ -168,7 +158,7 @@ export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins }
     },
   });
 
-  const customTools = [summaryTool, openFileTool, closeFileTool, editFileTool, ...createMemoryTools(graph, glossary)];
+  const customTools = [summaryTool, openFileTool, closeFileTool, editFileTool, ...memoryTools];
 
   const { session } = await createAgentSession({
     cwd,
@@ -233,7 +223,6 @@ export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins }
 
     dispose() {
       session.dispose();
-      db.close();
     },
   };
 }

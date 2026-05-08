@@ -2,8 +2,9 @@ import { randomUUID } from "node:crypto";
 import { ROOT_NODE_UUID } from "./database.mjs";
 
 export class GraphService {
-  constructor(db) {
+  constructor(db, { changesetStore = null } = {}) {
     this.db = db;
+    this.changesetStore = changesetStore;
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -141,6 +142,28 @@ export class GraphService {
       if (memories.length >= limit) break;
     }
     return memories;
+  }
+
+  resolvePath(path, domain = "core", namespace = "") {
+    return this.#resolvePath(path, domain, namespace);
+  }
+
+  getPathsForNode(nodeUuid, namespace = "") {
+    return this.db.prepare(
+      "SELECT * FROM paths WHERE node_uuid = ? AND namespace = ?"
+    ).all(nodeUuid, namespace);
+  }
+
+  getCurrentMemory(nodeUuid) {
+    return this.db.prepare(
+      "SELECT * FROM memories WHERE node_uuid = ? AND deprecated = 0 ORDER BY id DESC LIMIT 1"
+    ).get(nodeUuid);
+  }
+
+  touchNode(nodeUuid) {
+    this.db.prepare(
+      "UPDATE nodes SET last_accessed_at = datetime('now') WHERE uuid = ?"
+    ).run(nodeUuid);
   }
 
   getDiagnostics(namespace = "", daysStale = 30, maxChildren = 10) {
@@ -494,6 +517,10 @@ export class GraphService {
 
     const created = this.#createEdgeWithPaths(parentUuid, newUuid, edgeName, domain, finalPath, priority, disclosure, namespace);
 
+    if (this.changesetStore) {
+      this.changesetStore.record({ memoryId: memory.id, nodeUuid: newUuid, beforeContent: null, afterContent: content });
+    }
+
     return {
       id: memory.id, node_uuid: newUuid, domain, path: finalPath,
       uri: `${domain}://${finalPath}`, priority,
@@ -534,10 +561,17 @@ export class GraphService {
       const newMem = this.#insertMemory(nodeUuid, content, false);
       newMemoryId = newMem.id;
       this.#deprecateNodeMemories(nodeUuid, newMemoryId);
-      // Un-deprecate the successor
       this.db.prepare(
         "UPDATE memories SET deprecated = 0, migrated_to = NULL WHERE id = ?"
       ).run(newMemoryId);
+
+      // Record changeset
+      if (this.changesetStore) {
+        const oldContent = oldMemoryId
+          ? this.db.prepare("SELECT content FROM memories WHERE id = ?").get(oldMemoryId)?.content ?? null
+          : null;
+        this.changesetStore.record({ memoryId: newMemoryId, nodeUuid, beforeContent: oldContent, afterContent: content });
+      }
     }
 
     return {
