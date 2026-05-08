@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 import { isAbsolute, resolve, sep } from "node:path";
-import { readdirSync, readFileSync, existsSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { ROOT_NODE_UUID } from "../memory/database.mjs";
 
 export class ContextEngine {
