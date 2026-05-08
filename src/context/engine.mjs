@@ -12,6 +12,7 @@ export class ContextEngine {
     this.pins = new Set(pins);
     this.turns = [];
     this.openFiles = new Map();
+    this.toolDefs = [];
     this.graph = graph;
     this.glossary = glossary;
   }
@@ -36,6 +37,10 @@ export class ContextEngine {
 
     if (this.openFiles.size > 0) {
       layers.push(this.#buildOpenFiles());
+    }
+
+    if (this.toolDefs.length > 0) {
+      layers.push(this.#buildTools());
     }
 
     layers.push(
@@ -101,6 +106,29 @@ export class ContextEngine {
   getPins() { return [...this.pins]; }
 
   setSkills(skills) { this.skills = skills; }
+  setToolDefs(defs) { this.toolDefs = defs; }
+
+  restoreSession(data, pool) {
+    if (data.turns) this.turns = data.turns;
+    if (data.pins) {
+      for (const p of data.pins) {
+        this.pins.add(p);
+      }
+    }
+    if (data.openFiles) {
+      for (const f of data.openFiles) {
+        try { this.openFile(f); } catch {}
+      }
+    }
+    if (data.skills && pool) {
+      const found = [];
+      for (const name of data.skills) {
+        const s = pool.find((sk) => sk.name === name);
+        if (s) found.push(s);
+      }
+      if (found.length > 0) this.skills = found;
+    }
+  }
 
   // ── Layer 1: system_core ───────────────────────────────────────────
   #buildSystemCore() {
@@ -269,7 +297,18 @@ ${tree}`;
     return `[open_files]\n${blocks.join("\n\n")}`;
   }
 
-  // ── Layer 6: runtime_status ────────────────────────────────────────
+  // ── Layer 6: tools ──────────────────────────────────────────────────
+  #buildTools() {
+    const lines = this.toolDefs.map((t) => {
+      const params = t.parameters
+        ? Object.entries(t.parameters).map(([k, v]) => `  ${k}: ${v}`).join("\n")
+        : "  (none)";
+      return `${t.name}\n  ${t.description}\n${params}`;
+    });
+    return `[tools]\n${lines.join("\n\n")}`;
+  }
+
+  // ── Layer 7: runtime_status ────────────────────────────────────────
   #buildRuntimeStatus() {
     const now = new Date().toISOString();
     const turnCount = this.turns.length;

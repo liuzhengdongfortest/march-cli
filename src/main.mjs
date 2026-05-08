@@ -14,6 +14,7 @@ import { SystemViews } from "./memory/system-views.mjs";
 import { scanSkillDir, loadSkillFromFile } from "./skills/loader.mjs";
 import { createSkillTools } from "./skills/tools.mjs";
 import { loadConfig } from "./config/loader.mjs";
+import { saveSession, loadSession } from "./session/persist.mjs";
 
 export async function run(argv) {
   const args = parseCliArgs(argv);
@@ -57,6 +58,10 @@ export async function run(argv) {
   const skillState = { active: [], engine: null };
   const skillTools = createSkillTools(skillState, skillPool);
 
+  // Session persistence
+  const sessionId = args.resume ?? Date.now().toString(36);
+  const sessionDir = join(projectMarchDir, "sessions", sessionId);
+
   const ui = createUI({ json: args.json });
 
   if (!process.env.DEEPSEEK_API_KEY) {
@@ -64,7 +69,7 @@ export async function run(argv) {
     return 1;
   }
 
-  ui.status(`Starting March session in ${cwd}`);
+  ui.status(`Starting March session ${sessionId} in ${cwd}`);
 
   const runner = await createRunner({
     cwd,
@@ -93,11 +98,23 @@ export async function run(argv) {
     }
   }
 
+  // Resume session
+  if (args.resume) {
+    const saved = loadSession(sessionDir);
+    if (saved) {
+      runner.engine.restoreSession(saved, skillPool);
+      ui.status(`Resumed session ${sessionId} (${saved.turns.length} turns)`);
+    } else {
+      ui.status(`Session ${sessionId} not found — starting fresh`);
+    }
+  }
+
   // Single-shot mode
   if (args.prompt) {
     const context = runner.engine.buildContext(args.prompt || trimmed);
     const fullPrompt = `${context}\n\n[user]\n${args.prompt}`;
     await runner.runTurn(fullPrompt);
+    saveSession(sessionDir, runner.engine);
     runner.dispose();
     ui.writeln("");
     return 0;
@@ -109,18 +126,30 @@ export async function run(argv) {
 
   for (;;) {
     const line = await ui.readline("> ");
-    if (line === null) break;
+    if (line === null) {
+      saveSession(sessionDir, runner.engine);
+      break;
+    }
     const trimmed = line.trim();
     if (!trimmed) continue;
 
-    if (trimmed === "/exit" || trimmed === "/quit") break;
+    if (trimmed === "/exit" || trimmed === "/quit") {
+      saveSession(sessionDir, runner.engine);
+      ui.writeln(`Session saved: ${sessionId}`);
+      break;
+    }
     if (trimmed === "/help") {
-      ui.writeln("Commands: /exit, /help, /status, /pin <path>, /unpin <path>, /pins");
+      ui.writeln("Commands: /exit, /help, /status, /save, /pin <path>, /unpin <path>, /pins");
       continue;
     }
     if (trimmed === "/status") {
       const s = runner.engine;
-      ui.writeln(`model: ${s.modelId}  turns: ${s.turns.length}  open: ${s.openFiles.size}  skills: ${s.skills.join(", ") || "(none)"}  pins: ${s.getPins().join(", ") || "(none)"}`);
+      ui.writeln(`session: ${sessionId}  model: ${s.modelId}  turns: ${s.turns.length}  open: ${s.openFiles.size}  skills: ${s.skills.map(s => typeof s === "string" ? s : s.name).join(", ") || "(none)"}  pins: ${s.getPins().join(", ") || "(none)"}`);
+      continue;
+    }
+    if (trimmed === "/save") {
+      saveSession(sessionDir, runner.engine);
+      ui.writeln(`Session saved: ${sessionId}`);
       continue;
     }
     if (trimmed.startsWith("/pin ")) {
