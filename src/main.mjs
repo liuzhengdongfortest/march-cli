@@ -111,7 +111,7 @@ export async function run(argv) {
 
   // Single-shot mode
   if (args.prompt) {
-    const context = runner.engine.buildContext(args.prompt || trimmed);
+    const context = runner.engine.buildContext(args.prompt);
     const fullPrompt = `${context}\n\n[user]\n${args.prompt}`;
     await runner.runTurn(fullPrompt);
     saveSession(sessionDir, runner.engine);
