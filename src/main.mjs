@@ -11,7 +11,7 @@ import { ChangesetStore } from "./memory/snapshot.mjs";
 import { SearchIndexer } from "./memory/search.mjs";
 import { createMemoryTools } from "./memory/tools.mjs";
 import { SystemViews } from "./memory/system-views.mjs";
-import { scanSkillDir, loadSkillFromFile } from "./skills/loader.mjs";
+import { loadSkillPool, loadSkillFromFile } from "./skills/loader.mjs";
 import { createSkillTools } from "./skills/tools.mjs";
 import { loadConfig } from "./config/loader.mjs";
 import { saveSession, loadSession, listSessions } from "./session/persist.mjs";
@@ -51,7 +51,7 @@ export async function run(argv) {
   const memoryTools = createMemoryTools(graph, glossary, searchIndexer, systemViews);
 
   // Skills system: scan .march/skills/ + --skill flags + config
-  const skillPool = scanSkillDir(resolve(cwd, ".march", "skills"));
+  const skillPool = loadSkillPool(cwd);
   for (const skillPath of skills) {
     try {
       const skill = loadSkillFromFile(skillPath);

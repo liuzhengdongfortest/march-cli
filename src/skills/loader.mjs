@@ -1,3 +1,4 @@
+import { homedir } from "node:os";
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { resolve, join, basename } from "node:path";
 
@@ -49,4 +50,26 @@ export function resolveSkill(skillPool, name) {
 function extractSkillName(raw) {
   const match = raw.match(/^#\s+(.+)/m);
   return match ? match[1].trim() : null;
+}
+
+/**
+ * Load skills from both project-level and global directories.
+ * Project skills take precedence over global skills with the same name.
+ * Pi-aligned convention: cwd/.march/skills/ + ~/.march/skills/
+ */
+export function loadSkillPool(cwd) {
+  const globalDir = resolve(homedir(), ".march", "skills");
+  const projectDir = resolve(cwd, ".march", "skills");
+
+  const pool = new Map();
+
+  // Load global first, so project can override
+  for (const skill of scanSkillDir(globalDir)) {
+    pool.set(skill.name, skill);
+  }
+  for (const skill of scanSkillDir(projectDir)) {
+    pool.set(skill.name, skill);
+  }
+
+  return [...pool.values()];
 }

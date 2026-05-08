@@ -9,7 +9,7 @@ import { ContextEngine } from "../src/context/engine.mjs";
 import { openDatabase } from "../src/memory/database.mjs";
 import { GraphService } from "../src/memory/graph.mjs";
 import { GlossaryService } from "../src/memory/glossary.mjs";
-import { scanSkillDir } from "../src/skills/loader.mjs";
+import { loadSkillPool } from "../src/skills/loader.mjs";
 import { loadConfig } from "../src/config/loader.mjs";
 
 const cwd = process.cwd();
@@ -27,7 +27,7 @@ const graph = new GraphService(memoryDb);
 const glossary = new GlossaryService(memoryDb);
 
 // Skills
-const skillPool = scanSkillDir(resolve(cwd, ".march", "skills"));
+const skillPool = loadSkillPool(cwd);
 const activeSkills = [...(config?.skills ?? [])];
 
 // Build engine
