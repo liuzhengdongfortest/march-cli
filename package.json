@@ -1,0 +1,22 @@
+{
+  "name": "march",
+  "version": "0.1.0",
+  "description": "March CLI — terminal-native coding agent with context reconstruction",
+  "type": "module",
+  "main": "./src/main.mjs",
+  "bin": {
+    "march": "./bin/march.mjs"
+  },
+  "files": [
+    "bin/",
+    "src/"
+  ],
+  "scripts": {
+    "dev": "node bin/march.mjs"
+  },
+  "dependencies": {
+    "@mariozechner/pi-ai": "^0.73.0",
+    "@mariozechner/pi-coding-agent": "^0.73.0",
+    "typebox": "^1.0.58"
+  }
+}
