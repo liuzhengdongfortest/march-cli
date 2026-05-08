@@ -10,6 +10,7 @@ import { GlossaryService } from "./memory/glossary.mjs";
 import { ChangesetStore } from "./memory/snapshot.mjs";
 import { SearchIndexer } from "./memory/search.mjs";
 import { createMemoryTools } from "./memory/tools.mjs";
+import { SystemViews } from "./memory/system-views.mjs";
 import { scanSkillDir, loadSkillFromFile } from "./skills/loader.mjs";
 import { createSkillTools } from "./skills/tools.mjs";
 
@@ -33,7 +34,8 @@ export async function run(argv) {
   const searchIndexer = new SearchIndexer(memoryDb);
   const graph = new GraphService(memoryDb, { changesetStore, searchIndexer });
   const glossary = new GlossaryService(memoryDb);
-  const memoryTools = createMemoryTools(graph, glossary, searchIndexer);
+  const systemViews = new SystemViews(memoryDb, graph, glossary);
+  const memoryTools = createMemoryTools(graph, glossary, searchIndexer, systemViews);
 
   // Skills system: scan .march/skills/ + --skill flags
   const skillPool = scanSkillDir(resolve(cwd, ".march", "skills"));

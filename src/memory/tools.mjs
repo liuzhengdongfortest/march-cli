@@ -1,14 +1,15 @@
 import { defineTool } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
+import { SystemViews } from "./system-views.mjs";
 
-export function createMemoryTools(graph, glossary, searchIndexer = null) {
+export function createMemoryTools(graph, glossary, searchIndexer = null, systemViews = null) {
   return [
     defineTool({
       name: "read_memory",
       label: "Read Memory",
-      description: "Read a memory entry from the March memory graph by its path (e.g. 'core://notes/architecture'). Returns content and metadata.",
+      description: "Read a memory entry from the March memory graph by its path (e.g. 'core://notes/architecture'). Supports system:// views: system://boot, system://index, system://recent, system://glossary, system://diagnostic.",
       parameters: Type.Object({
-        path: Type.String({ description: "Memory path like 'notes/architecture' (core domain) or full URI" }),
+        path: Type.String({ description: "Memory path like 'notes/architecture' (core domain), full URI, or system:// view" }),
         domain: Type.Optional(Type.String({ description: "Domain. Default: 'core'" })),
       }),
       execute: async (_toolCallId, params) => {
@@ -20,6 +21,12 @@ export function createMemoryTools(graph, glossary, searchIndexer = null) {
           domain = uriMatch[1];
           path = uriMatch[2];
         }
+
+        // system:// views
+        if (domain === "system" && systemViews) {
+          return handleSystemView(path, systemViews);
+        }
+
         const memory = graph.getMemoryByPath(path, domain);
         if (!memory) {
           return toolText(`No memory found at ${domain}://${path}`);
@@ -196,4 +203,65 @@ export function createMemoryTools(graph, glossary, searchIndexer = null) {
 
 function toolText(text, details = {}) {
   return { content: [{ type: "text", text }], details };
+}
+
+function handleSystemView(path, views) {
+  try {
+    switch (path) {
+      case "boot": {
+        const items = views.boot();
+        if (items.length === 0) return toolText("system://boot\n(no boot entries)");
+        const lines = items.map(i =>
+          `- ${i.name} (${i.node_uuid.slice(0, 8)}...)  priority:${i.priority}  disclosure:${i.disclosure ?? "-"}\n  ${i.content ?? "(no content)"}`
+        );
+        return toolText(`system://boot — ${items.length} entries\n\n${lines.join("\n\n")}`);
+      }
+      case "index": {
+        const domains = views.index();
+        const total = Object.values(domains).flat().length;
+        const lines = [`system://index — ${total} paths across ${Object.keys(domains).length} domains\n`];
+        for (const [domain, paths] of Object.entries(domains)) {
+          lines.push(`## ${domain}:// (${paths.length} paths)`);
+          for (const p of paths.slice(0, 50)) {
+            lines.push(`  - ${p.path}  →  ${p.node_uuid.slice(0, 8)}...`);
+          }
+          if (paths.length > 50) lines.push(`  ... and ${paths.length - 50} more`);
+        }
+        return toolText(lines.join("\n"));
+      }
+      case "recent": {
+        const items = views.recent(20);
+        if (items.length === 0) return toolText("system://recent\n(no recent memories)");
+        const lines = items.map(m =>
+          `${m.uri}  priority:${m.priority}  ${m.created_at}`
+        );
+        return toolText(`system://recent — ${items.length} entries\n\n${lines.join("\n")}`);
+      }
+      case "glossary": {
+        const items = views.glossaryList();
+        if (items.length === 0) return toolText("system://glossary\n(no keywords)");
+        const lines = items.map(k =>
+          `- [${k.id}] "${k.keyword}" → ${k.node_uuid.slice(0, 8)}...`
+        );
+        return toolText(`system://glossary — ${items.length} keywords\n\n${lines.join("\n")}`);
+      }
+      case "diagnostic": {
+        const d = views.diagnostic();
+        return toolText(
+          `system://diagnostic\n\n` +
+          `## Counts\n` +
+          `  nodes: ${d.counts.nodes}  memories: ${d.counts.memories}  deprecated: ${d.counts.deprecated_memories}\n` +
+          `  edges: ${d.counts.edges}  paths: ${d.counts.paths}  keywords: ${d.counts.keywords}\n` +
+          `  fts_docs: ${d.counts.fts_documents}  changesets: ${d.counts.changesets}\n\n` +
+          `## Health\n` +
+          `  stale_nodes: ${d.health.stale_nodes}  orphan_nodes: ${d.health.orphan_nodes}\n` +
+          `  version_depth: avg ${d.health.avg_version_depth}, max ${d.health.max_version_depth}`
+        );
+      }
+      default:
+        return toolText(`Unknown system:// view: "${path}". Available: boot, index, recent, glossary, diagnostic`);
+    }
+  } catch (err) {
+    return toolText(`Error reading system://${path}: ${err.message}`, { error: true });
+  }
 }

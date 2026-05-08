@@ -1,10 +1,10 @@
 import { ROOT_NODE_UUID } from "./database.mjs";
 
 export class SystemViews {
-  constructor(db, graph, glossary) {
+  constructor(db, graph, glossaryService) {
     this.db = db;
     this.graph = graph;
-    this.glossary = glossary;
+    this.glossarySvc = glossaryService;
   }
 
   /**
@@ -14,10 +14,10 @@ export class SystemViews {
     const children = this.graph.getChildren(ROOT_NODE_UUID);
     return children.map(c => ({
       name: c.name,
-      node_uuid: c.child_uuid,
+      node_uuid: c.node_uuid,
       priority: c.priority,
       disclosure: c.disclosure,
-      content: c.content ? c.content.slice(0, 200) + (c.content.length > 200 ? "..." : "") : null,
+      content: c.content_snippet ?? null,
     }));
   }
 
@@ -47,8 +47,8 @@ export class SystemViews {
   /**
    * system://glossary — all glossary keywords with linked nodes.
    */
-  glossary() {
-    return this.glossary.getAllKeywords();
+  glossaryList() {
+    return this.glossarySvc.getAllKeywords();
   }
 
   /**
