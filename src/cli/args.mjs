@@ -9,6 +9,7 @@ export function parseCliArgs(argv) {
       json: { type: "boolean" },
       pin: { type: "string", multiple: true },
       skill: { type: "string", multiple: true },
+      "dump-context": { type: "boolean" },
       help: { type: "boolean", short: "h" },
     },
     allowPositionals: true,
@@ -20,6 +21,7 @@ export function parseCliArgs(argv) {
     json: values.json ?? false,
     pins: values.pin ?? [],
     skills: values.skill ?? [],
+    dumpContext: values["dump-context"] ?? false,
     help: values.help ?? false,
     prompt: positionals.join(" "),
   };
@@ -36,6 +38,7 @@ Options:
   -m, --model <id>   Model ID (default: deepseek-v4-pro)
   --resume <id>      Resume a previous session
   --json             JSON output mode (no TUI)
+  --dump-context     Write context snapshot to .march/context-snapshot.txt before each turn
   --pin <path>       Pin a file in context (repeatable)
   --skill <name>     Activate a skill (repeatable)
   -h, --help         Show this help

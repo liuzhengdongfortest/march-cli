@@ -14,7 +14,7 @@
   "scripts": {
     "dev": "node bin/march.mjs",
     "test": "node test/smoke.test.mjs",
-    "context": "node scripts/dump-context.mjs"
+    "context": "node src/main.mjs --dump-context"
   },
   "dependencies": {
     "@mariozechner/pi-ai": "^0.73.0",

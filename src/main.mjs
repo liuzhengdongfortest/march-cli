@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { parseCliArgs, showHelp } from "./cli/args.mjs";
 import { createUI } from "./cli/ui.mjs";
 import { createRunner } from "./agent/runner.mjs";
@@ -114,9 +114,24 @@ export async function run(argv) {
     }
   }
 
+  // --dump-context without prompt: dump boot context and exit (no API call)
+  if (args.dumpContext && !args.prompt) {
+    const context = runner.engine.buildContext("");
+    writeFileSync(resolve(projectMarchDir, "context-snapshot.txt"), context, "utf8");
+    const snapshotPath = resolve(projectMarchDir, "context-snapshot.txt");
+    console.log(context);
+    console.error(`\nWritten to: ${snapshotPath}`);
+    console.error(`Layers: ${context.split("\n\n").length}  Length: ${context.length} chars`);
+    runner.dispose();
+    return 0;
+  }
+
   // Single-shot mode
   if (args.prompt) {
     const context = runner.engine.buildContext(args.prompt);
+    if (args.dumpContext) {
+      writeFileSync(resolve(projectMarchDir, "context-snapshot.txt"), context, "utf8");
+    }
     const fullPrompt = `${context}\n\n[user]\n${args.prompt}`;
     await runner.runTurn(fullPrompt);
     saveSession(sessionDir, runner.engine);
@@ -198,6 +213,9 @@ export async function run(argv) {
     }
 
     const context = runner.engine.buildContext(args.prompt || trimmed);
+    if (args.dumpContext) {
+      writeFileSync(resolve(projectMarchDir, "context-snapshot.txt"), context, "utf8");
+    }
     const fullPrompt = `${context}\n\n[user]\n${trimmed}`;
     try {
       await runner.runTurn(fullPrompt);
