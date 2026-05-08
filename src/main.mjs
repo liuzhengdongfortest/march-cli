@@ -1,6 +1,7 @@
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { parseCliArgs, showHelp } from "./cli/args.mjs";
 import { createUI } from "./cli/ui.mjs";
 import { createRunner } from "./agent/runner.mjs";
@@ -232,6 +233,11 @@ export async function run(argv) {
   runner.dispose();
   ui.close();
   return 0;
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const code = await run(process.argv.slice(2));
+  process.exit(code);
 }
 
 function loadDotEnv(filePath) {

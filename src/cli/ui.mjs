@@ -7,7 +7,7 @@ const SPINNER_INTERVAL = 80;
 export function createUI({ json }) {
   if (json) return createJsonUI();
 
-  const rl = createInterface({ input: stdin, output: stdout });
+  let rl = null;
   let spinnerTimer = null;
   let spinnerIdx = 0;
   let spinning = false;
@@ -36,6 +36,7 @@ export function createUI({ json }) {
   return {
     readline: (prompt) =>
       new Promise((resolve) => {
+        if (!rl) rl = createInterface({ input: stdin, output: stdout });
         rl.question(prompt, (line) => {
           resolve(line);
         });
@@ -95,7 +96,7 @@ export function createUI({ json }) {
 
     close: () => {
       stopSpinner();
-      rl.close();
+      if (rl) rl.close();
     },
   };
 }
