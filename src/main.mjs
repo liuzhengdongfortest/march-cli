@@ -4,7 +4,6 @@ import { existsSync, mkdirSync } from "node:fs";
 import { parseCliArgs, showHelp } from "./cli/args.mjs";
 import { createUI } from "./cli/ui.mjs";
 import { createRunner } from "./agent/runner.mjs";
-import { buildContext } from "./context/engine.mjs";
 
 export async function run(argv) {
   const args = parseCliArgs(argv);
@@ -32,12 +31,13 @@ export async function run(argv) {
     modelId: args.model,
     stateRoot,
     ui,
+    skills: args.skills,
+    pins: args.pins,
   });
-
-  const context = buildContext({ cwd, pins: args.pins, skills: args.skills });
 
   // Single-shot mode
   if (args.prompt) {
+    const context = runner.engine.buildContext();
     const fullPrompt = `${context}\n\n[user]\n${args.prompt}`;
     await runner.runTurn(fullPrompt);
     runner.dispose();
@@ -60,7 +60,29 @@ export async function run(argv) {
       ui.writeln("Commands: /exit, /help, /status, /pin <path>, /unpin <path>, /pins");
       continue;
     }
+    if (trimmed === "/status") {
+      const s = runner.engine;
+      ui.writeln(`model: ${s.modelId}  turns: ${s.turns.length}  skills: ${s.skills.join(", ") || "(none)"}  pins: ${s.pins.join(", ") || "(none)"}`);
+      continue;
+    }
+    if (trimmed.startsWith("/pin ")) {
+      const path = trimmed.slice(5).trim();
+      runner.engine.setPins([...runner.engine.pins, path]);
+      ui.writeln(`Pinned: ${path}`);
+      continue;
+    }
+    if (trimmed === "/pins") {
+      ui.writeln(runner.engine.pins.length > 0 ? runner.engine.pins.join("\n") : "(no pinned files)");
+      continue;
+    }
+    if (trimmed.startsWith("/unpin ")) {
+      const path = trimmed.slice(7).trim();
+      runner.engine.setPins(runner.engine.pins.filter((p) => p !== path));
+      ui.writeln(`Unpinned: ${path}`);
+      continue;
+    }
 
+    const context = runner.engine.buildContext();
     const fullPrompt = `${context}\n\n[user]\n${trimmed}`;
     try {
       await runner.runTurn(fullPrompt);
