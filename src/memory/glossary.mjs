@@ -27,9 +27,9 @@ export class GlossaryService {
     ).all();
 
     // Build trie
-    const go = [new Map()]; // state → char → nextState
+    const go = [new Map()];
     const fail = [0];
-    const output = [new Map()]; // state → keywordId → nodeUuid
+    const output = [new Map()];
 
     for (const kw of keywords) {
       let state = 0;
@@ -61,7 +61,6 @@ export class GlossaryService {
         let f = fail[r];
         while (f > 0 && !go[f].has(ch)) f = fail[f];
         fail[s] = go[f].has(ch) ? go[f].get(ch) : 0;
-        // Merge outputs from fail state
         for (const [kwId, nodeUuid] of output[fail[s]]) {
           output[s].set(kwId, nodeUuid);
         }
