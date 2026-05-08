@@ -191,17 +191,20 @@ export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins, 
       turnState.summary = null;
       turnState.summaryCalled = false;
       let draft = "";
+      let enforcing = false;
       ui.turnStart();
 
       const unsubscribe = session.subscribe((event) => {
         if (event.type === "message_update" && event.assistantMessageEvent?.type === "text_delta") {
           draft += event.assistantMessageEvent.delta;
-          ui.textDelta(event.assistantMessageEvent.delta);
+          if (!enforcing) ui.textDelta(event.assistantMessageEvent.delta);
         }
         if (event.type === "tool_execution_start") {
+          if (event.toolName === "send_turn_summary") return;
           ui.toolStart(event.toolName, event.args);
         }
         if (event.type === "tool_execution_end") {
+          if (event.toolName === "send_turn_summary") return;
           ui.toolEnd(event.toolName, event.isError);
         }
       });
@@ -210,7 +213,7 @@ export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins, 
         await session.prompt(prompt);
 
         if (!turnState.summaryCalled) {
-          ui.status("send_turn_summary not called — enforcing");
+          enforcing = true;
           try {
             await session.prompt(
               "[system]\nYou forgot to call send_turn_summary. Call it ONCE with a summary, then stop — the turn ends after the tool result.",
