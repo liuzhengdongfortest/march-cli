@@ -14,7 +14,7 @@ import { SystemViews } from "./memory/system-views.mjs";
 import { scanSkillDir, loadSkillFromFile } from "./skills/loader.mjs";
 import { createSkillTools } from "./skills/tools.mjs";
 import { loadConfig } from "./config/loader.mjs";
-import { saveSession, loadSession } from "./session/persist.mjs";
+import { saveSession, loadSession, listSessions } from "./session/persist.mjs";
 
 export async function run(argv) {
   const args = parseCliArgs(argv);
@@ -144,7 +144,7 @@ export async function run(argv) {
       break;
     }
     if (trimmed === "/help") {
-      ui.writeln("Commands: /exit, /help, /status, /save, /pin <path>, /unpin <path>, /pins");
+      ui.writeln("Commands: /exit, /help, /sessions, /status, /save, /pin <path>, /unpin <path>, /pins");
       continue;
     }
     if (trimmed === "/status") {
@@ -174,6 +174,19 @@ export async function run(argv) {
     if (trimmed === "/pins") {
       const pins = runner.engine.getPins();
       ui.writeln(pins.length > 0 ? pins.join("\n") : "(no pinned files)");
+      continue;
+    }
+    if (trimmed === "/sessions") {
+      const sessions = listSessions(join(projectMarchDir, "sessions"));
+      if (sessions.length === 0) {
+        ui.writeln("(no saved sessions)");
+      } else {
+        for (const s of sessions) {
+          const marker = s.id === sessionId ? " *" : "  ";
+          ui.writeln(`${marker} ${s.id}  ${s.turnCount}t  ${s.cwd}  ${s.savedAt?.slice(0, 19) ?? "?"}`);
+        }
+        ui.writeln("(* = current session)");
+      }
       continue;
     }
     if (trimmed.startsWith("/unpin ")) {
