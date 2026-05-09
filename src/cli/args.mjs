@@ -11,6 +11,7 @@ export function parseCliArgs(argv) {
       pin: { type: "string", multiple: true },
       skill: { type: "string", multiple: true },
       "dump-context": { type: "boolean" },
+      "pi-sessions": { type: "boolean" },
       help: { type: "boolean", short: "h" },
     },
     allowPositionals: true,
@@ -24,6 +25,7 @@ export function parseCliArgs(argv) {
     pins: values.pin ?? [],
     skills: values.skill ?? [],
     dumpContext: values["dump-context"] ?? false,
+    piSessions: values["pi-sessions"] ?? false,
     help: values.help ?? false,
     prompt: positionals.join(" "),
   };
@@ -42,6 +44,7 @@ Options:
   --resume <id>        Resume a previous session
   --json               JSON output mode (no TUI)
   --dump-context       Write context snapshot to .march/context-snapshot.txt each turn
+  --pi-sessions        Opt in to pi JSONL SessionManager persistence
   --pin <path>         Pin a file in context (repeatable)
   --skill <name>       Activate a skill (repeatable)
   -h, --help           Show this help

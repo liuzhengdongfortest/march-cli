@@ -31,6 +31,10 @@ function cleanup(dir) {
   assert.deepEqual(args.pins, ["foo.js"]);
   assert.equal(args.prompt, "hello world");
   assert.equal(args.help, false);
+  assert.equal(args.piSessions, false);
+
+  const piSessions = parseCliArgs(["--pi-sessions"]);
+  assert.equal(piSessions.piSessions, true);
 
   const defaults = parseCliArgs([]);
   assert.equal(defaults.model, "deepseek-v4-pro");

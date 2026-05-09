@@ -1,4 +1,5 @@
 import { strict as assert } from "node:assert";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 export async function runSessionPersistenceSmoke({ setupTmp, cleanup }) {
@@ -61,15 +62,21 @@ export async function runSessionPersistenceSmoke({ setupTmp, cleanup }) {
 
 export async function runPiSessionManagerFactorySmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: pi SessionManager factory ---");
-  const { createPiSessionManager, getPiSessionDir } = await import("../src/session/pi-manager.mjs");
+  const { createPiSessionManager, getPiSessionDir, resolvePiSessionManager } = await import("../src/session/pi-manager.mjs");
   const dir = setupTmp();
   const projectMarchDir = join(dir, ".march");
+  assert.equal(resolvePiSessionManager({ cwd: dir, projectMarchDir, enabled: false }), null);
+  assert.equal(existsSync(getPiSessionDir(projectMarchDir)), false);
   const manager = createPiSessionManager({ cwd: dir, projectMarchDir });
   assert.equal(getPiSessionDir(projectMarchDir), join(projectMarchDir, "pi-sessions"));
   assert.equal(manager.getCwd(), dir);
   assert.equal(manager.getSessionDir(), join(projectMarchDir, "pi-sessions"));
   assert.equal(manager.isPersisted(), true);
   assert.ok(manager.getSessionFile().endsWith(".jsonl"));
+  const resolved = resolvePiSessionManager({ cwd: dir, projectMarchDir, enabled: true });
+  assert.equal(resolved.getCwd(), dir);
+  assert.equal(resolved.getSessionDir(), join(projectMarchDir, "pi-sessions"));
+  assert.equal(resolved.isPersisted(), true);
   cleanup(dir);
   console.log("  PASS");
 }

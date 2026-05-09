@@ -11,3 +11,8 @@ export function createPiSessionManager({ cwd, projectMarchDir }) {
   mkdirSync(sessionDir, { recursive: true });
   return SessionManager.create(cwd, sessionDir);
 }
+
+export function resolvePiSessionManager({ cwd, projectMarchDir, enabled = false }) {
+  if (!enabled) return null;
+  return createPiSessionManager({ cwd, projectMarchDir });
+}

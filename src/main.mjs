@@ -25,6 +25,7 @@ import { loadSkillPool, loadSkillFromFile } from "./skills/loader.mjs";
 import { createSkillTools } from "./skills/tools.mjs";
 import { loadConfig } from "./config/loader.mjs";
 import { saveSession, loadSession } from "./session/persist.mjs";
+import { resolvePiSessionManager } from "./session/pi-manager.mjs";
 
 export async function run(argv) {
   const args = parseCliArgs(argv);
@@ -115,6 +116,11 @@ export async function run(argv) {
     memoryTools,
     skillTools,
     namespace,
+    sessionManager: resolvePiSessionManager({
+      cwd,
+      projectMarchDir,
+      enabled: args.piSessions,
+    }),
   });
 
   ui.setEscapeHandler(() => {
