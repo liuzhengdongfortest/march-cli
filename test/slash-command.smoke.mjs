@@ -100,6 +100,12 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   const piSessionTree = await handleSlashCommand("/sessions pi tree", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(piSessionTree.handled, true);
   assert.ok(output.join("\n").includes("file-level tree uses pi JSONL parentSessionPath"));
+  const defaultPiSessions = await handleSlashCommand("/sessions", { ui, runner, sessionState, sessionsRoot, projectMarchDir, sessionSource: "pi" });
+  assert.equal(defaultPiSessions.handled, true);
+  assert.ok(output.join("\n").includes("pi JSONL session files"));
+  const defaultPiSessionTree = await handleSlashCommand("/sessions tree", { ui, runner, sessionState, sessionsRoot, projectMarchDir, sessionSource: "pi" });
+  assert.equal(defaultPiSessionTree.handled, true);
+  assert.ok(output.join("\n").includes("file-level tree uses pi JSONL parentSessionPath"));
   const legacySessions = await handleSlashCommand("/sessions legacy", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(legacySessions.handled, true);
   const legacySessionTree = await handleSlashCommand("/sessions legacy tree", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
@@ -108,6 +114,9 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.equal(resumePi.handled, true);
   assert.ok(output.join("\n").includes("Resumed pi session: pi-slash"));
   assert.equal(restored.turns[0].summary, "summary");
+  const defaultResumePi = await handleSlashCommand("/resume pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir, sessionSource: "pi" });
+  assert.equal(defaultResumePi.handled, true);
+  assert.ok(output.join("\n").includes("Resumed session: pi-slash"));
   const resumeLegacy = await handleSlashCommand("/resume-legacy missing", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(resumeLegacy.handled, true);
   assert.ok(output.join("\n").includes("Error: session not found: missing"));
@@ -123,6 +132,9 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   const forkLegacy = await handleSlashCommand("/fork-legacy", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(forkLegacy.handled, true);
   assert.ok(output.join("\n").includes("Forked legacy session:"));
+  const defaultPiFork = await handleSlashCommand("/fork", { ui, runner, sessionState, sessionsRoot, projectMarchDir, sessionSource: "pi" });
+  assert.equal(defaultPiFork.handled, true);
+  assert.ok(output.join("\n").includes("Pi sessions use explicit branch commands"));
   const compact = await handleSlashCommand("/compact", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(compact.handled, true);
   assert.ok(output.join("\n").includes("Compacted: 15 char summary"));

@@ -17,6 +17,7 @@ export async function handleSlashCommand(trimmed, {
   sessionsRoot,
   projectMarchDir,
   skillPool = [],
+  sessionSource = "legacy",
 }) {
   if (trimmed === "/exit" || trimmed === "/quit") {
     saveSession(sessionState.sessionDir, runner.engine);
@@ -60,6 +61,10 @@ export async function handleSlashCommand(trimmed, {
   }
 
   if (trimmed === "/fork") {
+    if (sessionSource === "pi") {
+      ui.writeln("Pi sessions use explicit branch commands: /clone-pi for current branch, or /fork-pi for entry candidates.");
+      return { handled: true };
+    }
     const forked = forkSession(sessionsRoot, sessionState.sessionId, runner.engine);
     sessionState.sessionId = forked.id;
     sessionState.sessionDir = forked.sessionDir;
@@ -97,12 +102,20 @@ export async function handleSlashCommand(trimmed, {
   }
 
   if (trimmed === "/sessions" || trimmed === "/sessions tree") {
-    const sessions = listSessions(sessionsRoot);
-    for (const line of listSessionCommand({
-      sessions,
-      currentSessionId: sessionState.sessionId,
-      tree: trimmed === "/sessions tree",
-    })) ui.writeln(line);
+    if (sessionSource === "pi") {
+      for (const line of await listCurrentPiSessions({
+        tree: trimmed === "/sessions tree",
+        runner,
+        projectMarchDir,
+      })) ui.writeln(line);
+    } else {
+      const sessions = listSessions(sessionsRoot);
+      for (const line of listSessionCommand({
+        sessions,
+        currentSessionId: sessionState.sessionId,
+        tree: trimmed === "/sessions tree",
+      })) ui.writeln(line);
+    }
     return { handled: true };
   }
 
@@ -133,6 +146,19 @@ export async function handleSlashCommand(trimmed, {
   if (resumeCommand.type !== "none") {
     if (resumeCommand.type === "error") {
       ui.writeln(`Error: ${resumeCommand.message}`);
+    } else if (sessionSource === "pi") {
+      const sessions = await listPiSessionInfos({
+        cwd: runner.engine.cwd,
+        projectMarchDir,
+      });
+      for (const line of await resumePiSessionById(resumeCommand.id, {
+        runner,
+        sessions,
+        projectMarchDir,
+        skillPool,
+      })) {
+        ui.writeln(line.replace("Resumed pi session:", "Resumed session:"));
+      }
     } else {
       for (const line of resumeSessionById(resumeCommand.id, { runner, sessionState, sessionsRoot, skillPool })) {
         ui.writeln(line);
@@ -230,4 +256,15 @@ export async function handleSlashCommand(trimmed, {
   }
 
   return { handled: false };
+}
+
+async function listCurrentPiSessions({ tree, runner, projectMarchDir }) {
+  const sessions = await listPiSessionInfos({
+    cwd: runner.engine.cwd,
+    projectMarchDir,
+  });
+  const currentPiSessionId = runner.getSessionStats?.().sessionId ?? null;
+  return tree
+    ? formatPiSessionTree(sessions, currentPiSessionId)
+    : formatPiSessionList(sessions);
 }
