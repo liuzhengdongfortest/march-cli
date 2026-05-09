@@ -19,6 +19,7 @@ const MARCH_COMMANDS = [
   { name: "fork-legacy", description: "Fork current legacy March session" },
   { name: "status", description: "Show current session status" },
   { name: "save", description: "Show auto-save status" },
+  { name: "copy", description: "Copy last assistant response to clipboard" },
   { name: "pin", description: "Pin a file to context" },
   { name: "unpin", description: "Unpin a file from context" },
   { name: "pins", description: "List pinned files" },

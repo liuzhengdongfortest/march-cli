@@ -41,7 +41,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
       modelId: "test-model",
       provider: "deepseek",
       thinkingLevel: "medium",
-      turns: [1, 2],
+      turns: [{ assistantMessage: "previous answer" }],
       openFiles: new Map(),
       skills: [],
       pins: new Set(),
@@ -98,6 +98,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(output.join("\n").includes("/extensions"));
   assert.ok(output.join("\n").includes("/templates"));
   assert.ok(output.join("\n").includes("/settings"));
+  assert.ok(output.join("\n").includes("/copy"));
   assert.ok(output.join("\n").includes("/sessions and /resume <id> use default pi JSONL sessions"));
   assert.ok(output.join("\n").includes("/sessions pi and /resume-pi <id> are explicit pi aliases"));
   assert.ok(output.join("\n").includes("legacy .march/sessions use /sessions legacy"));
@@ -206,6 +207,21 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   const defaultPiSave = await handleSlashCommand("/save", { ui, runner, sessionState, sessionsRoot, projectMarchDir, sessionSource: "pi" });
   assert.equal(defaultPiSave.handled, true);
   assert.ok(output.join("\n").includes("Pi session auto-saved: s1"));
+  const copied = [];
+  const copy = await handleSlashCommand("/copy", {
+    ui,
+    runner,
+    sessionState,
+    sessionsRoot,
+    projectMarchDir,
+    writeClipboard: (text) => {
+      copied.push(text);
+      return { ok: true };
+    },
+  });
+  assert.equal(copy.handled, true);
+  assert.deepEqual(copied, ["previous answer"]);
+  assert.ok(output.join("\n").includes("Copied last assistant response"));
   assert.equal(existsSync(join(sessionState.sessionDir, "session.json")), false);
   const forkLegacy = await handleSlashCommand("/fork-legacy", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(forkLegacy.handled, true);

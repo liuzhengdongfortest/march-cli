@@ -7,6 +7,7 @@ import { forkPiSessionResetContext, listPiForkCandidates, listPiSessionEntryCand
 import { parseResumePiCommand, resumePiSessionById } from "./pi-session-switch-command.mjs";
 import { formatHotkeysPanel } from "./repl-commands.mjs";
 import { compactSession, listSessionStats } from "./session-command.mjs";
+import { copyLastAssistantMessage } from "./copy-command.mjs";
 import { formatPiSessionList, formatPiSessionTree, listSessionCommand } from "./session-list-command.mjs";
 import { parseResumeCommand, resumeSessionById } from "./session-switch-command.mjs";
 import { handleThinkingCommand, parseThinkingCommand } from "./thinking-command.mjs";
@@ -27,6 +28,7 @@ export async function handleSlashCommand(trimmed, {
   promptTemplates = [],
   promptTemplateDiagnostics = [],
   settingsHomeDir,
+  writeClipboard,
 }) {
   if (trimmed === "/exit" || trimmed === "/quit") {
     writeSessionSaveStatus({ ui, runner, sessionState, sessionSource });
@@ -85,6 +87,11 @@ export async function handleSlashCommand(trimmed, {
 
   if (trimmed === "/save") {
     writeSessionSaveStatus({ ui, runner, sessionState, sessionSource });
+    return { handled: true };
+  }
+
+  if (trimmed === "/copy") {
+    for (const line of copyLastAssistantMessage({ engine: runner.engine, writeClipboard })) ui.writeln(line);
     return { handled: true };
   }
 
@@ -293,7 +300,7 @@ export async function handleSlashCommand(trimmed, {
 
 function formatHelpLines() {
   return [
-    "Commands: /exit, /help, /hotkeys, /templates, /settings, /extensions, /model, /models, /compact, /session, /session entries, /sessions, /sessions tree, /sessions pi, /sessions legacy, /resume <id>, /resume-pi <id>, /resume-legacy <id>, /clone-pi, /fork-pi, /fork, /fork-legacy, /status, /save, /mouse, /pin <path>, /unpin <path>, /pins",
+    "Commands: /exit, /help, /hotkeys, /templates, /settings, /extensions, /model, /models, /compact, /session, /session entries, /sessions, /sessions tree, /sessions pi, /sessions legacy, /resume <id>, /resume-pi <id>, /resume-legacy <id>, /clone-pi, /fork-pi, /fork, /fork-legacy, /status, /save, /copy, /mouse, /pin <path>, /unpin <path>, /pins",
     "Sessions: /sessions and /resume <id> use default pi JSONL sessions; /sessions pi and /resume-pi <id> are explicit pi aliases; legacy .march/sessions use /sessions legacy, /resume-legacy <id>, /fork-legacy, or --legacy-sessions.",
     "Branches: /clone-pi clones the current pi branch; /session entries and /fork-pi list in-file entry candidates; /fork-pi requires --reset-context to write a historical fork.",
     "Shortcuts: Esc = abort turn, Ctrl+O = toggle tool output, Ctrl+G = external editor, Shift+Tab = cycle thinking, Ctrl+T = thinking selector, Ctrl+L = model selector",
