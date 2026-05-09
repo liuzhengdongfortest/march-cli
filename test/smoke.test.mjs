@@ -252,6 +252,9 @@ await runStartupResumeSmoke({ setupTmp, cleanup });
   assert.ok(commands.some((command) => command.name === "resume"));
   assert.ok(commands.some((command) => command.name === "thinking list"));
   assert.ok(commands.some((command) => command.name === "skill:review"));
+  assert.equal(commands.find((command) => command.name === "sessions").description, "List default pi JSONL sessions");
+  assert.equal(commands.find((command) => command.name === "resume").description, "Resume a pi session by id");
+  assert.equal(commands.find((command) => command.name === "save").description, "Show auto-save status");
 
   const provider = new MarchAutocompleteProvider(commands, dir);
   const fileSuggestions = await provider.getSuggestions(["@sam"], 0, 4, {
