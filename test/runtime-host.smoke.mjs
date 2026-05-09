@@ -24,6 +24,12 @@ export async function runRuntimeHostSmoke() {
       await rebindSession(this.session);
       return { cancelled: false };
     },
+    async fork(entryId, options) {
+      calls.push(`fork:${entryId}:${options.position}`);
+      this.session = { id: "forked", entryId };
+      await rebindSession(this.session);
+      return { cancelled: false };
+    },
     async dispose() {
       calls.push("dispose");
     },
@@ -45,7 +51,10 @@ export async function runRuntimeHostSmoke() {
   assert.equal((await host.newSession()).cancelled, false);
   assert.equal(binding.get().id, "new");
   assert.deepEqual(rebound, ["switched", "new"]);
+  assert.equal((await host.fork("leaf-1", { position: "at" })).cancelled, false);
+  assert.equal(binding.get().id, "forked");
+  assert.deepEqual(rebound, ["switched", "new", "forked"]);
   await host.dispose();
-  assert.deepEqual(calls, ["switch:target.jsonl", "new", "dispose"]);
+  assert.deepEqual(calls, ["switch:target.jsonl", "new", "fork:leaf-1:at", "dispose"]);
   console.log("  PASS");
 }

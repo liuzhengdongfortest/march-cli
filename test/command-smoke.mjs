@@ -334,3 +334,86 @@ export async function runPiSessionSwitchCommandSmoke() {
   rmSync(tempRoot, { recursive: true, force: true });
   console.log("  PASS");
 }
+
+export async function runPiSessionCloneCommandSmoke({ setupTmp, cleanup }) {
+  console.log("--- smoke: pi session clone command handling ---");
+  const { cloneCurrentPiSession } = await import("../src/agent/pi-session-clone.mjs");
+  const { createSessionBinding } = await import("../src/agent/session-binding.mjs");
+  const { clonePiSession, parseClonePiCommand } = await import("../src/cli/pi-session-clone-command.mjs");
+  const { ContextEngine } = await import("../src/context/engine.mjs");
+  const { loadPiSessionSidecar } = await import("../src/session/sidecar.mjs");
+
+  assert.deepEqual(parseClonePiCommand("hello"), { type: "none" });
+  assert.deepEqual(parseClonePiCommand("/clone-piabc"), { type: "none" });
+  assert.deepEqual(parseClonePiCommand("/clone-pi"), { type: "clone-pi" });
+  assert.equal(parseClonePiCommand("/clone-pi extra").type, "error");
+  assert.deepEqual(await clonePiSession({ runner: { canSwitchPiSession: () => false } }), [
+    "Error: /clone-pi requires --pi-runtime-host",
+  ]);
+  assert.deepEqual(await clonePiSession({
+    runner: {
+      canSwitchPiSession: () => true,
+      clonePiSession: async () => ({ cancelled: false, sessionId: "new", sourceSessionId: "old" }),
+    },
+  }), ["Cloned pi session: new (from: old)"]);
+  assert.deepEqual(await clonePiSession({
+    runner: {
+      canSwitchPiSession: () => true,
+      clonePiSession: async () => ({ cancelled: true, sourceSessionId: "old" }),
+    },
+  }), ["Clone pi session cancelled: old"]);
+
+  const dir = setupTmp();
+  const projectMarchDir = `${dir}/.march`;
+  const engine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: ["s1"], pins: ["pinned"], namespace: "ns" });
+  engine.recordTurn({ userMessage: "u", summary: "s" });
+  let activeSession = {
+    sessionManager: { getLeafId: () => "leaf-1" },
+    getSessionStats: () => ({ sessionId: "old", sessionFile: "old.jsonl" }),
+  };
+  const binding = createSessionBinding(activeSession);
+  const runtimeHost = {
+    async fork(entryId, options) {
+      assert.equal(entryId, "leaf-1");
+      assert.deepEqual(options, { position: "at" });
+      activeSession = {
+        sessionManager: { getLeafId: () => "leaf-2" },
+        getSessionStats: () => ({ sessionId: "new", sessionFile: "new.jsonl" }),
+      };
+      binding.set(activeSession);
+      return { cancelled: false };
+    },
+  };
+  const result = await cloneCurrentPiSession({
+    runtimeHost,
+    sessionBinding: binding,
+    engine,
+    projectMarchDir,
+    getSessionStats: (session) => ({
+      ...session.getSessionStats(),
+      persisted: true,
+      runtimeHost: true,
+    }),
+    now: () => new Date("2026-05-10T00:00:00.000Z"),
+  });
+  assert.equal(result.sessionId, "new");
+  const sidecar = loadPiSessionSidecar({ projectMarchDir, sessionRef: "new.jsonl" });
+  assert.equal(sidecar.state.derivedBy, "clone");
+  assert.equal(sidecar.state.derivedAt, "2026-05-10T00:00:00.000Z");
+  assert.equal(sidecar.state.derivedFromPiSessionId, "old");
+  assert.equal(sidecar.state.derivedFromPiSessionFile, "old.jsonl");
+  assert.equal(sidecar.state.turns[0].summary, "s");
+
+  await assert.rejects(() => cloneCurrentPiSession({
+    runtimeHost,
+    sessionBinding: createSessionBinding({
+      sessionManager: { getLeafId: () => null },
+      getSessionStats: () => ({ sessionId: "empty", sessionFile: "empty.jsonl" }),
+    }),
+    engine,
+    projectMarchDir,
+    getSessionStats: (session) => ({ ...session.getSessionStats(), persisted: true }),
+  }), /no active leaf/);
+  cleanup(dir);
+  console.log("  PASS");
+}

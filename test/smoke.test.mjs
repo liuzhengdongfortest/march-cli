@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
-import { runModelCommandSmoke, runPiSessionSwitchCommandSmoke, runSelectorListSmoke, runSessionCommandSmoke, runSessionListCommandSmoke, runSessionSwitchCommandSmoke } from "./command-smoke.mjs";
+import { runModelCommandSmoke, runPiSessionCloneCommandSmoke, runPiSessionSwitchCommandSmoke, runSelectorListSmoke, runSessionCommandSmoke, runSessionListCommandSmoke, runSessionSwitchCommandSmoke } from "./command-smoke.mjs";
 import { runDiffAndUiSmoke, runMemorySystemSmoke } from "./memory-and-diff.smoke.mjs";
 import { runRuntimeFactorySmoke } from "./runtime-factory.smoke.mjs";
 import { runRuntimeHostSmoke } from "./runtime-host.smoke.mjs";
@@ -364,6 +364,7 @@ await runSessionCommandSmoke();
 await runSessionListCommandSmoke();
 await runSessionSwitchCommandSmoke({ setupTmp, cleanup });
 await runPiSessionSwitchCommandSmoke();
+await runPiSessionCloneCommandSmoke({ setupTmp, cleanup });
 
 // ── 3l. Slash command handling ──────────────────────────────────────
 

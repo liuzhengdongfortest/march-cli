@@ -57,6 +57,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
     setModel: async (model) => model,
     canSwitchPiSession: () => true,
     switchPiSession: async () => ({ cancelled: false }),
+    clonePiSession: async () => ({ cancelled: false, sessionId: "pi-clone", sourceSessionId: "s1" }),
     compact: async () => ({ summary: "compact summary" }),
     getSessionStats: () => ({
       sessionId: "s1",
@@ -97,6 +98,9 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.equal(resumePi.handled, true);
   assert.ok(output.join("\n").includes("Resumed pi session: pi-slash"));
   assert.equal(restored.turns[0].summary, "summary");
+  const clonePi = await handleSlashCommand("/clone-pi", { ui, runner, sessionState, sessionsRoot: "unused", projectMarchDir });
+  assert.equal(clonePi.handled, true);
+  assert.ok(output.join("\n").includes("Cloned pi session: pi-clone (from: s1)"));
   const compact = await handleSlashCommand("/compact", { ui, runner, sessionState, sessionsRoot: "unused", projectMarchDir });
   assert.equal(compact.handled, true);
   assert.ok(output.join("\n").includes("Compacted: 15 char summary"));

@@ -1,6 +1,6 @@
 import { savePiSessionSidecar } from "./sidecar.mjs";
 
-export function syncPiSessionSidecar({ enabled = false, projectMarchDir, engine, sessionStats }) {
+export function syncPiSessionSidecar({ enabled = false, projectMarchDir, engine, sessionStats, metadata = {} }) {
   if (!enabled || !projectMarchDir || !sessionStats?.persisted || !sessionStats.sessionFile) {
     return null;
   }
@@ -13,6 +13,7 @@ export function syncPiSessionSidecar({ enabled = false, projectMarchDir, engine,
       sessionId: sessionStats.sessionId,
       sessionFile: sessionStats.sessionFile,
       runtimeHost: Boolean(sessionStats.runtimeHost),
+      ...metadata,
     },
   });
 }

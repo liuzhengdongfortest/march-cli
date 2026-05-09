@@ -21,6 +21,9 @@ export function createRuntimeHost({ runtime, sessionBinding, onRebind = null }) 
     async newSession(options) {
       return runtime.newSession(options);
     },
+    async fork(entryId, options) {
+      return runtime.fork(entryId, options);
+    },
     async dispose() {
       return runtime.dispose();
     },
