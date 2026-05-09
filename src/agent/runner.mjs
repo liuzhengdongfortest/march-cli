@@ -183,6 +183,11 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       return session.model;
     },
 
+    async setModel(model) {
+      await session.setModel(model);
+      return session.model;
+    },
+
     getScopedModels() {
       return session.scopedModels;
     },

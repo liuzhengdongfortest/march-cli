@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
+import { runModelCommandSmoke, runSessionCommandSmoke } from "./command-smoke.mjs";
 import { runDiffAndUiSmoke, runMemorySystemSmoke } from "./memory-and-diff.smoke.mjs";
 
 // Minimal mocks for smoke testing without DEEPSEEK_API_KEY
@@ -306,63 +307,12 @@ function cleanup(dir) {
   console.log("  PASS");
 }
 
-// ── 3k. Model command handling ──────────────────────────────────────
+// ── 3k. Command module handling ─────────────────────────────────────
 
-{
-  console.log("--- smoke: model command handling ---");
-  const { cycleModel, formatModelsList, listModels } = await import("../src/cli/model-command.mjs");
-  const models = [
-    { model: { id: "a", name: "Model A", provider: "test" } },
-    { model: { id: "b", provider: "test" } },
-  ];
-  assert.deepEqual(formatModelsList({ current: models[0].model, scopedModels: models }), [
-    "Current: Model A (test)",
-    " * Model A (test)",
-    "   b (test)",
-  ]);
-  assert.deepEqual(formatModelsList({ current: null, scopedModels: [] }), [
-    "(no scoped models - use --model flag or /model to cycle)",
-  ]);
-  const runner = {
-    cycleModel: async () => ({ model: models[1].model, thinkingLevel: "high" }),
-    getCurrentModel: () => models[0].model,
-    getScopedModels: () => models,
-  };
-  assert.equal(await cycleModel({ runner }), "Model: b (test)  thinking: high");
-  assert.ok(listModels({ runner }).join("\n").includes("Model A"));
-  console.log("  PASS");
-}
+await runModelCommandSmoke();
+await runSessionCommandSmoke();
 
-// ── 3l. Session command handling ────────────────────────────────────
-
-{
-  console.log("--- smoke: session command handling ---");
-  const { compactSession, formatSessionStats, listSessionStats } = await import("../src/cli/session-command.mjs");
-  const stats = {
-    sessionId: "s1",
-    userMessages: 2,
-    assistantMessages: 3,
-    toolCalls: 4,
-    totalMessages: 9,
-    tokens: { input: 10, output: 20, cacheRead: 3, cacheWrite: 4 },
-    cost: 0.12345,
-  };
-  assert.deepEqual(formatSessionStats(stats), [
-    "session: s1",
-    "messages: 2u + 3a + 4t = 9 total",
-    "tokens: 10 in / 20 out (3 cache read, 4 cache write)",
-    "cost: $0.1235",
-  ]);
-  const runner = {
-    compact: async () => ({ summary: "hello" }),
-    getSessionStats: () => stats,
-  };
-  assert.deepEqual(await compactSession({ runner }), ["Compacted: 5 char summary"]);
-  assert.equal(listSessionStats({ runner })[0], "session: s1");
-  console.log("  PASS");
-}
-
-// ── 3m. Slash command handling ──────────────────────────────────────
+// ── 3l. Slash command handling ──────────────────────────────────────
 
 {
   console.log("--- smoke: slash command handling ---");
@@ -384,6 +334,7 @@ function cleanup(dir) {
     cycleModel: async () => ({ model: { id: "m2", provider: "test" }, thinkingLevel: "medium" }),
     getCurrentModel: () => ({ id: "m1", name: "Model One", provider: "test" }),
     getScopedModels: () => [{ model: { id: "m1", name: "Model One", provider: "test" } }],
+    setModel: async (model) => model,
     compact: async () => ({ summary: "compact summary" }),
     getSessionStats: () => ({
       sessionId: "s1",
@@ -405,6 +356,9 @@ function cleanup(dir) {
   const model = await handleSlashCommand("/model", { ui, runner, sessionState, sessionsRoot: "unused" });
   assert.equal(model.handled, true);
   assert.ok(output.join("\n").includes("Model: m2 (test)"));
+  const indexedModel = await handleSlashCommand("/model 1", { ui, runner, sessionState, sessionsRoot: "unused" });
+  assert.equal(indexedModel.handled, true);
+  assert.ok(output.join("\n").includes("Model: Model One (test)"));
   const session = await handleSlashCommand("/session", { ui, runner, sessionState, sessionsRoot: "unused" });
   assert.equal(session.handled, true);
   assert.ok(output.join("\n").includes("messages: 1u + 1a + 0t = 2 total"));

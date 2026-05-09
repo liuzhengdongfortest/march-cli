@@ -1,6 +1,6 @@
 import { saveSession, listSessions, forkSession } from "../session/persist.mjs";
 import { formatSessionTree } from "../session/tree.mjs";
-import { cycleModel, listModels } from "./model-command.mjs";
+import { handleModelCommand, listModels, parseModelCommand } from "./model-command.mjs";
 import { formatHotkeysPanel } from "./repl-commands.mjs";
 import { compactSession, listSessionStats } from "./session-command.mjs";
 import { handleThinkingCommand, parseThinkingCommand } from "./thinking-command.mjs";
@@ -108,9 +108,10 @@ export async function handleSlashCommand(trimmed, {
     return { handled: true };
   }
 
-  if (trimmed === "/model") {
+  const modelCommand = parseModelCommand(trimmed);
+  if (modelCommand.type !== "none") {
     try {
-      ui.writeln(await cycleModel({ runner }));
+      ui.writeln(await handleModelCommand(modelCommand, { runner }));
     } catch (err) {
       ui.writeln(`Error: ${err.message}`);
     }
