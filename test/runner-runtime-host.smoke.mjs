@@ -61,6 +61,7 @@ export async function runRunnerRuntimeHostSmoke() {
   });
 
   assert.equal(host.getSession().id, "initial");
+  assert.deepEqual(host.getDiagnostics(), [{ type: "info", message: "ok" }]);
   assert.equal(binding.get().id, "initial");
   assert.deepEqual(calls, [
     ["runtime", "D:/repo", "D:/state", "manager"],

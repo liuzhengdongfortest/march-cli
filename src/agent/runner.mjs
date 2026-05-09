@@ -216,6 +216,10 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       return Boolean(runtimeHost);
     },
 
+    getExtensionDiagnostics() {
+      return runtimeHost?.getDiagnostics?.() ?? [];
+    },
+
     async switchPiSession(sessionPath) {
       if (!runtimeHost) throw new Error("pi runtime host is not enabled");
       return runtimeHost.switchSession(sessionPath);

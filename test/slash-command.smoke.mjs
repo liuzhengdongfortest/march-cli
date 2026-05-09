@@ -59,6 +59,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
     getScopedModels: () => [{ model: { id: "m1", name: "Model One", provider: "test" } }],
     setModel: async (model) => model,
     canSwitchPiSession: () => true,
+    getExtensionDiagnostics: () => [{ type: "warning", message: "extension skipped" }],
     switchPiSession: async () => ({ cancelled: false }),
     clonePiSession: async () => ({ cancelled: false, sessionId: "pi-clone", sourceSessionId: "s1" }),
     getPiForkCandidates: () => [{ entryId: "u1", text: "fork me" }],
@@ -100,6 +101,8 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.equal(extensions.handled, true);
   assert.ok(output.join("\n").includes("Configured extension paths:"));
   assert.ok(output.join("\n").includes("this list does not guarantee successful extension startup"));
+  assert.ok(output.join("\n").includes("Extension diagnostics:"));
+  assert.ok(output.join("\n").includes("warning: extension skipped"));
   const indexedThinking = await handleSlashCommand("/thinking 2", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(indexedThinking.handled, true);
   assert.ok(output.join("\n").includes("thinking: medium"));

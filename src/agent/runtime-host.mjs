@@ -15,6 +15,9 @@ export function createRuntimeHost({ runtime, sessionBinding, onRebind = null }) 
     getSession() {
       return sessionBinding.get();
     },
+    getDiagnostics() {
+      return runtime.diagnostics ?? [];
+    },
     async switchSession(sessionPath, options) {
       return runtime.switchSession(sessionPath, options);
     },

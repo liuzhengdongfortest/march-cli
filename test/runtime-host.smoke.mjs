@@ -9,6 +9,7 @@ export async function runRuntimeHostSmoke() {
   let rebindSession = null;
   const runtime = {
     session: { id: "initial" },
+    diagnostics: [{ type: "warning", message: "extension warning" }],
     setRebindSession(callback) {
       rebindSession = callback;
     },
@@ -44,6 +45,7 @@ export async function runRuntimeHostSmoke() {
   });
 
   assert.equal(host.getSession().id, "initial");
+  assert.deepEqual(host.getDiagnostics(), [{ type: "warning", message: "extension warning" }]);
   assert.equal(binding.get().id, "initial");
   assert.equal((await host.switchSession("target.jsonl")).cancelled, false);
   assert.equal(host.getSession().id, "switched");
