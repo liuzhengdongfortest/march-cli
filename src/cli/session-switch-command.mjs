@@ -1,9 +1,9 @@
 import { join } from "node:path";
 import { loadSession, saveSession } from "../session/persist.mjs";
 
-export function parseResumeCommand(input) {
-  if (input === "/resume" || input.startsWith("/resume ")) {
-    const id = input.slice("/resume".length).trim();
+export function parseResumeCommand(input, command = "/resume") {
+  if (input === command || input.startsWith(`${command} `)) {
+    const id = input.slice(command.length).trim();
     if (!id) return { type: "error", message: "Usage: /resume <session-id>" };
     if (id.includes("/") || id.includes("\\") || id === "." || id === "..") {
       return { type: "error", message: "Session id must be a directory name, not a path." };

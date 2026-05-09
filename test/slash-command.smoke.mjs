@@ -39,9 +39,12 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
     engine: {
       cwd: dir,
       modelId: "test-model",
+      provider: "deepseek",
+      thinkingLevel: "medium",
       turns: [1, 2],
       openFiles: new Map(),
       skills: [],
+      pins: new Set(),
       getPins: () => [],
       restoreSession: (state) => {
         restored = state;
@@ -71,48 +74,59 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
       cost: 0.01,
     }),
   };
-  const sessionState = { sessionId: "s1", sessionDir: "unused" };
-  const status = await handleSlashCommand("/status", { ui, runner, sessionState, sessionsRoot: "unused", projectMarchDir });
+  const sessionsRoot = join(dir, "sessions");
+  const sessionState = { sessionId: "s1", sessionDir: join(sessionsRoot, "s1") };
+  const status = await handleSlashCommand("/status", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(status.handled, true);
   assert.ok(output.join("\n").includes("session: s1"));
-  const thinking = await handleSlashCommand("/thinking list", { ui, runner, sessionState, sessionsRoot: "unused", projectMarchDir });
+  const thinking = await handleSlashCommand("/thinking list", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(thinking.handled, true);
   assert.ok(output.join("\n").includes("* 3. high"));
-  const indexedThinking = await handleSlashCommand("/thinking 2", { ui, runner, sessionState, sessionsRoot: "unused", projectMarchDir });
+  const indexedThinking = await handleSlashCommand("/thinking 2", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(indexedThinking.handled, true);
   assert.ok(output.join("\n").includes("thinking: medium"));
-  const model = await handleSlashCommand("/model", { ui, runner, sessionState, sessionsRoot: "unused", projectMarchDir });
+  const model = await handleSlashCommand("/model", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(model.handled, true);
   assert.ok(output.join("\n").includes("Model: m2 (test)"));
-  const indexedModel = await handleSlashCommand("/model 1", { ui, runner, sessionState, sessionsRoot: "unused", projectMarchDir });
+  const indexedModel = await handleSlashCommand("/model 1", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(indexedModel.handled, true);
   assert.ok(output.join("\n").includes("Model: Model One (test)"));
-  const session = await handleSlashCommand("/session", { ui, runner, sessionState, sessionsRoot: "unused", projectMarchDir });
+  const session = await handleSlashCommand("/session", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(session.handled, true);
   assert.ok(output.join("\n").includes("messages: 1u + 1a + 0t = 2 total"));
-  const piSessions = await handleSlashCommand("/sessions pi", { ui, runner, sessionState, sessionsRoot: "unused", projectMarchDir });
+  const piSessions = await handleSlashCommand("/sessions pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(piSessions.handled, true);
   assert.ok(output.join("\n").includes("pi-slash"));
-  const piSessionTree = await handleSlashCommand("/sessions pi tree", { ui, runner, sessionState, sessionsRoot: "unused", projectMarchDir });
+  const piSessionTree = await handleSlashCommand("/sessions pi tree", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(piSessionTree.handled, true);
   assert.ok(output.join("\n").includes("file-level tree uses pi JSONL parentSessionPath"));
-  const resumePi = await handleSlashCommand("/resume-pi pi", { ui, runner, sessionState, sessionsRoot: "unused", projectMarchDir });
+  const legacySessions = await handleSlashCommand("/sessions legacy", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
+  assert.equal(legacySessions.handled, true);
+  const legacySessionTree = await handleSlashCommand("/sessions legacy tree", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
+  assert.equal(legacySessionTree.handled, true);
+  const resumePi = await handleSlashCommand("/resume-pi pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(resumePi.handled, true);
   assert.ok(output.join("\n").includes("Resumed pi session: pi-slash"));
   assert.equal(restored.turns[0].summary, "summary");
-  const clonePi = await handleSlashCommand("/clone-pi", { ui, runner, sessionState, sessionsRoot: "unused", projectMarchDir });
+  const resumeLegacy = await handleSlashCommand("/resume-legacy missing", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
+  assert.equal(resumeLegacy.handled, true);
+  assert.ok(output.join("\n").includes("Error: session not found: missing"));
+  const clonePi = await handleSlashCommand("/clone-pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(clonePi.handled, true);
   assert.ok(output.join("\n").includes("Cloned pi session: pi-clone (from: s1)"));
-  const forkPi = await handleSlashCommand("/fork-pi", { ui, runner, sessionState, sessionsRoot: "unused", projectMarchDir });
+  const forkPi = await handleSlashCommand("/fork-pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(forkPi.handled, true);
   assert.ok(output.join("\n").includes("1. u1  fork me"));
-  const forkPiReset = await handleSlashCommand("/fork-pi u1 --reset-context", { ui, runner, sessionState, sessionsRoot: "unused", projectMarchDir });
+  const forkPiReset = await handleSlashCommand("/fork-pi u1 --reset-context", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(forkPiReset.handled, true);
   assert.ok(output.join("\n").includes("Forked pi session: pi-fork (from: s1, entry: u1)"));
-  const compact = await handleSlashCommand("/compact", { ui, runner, sessionState, sessionsRoot: "unused", projectMarchDir });
+  const forkLegacy = await handleSlashCommand("/fork-legacy", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
+  assert.equal(forkLegacy.handled, true);
+  assert.ok(output.join("\n").includes("Forked legacy session:"));
+  const compact = await handleSlashCommand("/compact", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(compact.handled, true);
   assert.ok(output.join("\n").includes("Compacted: 15 char summary"));
-  const unknown = await handleSlashCommand("/unknown", { ui, runner, sessionState, sessionsRoot: "unused", projectMarchDir });
+  const unknown = await handleSlashCommand("/unknown", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(unknown.handled, false);
   cleanup(dir);
   console.log("  PASS");

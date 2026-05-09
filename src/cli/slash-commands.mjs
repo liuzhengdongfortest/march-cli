@@ -25,7 +25,7 @@ export async function handleSlashCommand(trimmed, {
   }
 
   if (trimmed === "/help") {
-    ui.writeln("Commands: /exit, /help, /hotkeys, /model, /models, /compact, /session, /sessions, /sessions tree, /sessions pi, /resume <id>, /resume-pi <id>, /clone-pi, /fork-pi, /fork, /status, /save, /mouse, /pin <path>, /unpin <path>, /pins");
+    ui.writeln("Commands: /exit, /help, /hotkeys, /model, /models, /compact, /session, /sessions, /sessions tree, /sessions pi, /sessions legacy, /resume <id>, /resume-pi <id>, /resume-legacy <id>, /clone-pi, /fork-pi, /fork, /fork-legacy, /status, /save, /mouse, /pin <path>, /unpin <path>, /pins");
     ui.writeln("Shortcuts: Esc = abort turn, Ctrl+O = toggle tool output, Ctrl+G = external editor, Shift+Tab = cycle thinking, Ctrl+T = thinking selector, Ctrl+L = model selector");
     return { handled: true };
   }
@@ -67,6 +67,14 @@ export async function handleSlashCommand(trimmed, {
     return { handled: true };
   }
 
+  if (trimmed === "/fork-legacy") {
+    const forked = forkSession(sessionsRoot, sessionState.sessionId, runner.engine);
+    sessionState.sessionId = forked.id;
+    sessionState.sessionDir = forked.sessionDir;
+    ui.writeln(`Forked legacy session: ${sessionState.sessionId} (parent: ${forked.state.parentSessionId})`);
+    return { handled: true };
+  }
+
   if (trimmed.startsWith("/pin ")) {
     const raw = trimmed.slice(5).trim();
     const absPath = runner.engine.resolvePath(raw);
@@ -98,6 +106,16 @@ export async function handleSlashCommand(trimmed, {
     return { handled: true };
   }
 
+  if (trimmed === "/sessions legacy" || trimmed === "/sessions legacy tree") {
+    const sessions = listSessions(sessionsRoot);
+    for (const line of listSessionCommand({
+      sessions,
+      currentSessionId: sessionState.sessionId,
+      tree: trimmed === "/sessions legacy tree",
+    })) ui.writeln(line);
+    return { handled: true };
+  }
+
   if (trimmed === "/sessions pi" || trimmed === "/sessions pi tree") {
     const sessions = await listPiSessionInfos({
       cwd: runner.engine.cwd,
@@ -118,6 +136,18 @@ export async function handleSlashCommand(trimmed, {
     } else {
       for (const line of resumeSessionById(resumeCommand.id, { runner, sessionState, sessionsRoot, skillPool })) {
         ui.writeln(line);
+      }
+    }
+    return { handled: true };
+  }
+
+  const resumeLegacyCommand = parseResumeCommand(trimmed, "/resume-legacy");
+  if (resumeLegacyCommand.type !== "none") {
+    if (resumeLegacyCommand.type === "error") {
+      ui.writeln(`Error: ${resumeLegacyCommand.message.replace("/resume", "/resume-legacy")}`);
+    } else {
+      for (const line of resumeSessionById(resumeLegacyCommand.id, { runner, sessionState, sessionsRoot, skillPool })) {
+        ui.writeln(line.replace("Resumed session:", "Resumed legacy session:"));
       }
     }
     return { handled: true };

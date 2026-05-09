@@ -199,7 +199,9 @@ export async function runSessionSwitchCommandSmoke({ setupTmp, cleanup }) {
 
   assert.deepEqual(parseResumeCommand("hello"), { type: "none" });
   assert.deepEqual(parseResumeCommand("/resume target"), { type: "resume", id: "target" });
+  assert.deepEqual(parseResumeCommand("/resume-legacy target", "/resume-legacy"), { type: "resume", id: "target" });
   assert.equal(parseResumeCommand("/resume").type, "error");
+  assert.equal(parseResumeCommand("/resume-legacy", "/resume-legacy").type, "error");
   assert.equal(parseResumeCommand("/resume ../bad").type, "error");
 
   const dir = setupTmp();
