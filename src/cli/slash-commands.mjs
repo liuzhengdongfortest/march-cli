@@ -3,6 +3,7 @@ import { handleModelCommand, listModels, parseModelCommand } from "./model-comma
 import { formatHotkeysPanel } from "./repl-commands.mjs";
 import { compactSession, listSessionStats } from "./session-command.mjs";
 import { listSessionCommand } from "./session-list-command.mjs";
+import { parseResumeCommand, resumeSessionById } from "./session-switch-command.mjs";
 import { handleThinkingCommand, parseThinkingCommand } from "./thinking-command.mjs";
 
 export async function handleSlashCommand(trimmed, {
@@ -10,6 +11,7 @@ export async function handleSlashCommand(trimmed, {
   runner,
   sessionState,
   sessionsRoot,
+  skillPool = [],
 }) {
   if (trimmed === "/exit" || trimmed === "/quit") {
     saveSession(sessionState.sessionDir, runner.engine);
@@ -18,7 +20,7 @@ export async function handleSlashCommand(trimmed, {
   }
 
   if (trimmed === "/help") {
-    ui.writeln("Commands: /exit, /help, /hotkeys, /model, /models, /compact, /session, /sessions, /sessions tree, /fork, /status, /save, /mouse, /pin <path>, /unpin <path>, /pins");
+    ui.writeln("Commands: /exit, /help, /hotkeys, /model, /models, /compact, /session, /sessions, /sessions tree, /resume <id>, /fork, /status, /save, /mouse, /pin <path>, /unpin <path>, /pins");
     ui.writeln("Shortcuts: Esc = abort turn, Ctrl+O = toggle tool output, Ctrl+G = external editor, Shift+Tab/Ctrl+T = thinking level, Ctrl+L = model");
     return { handled: true };
   }
@@ -88,6 +90,18 @@ export async function handleSlashCommand(trimmed, {
       currentSessionId: sessionState.sessionId,
       tree: trimmed === "/sessions tree",
     })) ui.writeln(line);
+    return { handled: true };
+  }
+
+  const resumeCommand = parseResumeCommand(trimmed);
+  if (resumeCommand.type !== "none") {
+    if (resumeCommand.type === "error") {
+      ui.writeln(`Error: ${resumeCommand.message}`);
+    } else {
+      for (const line of resumeSessionById(resumeCommand.id, { runner, sessionState, sessionsRoot, skillPool })) {
+        ui.writeln(line);
+      }
+    }
     return { handled: true };
   }
 

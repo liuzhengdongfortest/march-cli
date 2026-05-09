@@ -126,7 +126,14 @@ export class ContextEngine {
   setSkills(skills) { this.skills = skills; }
   setToolDefs(defs) { this.toolDefs = defs; }
 
-  restoreSession(data, pool) {
+  restoreSession(data, pool, { replace = false } = {}) {
+    if (replace) {
+      this.turns = [];
+      this.openFiles = new Map();
+      this.pins = new Set();
+      this.skills = [];
+      this._compactionSummary = null;
+    }
     if (data.turns) this.turns = data.turns;
     if (data._compactionSummary) this._compactionSummary = data._compactionSummary;
     if (data.pins) {

@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
-import { runModelCommandSmoke, runSessionCommandSmoke, runSessionListCommandSmoke } from "./command-smoke.mjs";
+import { runModelCommandSmoke, runSessionCommandSmoke, runSessionListCommandSmoke, runSessionSwitchCommandSmoke } from "./command-smoke.mjs";
 import { runDiffAndUiSmoke, runMemorySystemSmoke } from "./memory-and-diff.smoke.mjs";
 
 // Minimal mocks for smoke testing without DEEPSEEK_API_KEY
@@ -186,6 +186,7 @@ function cleanup(dir) {
   ]);
   assert.ok(commands.some((command) => command.name === "hotkeys"));
   assert.ok(commands.some((command) => command.name === "fork"));
+  assert.ok(commands.some((command) => command.name === "resume"));
   assert.ok(commands.some((command) => command.name === "thinking list"));
   assert.ok(commands.some((command) => command.name === "skill:review"));
 
@@ -325,6 +326,7 @@ function cleanup(dir) {
 await runModelCommandSmoke();
 await runSessionCommandSmoke();
 await runSessionListCommandSmoke();
+await runSessionSwitchCommandSmoke({ setupTmp, cleanup });
 
 // ── 3l. Slash command handling ──────────────────────────────────────
 
@@ -429,6 +431,18 @@ await runSessionListCommandSmoke();
   engine2.restoreSession(loaded);
   assert.equal(engine2.turns.length, 2);
   assert.equal(engine2.getPins().length, 1);
+
+  const replacement = new ContextEngine({
+    cwd: dir,
+    modelId: "test",
+    provider: "deepseek",
+    skills: [],
+    pins: ["/old/pin.txt"],
+  });
+  replacement.recordTurn({ userMessage: "old", summary: "old" });
+  replacement.restoreSession(loaded, [], { replace: true });
+  assert.equal(replacement.turns.length, 2);
+  assert.deepEqual(replacement.getPins(), ["/fake/path.txt"]);
 
   const forked = forkSession(sessionsRoot, "test-session", engine, { targetSessionId: "forked-session" });
   assert.equal(forked.id, "forked-session");

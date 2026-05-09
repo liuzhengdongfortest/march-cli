@@ -243,6 +243,7 @@ export async function run(argv) {
       runner,
       sessionState,
       sessionsRoot,
+      skillPool,
     });
     if (slashResult.exit) break;
     if (slashResult.handled) {

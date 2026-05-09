@@ -101,3 +101,38 @@ export async function runSessionListCommandSmoke() {
   assert.ok(tree.some((line) => line.startsWith("  * child")));
   console.log("  PASS");
 }
+
+export async function runSessionSwitchCommandSmoke({ setupTmp, cleanup }) {
+  console.log("--- smoke: session switch command handling ---");
+  const { mkdirSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const { ContextEngine } = await import("../src/context/engine.mjs");
+  const { parseResumeCommand, resumeSessionById } = await import("../src/cli/session-switch-command.mjs");
+  const { saveSession } = await import("../src/session/persist.mjs");
+
+  assert.deepEqual(parseResumeCommand("hello"), { type: "none" });
+  assert.deepEqual(parseResumeCommand("/resume target"), { type: "resume", id: "target" });
+  assert.equal(parseResumeCommand("/resume").type, "error");
+  assert.equal(parseResumeCommand("/resume ../bad").type, "error");
+
+  const dir = setupTmp();
+  const sessionsRoot = join(dir, "sessions");
+  mkdirSync(sessionsRoot, { recursive: true });
+
+  const currentEngine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: [], pins: [] });
+  currentEngine.recordTurn({ userMessage: "current", summary: "current" });
+  const targetEngine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: [], pins: ["/target.txt"] });
+  targetEngine.recordTurn({ userMessage: "target", summary: "target" });
+  saveSession(join(sessionsRoot, "target"), targetEngine);
+
+  const runner = { engine: currentEngine };
+  const sessionState = { sessionId: "current", sessionDir: join(sessionsRoot, "current") };
+  const lines = resumeSessionById("target", { runner, sessionState, sessionsRoot });
+  assert.deepEqual(lines, ["Resumed session: target (1 turns)"]);
+  assert.equal(sessionState.sessionId, "target");
+  assert.equal(runner.engine.turns[0].userMessage, "target");
+  assert.deepEqual(runner.engine.getPins(), ["/target.txt"]);
+
+  cleanup(dir);
+  console.log("  PASS");
+}
