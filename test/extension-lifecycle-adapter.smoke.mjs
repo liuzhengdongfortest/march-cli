@@ -45,5 +45,60 @@ export async function runExtensionLifecycleAdapterSmoke() {
   assert.deepEqual(adapter.canExecute("read-runtime-diagnostics"), { allowed: true });
   assert.equal(adapter.canExecute("write-files").allowed, false);
   assert.equal(evaluateMarchHookEffect("unknown-effect").allowed, false);
+
+  adapter.registerHook({
+    id: "observe-runtime",
+    kind: "march-agent-runtime:after-turn",
+    effects: ["read-runtime-diagnostics", "write-diagnostics"],
+    handler: ({ facts, payload, canExecute }) => {
+      assert.equal(facts.sessionId, "s1");
+      assert.equal(payload.turnId, "t1");
+      assert.equal(canExecute("write-files").allowed, false);
+      return "observed";
+    },
+  });
+  assert.equal(adapter.getState().registeredHookCount, 1);
+  assert.deepEqual(adapter.getState().hookKinds, ["march-agent-runtime:after-turn"]);
+  assert.deepEqual(await adapter.runHook("march-agent-runtime:after-turn", { turnId: "t1" }), [
+    { id: "observe-runtime", kind: "march-agent-runtime:after-turn", ok: true, value: "observed" },
+  ]);
+
+  assert.throws(
+    () => adapter.registerHook({
+      id: "bad-write",
+      kind: "march-agent-runtime:after-turn",
+      effects: ["write-files"],
+      handler: () => {},
+    }),
+    /cannot write-files/,
+  );
+
+  adapter.registerHook({
+    id: "non-blocking-failure",
+    kind: "march-agent-runtime:after-turn",
+    effects: ["write-diagnostics"],
+    handler: () => {
+      throw new Error("diagnostic only");
+    },
+  });
+  const failed = await adapter.runHook("march-agent-runtime:after-turn", { turnId: "t2" });
+  assert.equal(failed.at(-1).ok, false);
+  assert.ok(adapter.getState().diagnostics.some((diagnostic) => diagnostic.message.includes("diagnostic only")));
+
+  adapter.registerHook({
+    id: "blocking-failure",
+    kind: "march-agent-runtime:blocking",
+    effects: ["write-diagnostics"],
+    blocking: true,
+    handler: () => {
+      throw new Error("stop");
+    },
+  });
+  await assert.rejects(
+    () => adapter.runHook("march-agent-runtime:blocking"),
+    /stop/,
+  );
+
+  assert.equal(adapter.unregisterHook("observe-runtime"), true);
   console.log("  PASS");
 }
