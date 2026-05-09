@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { isAbsolute, resolve, sep } from "node:path";
 import { readdirSync, readFileSync } from "node:fs";
-import { ROOT_NODE_UUID } from "../memory/database.mjs";
+import { buildMemoryLayer } from "./memory-layer.mjs";
 
 export class ContextEngine {
   constructor({ cwd, modelId, provider = "deepseek", skills = [], skillPool = [], pins = [], graph = null, glossary = null, namespace = "" }) {
@@ -31,7 +31,13 @@ export class ContextEngine {
     ];
 
     if (this.graph) {
-      layers.push(this.#buildMemory(userMessage));
+      layers.push(buildMemoryLayer({
+        graph: this.graph,
+        glossary: this.glossary,
+        turns: this.turns,
+        namespace: this.namespace,
+        userMessage,
+      }));
     }
 
     if (this.skillPool.length > 0) {
@@ -226,72 +232,6 @@ ${tree}`;
     };
     walk(this.cwd, "", 1);
     return lines.join("\n") || "(empty)";
-  }
-
-  // ── Layer 4: memory ────────────────────────────────────────────────
-  #buildMemory(userMessage) {
-    if (!this.graph) return "";
-    const entries = [];
-    const seen = new Set();
-
-    // Boot: load project://boot children on first turn (project namespace)
-    if (this.turns.length === 0) {
-      try {
-        const bootKids = this.graph.getChildren(ROOT_NODE_UUID, null, null, this.namespace);
-        for (const kid of bootKids) {
-          if (seen.has(kid.child_uuid)) continue;
-          const mem = this.graph.getMemoryByPath(kid.path, kid.domain, this.namespace);
-          if (!mem?.content) continue;
-          seen.add(kid.child_uuid);
-          entries.push(`--- project://boot/${kid.name} (boot) ---\n${mem.content}`);
-        }
-      } catch {}
-    }
-
-    // Glossary keyword match against user message
-    if (this.glossary && userMessage) {
-      try {
-        const matches = this.glossary.findInContent(userMessage);
-        for (const m of matches) {
-          if (seen.has(m.node_uuid)) continue;
-          seen.add(m.node_uuid);
-          const pathRows = this.graph.getPathsForNode(m.node_uuid, this.namespace);
-          if (pathRows.length === 0) {
-            // Try global namespace for keyword-triggered global memories
-            const globalRows = this.graph.getPathsForNode(m.node_uuid, "global");
-            pathRows.push(...globalRows);
-          }
-          const uri = pathRows.length > 0
-            ? `${pathRows[0].domain}://${pathRows[0].path}`
-            : `node:${m.node_uuid}`;
-          const mem = this.graph.getCurrentMemory(m.node_uuid);
-          if (mem?.content) {
-            const truncated = mem.content.length > 800 ? mem.content.slice(0, 800) + "\n...(truncated)" : mem.content;
-            entries.push(`--- ${uri} (match) ---\n${truncated}`);
-          }
-        }
-      } catch {}
-    }
-
-    // session://current/* — all children of session root (project namespace)
-    try {
-      const sessionKids = this.graph.getChildren(ROOT_NODE_UUID, "current", null, this.namespace);
-      for (const kid of sessionKids) {
-        if (seen.has(kid.child_uuid)) continue;
-        const mem = this.graph.getMemoryByPath(kid.path, kid.domain, this.namespace);
-        if (!mem?.content) continue;
-        seen.add(kid.child_uuid);
-        entries.push(`--- session://current/${kid.name} ---\n${mem.content}`);
-      }
-    } catch {}
-
-    // Touch accessed nodes
-    for (const uuid of seen) {
-      try { this.graph.touchNode(uuid); } catch {}
-    }
-
-    if (entries.length === 0) return "";
-    return `[memory]\n${entries.join("\n\n")}`;
   }
 
   // ── Layer 5: skills catalog (Tier 1: always in context) ────────────

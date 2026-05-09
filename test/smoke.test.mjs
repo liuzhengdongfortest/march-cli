@@ -144,7 +144,25 @@ function cleanup(dir) {
   console.log("  PASS");
 }
 
-// ── 3b. March tool set ───────────────────────────────────────────────
+// ── 3b. Memory layer builder ────────────────────────────────────────
+
+{
+  console.log("--- smoke: memory layer builder ---");
+  const { buildMemoryLayer } = await import("../src/context/memory-layer.mjs");
+  const touched = [];
+  const graph = {
+    getChildren: () => [{ child_uuid: "u1", path: "boot-note", domain: "project", name: "boot-note" }],
+    getMemoryByPath: () => ({ content: "boot content" }),
+    touchNode: (uuid) => touched.push(uuid),
+  };
+  const layer = buildMemoryLayer({ graph, glossary: null, turns: [], namespace: "ns", userMessage: "" });
+  assert.ok(layer.includes("[memory]"));
+  assert.ok(layer.includes("boot content"));
+  assert.deepEqual(touched, ["u1"]);
+  console.log("  PASS");
+}
+
+// ── 3c. March tool set ───────────────────────────────────────────────
 
 {
   console.log("--- smoke: March tool set ---");
@@ -153,7 +171,7 @@ function cleanup(dir) {
   console.log("  PASS");
 }
 
-// ── 3c. Autocomplete provider ───────────────────────────────────────
+// ── 3d. Autocomplete provider ───────────────────────────────────────
 
 {
   console.log("--- smoke: autocomplete provider ---");
@@ -183,7 +201,7 @@ function cleanup(dir) {
   console.log("  PASS");
 }
 
-// ── 3d. Output buffer rendering ─────────────────────────────────────
+// ── 3e. Output buffer rendering ─────────────────────────────────────
 
 {
   console.log("--- smoke: output buffer rendering ---");
@@ -202,7 +220,7 @@ function cleanup(dir) {
   console.log("  PASS");
 }
 
-// ── 3e. Tool output extraction ──────────────────────────────────────
+// ── 3f. Tool output extraction ──────────────────────────────────────
 
 {
   console.log("--- smoke: tool output extraction ---");
@@ -212,7 +230,7 @@ function cleanup(dir) {
   console.log("  PASS");
 }
 
-// ── 3f. Inline shell parsing ────────────────────────────────────────
+// ── 3g. Inline shell parsing ────────────────────────────────────────
 
 {
   console.log("--- smoke: inline shell parsing ---");
@@ -225,7 +243,7 @@ function cleanup(dir) {
   console.log("  PASS");
 }
 
-// ── 3g. Hotkeys panel ───────────────────────────────────────────────
+// ── 3h. Hotkeys panel ───────────────────────────────────────────────
 
 {
   console.log("--- smoke: hotkeys panel ---");
@@ -239,7 +257,7 @@ function cleanup(dir) {
   console.log("  PASS");
 }
 
-// ── 3h. Skill invocation parsing ────────────────────────────────────
+// ── 3i. Skill invocation parsing ────────────────────────────────────
 
 {
   console.log("--- smoke: skill invocation parsing ---");
@@ -250,7 +268,7 @@ function cleanup(dir) {
   console.log("  PASS");
 }
 
-// ── 3i. Slash command handling ──────────────────────────────────────
+// ── 3j. Slash command handling ──────────────────────────────────────
 
 {
   console.log("--- smoke: slash command handling ---");
