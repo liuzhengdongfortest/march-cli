@@ -1,7 +1,7 @@
 import { stdout } from "node:process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import {
   CombinedAutocompleteProvider,
@@ -64,6 +64,84 @@ const MARCH_COMMANDS = [
   { name: "thinking", description: "Toggle last thinking block expand/collapse" },
   { name: "mouse", description: "Toggle mouse tracking (for text selection vs click-to-expand)" },
 ];
+
+export function buildMarchCommands(skillPool = []) {
+  const skillCommands = skillPool
+    .map((skill) => ({
+      name: `skill:${typeof skill === "string" ? skill : skill.name}`,
+      description: typeof skill === "string" ? "Activate skill" : (skill.description || "Activate skill"),
+    }))
+    .filter((command) => command.name !== "skill:undefined");
+  return [...MARCH_COMMANDS, ...skillCommands];
+}
+
+export class MarchAutocompleteProvider {
+  constructor(commands, cwd) {
+    this.base = new CombinedAutocompleteProvider(commands, cwd);
+    this.cwd = cwd;
+  }
+
+  async getSuggestions(lines, cursorLine, cursorCol, options) {
+    const suggestions = await this.base.getSuggestions(lines, cursorLine, cursorCol, options);
+    if (suggestions) return suggestions;
+    return this.getAtFileSuggestions(lines, cursorLine, cursorCol);
+  }
+
+  applyCompletion(lines, cursorLine, cursorCol, item, prefix) {
+    return this.base.applyCompletion(lines, cursorLine, cursorCol, item, prefix);
+  }
+
+  shouldTriggerFileCompletion(lines, cursorLine, cursorCol) {
+    return this.base.shouldTriggerFileCompletion(lines, cursorLine, cursorCol);
+  }
+
+  getAtFileSuggestions(lines, cursorLine, cursorCol) {
+    const currentLine = lines[cursorLine] || "";
+    const textBeforeCursor = currentLine.slice(0, cursorCol);
+    const match = textBeforeCursor.match(/(?:^|[\s([{])(@[^\s]*)$/);
+    if (!match) return null;
+
+    const prefix = match[1];
+    const query = prefix.slice(1);
+    const displayDotSlash = query.startsWith("./");
+    const normalizedQuery = query.replace(/^[.][/\\]/, "").replace(/\\/g, "/").toLowerCase();
+    const items = [];
+    const skip = new Set([".git", "node_modules"]);
+
+    const walk = (dir, relative = "", depth = 0) => {
+      if (items.length >= 50 || depth > 5) return;
+      let entries;
+      try {
+        entries = readdirSync(dir, { withFileTypes: true });
+      } catch {
+        return;
+      }
+      for (const entry of entries) {
+        if (items.length >= 50) return;
+        if (skip.has(entry.name)) continue;
+        const rel = relative ? `${relative}/${entry.name}` : entry.name;
+        const isDirectory = entry.isDirectory();
+        const relForMatch = rel.toLowerCase();
+        if (!normalizedQuery || relForMatch.includes(normalizedQuery)) {
+          const displayPath = `${displayDotSlash ? "./" : ""}${rel}${isDirectory ? "/" : ""}`;
+          items.push({
+            value: `@${displayPath}`,
+            label: `${entry.name}${isDirectory ? "/" : ""}`,
+            description: displayPath,
+          });
+        }
+        if (isDirectory) {
+          walk(join(dir, entry.name), rel, depth + 1);
+        }
+      }
+    };
+
+    walk(this.cwd);
+    if (items.length === 0) return null;
+    items.sort((a, b) => a.description.localeCompare(b.description));
+    return { items, prefix };
+  }
+}
 
 const EDITOR_THEME = {
   borderColor: (str) => `\x1b[90m${str}\x1b[0m`,
@@ -198,12 +276,12 @@ class OutputBuffer {
 
 // ── TUI-based UI ────────────────────────────────────────────────────
 
-function createTuiUI() {
+function createTuiUI({ cwd = process.cwd(), skillPool = [] } = {}) {
   const terminal = new ProcessTerminal();
   const tui = new TUI(terminal);
   const output = new OutputBuffer();
   const editor = new Editor(tui, EDITOR_THEME, { paddingX: 1 });
-  const autocomplete = new CombinedAutocompleteProvider(MARCH_COMMANDS, process.cwd());
+  const autocomplete = new MarchAutocompleteProvider(buildMarchCommands(skillPool), cwd);
   editor.setAutocompleteProvider(autocomplete);
 
   tui.addChild(output);
@@ -562,8 +640,8 @@ function createPlainUI() {
 
 // ── Public API ──────────────────────────────────────────────────────
 
-export function createUI({ json }) {
+export function createUI({ json, cwd = process.cwd(), skillPool = [] }) {
   if (json) return createJsonUI();
   if (!stdout.isTTY) return createPlainUI();
-  return createTuiUI();
+  return createTuiUI({ cwd, skillPool });
 }

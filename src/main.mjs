@@ -72,7 +72,7 @@ export async function run(argv) {
   const sessionId = args.resume ?? Date.now().toString(36);
   const sessionDir = join(projectMarchDir, "sessions", sessionId);
 
-  const ui = createUI({ json: args.json });
+  const ui = createUI({ json: args.json, cwd, skillPool });
 
   const apiKeyEnv = provider === "deepseek" ? "DEEPSEEK_API_KEY"
     : provider === "openai" ? "OPENAI_API_KEY"

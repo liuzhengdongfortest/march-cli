@@ -153,6 +153,34 @@ function cleanup(dir) {
   console.log("  PASS");
 }
 
+// ── 3c. Autocomplete provider ───────────────────────────────────────
+
+{
+  console.log("--- smoke: autocomplete provider ---");
+  const { buildMarchCommands, MarchAutocompleteProvider } = await import("../src/cli/ui.mjs");
+  const dir = setupTmp();
+  writeFileSync(join(dir, "sample-file.txt"), "data");
+
+  const commands = buildMarchCommands([
+    { name: "review", description: "Review code" },
+  ]);
+  assert.ok(commands.some((command) => command.name === "skill:review"));
+
+  const provider = new MarchAutocompleteProvider(commands, dir);
+  const fileSuggestions = await provider.getSuggestions(["@sam"], 0, 4, {
+    signal: new AbortController().signal,
+  });
+  assert.ok(fileSuggestions.items.some((item) => item.label.includes("sample-file.txt")));
+
+  const skillSuggestions = await provider.getSuggestions(["/skill:rev"], 0, 10, {
+    signal: new AbortController().signal,
+  });
+  assert.ok(skillSuggestions.items.some((item) => item.value === "skill:review"));
+
+  cleanup(dir);
+  console.log("  PASS");
+}
+
 // ── 4. Session persistence ──────────────────────────────────────────
 
 {
