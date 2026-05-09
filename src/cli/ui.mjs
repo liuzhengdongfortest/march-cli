@@ -13,6 +13,7 @@ import { buildMarchCommands, MarchAutocompleteProvider } from "./autocomplete.mj
 import { createJsonUI, createPlainUI } from "./fallback-ui.mjs";
 import { createKeybindingDispatcher } from "./keybinding-dispatch.mjs";
 import { OutputBuffer } from "./output-buffer.mjs";
+import { StatusBar } from "./status-bar.mjs";
 import { extractToolOutput } from "./tool-output.mjs";
 
 export { buildMarchCommands, MarchAutocompleteProvider } from "./autocomplete.mjs";
@@ -36,11 +37,13 @@ function createTuiUI({ cwd = process.cwd(), skillPool = [], keybindings, promptT
   const terminal = new ProcessTerminal();
   const tui = new TUI(terminal);
   const output = new OutputBuffer();
+  const statusBar = new StatusBar();
   const editor = new Editor(tui, EDITOR_THEME, { paddingX: 1 });
   const autocomplete = new MarchAutocompleteProvider(buildMarchCommands(skillPool, promptTemplates), cwd);
   editor.setAutocompleteProvider(autocomplete);
 
   tui.addChild(output);
+  tui.addChild(statusBar);
   tui.addChild(editor);
   tui.setFocus(editor);
 
@@ -308,6 +311,11 @@ function createTuiUI({ cwd = process.cwd(), skillPool = [], keybindings, promptT
       ensureStarted();
       stopSpinner();
       output.writeln(`\x1b[90m● ${text}\x1b[0m`);
+      requestRender();
+    },
+
+    setStatusBar: (text) => {
+      statusBar.setText(text);
       requestRender();
     },
 

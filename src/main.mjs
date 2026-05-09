@@ -15,6 +15,7 @@ import { buildModelSelectItems } from "./cli/model-command.mjs";
 import { buildThinkingSelectItems } from "./cli/thinking-command.mjs";
 import { loadKeybindings } from "./cli/keybindings.mjs";
 import { expandPromptTemplate, loadPromptTemplates } from "./cli/prompt-templates.mjs";
+import { createStatusLineUpdater } from "./cli/status-line-updater.mjs";
 import { createMarchAuthStorage } from "./auth/storage.mjs";
 import { createRunner } from "./agent/runner.mjs";
 import { openDatabase } from "./memory/database.mjs";
@@ -146,6 +147,14 @@ export async function run(argv) {
     authStorage: authConfig.authStorage,
   });
 
+  const refreshStatusBar = createStatusLineUpdater({
+    ui,
+    runner,
+    sessionState,
+    sessionSource,
+  });
+  refreshStatusBar();
+
   ui.setEscapeHandler(() => {
     if (turnRunning) {
       runner.abort();
@@ -157,6 +166,7 @@ export async function run(argv) {
     const level = runner.cycleThinkingLevel();
     if (level) {
       ui.writeln(`\x1b[90m● thinking: ${level}\x1b[0m`);
+      refreshStatusBar();
     }
   };
 
@@ -177,6 +187,7 @@ export async function run(argv) {
           return;
         }
         ui.writeln(`\x1b[90m● thinking: ${runner.setThinkingLevel(item.level)}\x1b[0m`);
+        refreshStatusBar();
         return;
       }
       cycleThinkingLevel();
@@ -205,12 +216,14 @@ export async function run(argv) {
         const model = await runner.setModel(item.model);
         const name = model.name || model.id;
         ui.writeln(`\x1b[90m● model: ${name} (${model.provider})\x1b[0m`);
+        refreshStatusBar();
         return;
       }
       const result = await runner.cycleModel();
       if (result) {
         const name = result.model.name || result.model.id;
         ui.writeln(`\x1b[90m● model: ${name} (${result.model.provider})  thinking: ${result.thinkingLevel}\x1b[0m`);
+        refreshStatusBar();
       } else {
         ui.writeln(`\x1b[90m● model: only one available\x1b[0m`);
       }
@@ -245,6 +258,7 @@ export async function run(argv) {
     skillPool,
     ui,
   });
+  refreshStatusBar();
 
   // Single-shot mode
   if (args.prompt) {
@@ -254,6 +268,7 @@ export async function run(argv) {
     turnRunning = true;
     await runner.runTurn(fullPrompt, args.prompt);
     turnRunning = false;
+    refreshStatusBar();
     // Post-turn dump: context with this turn in recent_chat
     if (args.dumpContext) {
       const postCtx = runner.engine.buildContext("");
@@ -328,6 +343,7 @@ export async function run(argv) {
     });
     if (slashResult.exit) break;
     if (slashResult.handled) {
+      refreshStatusBar();
       continue;
     }
 
@@ -344,6 +360,7 @@ export async function run(argv) {
       turnRunning = true;
       await runner.runTurn(fullPrompt, trimmed);
       turnRunning = false;
+      refreshStatusBar();
       // Post-turn dump: includes this turn in recent_chat
       if (args.dumpContext) {
         const postCtx = runner.engine.buildContext("");
@@ -352,6 +369,7 @@ export async function run(argv) {
       ui.writeln("");
     } catch (err) {
       turnRunning = false;
+      refreshStatusBar();
       ui.writeln(`Error: ${err.message}`);
     }
   }
