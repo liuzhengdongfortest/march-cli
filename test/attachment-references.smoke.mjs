@@ -20,6 +20,21 @@ export async function runAttachmentReferencesSmoke({ setupTmp, cleanup }) {
   assert.deepEqual(resolved.images[0], { type: "image", mimeType: "image/png", data: "AQID" });
   assert.equal(resolved.references[0].marker, "@.march/attachments/s1/image.png");
 
+  writeFileSync(join(attachmentDir, "bad-meta.jpg"), Buffer.from([4, 5]));
+  writeFileSync(join(attachmentDir, "bad-meta.json"), JSON.stringify({ mimeType: "text/plain" }));
+  const fallback = resolveImageAttachmentReferences({
+    projectMarchDir,
+    text: "@.march/attachments/s1/bad-meta.jpg",
+  });
+  assert.equal(fallback.images.length, 1);
+  assert.equal(fallback.images[0].mimeType, "image/jpeg");
+
+  writeFileSync(join(attachmentDir, "note.txt"), "not an image");
+  assert.equal(resolveImageAttachmentReferences({
+    projectMarchDir,
+    text: "@.march/attachments/s1/note.txt",
+  }).images.length, 0);
+
   assert.throws(
     () => resolveImageAttachmentReferences({
       projectMarchDir,

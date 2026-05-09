@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { extname, join, relative, resolve } from "node:path";
-import { getAttachmentRoot } from "./attachments.mjs";
+import { getAttachmentRoot, imageExtensionForMime } from "./attachments.mjs";
 
 const ATTACHMENT_MARKER_RE = /@\.march\/attachments\/[^\s"'`<>)]+/g;
 
@@ -26,7 +26,7 @@ export function resolveImageAttachmentReferences({ text, projectMarchDir } = {})
     const path = assertInsideAttachmentRoot(join(projectMarchDir, relativePath), projectMarchDir);
     if (!existsSync(path)) continue;
 
-    const mimeType = readAttachmentMimeType(path) ?? mimeTypeForPath(path);
+    const mimeType = readSupportedAttachmentMimeType(path) ?? mimeTypeForPath(path);
     if (!mimeType) continue;
 
     const data = readFileSync(path).toString("base64");
@@ -37,12 +37,14 @@ export function resolveImageAttachmentReferences({ text, projectMarchDir } = {})
   return { images, references };
 }
 
-function readAttachmentMimeType(path) {
+function readSupportedAttachmentMimeType(path) {
   const metadataPath = path.replace(/\.[^.\\/]+$/, ".json");
   if (!existsSync(metadataPath)) return null;
   try {
     const metadata = JSON.parse(readFileSync(metadataPath, "utf8"));
-    return typeof metadata.mimeType === "string" ? metadata.mimeType : null;
+    if (typeof metadata.mimeType !== "string") return null;
+    imageExtensionForMime(metadata.mimeType);
+    return metadata.mimeType;
   } catch {
     return null;
   }
