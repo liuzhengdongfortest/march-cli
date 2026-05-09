@@ -73,3 +73,31 @@ export async function runSessionCommandSmoke() {
   assert.equal(listSessionStats({ runner })[0], "session: s1");
   console.log("  PASS");
 }
+
+export async function runSessionListCommandSmoke() {
+  console.log("--- smoke: session list command handling ---");
+  const { formatSessionList, listSessionCommand } = await import("../src/cli/session-list-command.mjs");
+  const sessions = [
+    {
+      id: "root",
+      savedAt: "2026-05-10T00:00:00.000Z",
+      turnCount: 2,
+      cwd: "D:/repo",
+      parentSessionId: null,
+    },
+    {
+      id: "child",
+      savedAt: "2026-05-10T00:01:00.000Z",
+      turnCount: 3,
+      cwd: "D:/repo",
+      parentSessionId: "root",
+    },
+  ];
+  assert.deepEqual(formatSessionList([], "root"), ["(no saved sessions)"]);
+  const flat = formatSessionList(sessions, "child");
+  assert.ok(flat.some((line) => line.includes("* child")));
+  assert.ok(flat.some((line) => line.includes("fork:root")));
+  const tree = listSessionCommand({ sessions, currentSessionId: "child", tree: true });
+  assert.ok(tree.some((line) => line.startsWith("  * child")));
+  console.log("  PASS");
+}

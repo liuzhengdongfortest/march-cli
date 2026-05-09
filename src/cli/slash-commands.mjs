@@ -1,8 +1,8 @@
 import { saveSession, listSessions, forkSession } from "../session/persist.mjs";
-import { formatSessionTree } from "../session/tree.mjs";
 import { handleModelCommand, listModels, parseModelCommand } from "./model-command.mjs";
 import { formatHotkeysPanel } from "./repl-commands.mjs";
 import { compactSession, listSessionStats } from "./session-command.mjs";
+import { listSessionCommand } from "./session-list-command.mjs";
 import { handleThinkingCommand, parseThinkingCommand } from "./thinking-command.mjs";
 
 export async function handleSlashCommand(trimmed, {
@@ -83,20 +83,11 @@ export async function handleSlashCommand(trimmed, {
 
   if (trimmed === "/sessions" || trimmed === "/sessions tree") {
     const sessions = listSessions(sessionsRoot);
-    if (trimmed === "/sessions tree") {
-      for (const line of formatSessionTree(sessions, sessionState.sessionId)) ui.writeln(line);
-      return { handled: true };
-    }
-    if (sessions.length === 0) {
-      ui.writeln("(no saved sessions)");
-    } else {
-      for (const s of sessions) {
-        const marker = s.id === sessionState.sessionId ? " *" : "  ";
-        const parent = s.parentSessionId ? `  fork:${s.parentSessionId}` : "";
-        ui.writeln(`${marker} ${s.id}  ${s.turnCount}t  ${s.cwd}  ${s.savedAt?.slice(0, 19) ?? "?"}${parent}`);
-      }
-      ui.writeln("(* = current session)");
-    }
+    for (const line of listSessionCommand({
+      sessions,
+      currentSessionId: sessionState.sessionId,
+      tree: trimmed === "/sessions tree",
+    })) ui.writeln(line);
     return { handled: true };
   }
 

@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
-import { runModelCommandSmoke, runSessionCommandSmoke } from "./command-smoke.mjs";
+import { runModelCommandSmoke, runSessionCommandSmoke, runSessionListCommandSmoke } from "./command-smoke.mjs";
 import { runDiffAndUiSmoke, runMemorySystemSmoke } from "./memory-and-diff.smoke.mjs";
 
 // Minimal mocks for smoke testing without DEEPSEEK_API_KEY
@@ -311,6 +311,7 @@ function cleanup(dir) {
 
 await runModelCommandSmoke();
 await runSessionCommandSmoke();
+await runSessionListCommandSmoke();
 
 // ── 3l. Slash command handling ──────────────────────────────────────
 
