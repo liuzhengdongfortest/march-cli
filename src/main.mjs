@@ -25,6 +25,7 @@ import { loadSkillPool, loadSkillFromFile } from "./skills/loader.mjs";
 import { createSkillTools } from "./skills/tools.mjs";
 import { loadConfig } from "./config/loader.mjs";
 import { discoverProjectExtensionPaths } from "./extensions/discovery.mjs";
+import { loadProjectLifecycleHookManifests } from "./extensions/lifecycle-manifest.mjs";
 import { saveSession, loadSession } from "./session/persist.mjs";
 import { listPiSessionInfos, resolvePiSessionManager } from "./session/pi-manager.mjs";
 import { resumePiSessionById } from "./cli/pi-session-switch-command.mjs";
@@ -56,6 +57,7 @@ export async function run(argv) {
     ...discoverProjectExtensionPaths(cwd),
     ...args.extensions.map((extensionPath) => resolve(cwd, extensionPath)),
   ];
+  const lifecycleManifests = loadProjectLifecycleHookManifests(cwd);
 
   // Memory system: global SQLite database at ~/.march/memory.db
   // Project isolation via .march/project-id namespace
@@ -135,6 +137,8 @@ export async function run(argv) {
     }),
     useRuntimeHost: usePiRuntimeHost,
     syncPiSidecar: usePiSessions || usePiRuntimeHost,
+    lifecycleHooks: lifecycleManifests.hooks,
+    lifecycleDiagnostics: lifecycleManifests.diagnostics,
   });
 
   ui.setEscapeHandler(() => {

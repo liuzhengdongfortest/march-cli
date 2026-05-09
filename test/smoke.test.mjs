@@ -8,6 +8,7 @@ import { runDiffAndUiSmoke, runMemorySystemSmoke } from "./memory-and-diff.smoke
 import { runDefaultStartupFlowSmoke } from "./default-startup-flow.smoke.mjs";
 import { runExtensionDiscoverySmoke } from "./extension-discovery.smoke.mjs";
 import { runExtensionLifecycleAdapterSmoke } from "./extension-lifecycle-adapter.smoke.mjs";
+import { runExtensionLifecycleManifestSmoke } from "./extension-lifecycle-manifest.smoke.mjs";
 import { runRuntimeFactorySmoke } from "./runtime-factory.smoke.mjs";
 import { runRuntimeHostSmoke } from "./runtime-host.smoke.mjs";
 import { runRunnerCompactionSmoke } from "./runner-compaction.smoke.mjs";
@@ -68,6 +69,7 @@ function cleanup(dir) {
 
 await runStartupResumeSmoke({ setupTmp, cleanup });
 await runExtensionDiscoverySmoke({ setupTmp, cleanup });
+await runExtensionLifecycleManifestSmoke({ setupTmp, cleanup });
 await runExtensionLifecycleAdapterSmoke();
 
 // ── 2. Config loading ────────────────────────────────────────────────

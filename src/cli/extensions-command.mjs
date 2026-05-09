@@ -22,6 +22,13 @@ export function listExtensionPathsCommand(extensionPaths = [], diagnostics = [],
     if (deniedEffects.length > 0) {
       lines.push(`- denied effects: ${deniedEffects.join(", ")}`);
     }
+    const lifecycleDiagnostics = uniqueLifecycleDiagnostics(lifecycleState.diagnostics ?? [], diagnostics);
+    if (lifecycleDiagnostics.length > 0) {
+      lines.push("March lifecycle diagnostics:");
+      for (const diagnostic of lifecycleDiagnostics) {
+        lines.push(`- ${diagnostic.type ?? "info"}: ${diagnostic.message ?? String(diagnostic)}`);
+      }
+    }
   }
 
   if (diagnostics.length === 0) {
@@ -34,4 +41,13 @@ export function listExtensionPathsCommand(extensionPaths = [], diagnostics = [],
     lines.push(`- ${diagnostic.type ?? "info"}: ${diagnostic.message ?? String(diagnostic)}`);
   }
   return lines;
+}
+
+function uniqueLifecycleDiagnostics(lifecycleDiagnostics, extensionDiagnostics) {
+  const extensionKeys = new Set(extensionDiagnostics.map(formatDiagnosticKey));
+  return lifecycleDiagnostics.filter((diagnostic) => !extensionKeys.has(formatDiagnosticKey(diagnostic)));
+}
+
+function formatDiagnosticKey(diagnostic) {
+  return `${diagnostic?.type ?? "info"}:${diagnostic?.message ?? String(diagnostic)}`;
 }

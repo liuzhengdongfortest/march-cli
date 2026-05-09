@@ -28,11 +28,27 @@ export async function runExtensionLifecycleAdapterSmoke() {
       runtimeHost: true,
     }),
     getRuntimeDiagnostics: () => [{ type: "warning", message: "runtime warning" }],
+    manifestHooks: [
+      {
+        id: "manifest-observer",
+        kind: "march-agent-runtime:after-turn",
+        effects: ["read-session-ref", "write-diagnostics"],
+        sourcePath: "D:/repo/.march/extensions/a.march-hooks.json",
+        description: "Observe turns.",
+      },
+      {
+        id: "manifest-denied",
+        kind: "march-agent-runtime:after-turn",
+        effects: ["run-shell"],
+        sourcePath: "D:/repo/.march/extensions/b.march-hooks.json",
+      },
+    ],
+    manifestDiagnostics: [{ type: "warning", message: "manifest warning" }],
   });
 
   const state = adapter.getState();
   assert.equal(state.status, "read-only");
-  assert.equal(state.registeredHookCount, 0);
+  assert.equal(state.registeredHookCount, 1);
   assert.equal(state.extensionPathCount, 1);
   assert.equal(state.facts.sessionId, "s1");
   assert.equal(state.facts.runtimeHost, true);
@@ -57,11 +73,13 @@ export async function runExtensionLifecycleAdapterSmoke() {
       return "observed";
     },
   });
-  assert.equal(adapter.getState().registeredHookCount, 1);
+  assert.equal(adapter.getState().registeredHookCount, 2);
   assert.deepEqual(adapter.getState().hookKinds, ["march-agent-runtime:after-turn"]);
-  assert.deepEqual(await adapter.runHook("march-agent-runtime:after-turn", { turnId: "t1" }), [
-    { id: "observe-runtime", kind: "march-agent-runtime:after-turn", ok: true, value: "observed" },
-  ]);
+  const observed = await adapter.runHook("march-agent-runtime:after-turn", { turnId: "t1" });
+  assert.equal(observed.find((result) => result.id === "observe-runtime").value, "observed");
+  assert.equal(observed.find((result) => result.id === "manifest-observer").value.description, "Observe turns.");
+  assert.ok(adapter.getState().diagnostics.some((diagnostic) => diagnostic.message === "manifest warning"));
+  assert.ok(adapter.getState().diagnostics.some((diagnostic) => diagnostic.message.includes("manifest-denied")));
 
   assert.throws(
     () => adapter.registerHook({

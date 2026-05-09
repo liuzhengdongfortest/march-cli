@@ -49,9 +49,23 @@ export function createMarchLifecycleAdapter({
   engine,
   getSessionStats,
   getRuntimeDiagnostics = () => [],
+  manifestHooks = [],
+  manifestDiagnostics = [],
 }) {
   const hooks = new Map();
-  const adapterDiagnostics = [];
+  const adapterDiagnostics = [...manifestDiagnostics];
+
+  for (const manifestHook of manifestHooks) {
+    try {
+      registerManifestHook(hooks, manifestHook);
+    } catch (err) {
+      adapterDiagnostics.push({
+        type: "warning",
+        message: `Failed to register March lifecycle hook ${manifestHook?.id ?? "(unknown)"}: ${err.message}`,
+        path: manifestHook?.sourcePath,
+      });
+    }
+  }
 
   return {
     registerHook(hook) {
@@ -114,6 +128,22 @@ export function createMarchLifecycleAdapter({
       return sessionBinding?.get?.() ?? null;
     },
   };
+}
+
+function registerManifestHook(hooks, manifestHook) {
+  const normalized = normalizeHook({
+    ...manifestHook,
+    handler: () => ({
+      sourcePath: manifestHook.sourcePath,
+      description: manifestHook.description,
+    }),
+  });
+  const deniedEffect = normalized.effects
+    .map((effect) => evaluateMarchHookEffect(effect))
+    .find((result) => !result.allowed);
+  if (deniedEffect) throw new Error(deniedEffect.reason);
+  hooks.set(normalized.id, normalized);
+  return normalized;
 }
 
 export function evaluateMarchHookEffect(effect) {
