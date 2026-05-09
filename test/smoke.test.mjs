@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { runModelCommandSmoke, runPiSessionCloneCommandSmoke, runPiSessionSwitchCommandSmoke, runSelectorListSmoke, runSessionCommandSmoke, runSessionListCommandSmoke, runSessionSwitchCommandSmoke } from "./command-smoke.mjs";
 import { runDiffAndUiSmoke, runMemorySystemSmoke } from "./memory-and-diff.smoke.mjs";
+import { runDefaultStartupFlowSmoke } from "./default-startup-flow.smoke.mjs";
 import { runRuntimeFactorySmoke } from "./runtime-factory.smoke.mjs";
 import { runRuntimeHostSmoke } from "./runtime-host.smoke.mjs";
 import { runRunnerCompactionSmoke } from "./runner-compaction.smoke.mjs";
@@ -403,6 +404,7 @@ await runRunnerTurnFlowSmoke({ setupTmp, cleanup });
 await runRuntimeFactorySmoke();
 await runRuntimeHostSmoke();
 await runRunnerRuntimeHostSmoke();
+await runDefaultStartupFlowSmoke({ setupTmp, cleanup });
 
 // ── 4. Session smoke ────────────────────────────────────────────────
 

@@ -37,7 +37,7 @@ function resolveApiKey(provider) {
   return key;
 }
 
-export async function createRunner({ cwd, modelId, provider = "deepseek", stateRoot, ui, skills, skillPool = [], pins, graph = null, glossary = null, memoryTools = [], skillTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, createAgentSessionImpl = createAgentSession }) {
+export async function createRunner({ cwd, modelId, provider = "deepseek", stateRoot, ui, skills, skillPool = [], pins, graph = null, glossary = null, memoryTools = [], skillTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices }) {
   const authStorage = AuthStorage.create();
   authStorage.setRuntimeApiKey(provider, resolveApiKey(provider));
 
@@ -68,6 +68,9 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       memoryTools,
       skillTools,
       onRebind: (session) => syncEngineSessionState(engine, session),
+      createAgentSessionRuntimeImpl,
+      createServices: createRuntimeServices,
+      createFromServices: createRuntimeSessionFromServices,
     });
   } else {
     const sessionOptions = resolveRunnerSessionOptions({
