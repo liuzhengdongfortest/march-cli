@@ -1,6 +1,7 @@
 export class GlossaryService {
-  constructor(db) {
+  constructor(db, namespace = "") {
     this.db = db;
+    this.namespace = namespace;
     this.fingerprint = null;
     this.automaton = null;
   }
@@ -16,15 +17,15 @@ export class GlossaryService {
 
   #computeFingerprint() {
     const row = this.db.prepare(
-      "SELECT COUNT(*) AS cnt, MAX(id) AS max_id FROM glossary_keywords"
-    ).get();
+      "SELECT COUNT(*) AS cnt, MAX(id) AS max_id FROM glossary_keywords WHERE namespace = ? OR namespace = 'global'"
+    ).get(this.namespace);
     return `${row.cnt}:${row.max_id}`;
   }
 
   #buildAutomaton() {
     const keywords = this.db.prepare(
-      "SELECT id, keyword, node_uuid FROM glossary_keywords"
-    ).all();
+      "SELECT id, keyword, node_uuid FROM glossary_keywords WHERE namespace = ? OR namespace = 'global'"
+    ).all(this.namespace);
 
     // Build trie
     const go = [new Map()];
@@ -111,13 +112,13 @@ export class GlossaryService {
 
   getAllKeywords() {
     return this.db.prepare(
-      "SELECT * FROM glossary_keywords ORDER BY keyword"
-    ).all();
+      "SELECT * FROM glossary_keywords WHERE namespace = ? OR namespace = 'global' ORDER BY keyword"
+    ).all(this.namespace);
   }
 
   getKeywordsForNode(nodeUuid) {
     return this.db.prepare(
-      "SELECT * FROM glossary_keywords WHERE node_uuid = ?"
-    ).all(nodeUuid);
+      "SELECT * FROM glossary_keywords WHERE node_uuid = ? AND (namespace = ? OR namespace = 'global')"
+    ).all(nodeUuid, this.namespace);
   }
 }

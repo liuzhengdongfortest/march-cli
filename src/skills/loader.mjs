@@ -1,43 +1,69 @@
 import { homedir } from "node:os";
-import { readdirSync, readFileSync, existsSync } from "node:fs";
-import { resolve, join, basename } from "node:path";
+import { readFileSync, existsSync, statSync } from "node:fs";
+import { resolve, basename } from "node:path";
+import { loadSkillsFromDir } from "@mariozechner/pi-coding-agent";
 
 /**
- * Scan a directory for .md skill files.
- * Each file's first # heading is its skill name; falls back to filename.
+ * Convert a Pi Skill to our internal format (augmented with raw content).
+ */
+function augment(skill) {
+  let raw = "";
+  let body = "";
+  try {
+    raw = readFileSync(skill.filePath, "utf-8");
+    body = extractBody(raw);
+  } catch {}
+  return {
+    name: skill.name,
+    description: skill.description,
+    path: skill.filePath,
+    baseDir: skill.baseDir,
+    raw,
+    body,
+  };
+}
+
+function extractBody(raw) {
+  if (!raw.startsWith("---\n") && !raw.startsWith("---\r\n")) return raw;
+  const end = raw.indexOf("\n---", 3);
+  if (end === -1) return raw;
+  return raw.slice(end + 5).replace(/^\n+/, "");
+}
+
+/**
+ * Scan a directory for skill files using Pi's loader.
+ * Convention: .march/skills/<name>/SKILL.md or flat .md files.
  */
 export function scanSkillDir(dirPath) {
   if (!existsSync(dirPath)) return [];
-  let entries;
-  try {
-    entries = readdirSync(dirPath, { withFileTypes: true });
-  } catch {
-    return [];
-  }
-  const skills = [];
-  for (const entry of entries) {
-    if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
-    const fullPath = resolve(dirPath, entry.name);
-    try {
-      const raw = readFileSync(fullPath, "utf-8");
-      const name = extractSkillName(raw) || basename(entry.name, ".md");
-      skills.push({ name, path: fullPath, raw });
-    } catch {
-      // skip unreadable files
-    }
-  }
-  return skills;
+  const result = loadSkillsFromDir({ dir: dirPath, source: "project" });
+  return result.skills.map(augment);
 }
 
 /**
  * Load a single skill from a file path (for --skill flag).
+ * Uses Pi's SKILL.md inside a directory, or direct .md file.
  */
 export function loadSkillFromFile(filePath) {
   const fullPath = resolve(filePath);
   if (!existsSync(fullPath)) throw new Error(`Skill file not found: ${filePath}`);
-  const raw = readFileSync(fullPath, "utf-8");
-  const name = extractSkillName(raw) || basename(filePath, ".md");
-  return { name, path: fullPath, raw };
+
+  // If it's a directory, look for SKILL.md inside
+  let skillFile = fullPath;
+  if (statSync(fullPath).isDirectory()) {
+    skillFile = resolve(fullPath, "SKILL.md");
+    if (!existsSync(skillFile)) throw new Error(`No SKILL.md found in: ${filePath}`);
+  }
+
+  const result = loadSkillsFromDir({ dir: resolve(skillFile, ".."), source: "path" });
+  const skill = result.skills.find(s => s.filePath === skillFile);
+  if (skill) return augment(skill);
+
+  // Fallback: load directly
+  const raw = readFileSync(skillFile, "utf-8");
+  const body = extractBody(raw);
+  const name = basename(resolve(skillFile, ".."));
+  return { name, description: "", path: skillFile, baseDir: resolve(skillFile, ".."), raw, body };
 }
 
 /**
@@ -47,15 +73,10 @@ export function resolveSkill(skillPool, name) {
   return skillPool.find(s => s.name === name) ?? null;
 }
 
-function extractSkillName(raw) {
-  const match = raw.match(/^#\s+(.+)/m);
-  return match ? match[1].trim() : null;
-}
-
 /**
  * Load skills from both project-level and global directories.
  * Project skills take precedence over global skills with the same name.
- * Pi-aligned convention: cwd/.march/skills/ + ~/.march/skills/
+ * Convention: cwd/.march/skills/ + ~/.march/skills/
  */
 export function loadSkillPool(cwd) {
   const globalDir = resolve(homedir(), ".march", "skills");

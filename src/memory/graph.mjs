@@ -2,10 +2,18 @@ import { randomUUID } from "node:crypto";
 import { ROOT_NODE_UUID } from "./database.mjs";
 
 export class GraphService {
-  constructor(db, { changesetStore = null, searchIndexer = null } = {}) {
+  constructor(db, { changesetStore = null, searchIndexer = null, namespace = "" } = {}) {
     this.db = db;
     this.changesetStore = changesetStore;
     this.searchIndexer = searchIndexer;
+    this.namespace = namespace;
+  }
+
+  /**
+   * Resolve namespace: explicit arg takes precedence, then instance default.
+   */
+  #ns(explicit = undefined) {
+    return explicit !== undefined ? explicit : this.namespace;
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -47,14 +55,17 @@ export class GraphService {
   }
 
   getChildren(nodeUuid = ROOT_NODE_UUID, contextDomain = null, contextPath = null, namespace = "") {
+    const ns = this.#ns(namespace);
+    // Join through paths to filter edges within this namespace
     const rows = this.db.prepare(`
-      SELECT e.id AS edge_id, e.child_uuid, e.name, e.priority, e.disclosure,
+      SELECT DISTINCT e.id AS edge_id, e.child_uuid, e.name, e.priority, e.disclosure,
              m.content, m.id AS memory_id
       FROM edges e
+      JOIN paths p ON p.edge_id = e.id
       JOIN memories m ON m.node_uuid = e.child_uuid AND m.deprecated = 0
-      WHERE e.parent_uuid = ?
+      WHERE e.parent_uuid = ? AND p.namespace = ?
       ORDER BY e.priority ASC, e.name
-    `).all(nodeUuid);
+    `).all(nodeUuid, ns);
 
     const childUuids = [...new Set(rows.map(r => r.child_uuid))];
     const edgeIds = [...new Set(rows.map(r => r.edge_id))];
@@ -68,7 +79,7 @@ export class GraphService {
         JOIN paths p ON p.edge_id = e.id
         WHERE e.parent_uuid IN (${placeholders}) AND p.namespace = ?
         GROUP BY e.parent_uuid
-      `).all(...childUuids, namespace);
+      `).all(...childUuids, ns);
       for (const c of counts) {
         approxChildrenMap[c[0]] = c[1];
       }
@@ -320,8 +331,13 @@ export class GraphService {
     return row.cnt;
   }
 
-  #getNextChildNumber(parentUuid) {
-    const rows = this.db.prepare("SELECT name FROM edges WHERE parent_uuid = ?").all(parentUuid);
+  #getNextChildNumber(parentUuid, namespace) {
+    const ns = this.#ns(namespace);
+    const rows = this.db.prepare(`
+      SELECT e.name FROM edges e
+      JOIN paths p ON p.edge_id = e.id
+      WHERE e.parent_uuid = ? AND p.namespace = ?
+    `).all(parentUuid, ns);
     let maxNum = 0;
     for (const row of rows) {
       const num = parseInt(row.name, 10);
@@ -504,7 +520,7 @@ export class GraphService {
 
     const finalPath = title
       ? (parentPath ? `${parentPath}/${title}` : title)
-      : `${parentPath ? parentPath + "/" : ""}${this.#getNextChildNumber(parentUuid)}`;
+      : `${parentPath ? parentPath + "/" : ""}${this.#getNextChildNumber(parentUuid, namespace)}`;
 
     const existing = this.db.prepare(
       "SELECT 1 FROM paths WHERE namespace = ? AND domain = ? AND path = ?"

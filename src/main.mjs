@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -36,22 +37,25 @@ export async function run(argv) {
 
   // Load config (CLI args override config file values)
   const config = loadConfig(cwd);
+  const provider = args.provider ?? config.provider ?? "deepseek";
   const model = args.model ?? config.model ?? "deepseek-v4-pro";
   const skills = [...config.skills, ...args.skills];
   const pins = [...config.pins, ...args.pins];
 
-  // Memory system: project-bound SQLite database
+  // Memory system: global SQLite database at ~/.march/memory.db
+  // Project isolation via .march/project-id namespace
   const projectMarchDir = resolve(cwd, ".march");
   if (!existsSync(projectMarchDir)) mkdirSync(projectMarchDir, { recursive: true });
-  const memoryDb = openDatabase(resolve(projectMarchDir, "memory.db"));
+  const namespace = loadOrCreateProjectId(projectMarchDir);
+  const memoryDb = openDatabase(resolve(stateRoot, "memory.db"));
   const changesetStore = new ChangesetStore(memoryDb);
   const searchIndexer = new SearchIndexer(memoryDb);
-  const graph = new GraphService(memoryDb, { changesetStore, searchIndexer });
-  const glossary = new GlossaryService(memoryDb);
-  const systemViews = new SystemViews(memoryDb, graph, glossary);
-  const memoryTools = createMemoryTools(graph, glossary, searchIndexer, systemViews);
+  const graph = new GraphService(memoryDb, { changesetStore, searchIndexer, namespace });
+  const glossary = new GlossaryService(memoryDb, namespace);
+  const systemViews = new SystemViews(memoryDb, graph, glossary, namespace);
+  const memoryTools = createMemoryTools(graph, glossary, searchIndexer, systemViews, namespace);
 
-  // Skills system: scan .march/skills/ + --skill flags + config
+  // Skills system: discover pool, activate only via --skill flag or tool
   const skillPool = loadSkillPool(cwd);
   for (const skillPath of skills) {
     try {
@@ -70,38 +74,64 @@ export async function run(argv) {
 
   const ui = createUI({ json: args.json });
 
-  if (!process.env.DEEPSEEK_API_KEY) {
-    ui.writeln("Error: DEEPSEEK_API_KEY environment variable is not set.");
+  const apiKeyEnv = provider === "deepseek" ? "DEEPSEEK_API_KEY"
+    : provider === "openai" ? "OPENAI_API_KEY"
+    : provider === "anthropic" ? "ANTHROPIC_API_KEY"
+    : `${provider.toUpperCase()}_API_KEY`;
+  if (!process.env[apiKeyEnv]) {
+    ui.writeln(`Error: ${apiKeyEnv} environment variable is not set.`);
+    ui.close();
     return 1;
   }
 
   ui.status(`Starting March session ${sessionId} in ${cwd}`);
 
+  // Esc to abort current turn
+  let turnRunning = false;
+
   const runner = await createRunner({
     cwd,
     modelId: model,
+    provider,
     stateRoot,
     ui,
     skills: skills,
+    skillPool,
     pins: pins,
     graph,
     glossary,
     memoryTools,
     skillTools,
+    namespace,
+  });
+
+  ui.setEscapeHandler(() => {
+    if (turnRunning) {
+      runner.abort();
+      ui.writeln(`\x1b[33m● aborted\x1b[0m`);
+    }
+  });
+
+  ui.setShiftTabHandler(() => {
+    const level = runner.cycleThinkingLevel();
+    if (level) {
+      ui.writeln(`\x1b[90m● thinking: ${level}\x1b[0m`);
+    }
   });
 
   // Wire back-reference for skill tools → engine
   skillState.engine = runner.engine;
-  // Auto-activate skills from --skill CLI flags
+  // Activate skills requested via --skill flag (by name)
   if (args.skills.length > 0) {
-    for (const skill of skillPool) {
-      if (args.skills.includes(skill.path)) {
+    for (const name of args.skills) {
+      const skill = skillPool.find(s => s.name === name);
+      if (skill && !skillState.active.find(a => a.name === name)) {
         skillState.active.push(skill);
       }
     }
-    if (skillState.active.length > 0) {
-      runner.engine.setSkills([...skillState.active]);
-    }
+  }
+  if (skillState.active.length > 0) {
+    runner.engine.setSkills([...skillState.active]);
   }
 
   // Resume session
@@ -115,23 +145,14 @@ export async function run(argv) {
     }
   }
 
-  // --dump-context without prompt: dump boot context and exit (no API call)
-  if (args.dumpContext && !args.prompt) {
-    const context = runner.engine.buildContext("");
-    writeFileSync(resolve(projectMarchDir, "context-snapshot.txt"), context, "utf8");
-    const snapshotPath = resolve(projectMarchDir, "context-snapshot.txt");
-    console.log(context);
-    console.error(`\nWritten to: ${snapshotPath}`);
-    console.error(`Layers: ${context.split("\n\n").length}  Length: ${context.length} chars`);
-    runner.dispose();
-    return 0;
-  }
-
   // Single-shot mode
   if (args.prompt) {
     const context = runner.engine.buildContext(args.prompt);
     const fullPrompt = `${context}\n\n[user]\n${args.prompt}`;
+    ui.writeln(`\x1b[1m[user]\x1b[0m ${args.prompt}`);
+    turnRunning = true;
     await runner.runTurn(fullPrompt, args.prompt);
+    turnRunning = false;
     // Post-turn dump: context with this turn in recent_chat
     if (args.dumpContext) {
       const postCtx = runner.engine.buildContext("");
@@ -140,11 +161,19 @@ export async function run(argv) {
     saveSession(sessionDir, runner.engine);
     runner.dispose();
     ui.writeln("");
+    ui.close();
     return 0;
   }
 
   // REPL mode
-  ui.writeln("March REPL. Type /help for commands, /exit to quit.");
+  if (args.dumpContext) {
+    const bootCtx = runner.engine.buildContext("");
+    writeFileSync(resolve(projectMarchDir, "context-snapshot.txt"), bootCtx, "utf8");
+    const snapshotPath = resolve(projectMarchDir, "context-snapshot.txt");
+    ui.writeln(`Context snapshot: ${snapshotPath} (${bootCtx.split("\n\n").length} layers, ${bootCtx.length} chars)`);
+  }
+
+  ui.writeln("March REPL. Type /help for commands, Esc to abort, /exit to quit.");
   ui.writeln("");
 
   for (;;) {
@@ -162,7 +191,17 @@ export async function run(argv) {
       break;
     }
     if (trimmed === "/help") {
-      ui.writeln("Commands: /exit, /help, /sessions, /status, /save, /pin <path>, /unpin <path>, /pins");
+      ui.writeln("Commands: /exit, /help, /model, /models, /compact, /session, /sessions, /status, /save, /mouse, /pin <path>, /unpin <path>, /pins");
+      ui.writeln("Shortcuts: Esc = abort turn, Ctrl+O = toggle tool output");
+      continue;
+    }
+    if (trimmed === "/thinking") {
+      ui.writeln("Thinking blocks are always expanded (italic).");
+      continue;
+    }
+    if (trimmed === "/mouse") {
+      const on = ui.toggleMouse();
+      ui.writeln(on ? "Mouse tracking: ON (click-to-expand enabled, text selection disabled)" : "Mouse tracking: OFF (text selection enabled)");
       continue;
     }
     if (trimmed === "/status") {
@@ -215,10 +254,69 @@ export async function run(argv) {
       continue;
     }
 
+    if (trimmed === "/model") {
+      try {
+        const result = await runner.session.cycleModel();
+        if (result) {
+          const name = result.model.name || result.model.id;
+          ui.writeln(`Model: ${name} (${result.model.provider})  thinking: ${result.thinkingLevel}`);
+        } else {
+          ui.writeln("(only one model available)");
+        }
+      } catch (err) {
+        ui.writeln(`Error: ${err.message}`);
+      }
+      continue;
+    }
+
+    if (trimmed === "/models") {
+      const current = runner.session.model;
+      if (current) {
+        ui.writeln(`Current: ${current.name || current.id} (${current.provider})`);
+      }
+      const scoped = runner.session.scopedModels;
+      if (scoped.length > 0) {
+        for (const s of scoped) {
+          const name = s.model.name || s.model.id;
+          const mark = (current && s.model.id === current.id && s.model.provider === current.provider) ? " *" : "  ";
+          ui.writeln(`${mark} ${name} (${s.model.provider})`);
+        }
+      } else {
+        ui.writeln("(no scoped models — use --model flag or /model to cycle)");
+      }
+      continue;
+    }
+
+    if (trimmed === "/compact") {
+      try {
+        const result = await runner.session.compact();
+        if (result) {
+          ui.writeln(`Compacted: ${result.summary?.length ?? 0} char summary`);
+        } else {
+          ui.writeln("Compaction complete (nothing to compact)");
+        }
+      } catch (err) {
+        ui.writeln(`Error: ${err.message}`);
+      }
+      continue;
+    }
+
+    if (trimmed === "/session") {
+      const stats = runner.session.getSessionStats();
+      ui.writeln(`session: ${stats.sessionId}`);
+      ui.writeln(`messages: ${stats.userMessages}u + ${stats.assistantMessages}a + ${stats.toolCalls}t = ${stats.totalMessages} total`);
+      ui.writeln(`tokens: ${stats.tokens.input} in / ${stats.tokens.output} out (${stats.tokens.cacheRead} cache read, ${stats.tokens.cacheWrite} cache write)`);
+      ui.writeln(`cost: $${stats.cost.toFixed(4)}`);
+      continue;
+    }
+
     const context = runner.engine.buildContext(args.prompt || trimmed);
     const fullPrompt = `${context}\n\n[user]\n${trimmed}`;
     try {
+      ui.writeln(`\x1b[1m[user]\x1b[0m ${trimmed}`);
+      turnRunning = true;
       await runner.runTurn(fullPrompt, trimmed);
+      turnRunning = false;
       // Post-turn dump: includes this turn in recent_chat
       if (args.dumpContext) {
         const postCtx = runner.engine.buildContext("");
@@ -226,6 +324,7 @@ export async function run(argv) {
       }
       ui.writeln("");
     } catch (err) {
+      turnRunning = false;
       ui.writeln(`Error: ${err.message}`);
     }
   }
@@ -238,6 +337,16 @@ export async function run(argv) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const code = await run(process.argv.slice(2));
   process.exit(code);
+}
+
+function loadOrCreateProjectId(projectMarchDir) {
+  const idFile = resolve(projectMarchDir, "project-id");
+  if (existsSync(idFile)) {
+    return readFileSync(idFile, "utf8").trim();
+  }
+  const id = randomUUID();
+  writeFileSync(idFile, id, "utf8");
+  return id;
 }
 
 function loadDotEnv(filePath) {

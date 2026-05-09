@@ -4,17 +4,20 @@ import { readdirSync, readFileSync } from "node:fs";
 import { ROOT_NODE_UUID } from "../memory/database.mjs";
 
 export class ContextEngine {
-  constructor({ cwd, modelId, provider = "deepseek", skills = [], pins = [], graph = null, glossary = null }) {
+  constructor({ cwd, modelId, provider = "deepseek", skills = [], skillPool = [], pins = [], graph = null, glossary = null, namespace = "" }) {
     this.cwd = cwd;
     this.modelId = modelId;
     this.provider = provider;
     this.skills = [...skills];
+    this.skillPool = skillPool;
     this.pins = new Set(pins);
     this.turns = [];
     this.openFiles = new Map();
     this.toolDefs = [];
     this.graph = graph;
     this.glossary = glossary;
+    this.namespace = namespace;
+    this._compactionSummary = null;
   }
 
   // ── Public API ──────────────────────────────────────────────────────
@@ -29,6 +32,10 @@ export class ContextEngine {
 
     if (this.graph) {
       layers.push(this.#buildMemory(userMessage));
+    }
+
+    if (this.skillPool.length > 0) {
+      layers.push(this.#buildSkillCatalog());
     }
 
     if (this.skills.length > 0) {
@@ -49,6 +56,10 @@ export class ContextEngine {
     );
 
     return layers.join("\n\n");
+  }
+
+  recordCompaction(summary) {
+    this._compactionSummary = summary;
   }
 
   recordTurn({ userMessage, summary, assistantMessage }) {
@@ -111,6 +122,7 @@ export class ContextEngine {
 
   restoreSession(data, pool) {
     if (data.turns) this.turns = data.turns;
+    if (data._compactionSummary) this._compactionSummary = data._compactionSummary;
     if (data.pins) {
       for (const p of data.pins) {
         this.pins.add(p);
@@ -150,7 +162,7 @@ You are March, a terminal-native coding agent. You operate in the user's project
 - edit_file only works on files in [open_files]. Use write_file for new files or full overwrites.
 
 ## Turn discipline
-At the END of every turn, you MUST call send_turn_summary with a concise summary of what you accomplished. This is mandatory — your turn is not complete without it.`;
+After each turn, March automatically summarizes your work for context continuity. Focus on the task — March handles the bookkeeping.`;
   }
 
   // ── Layer 2: injections ────────────────────────────────────────────
@@ -168,11 +180,14 @@ thinking: off`;
       ? `~${this.cwd.slice(home.length)}`
       : this.cwd;
     const tree = this.#buildDirTree(3);
+    const shellInfo = process.platform === "win32"
+      ? "shells: powershell (recommended), bash (Git Bash)"
+      : "shell: bash";
 
     return `[session_status]
 cwd: ${this.cwd}
 platform: ${process.platform}
-shell: ${process.env.SHELL ?? process.env.ComSpec ?? "unknown"}
+${shellInfo}
 project: ${displayPath}
 
 Directory tree (top 3 levels):
@@ -218,13 +233,13 @@ ${tree}`;
     const entries = [];
     const seen = new Set();
 
-    // Boot: load project://boot children on first turn
+    // Boot: load project://boot children on first turn (project namespace)
     if (this.turns.length === 0) {
       try {
-        const bootKids = this.graph.getChildren(ROOT_NODE_UUID);
+        const bootKids = this.graph.getChildren(ROOT_NODE_UUID, null, null, this.namespace);
         for (const kid of bootKids) {
           if (seen.has(kid.child_uuid)) continue;
-          const mem = this.graph.getMemoryByPath(kid.path, kid.domain);
+          const mem = this.graph.getMemoryByPath(kid.path, kid.domain, this.namespace);
           if (!mem?.content) continue;
           seen.add(kid.child_uuid);
           entries.push(`--- project://boot/${kid.name} (boot) ---\n${mem.content}`);
@@ -239,7 +254,12 @@ ${tree}`;
         for (const m of matches) {
           if (seen.has(m.node_uuid)) continue;
           seen.add(m.node_uuid);
-          const pathRows = this.graph.getPathsForNode(m.node_uuid);
+          const pathRows = this.graph.getPathsForNode(m.node_uuid, this.namespace);
+          if (pathRows.length === 0) {
+            // Try global namespace for keyword-triggered global memories
+            const globalRows = this.graph.getPathsForNode(m.node_uuid, "global");
+            pathRows.push(...globalRows);
+          }
           const uri = pathRows.length > 0
             ? `${pathRows[0].domain}://${pathRows[0].path}`
             : `node:${m.node_uuid}`;
@@ -252,12 +272,12 @@ ${tree}`;
       } catch {}
     }
 
-    // session://current/* — all children of session root
+    // session://current/* — all children of session root (project namespace)
     try {
-      const sessionKids = this.graph.getChildren(ROOT_NODE_UUID, "current", null, "session");
+      const sessionKids = this.graph.getChildren(ROOT_NODE_UUID, "current", null, this.namespace);
       for (const kid of sessionKids) {
         if (seen.has(kid.child_uuid)) continue;
-        const mem = this.graph.getMemoryByPath(kid.path, kid.domain);
+        const mem = this.graph.getMemoryByPath(kid.path, kid.domain, this.namespace);
         if (!mem?.content) continue;
         seen.add(kid.child_uuid);
         entries.push(`--- session://current/${kid.name} ---\n${mem.content}`);
@@ -273,13 +293,36 @@ ${tree}`;
     return `[memory]\n${entries.join("\n\n")}`;
   }
 
-  // ── Layer 5: active_skills ─────────────────────────────────────────
+  // ── Layer 5: skills catalog (Tier 1: always in context) ────────────
+  #buildSkillCatalog() {
+    const lines = [
+      "The following skills provide specialized instructions for specific tasks.",
+      "When a task matches a skill's description, use activate_skill to load its full instructions.",
+      "",
+      "<available_skills>",
+    ];
+    for (const skill of this.skillPool) {
+      lines.push("  <skill>");
+      lines.push(`    <name>${skill.name}</name>`);
+      lines.push(`    <description>${skill.description || "(no description)"}</description>`);
+      lines.push("  </skill>");
+    }
+    lines.push("</available_skills>");
+    return `[available_skills]\n${lines.join("\n")}`;
+  }
+
+  // ── Layer 5: active_skills (Tier 2: full bodies when activated) ─────
   #buildActiveSkills() {
     const blocks = this.skills.map((s) => {
       const name = typeof s === "string" ? s : s.name;
-      const body = typeof s === "string" ? null : s.raw;
+      const body = typeof s === "string" ? null : (s.body || s.raw);
+      const baseDir = typeof s === "string" ? null : s.baseDir;
       if (body) {
-        return `--- skill: ${name} ---\n${body}`;
+        let header = `<skill_content name="${name}">\n`;
+        if (baseDir) {
+          header += `Skill directory: ${baseDir}\nRelative paths in this skill are relative to the skill directory.\n`;
+        }
+        return header + `\n${body}\n</skill_content>`;
       }
       return `- ${name}`;
     });
@@ -331,11 +374,16 @@ ${tree}`;
 
   // ── Layer 7: recent_chat ───────────────────────────────────────────
   #buildRecentChat() {
-    if (this.turns.length === 0) {
-      return `[recent_chat]
-(no prior turns)`;
-    }
     const entries = [];
+    if (this._compactionSummary) {
+      entries.push(`<CompactedHistory>\n${this._compactionSummary}\n</CompactedHistory>`);
+    }
+    if (this.turns.length === 0) {
+      if (entries.length === 0) {
+        return `[recent_chat]\n(no prior turns)`;
+      }
+      return `[recent_chat]\n${entries.join("\n\n")}`;
+    }
     for (const turn of this.turns) {
       let block = `## Turn ${turn.index}\n` +
         `[user]\n${this.#truncate(turn.userMessage, 2000)}\n\n` +

@@ -1,9 +1,11 @@
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname } from "node:path";
+import { spawnSync } from "child_process";
 import { getModel } from "@mariozechner/pi-ai";
 import {
   AuthStorage,
   createAgentSession,
+  createBashToolDefinition,
   defineTool,
   ModelRegistry,
   SessionManager,
@@ -14,43 +16,34 @@ import { ContextEngine } from "../context/engine.mjs";
 
 const LINE_RANGE_RE = /^(\d+)(?:\s*-\s*(\d+))?$/;
 
-export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins, graph = null, glossary = null, memoryTools = [], skillTools = [] }) {
-  const provider = "deepseek";
+function resolveApiKey(provider) {
+  const envMap = {
+    deepseek: "DEEPSEEK_API_KEY",
+    openai: "OPENAI_API_KEY",
+    anthropic: "ANTHROPIC_API_KEY",
+  };
+  const envVar = envMap[provider] ?? `${provider.toUpperCase()}_API_KEY`;
+  const key = process.env[envVar];
+  if (!key) throw new Error(`${envVar} environment variable is not set.`);
+  return key;
+}
+
+export async function createRunner({ cwd, modelId, provider = "deepseek", stateRoot, ui, skills, skillPool = [], pins, graph = null, glossary = null, memoryTools = [], skillTools = [], namespace = "" }) {
   const authStorage = AuthStorage.create();
-  authStorage.setRuntimeApiKey(provider, process.env.DEEPSEEK_API_KEY);
+  authStorage.setRuntimeApiKey(provider, resolveApiKey(provider));
 
   const modelRegistry = ModelRegistry.create(authStorage);
   const model = modelRegistry.find(provider, modelId) ?? getModel(provider, modelId);
   if (!model) throw new Error(`Model not found: ${provider}/${modelId}`);
 
   const settingsManager = SettingsManager.inMemory({
-    compaction: { enabled: false },
+    compaction: { enabled: true, reserveTokens: 262144, keepRecentTokens: 32768 },
     retry: { enabled: true, maxRetries: 1 },
   });
 
-  const engine = new ContextEngine({ cwd, modelId, provider, skills, pins, graph, glossary });
-  const turnState = { summary: null, summaryCalled: false };
+  const engine = new ContextEngine({ cwd, modelId, provider, skills, skillPool, pins, graph, glossary, namespace });
 
   // ── Custom tools ───────────────────────────────────────────────────
-
-  const summaryTool = defineTool({
-    name: "send_turn_summary",
-    label: "Send Turn Summary",
-    description:
-      "MANDATORY at the end of every turn. Record a concise summary of what you accomplished. Your turn is not complete until you call this.",
-    parameters: Type.Object({
-      summary: Type.String({ description: "Concise summary (1-5 sentences)" }),
-    }),
-    execute: async (_toolCallId, params) => {
-      if (turnState.summaryCalled) {
-        turnState.summary = params.summary;
-        return toolText("Summary updated. Turn is complete — do not call this tool again.", { summary: params.summary });
-      }
-      turnState.summary = params.summary;
-      turnState.summaryCalled = true;
-      return toolText("Turn summary recorded. Turn is complete.", { summary: params.summary });
-    },
-  });
 
   const openFileTool = defineTool({
     name: "open_file",
@@ -163,7 +156,30 @@ export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins, 
     },
   });
 
-  const customTools = [summaryTool, openFileTool, closeFileTool, editFileTool, ...memoryTools, ...skillTools];
+  // On Windows, create a PowerShell tool reusing Pi's bash infrastructure
+  const platformTools = [];
+  if (process.platform === "win32") {
+    const psPath = findPowerShell();
+    if (psPath) {
+      const psDef = createBashToolDefinition(cwd, { shellPath: psPath });
+      platformTools.push({
+        ...psDef,
+        name: "powershell",
+        label: "PowerShell",
+        description:
+          "Execute a PowerShell command in the current working directory. This is the recommended shell on Windows. " +
+          "Returns stdout and stderr. Output is truncated to last 200 lines or 64KB. " +
+          "Optionally provide a timeout in seconds.",
+        parameters: Type.Object({
+          command: Type.String({ description: "PowerShell command to execute" }),
+          timeout: Type.Optional(Type.Number({ description: "Timeout in seconds (optional, no default timeout)" })),
+        }),
+        promptSnippet: "Execute PowerShell commands (Get-ChildItem, Select-String, Get-Content, etc.)",
+      });
+    }
+  }
+
+  const customTools = [openFileTool, closeFileTool, editFileTool, ...platformTools, ...memoryTools, ...skillTools];
 
   engine.setToolDefs(customTools.map((t) => ({
     name: t.name,
@@ -175,7 +191,7 @@ export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins, 
     cwd,
     agentDir: stateRoot,
     model,
-    thinkingLevel: "off",
+    thinkingLevel: "medium",
     authStorage,
     modelRegistry,
     customTools,
@@ -188,60 +204,121 @@ export async function createRunner({ cwd, modelId, stateRoot, ui, skills, pins, 
     session,
 
     async runTurn(prompt, userMessage) {
-      turnState.summary = null;
-      turnState.summaryCalled = false;
       let draft = "";
-      let enforcing = false;
+      let summaryDraft = "";
+      let thinkingText = "";
+      let summarizing = false;
       ui.turnStart();
 
       const unsubscribe = session.subscribe((event) => {
-        if (event.type === "message_update" && event.assistantMessageEvent?.type === "text_delta") {
-          draft += event.assistantMessageEvent.delta;
-          if (!enforcing) ui.textDelta(event.assistantMessageEvent.delta);
+        if (event.type === "message_update" && event.assistantMessageEvent) {
+          const ae = event.assistantMessageEvent;
+          if (ae.type === "text_delta") {
+            if (summarizing) {
+              summaryDraft += ae.delta;
+            } else {
+              draft += ae.delta;
+              ui.textDelta(ae.delta);
+            }
+          }
+          if (ae.type === "thinking_start" && !summarizing) {
+            thinkingText = "";
+            ui.thinkingStart();
+          }
+          if (ae.type === "thinking_delta" && !summarizing) {
+            thinkingText += ae.delta;
+            ui.thinkingDelta(ae.delta);
+          }
+          if (ae.type === "thinking_end" && !summarizing && thinkingText) {
+            const tokens = Math.round(thinkingText.length / 4);
+            ui.thinkingEnd(tokens);
+            thinkingText = "";
+          }
         }
         if (event.type === "tool_execution_start") {
-          if (event.toolName === "send_turn_summary") return;
-          ui.toolStart(event.toolName, event.args);
+          if (!summarizing) ui.toolStart(event.toolName, event.args);
         }
         if (event.type === "tool_execution_end") {
-          if (event.toolName === "send_turn_summary") return;
-          ui.toolEnd(event.toolName, event.isError);
+          if (!summarizing) ui.toolEnd(event.toolName, event.isError, event.result);
+        }
+        if (event.type === "compaction_end" && !event.aborted && event.result?.summary) {
+          engine.recordCompaction(event.result.summary);
         }
       });
 
       try {
         await session.prompt(prompt);
 
-        if (!turnState.summaryCalled) {
-          enforcing = true;
-          try {
-            await session.prompt(
-              "[system]\nYou forgot to call send_turn_summary. Call it ONCE with a summary, then stop — the turn ends after the tool result.",
-            );
-          } catch {
-            if (!turnState.summary) {
-              turnState.summary = draft.slice(0, 300) || "(no output)";
-            }
+        // Post-turn: inject summary prompt with tools + thinking stripped
+        summarizing = true;
+        ui.summaryStart();
+
+        const originalTools = session.getActiveToolNames();
+        const originalThinking = session.thinkingLevel;
+        session.setActiveToolsByName([]);
+        session.setThinkingLevel("off");
+
+        try {
+          await session.prompt(
+            "[system]\nSummarize the work you just completed in 1-2 paragraphs for the next turn's context. " +
+            "Focus on: what was accomplished, what decisions were made, and what's left to do. " +
+            "Output ONLY the summary — no tools, no code, just the summary text.\n\n" +
+            "Keep it under 1k tokens.",
+          );
+        } catch {
+          if (!summaryDraft) {
+            summaryDraft = draft.slice(0, 300) || "(no output)";
           }
         }
 
+        session.setActiveToolsByName(originalTools);
+        session.setThinkingLevel(originalThinking);
+        ui.summaryDone();
+
+        const summary = (summaryDraft || "(no summary)").slice(0, 4000);
+
         engine.recordTurn({
           userMessage: userMessage ?? prompt.slice(0, 300),
-          summary: turnState.summary ?? "(no summary)",
+          summary,
           assistantMessage: draft,
         });
 
-        return { draft, summary: turnState.summary };
+        return { draft, summary };
       } finally {
         ui.turnEnd();
         unsubscribe();
       }
     },
 
+    abort() {
+      return session.abort();
+    },
+
+    cycleThinkingLevel() {
+      return session.cycleThinkingLevel();
+    },
+
+    getThinkingLevel() {
+      return session.thinkingLevel;
+    },
+
     dispose() {
       session.dispose();
     },
   };
+}
+
+function findPowerShell() {
+  for (const name of ["pwsh.exe", "powershell.exe"]) {
+    try {
+      const result = spawnSync("where", [name], { encoding: "utf-8", timeout: 5000 });
+      if (result.status === 0 && result.stdout) {
+        const first = result.stdout.trim().split(/\r?\n/)[0];
+        if (first && existsSync(first)) return first;
+      }
+    } catch {}
+  }
+  return null;
 }
 
 function toolText(text, details = {}) {

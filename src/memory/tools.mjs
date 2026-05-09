@@ -2,7 +2,8 @@ import { defineTool } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
 import { SystemViews } from "./system-views.mjs";
 
-export function createMemoryTools(graph, glossary, searchIndexer = null, systemViews = null) {
+export function createMemoryTools(graph, glossary, searchIndexer = null, systemViews = null, namespace = "") {
+  const ns = namespace;
   return [
     defineTool({
       name: "read_memory",
@@ -27,7 +28,11 @@ export function createMemoryTools(graph, glossary, searchIndexer = null, systemV
           return handleSystemView(path, systemViews);
         }
 
-        const memory = graph.getMemoryByPath(path, domain);
+        // Try project namespace first, then global
+        let memory = graph.getMemoryByPath(path, domain, ns);
+        if (!memory) {
+          memory = graph.getMemoryByPath(path, domain, "global");
+        }
         if (!memory) {
           return toolText(`No memory found at ${domain}://${path}`);
         }
@@ -48,13 +53,15 @@ export function createMemoryTools(graph, glossary, searchIndexer = null, systemV
         title: Type.Optional(Type.String({ description: "Path title. Auto-numbered if omitted." })),
         priority: Type.Optional(Type.Number({ description: "Priority (lower = more important). Default: 0" })),
         domain: Type.Optional(Type.String({ description: "Domain. Default: 'core'" })),
+        scope: Type.Optional(Type.String({ description: "'project' (default) or 'global'" })),
       }),
       execute: async (_toolCallId, params) => {
+        const scope = params.scope === "global" ? "global" : ns;
         const result = graph.createMemory(
           params.parent_path ?? "",
           params.content,
           params.priority ?? 0,
-          { title: params.title ?? null, domain: params.domain ?? "core" },
+          { title: params.title ?? null, domain: params.domain ?? "core", namespace: scope },
         );
         return toolText(
           `Created ${result.uri}\nnode: ${result.node_uuid}\npriority: ${result.priority}`,
@@ -73,13 +80,19 @@ export function createMemoryTools(graph, glossary, searchIndexer = null, systemV
         priority: Type.Optional(Type.Number({ description: "New priority" })),
         disclosure: Type.Optional(Type.String({ description: "Disclosure hint for context injection" })),
         domain: Type.Optional(Type.String({ description: "Domain. Default: 'core'" })),
+        scope: Type.Optional(Type.String({ description: "'project' (default) or 'global'" })),
       }),
       execute: async (_toolCallId, params) => {
+        if (params.scope && params.scope !== "project" && params.scope !== "global") {
+          return toolText("Error: scope must be 'project' or 'global'.", { error: true });
+        }
+        const scope = params.scope === "global" ? "global" : ns;
         const result = graph.updateMemory(params.path, {
           content: params.content ?? null,
           priority: params.priority ?? null,
           disclosure: params.disclosure ?? null,
           domain: params.domain ?? "core",
+          namespace: scope,
         });
         return toolText(
           `Updated ${result.uri}\nold_memory: ${result.old_memory_id} → new_memory: ${result.new_memory_id}`,
@@ -98,7 +111,7 @@ export function createMemoryTools(graph, glossary, searchIndexer = null, systemV
       }),
       execute: async (_toolCallId, params) => {
         try {
-          const result = graph.removePath(params.path, params.domain ?? "core");
+          const result = graph.removePath(params.path, params.domain ?? "core", ns);
           return toolText(`Deleted: ${result.deleted}`, { result });
         } catch (err) {
           return toolText(`Error: ${err.message}`, { error: true });
@@ -118,7 +131,7 @@ export function createMemoryTools(graph, glossary, searchIndexer = null, systemV
       execute: async (_toolCallId, params) => {
         try {
           const domain = params.domain ?? "core";
-          const result = graph.addPath(params.new_path, params.target_path, { newDomain: domain, targetDomain: domain });
+          const result = graph.addPath(params.new_path, params.target_path, { newDomain: domain, targetDomain: domain, namespace: ns });
           return toolText(`Alias created: ${result.new_uri} → ${result.target_uri}`, { result });
         } catch (err) {
           return toolText(`Error: ${err.message}`, { error: true });
@@ -147,7 +160,7 @@ export function createMemoryTools(graph, glossary, searchIndexer = null, systemV
           if (!memory) {
             return toolText(`Error: path not found: ${domain}://${params.path}`, { error: true });
           }
-          glossary.addKeyword(params.keyword, memory.node_uuid);
+          glossary.addKeyword(params.keyword, memory.node_uuid, ns);
           return toolText(`Keyword '${params.keyword}' bound to ${domain}://${params.path}`);
         }
 
@@ -175,12 +188,13 @@ export function createMemoryTools(graph, glossary, searchIndexer = null, systemV
         const limit = params.limit ?? 10;
 
         if (searchIndexer) {
+          // Search in project namespace; FTS5 supports OR across namespaces
           const results = searchIndexer.search(params.query, { limit });
           if (results.length === 0) {
             return toolText(`No memories matching "${params.query}".`);
           }
           const lines = results.map((r) => {
-            const paths = graph.getPathsForNode(r.node_uuid);
+            const paths = graph.getPathsForNode(r.node_uuid, r.namespace);
             const uri = paths.length > 0
               ? `${paths[0].domain}://${paths[0].path}`
               : `node:${r.node_uuid}`;
@@ -189,13 +203,15 @@ export function createMemoryTools(graph, glossary, searchIndexer = null, systemV
           return toolText(`${results.length} results for "${params.query}":\n\n${lines.join("\n\n")}`, { results });
         }
 
-        // Fallback: return recent memories
-        const recent = graph.getRecentMemories(limit);
-        if (recent.length === 0) {
+        // Fallback: return recent memories from both namespaces
+        const recent = graph.getRecentMemories(limit, ns);
+        const globalRecent = graph.getRecentMemories(Math.max(0, limit - recent.length), "global");
+        const all = [...recent, ...globalRecent].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? "")).slice(0, limit);
+        if (all.length === 0) {
           return toolText("No memories found. The memory graph is empty.");
         }
-        const lines = recent.map((m) => `${m.uri} | priority: ${m.priority} | ${m.created_at}`);
-        return toolText(`${recent.length} recent memories:\n\n${lines.join("\n")}`, { memories: recent });
+        const lines = all.map((m) => `${m.uri} | priority: ${m.priority} | ${m.created_at}`);
+        return toolText(`${all.length} recent memories:\n\n${lines.join("\n")}`, { memories: all });
       },
     }),
   ];

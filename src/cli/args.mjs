@@ -5,6 +5,7 @@ export function parseCliArgs(argv) {
     args: argv,
     options: {
       model: { type: "string", short: "m" },
+      provider: { type: "string" },
       resume: { type: "string" },
       json: { type: "boolean" },
       pin: { type: "string", multiple: true },
@@ -17,6 +18,7 @@ export function parseCliArgs(argv) {
 
   return {
     model: values.model ?? "deepseek-v4-pro",
+    provider: values.provider,
     resume: values.resume,
     json: values.json ?? false,
     pins: values.pin ?? [],
@@ -35,12 +37,13 @@ Usage:
   march [options]            (starts REPL)
 
 Options:
-  -m, --model <id>   Model ID (default: deepseek-v4-pro)
-  --resume <id>      Resume a previous session
-  --json             JSON output mode (no TUI)
-  --dump-context     Write context snapshot to .march/context-snapshot.txt before each turn
-  --pin <path>       Pin a file in context (repeatable)
-  --skill <name>     Activate a skill (repeatable)
-  -h, --help         Show this help
+  -m, --model <id>     Model ID (default: deepseek-v4-pro)
+  --provider <name>    AI provider: deepseek, openai, anthropic (default: deepseek)
+  --resume <id>        Resume a previous session
+  --json               JSON output mode (no TUI)
+  --dump-context       Write context snapshot to .march/context-snapshot.txt each turn
+  --pin <path>         Pin a file in context (repeatable)
+  --skill <name>       Activate a skill (repeatable)
+  -h, --help           Show this help
 `);
 }

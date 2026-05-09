@@ -10,6 +10,7 @@ export function saveSession(sessionDir, engine) {
     modelId: engine.modelId,
     provider: engine.provider,
     turns: engine.turns,
+    _compactionSummary: engine._compactionSummary,
     pins: [...engine.pins],
     skills: engine.skills.map(s => typeof s === "string" ? s : s.name),
     openFiles: [...engine.openFiles.keys()],
