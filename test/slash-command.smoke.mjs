@@ -79,6 +79,12 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   const status = await handleSlashCommand("/status", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(status.handled, true);
   assert.ok(output.join("\n").includes("session: s1"));
+  const help = await handleSlashCommand("/help", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
+  assert.equal(help.handled, true);
+  assert.ok(output.join("\n").includes("/sessions and /resume <id> use default pi JSONL sessions"));
+  assert.ok(output.join("\n").includes("/sessions pi and /resume-pi <id> are explicit pi aliases"));
+  assert.ok(output.join("\n").includes("legacy .march/sessions use /sessions legacy"));
+  assert.ok(output.join("\n").includes("/fork-pi lists entry candidates and requires --reset-context"));
   const thinking = await handleSlashCommand("/thinking list", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(thinking.handled, true);
   assert.ok(output.join("\n").includes("* 3. high"));
