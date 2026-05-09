@@ -475,6 +475,23 @@ await runSessionSwitchCommandSmoke({ setupTmp, cleanup });
   console.log("  PASS");
 }
 
+// ── 4a. pi SessionManager factory ──────────────────────────────────
+
+{
+  console.log("--- smoke: pi SessionManager factory ---");
+  const { createPiSessionManager, getPiSessionDir } = await import("../src/session/pi-manager.mjs");
+  const dir = setupTmp();
+  const projectMarchDir = join(dir, ".march");
+  const manager = createPiSessionManager({ cwd: dir, projectMarchDir });
+  assert.equal(getPiSessionDir(projectMarchDir), join(projectMarchDir, "pi-sessions"));
+  assert.equal(manager.getCwd(), dir);
+  assert.equal(manager.getSessionDir(), join(projectMarchDir, "pi-sessions"));
+  assert.equal(manager.isPersisted(), true);
+  assert.ok(manager.getSessionFile().endsWith(".jsonl"));
+  cleanup(dir);
+  console.log("  PASS");
+}
+
 // ── 4b. Session tree formatting ─────────────────────────────────────
 
 {
