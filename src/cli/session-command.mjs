@@ -9,12 +9,18 @@ export async function compactSession({ runner }) {
 }
 
 export function formatSessionStats(stats) {
-  return [
+  const lines = [
     `session: ${stats.sessionId}`,
     `messages: ${stats.userMessages}u + ${stats.assistantMessages}a + ${stats.toolCalls}t = ${stats.totalMessages} total`,
     `tokens: ${stats.tokens.input} in / ${stats.tokens.output} out (${stats.tokens.cacheRead} cache read, ${stats.tokens.cacheWrite} cache write)`,
     `cost: $${stats.cost.toFixed(4)}`,
   ];
+  if (typeof stats.persisted === "boolean") {
+    const mode = stats.persisted ? "pi-jsonl" : "in-memory";
+    const suffix = stats.sessionFile ? ` (${stats.sessionFile})` : "";
+    lines.splice(1, 0, `persistence: ${mode}${suffix}`);
+  }
+  return lines;
 }
 
 export function listSessionStats({ runner }) {

@@ -205,7 +205,13 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
     },
 
     getSessionStats() {
-      return session.getSessionStats();
+      const stats = session.getSessionStats();
+      const manager = session.sessionManager;
+      return {
+        ...stats,
+        persisted: manager?.isPersisted?.() ?? Boolean(session.sessionFile),
+        sessionFile: manager?.getSessionFile?.() ?? session.sessionFile,
+      };
     },
 
     cycleThinkingLevel() {
