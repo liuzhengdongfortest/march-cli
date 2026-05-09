@@ -30,6 +30,7 @@ export async function runSessionPersistenceSmoke({ setupTmp, cleanup }) {
   assert.equal(loaded.turns.length, 2);
   assert.equal(loaded.pins[0], "/fake/path.txt");
   assert.equal(loaded.modelId, "test");
+  assert.equal(loaded.thinkingLevel, "medium");
 
   const engine2 = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: [], pins: [] });
   engine2.restoreSession(loaded);
@@ -114,6 +115,7 @@ export async function runPiSessionSidecarSmoke({ setupTmp, cleanup }) {
     cwd: dir,
     modelId: "model",
     provider: "deepseek",
+    thinkingLevel: "high",
     skills: ["review"],
     pins: ["/pinned.txt"],
     namespace: "project-ns",
@@ -129,6 +131,7 @@ export async function runPiSessionSidecarSmoke({ setupTmp, cleanup }) {
   assert.ok(saved.path.endsWith(join("pi-sidecars", "2026-05-10T00-00-00-000Z_test.json")));
   assert.equal(saved.state.sessionId, "pi1");
   assert.equal(saved.state.namespace, "project-ns");
+  assert.equal(saved.state.thinkingLevel, "high");
   assert.deepEqual(saved.state.pins, ["/pinned.txt"]);
   assert.deepEqual(saved.state.skills, ["review"]);
 
@@ -157,6 +160,7 @@ export async function runPiSessionSidecarSyncSmoke({ setupTmp, cleanup }) {
     cwd: dir,
     modelId: "model",
     provider: "deepseek",
+    thinkingLevel: "high",
     skills: ["review"],
     pins: ["/pinned.txt"],
     namespace: "project-ns",
@@ -191,6 +195,7 @@ export async function runPiSessionSidecarSyncSmoke({ setupTmp, cleanup }) {
   const loaded = loadPiSessionSidecar({ projectMarchDir, sessionRef: "2026-05-10T00-00-00-000Z_test.jsonl" });
   assert.equal(loaded.state.sessionId, "pi1");
   assert.equal(loaded.state.runtimeHost, true);
+  assert.equal(loaded.state.thinkingLevel, "high");
   assert.equal(loaded.state.turns[0].summary, "summary");
 
   cleanup(dir);

@@ -4,10 +4,11 @@ import { readdirSync, readFileSync } from "node:fs";
 import { buildMemoryLayer } from "./memory-layer.mjs";
 
 export class ContextEngine {
-  constructor({ cwd, modelId, provider = "deepseek", skills = [], skillPool = [], pins = [], graph = null, glossary = null, namespace = "" }) {
+  constructor({ cwd, modelId, provider = "deepseek", thinkingLevel = "medium", skills = [], skillPool = [], pins = [], graph = null, glossary = null, namespace = "" }) {
     this.cwd = cwd;
     this.modelId = modelId;
     this.provider = provider;
+    this.thinkingLevel = thinkingLevel;
     this.skills = [...skills];
     this.skillPool = skillPool;
     this.pins = new Set(pins);
@@ -125,6 +126,11 @@ export class ContextEngine {
 
   setSkills(skills) { this.skills = skills; }
   setToolDefs(defs) { this.toolDefs = defs; }
+  setRuntimeState({ modelId, provider, thinkingLevel } = {}) {
+    if (modelId) this.modelId = modelId;
+    if (provider) this.provider = provider;
+    if (thinkingLevel) this.thinkingLevel = thinkingLevel;
+  }
 
   restoreSession(data, pool, { replace = false } = {}) {
     if (replace) {
@@ -136,6 +142,7 @@ export class ContextEngine {
     }
     if (data.turns) this.turns = data.turns;
     if (data._compactionSummary) this._compactionSummary = data._compactionSummary;
+    this.setRuntimeState(data);
     if (data.pins) {
       for (const p of data.pins) {
         this.pins.add(p);
@@ -184,7 +191,7 @@ After each turn, March automatically summarizes your work for context continuity
     return `[injections]
 provider: ${this.provider}
 model: ${this.modelId}
-thinking: off`;
+thinking: ${this.thinkingLevel}`;
   }
 
   // ── Layer 3: session_status ────────────────────────────────────────

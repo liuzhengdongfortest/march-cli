@@ -10,6 +10,7 @@ export function saveSession(sessionDir, engine, metadata = {}) {
     cwd: engine.cwd,
     modelId: engine.modelId,
     provider: engine.provider,
+    thinkingLevel: engine.thinkingLevel,
     turns: engine.turns,
     _compactionSummary: engine._compactionSummary,
     pins: [...engine.pins],

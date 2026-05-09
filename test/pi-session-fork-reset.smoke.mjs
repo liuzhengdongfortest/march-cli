@@ -9,7 +9,7 @@ export async function runPiSessionForkResetSmoke({ setupTmp, cleanup }) {
 
   const dir = setupTmp();
   const projectMarchDir = `${dir}/.march`;
-  const engine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: ["s1"], pins: ["pinned"], namespace: "ns" });
+  const engine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", thinkingLevel: "high", skills: ["s1"], pins: ["pinned"], namespace: "ns" });
   engine.recordTurn({ userMessage: "current", summary: "current" });
   let activeSession = {
     getUserMessagesForForking: () => [{ entryId: "u1", text: "old prompt" }],
@@ -54,6 +54,7 @@ export async function runPiSessionForkResetSmoke({ setupTmp, cleanup }) {
   assert.equal(sidecar.state.derivedFromPiSessionId, "old");
   assert.equal(sidecar.state.derivedFromPiSessionFile, "old.jsonl");
   assert.equal(sidecar.state.derivedFromPiEntryId, "u1");
+  assert.equal(sidecar.state.thinkingLevel, "high");
   assert.deepEqual(sidecar.state.turns, []);
   assert.deepEqual(sidecar.state.pins, []);
   assert.deepEqual(sidecar.state.openFiles, []);

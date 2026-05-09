@@ -19,6 +19,7 @@ export function captureContextSidecar(engine, metadata = {}) {
     cwd: engine.cwd,
     modelId: engine.modelId,
     provider: engine.provider,
+    thinkingLevel: engine.thinkingLevel,
     namespace: engine.namespace,
     turns: engine.turns,
     compactionSummary: engine._compactionSummary ?? null,

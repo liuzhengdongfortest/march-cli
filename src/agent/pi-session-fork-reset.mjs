@@ -78,6 +78,7 @@ function createResetSidecarState({ engine, sourceStats, entryId, savedAt }) {
     cwd: engine.cwd,
     modelId: engine.modelId,
     provider: engine.provider,
+    thinkingLevel: engine.thinkingLevel,
     namespace: engine.namespace,
     turns: [],
     compactionSummary: null,

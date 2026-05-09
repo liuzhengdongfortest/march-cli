@@ -112,8 +112,16 @@ function cleanup(dir) {
   assert.ok(ctx.includes("[recent_chat]"));
   assert.ok(ctx.includes("(no prior turns)"));
   assert.ok(ctx.includes("Use write(path, content)"));
+  assert.ok(ctx.includes("model: test"));
+  assert.ok(ctx.includes("thinking: medium"));
   assert.ok(!ctx.includes("write_file"));
   assert.ok(!ctx.includes("[memory]")); // no graph attached
+
+  engine.setRuntimeState({ modelId: "other-model", provider: "test-provider", thinkingLevel: "high" });
+  const runtimeCtx = engine.buildContext("");
+  assert.ok(runtimeCtx.includes("provider: test-provider"));
+  assert.ok(runtimeCtx.includes("model: other-model"));
+  assert.ok(runtimeCtx.includes("thinking: high"));
 
   // Record a turn
   engine.recordTurn({ userMessage: "hello", summary: "tested the engine" });
@@ -192,8 +200,9 @@ function cleanup(dir) {
 
 {
   console.log("--- smoke: runner session manager seam ---");
-  const { createDefaultSessionManager, resolveRunnerSessionManager } = await import("../src/agent/runner.mjs");
+  const { createDefaultSessionManager, resolveRunnerSessionManager, syncEngineSessionState } = await import("../src/agent/runner.mjs");
   const { createSessionBinding } = await import("../src/agent/session-binding.mjs");
+  const { ContextEngine } = await import("../src/context/engine.mjs");
   const manager = createDefaultSessionManager(process.cwd());
   assert.equal(manager.getCwd(), process.cwd());
   assert.equal(manager.isPersisted(), false);
@@ -203,6 +212,17 @@ function cleanup(dir) {
   assert.equal(binding.get().id, "s1");
   assert.equal(binding.set({ id: "s2" }).id, "s2");
   assert.equal(binding.get().id, "s2");
+  const engine = new ContextEngine({ cwd: process.cwd(), modelId: "old", provider: "deepseek", thinkingLevel: "low" });
+  syncEngineSessionState(engine, {
+    model: { id: "new", provider: "test" },
+    thinkingLevel: "high",
+    getActiveToolNames: () => ["read"],
+    getToolDefinition: () => ({ description: "Read file", parameters: { properties: { path: { description: "Path" } } } }),
+  });
+  assert.equal(engine.modelId, "new");
+  assert.equal(engine.provider, "test");
+  assert.equal(engine.thinkingLevel, "high");
+  assert.ok(engine.buildContext("").includes("thinking: high"));
   console.log("  PASS");
 }
 

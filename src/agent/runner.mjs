@@ -67,7 +67,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       ui,
       memoryTools,
       skillTools,
-      onRebind: (session) => bindToolDefs(engine, session),
+      onRebind: (session) => syncEngineSessionState(engine, session),
     });
   } else {
     const sessionOptions = resolveRunnerSessionOptions({
@@ -92,7 +92,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
     sessionBinding.set(session);
   }
 
-  bindToolDefs(engine, sessionBinding.get());
+  syncEngineSessionState(engine, sessionBinding.get());
 
   return {
     engine,
@@ -167,7 +167,15 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
     },
 
     async cycleModel() {
-      return sessionBinding.get().cycleModel();
+      const result = await sessionBinding.get().cycleModel();
+      if (result?.model) {
+        engine.setRuntimeState({
+          modelId: result.model.id,
+          provider: result.model.provider,
+          thinkingLevel: result.thinkingLevel,
+        });
+      }
+      return result;
     },
 
     getCurrentModel() {
@@ -177,6 +185,11 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
     async setModel(model) {
       const activeSession = sessionBinding.get();
       await activeSession.setModel(model);
+      engine.setRuntimeState({
+        modelId: activeSession.model?.id ?? model.id,
+        provider: activeSession.model?.provider ?? model.provider,
+        thinkingLevel: activeSession.thinkingLevel,
+      });
       return activeSession.model;
     },
 
@@ -229,7 +242,9 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
     },
 
     cycleThinkingLevel() {
-      return sessionBinding.get().cycleThinkingLevel();
+      const level = sessionBinding.get().cycleThinkingLevel();
+      engine.setRuntimeState({ thinkingLevel: level });
+      return level;
     },
 
     getThinkingLevel() {
@@ -239,6 +254,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
     setThinkingLevel(level) {
       const activeSession = sessionBinding.get();
       activeSession.setThinkingLevel(level);
+      engine.setRuntimeState({ thinkingLevel: activeSession.thinkingLevel });
       return activeSession.thinkingLevel;
     },
 
@@ -273,6 +289,15 @@ function bindToolDefs(engine, session) {
       parameters: tool?.parameters ? describeParams(tool.parameters) : null,
     };
   }));
+}
+
+export function syncEngineSessionState(engine, session) {
+  bindToolDefs(engine, session);
+  engine.setRuntimeState({
+    modelId: session.model?.id,
+    provider: session.model?.provider,
+    thinkingLevel: session.thinkingLevel,
+  });
 }
 
 function describeParams(schema) {

@@ -263,6 +263,7 @@ export async function runPiSessionSwitchCommandSmoke() {
     cwd: "D:/repo",
     modelId: "test",
     provider: "deepseek",
+    thinkingLevel: "high",
     skills: ["review"],
     pins: ["/target.txt"],
     namespace: "ns",
@@ -294,6 +295,7 @@ export async function runPiSessionSwitchCommandSmoke() {
   assert.equal(switchedPath, "abc.jsonl");
   assert.deepEqual(engine.getPins(), ["/target.txt"]);
   assert.deepEqual(engine.skills, skillPool);
+  assert.equal(engine.thinkingLevel, "high");
   assert.equal(engine.turns[0].summary, "summary");
   assert.deepEqual(await resumePiSessionById("missing", { runner, sessions, projectMarchDir }), ["Error: pi session not found: missing"]);
   assert.deepEqual(await resumePiSessionById("a", { runner, sessions: [{ id: "aa", path: "1" }, { id: "ab", path: "2" }], projectMarchDir }), [
