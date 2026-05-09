@@ -7,6 +7,7 @@ import {
 import { createMarchAuthStorage } from "../auth/storage.mjs";
 import { ContextEngine } from "../context/engine.mjs";
 import { createMarchLifecycleAdapter } from "../extensions/lifecycle-adapter.mjs";
+import { resolveImageAttachmentReferences } from "../session/attachment-references.mjs";
 import { syncPiSessionSidecar } from "../session/sidecar-sync.mjs";
 import { cloneCurrentPiSession } from "./pi-session-clone.mjs";
 import { forkPiSessionWithResetContext } from "./pi-session-fork-reset.mjs";
@@ -121,7 +122,14 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       });
 
       try {
-        await activeSession.prompt(prompt);
+        const attachmentReferences = resolveImageAttachmentReferences({
+          text: userMessage ?? prompt,
+          projectMarchDir,
+        });
+        await activeSession.prompt(
+          prompt,
+          attachmentReferences.images.length > 0 ? { images: attachmentReferences.images } : undefined,
+        );
 
         // Post-turn: inject summary prompt with tools + thinking stripped
         turnState.summarizing = true;
