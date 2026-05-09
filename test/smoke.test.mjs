@@ -332,7 +332,36 @@ function cleanup(dir) {
   console.log("  PASS");
 }
 
-// ── 3l. Slash command handling ──────────────────────────────────────
+// ── 3l. Session command handling ────────────────────────────────────
+
+{
+  console.log("--- smoke: session command handling ---");
+  const { compactSession, formatSessionStats, listSessionStats } = await import("../src/cli/session-command.mjs");
+  const stats = {
+    sessionId: "s1",
+    userMessages: 2,
+    assistantMessages: 3,
+    toolCalls: 4,
+    totalMessages: 9,
+    tokens: { input: 10, output: 20, cacheRead: 3, cacheWrite: 4 },
+    cost: 0.12345,
+  };
+  assert.deepEqual(formatSessionStats(stats), [
+    "session: s1",
+    "messages: 2u + 3a + 4t = 9 total",
+    "tokens: 10 in / 20 out (3 cache read, 4 cache write)",
+    "cost: $0.1235",
+  ]);
+  const runner = {
+    compact: async () => ({ summary: "hello" }),
+    getSessionStats: () => stats,
+  };
+  assert.deepEqual(await compactSession({ runner }), ["Compacted: 5 char summary"]);
+  assert.equal(listSessionStats({ runner })[0], "session: s1");
+  console.log("  PASS");
+}
+
+// ── 3m. Slash command handling ──────────────────────────────────────
 
 {
   console.log("--- smoke: slash command handling ---");
@@ -354,6 +383,16 @@ function cleanup(dir) {
     cycleModel: async () => ({ model: { id: "m2", provider: "test" }, thinkingLevel: "medium" }),
     getCurrentModel: () => ({ id: "m1", name: "Model One", provider: "test" }),
     getScopedModels: () => [{ model: { id: "m1", name: "Model One", provider: "test" } }],
+    compact: async () => ({ summary: "compact summary" }),
+    getSessionStats: () => ({
+      sessionId: "s1",
+      userMessages: 1,
+      assistantMessages: 1,
+      toolCalls: 0,
+      totalMessages: 2,
+      tokens: { input: 1, output: 2, cacheRead: 0, cacheWrite: 0 },
+      cost: 0.01,
+    }),
   };
   const sessionState = { sessionId: "s1", sessionDir: "unused" };
   const status = await handleSlashCommand("/status", { ui, runner, sessionState, sessionsRoot: "unused" });
@@ -365,6 +404,12 @@ function cleanup(dir) {
   const model = await handleSlashCommand("/model", { ui, runner, sessionState, sessionsRoot: "unused" });
   assert.equal(model.handled, true);
   assert.ok(output.join("\n").includes("Model: m2 (test)"));
+  const session = await handleSlashCommand("/session", { ui, runner, sessionState, sessionsRoot: "unused" });
+  assert.equal(session.handled, true);
+  assert.ok(output.join("\n").includes("messages: 1u + 1a + 0t = 2 total"));
+  const compact = await handleSlashCommand("/compact", { ui, runner, sessionState, sessionsRoot: "unused" });
+  assert.equal(compact.handled, true);
+  assert.ok(output.join("\n").includes("Compacted: 15 char summary"));
   const unknown = await handleSlashCommand("/unknown", { ui, runner, sessionState, sessionsRoot: "unused" });
   assert.equal(unknown.handled, false);
   console.log("  PASS");

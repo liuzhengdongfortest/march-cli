@@ -2,6 +2,7 @@ import { saveSession, listSessions, forkSession } from "../session/persist.mjs";
 import { formatSessionTree } from "../session/tree.mjs";
 import { cycleModel, listModels } from "./model-command.mjs";
 import { formatHotkeysPanel } from "./repl-commands.mjs";
+import { compactSession, listSessionStats } from "./session-command.mjs";
 import { handleThinkingCommand, parseThinkingCommand } from "./thinking-command.mjs";
 
 export async function handleSlashCommand(trimmed, {
@@ -122,25 +123,12 @@ export async function handleSlashCommand(trimmed, {
   }
 
   if (trimmed === "/compact") {
-    try {
-      const result = await runner.session.compact();
-      if (result) {
-        ui.writeln(`Compacted: ${result.summary?.length ?? 0} char summary`);
-      } else {
-        ui.writeln("Compaction complete (nothing to compact)");
-      }
-    } catch (err) {
-      ui.writeln(`Error: ${err.message}`);
-    }
+    for (const line of await compactSession({ runner })) ui.writeln(line);
     return { handled: true };
   }
 
   if (trimmed === "/session") {
-    const stats = runner.session.getSessionStats();
-    ui.writeln(`session: ${stats.sessionId}`);
-    ui.writeln(`messages: ${stats.userMessages}u + ${stats.assistantMessages}a + ${stats.toolCalls}t = ${stats.totalMessages} total`);
-    ui.writeln(`tokens: ${stats.tokens.input} in / ${stats.tokens.output} out (${stats.tokens.cacheRead} cache read, ${stats.tokens.cacheWrite} cache write)`);
-    ui.writeln(`cost: $${stats.cost.toFixed(4)}`);
+    for (const line of listSessionStats({ runner })) ui.writeln(line);
     return { handled: true };
   }
 
