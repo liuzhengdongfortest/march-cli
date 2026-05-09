@@ -1,3 +1,5 @@
+import { formatSelectorList } from "./selector-list.mjs";
+
 const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh"];
 
 export function parseThinkingCommand(input) {
@@ -18,10 +20,11 @@ export function parseThinkingCommand(input) {
 
 export function formatThinkingLevels(levels, current) {
   const available = Array.isArray(levels) && levels.length > 0 ? levels : THINKING_LEVELS;
-  return [
-    ...available.map((level, index) => `${level === current ? "*" : " "} ${index + 1}. ${level}`),
-    "Use /thinking <index> to select.",
-  ];
+  return formatSelectorList({
+    items: available,
+    currentIndex: available.indexOf(current),
+    instruction: "Use /thinking <index> to select.",
+  });
 }
 
 export function selectThinkingByIndex(index, { runner }) {

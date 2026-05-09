@@ -1,3 +1,5 @@
+import { findCurrentIndex, formatSelectorList } from "./selector-list.mjs";
+
 export function parseModelCommand(input) {
   if (input !== "/model" && !input.startsWith("/model ")) {
     return { type: "none" };
@@ -42,14 +44,19 @@ export function formatModelsList({ current, scopedModels = [] }) {
     lines.push("(no scoped models - use --model flag or /model to cycle)");
     return lines;
   }
-  scopedModels.forEach((scoped, index) => {
-    const model = scoped.model;
-    const name = model.name || model.id;
-    const mark = current && model.id === current.id && model.provider === current.provider ? " *" : "  ";
-    lines.push(`${mark} ${index + 1}. ${name} (${model.provider})`);
-  });
-  lines.push("Use /model <index> to select.");
-  return lines;
+  const currentIndex = findCurrentIndex(scopedModels, ({ model }) =>
+    current && model.id === current.id && model.provider === current.provider
+  );
+  return [
+    ...lines,
+    ...formatSelectorList({
+      items: scopedModels,
+      currentIndex,
+      instruction: "Use /model <index> to select.",
+      linePrefix: " ",
+      formatItem: ({ model }) => `${model.name || model.id} (${model.provider})`,
+    }),
+  ];
 }
 
 export function listModels({ runner }) {

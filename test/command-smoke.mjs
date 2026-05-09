@@ -1,5 +1,24 @@
 import { strict as assert } from "node:assert";
 
+export async function runSelectorListSmoke() {
+  console.log("--- smoke: selector list formatting ---");
+  const { findCurrentIndex, formatSelectorList } = await import("../src/cli/selector-list.mjs");
+  const items = [{ id: "a" }, { id: "b" }];
+  assert.equal(findCurrentIndex(items, (item) => item.id === "b"), 1);
+  assert.deepEqual(formatSelectorList({
+    items,
+    currentIndex: 1,
+    instruction: "Use /x <index> to select.",
+    formatItem: (item) => item.id,
+  }), [
+    "  1. a",
+    "* 2. b",
+    "Use /x <index> to select.",
+  ]);
+  assert.deepEqual(formatSelectorList({ items: [], emptyMessage: "(empty)" }), ["(empty)"]);
+  console.log("  PASS");
+}
+
 export async function runModelCommandSmoke() {
   console.log("--- smoke: model command handling ---");
   const {
