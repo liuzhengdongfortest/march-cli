@@ -5,28 +5,17 @@ import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { runAuthStorageSmoke } from "./auth-storage.smoke.mjs";
 import { runCopyCommandSmoke } from "./copy-command.smoke.mjs";
-import { runModelCommandSmoke, runPiSessionCloneCommandSmoke, runPiSessionSwitchCommandSmoke, runSelectorListSmoke, runSessionCommandSmoke, runSessionListCommandSmoke, runSessionSwitchCommandSmoke } from "./command-smoke.mjs";
+import { runCliCommandSuiteSmoke } from "./cli-command-suite.smoke.mjs";
 import { runDiffAndUiSmoke, runMemorySystemSmoke } from "./memory-and-diff.smoke.mjs";
-import { runDefaultStartupFlowSmoke } from "./default-startup-flow.smoke.mjs";
 import { runExtensionDiscoverySmoke } from "./extension-discovery.smoke.mjs";
 import { runExtensionLifecycleAdapterSmoke } from "./extension-lifecycle-adapter.smoke.mjs";
 import { runExtensionLifecycleManifestSmoke } from "./extension-lifecycle-manifest.smoke.mjs";
-import { runRuntimeFactorySmoke } from "./runtime-factory.smoke.mjs";
 import { runKeybindingsSmoke } from "./keybindings.smoke.mjs";
 import { runPromptTemplatesSmoke } from "./prompt-templates.smoke.mjs";
 import { runSettingsCommandSmoke } from "./settings-command.smoke.mjs";
-import { runRuntimeHostSmoke } from "./runtime-host.smoke.mjs";
-import { runRunnerCompactionSmoke } from "./runner-compaction.smoke.mjs";
-import { runRunnerRuntimeHostSmoke } from "./runner-runtime-host.smoke.mjs";
-import { runRunnerTurnFlowSmoke } from "./runner-turn-flow.smoke.mjs";
-import { runPiSessionForkCommandSmoke } from "./pi-session-fork-command.smoke.mjs";
-import { runPiSessionForkResetSmoke } from "./pi-session-fork-reset.smoke.mjs";
 import { runPiSessionManagerFactorySmoke, runPiSessionSidecarSmoke, runPiSessionSidecarSyncSmoke, runSessionPersistenceSmoke, runSessionTreeSmoke } from "./session.smoke.mjs";
-import { runSessionOptionsSmoke } from "./session-options.smoke.mjs";
 import { runSessionNameCommandSmoke } from "./session-name-command.smoke.mjs";
-import { runSlashCommandSmoke } from "./slash-command.smoke.mjs";
 import { runStartupResumeSmoke } from "./startup-resume.smoke.mjs";
-import { runTurnEventsSmoke } from "./turn-events.smoke.mjs";
 
 // Minimal mocks for smoke testing without DEEPSEEK_API_KEY
 
@@ -361,83 +350,9 @@ await runSessionNameCommandSmoke({ setupTmp, cleanup });
   console.log("  PASS");
 }
 
-// ── 3j. Thinking command handling ───────────────────────────────────
+// ── 3j. CLI command suite ───────────────────────────────────────────
 
-{
-  console.log("--- smoke: thinking command handling ---");
-  const {
-    buildThinkingSelectItems,
-    formatThinkingLevels,
-    handleThinkingCommand,
-    parseThinkingCommand,
-    selectThinkingByIndex,
-  } = await import("../src/cli/thinking-command.mjs");
-
-  assert.deepEqual(parseThinkingCommand("hello"), { type: "none" });
-  assert.deepEqual(parseThinkingCommand("/thinking"), { type: "cycle" });
-  assert.deepEqual(parseThinkingCommand("/thinking list"), { type: "list" });
-  assert.deepEqual(parseThinkingCommand("/thinking high"), { type: "set", level: "high" });
-  assert.deepEqual(parseThinkingCommand("/thinking 2"), { type: "select", index: 2 });
-  assert.equal(parseThinkingCommand("/thinking invalid").type, "error");
-  assert.deepEqual(formatThinkingLevels(["off", "medium"], "medium"), [
-    "  1. off",
-    "* 2. medium",
-    "Use /thinking <index> to select.",
-  ]);
-  assert.deepEqual(buildThinkingSelectItems(["off", "medium"], "medium"), [
-    { value: "0", label: "off", description: "", level: "off" },
-    { value: "1", label: "medium", description: "current", level: "medium" },
-  ]);
-
-  let level = "medium";
-  const runner = {
-    cycleThinkingLevel: () => {
-      level = "high";
-      return level;
-    },
-    getAvailableThinkingLevels: () => ["off", "medium", "high"],
-    getThinkingLevel: () => level,
-    setThinkingLevel: (next) => {
-      level = next;
-      return level;
-    },
-  };
-  assert.deepEqual(handleThinkingCommand({ type: "cycle" }, { runner }), ["thinking: high"]);
-  assert.equal(selectThinkingByIndex(2, { runner }), "thinking: medium");
-  assert.equal(selectThinkingByIndex(4, { runner }), "Error: thinking index out of range: 4");
-  assert.deepEqual(handleThinkingCommand({ type: "set", level: "off" }, { runner }), ["thinking: off"]);
-  assert.deepEqual(handleThinkingCommand({ type: "list" }, { runner }), [
-    "* 1. off",
-    "  2. medium",
-    "  3. high",
-    "Use /thinking <index> to select.",
-  ]);
-  console.log("  PASS");
-}
-
-// ── 3k. Command module handling ─────────────────────────────────────
-
-await runSelectorListSmoke();
-await runModelCommandSmoke();
-await runSessionCommandSmoke();
-await runSessionListCommandSmoke();
-await runSessionSwitchCommandSmoke({ setupTmp, cleanup });
-await runPiSessionSwitchCommandSmoke();
-await runPiSessionCloneCommandSmoke({ setupTmp, cleanup });
-await runPiSessionForkCommandSmoke();
-await runPiSessionForkResetSmoke({ setupTmp, cleanup });
-
-// ── 3l. Slash command handling ──────────────────────────────────────
-
-await runSlashCommandSmoke({ setupTmp, cleanup });
-await runSessionOptionsSmoke();
-await runTurnEventsSmoke();
-await runRunnerCompactionSmoke({ setupTmp, cleanup });
-await runRunnerTurnFlowSmoke({ setupTmp, cleanup });
-await runRuntimeFactorySmoke();
-await runRuntimeHostSmoke();
-await runRunnerRuntimeHostSmoke();
-await runDefaultStartupFlowSmoke({ setupTmp, cleanup });
+await runCliCommandSuiteSmoke({ setupTmp, cleanup });
 
 // ── 4. Session smoke ────────────────────────────────────────────────
 
