@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { runModelCommandSmoke, runSelectorListSmoke, runSessionCommandSmoke, runSessionListCommandSmoke, runSessionSwitchCommandSmoke } from "./command-smoke.mjs";
 import { runDiffAndUiSmoke, runMemorySystemSmoke } from "./memory-and-diff.smoke.mjs";
+import { runRuntimeFactorySmoke } from "./runtime-factory.smoke.mjs";
 import { runRuntimeHostSmoke } from "./runtime-host.smoke.mjs";
 import { runPiSessionManagerFactorySmoke, runSessionPersistenceSmoke, runSessionTreeSmoke } from "./session.smoke.mjs";
 import { runSlashCommandSmoke } from "./slash-command.smoke.mjs";
@@ -362,6 +363,7 @@ await runSessionSwitchCommandSmoke({ setupTmp, cleanup });
 // ── 3l. Slash command handling ──────────────────────────────────────
 
 await runSlashCommandSmoke({ setupTmp, cleanup });
+await runRuntimeFactorySmoke();
 await runRuntimeHostSmoke();
 
 // ── 4. Session smoke ────────────────────────────────────────────────
