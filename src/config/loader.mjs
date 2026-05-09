@@ -9,11 +9,11 @@ import { homedir } from "node:os";
  *   3. <cwd>/.march/config — project dir overrides
  * Scalar values override. Array values (skills, pins) concatenate.
  */
-export function loadConfig(cwd) {
+export function loadConfig(cwd, { homeDir = homedir() } = {}) {
   const layers = [];
 
   // 1. Global config: ~/.march/config
-  const globalPath = join(homedir(), ".march", "config");
+  const globalPath = join(homeDir, ".march", "config");
   layers.push(loadJson(globalPath));
 
   // 2. Project config: <cwd>/.marchrc

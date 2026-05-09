@@ -13,6 +13,7 @@ import { runExtensionLifecycleManifestSmoke } from "./extension-lifecycle-manife
 import { runRuntimeFactorySmoke } from "./runtime-factory.smoke.mjs";
 import { runKeybindingsSmoke } from "./keybindings.smoke.mjs";
 import { runPromptTemplatesSmoke } from "./prompt-templates.smoke.mjs";
+import { runSettingsCommandSmoke } from "./settings-command.smoke.mjs";
 import { runRuntimeHostSmoke } from "./runtime-host.smoke.mjs";
 import { runRunnerCompactionSmoke } from "./runner-compaction.smoke.mjs";
 import { runRunnerRuntimeHostSmoke } from "./runner-runtime-host.smoke.mjs";
@@ -77,6 +78,7 @@ await runExtensionLifecycleManifestSmoke({ setupTmp, cleanup });
 await runExtensionLifecycleAdapterSmoke();
 await runKeybindingsSmoke({ setupTmp, cleanup });
 await runPromptTemplatesSmoke({ setupTmp, cleanup });
+await runSettingsCommandSmoke({ setupTmp, cleanup });
 
 // ── 2. Config loading ────────────────────────────────────────────────
 
