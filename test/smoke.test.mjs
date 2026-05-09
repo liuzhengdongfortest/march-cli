@@ -181,6 +181,19 @@ function cleanup(dir) {
   console.log("  PASS");
 }
 
+// ── 3d. Inline shell parsing ────────────────────────────────────────
+
+{
+  console.log("--- smoke: inline shell parsing ---");
+  const { parseInlineShellInput } = await import("../src/main.mjs");
+  assert.deepEqual(parseInlineShellInput("hello"), { type: "none" });
+  assert.deepEqual(parseInlineShellInput("! npm test"), { type: "command", command: "npm test", repeated: false });
+  assert.deepEqual(parseInlineShellInput("!!", "npm test"), { type: "command", command: "npm test", repeated: true });
+  assert.equal(parseInlineShellInput("!!").type, "error");
+  assert.equal(parseInlineShellInput("!").type, "error");
+  console.log("  PASS");
+}
+
 // ── 4. Session persistence ──────────────────────────────────────────
 
 {

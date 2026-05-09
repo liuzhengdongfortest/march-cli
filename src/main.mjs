@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
 import { parseCliArgs, showHelp } from "./cli/args.mjs";
 import { createUI } from "./cli/ui.mjs";
 import { createRunner } from "./agent/runner.mjs";
@@ -175,6 +176,7 @@ export async function run(argv) {
 
   ui.writeln("March REPL. Type /help for commands, Esc to abort, /exit to quit.");
   ui.writeln("");
+  let lastInlineShellCommand = "";
 
   for (;;) {
     const line = await ui.readline("> ");
@@ -189,6 +191,16 @@ export async function run(argv) {
       saveSession(sessionDir, runner.engine);
       ui.writeln(`Session saved: ${sessionId}`);
       break;
+    }
+    const inlineShell = parseInlineShellInput(trimmed, lastInlineShellCommand);
+    if (inlineShell.type === "error") {
+      ui.writeln(`Error: ${inlineShell.message}`);
+      continue;
+    }
+    if (inlineShell.type === "command") {
+      lastInlineShellCommand = inlineShell.command;
+      runInlineShellCommand(inlineShell.command, { cwd, ui });
+      continue;
     }
     if (trimmed === "/help") {
       ui.writeln("Commands: /exit, /help, /model, /models, /compact, /session, /sessions, /status, /save, /mouse, /pin <path>, /unpin <path>, /pins");
@@ -368,4 +380,44 @@ function loadDotEnv(filePath) {
   } catch {
     // .env file not found or unreadable — not an error
   }
+}
+
+export function parseInlineShellInput(input, lastCommand = "") {
+  if (input === "!!") {
+    if (!lastCommand) return { type: "error", message: "No previous inline shell command." };
+    return { type: "command", command: lastCommand, repeated: true };
+  }
+  if (!input.startsWith("!")) return { type: "none" };
+  const command = input.slice(1).trim();
+  if (!command) return { type: "error", message: "Usage: ! <command>" };
+  return { type: "command", command, repeated: false };
+}
+
+export function runInlineShellCommand(command, { cwd = process.cwd(), ui } = {}) {
+  const shell = process.platform === "win32"
+    ? { bin: "powershell.exe", args: ["-NoProfile", "-Command", command] }
+    : { bin: "bash", args: ["-lc", command] };
+  ui?.writeln(`\x1b[2m$ ${command}\x1b[0m`);
+  const result = spawnSync(shell.bin, shell.args, {
+    cwd,
+    encoding: "utf8",
+    windowsHide: true,
+    maxBuffer: 1024 * 1024,
+  });
+  if (result.stdout) {
+    for (const line of result.stdout.replace(/\s+$/, "").split("\n")) {
+      if (line) ui?.writeln(line);
+    }
+  }
+  if (result.stderr) {
+    for (const line of result.stderr.replace(/\s+$/, "").split("\n")) {
+      if (line) ui?.writeln(`\x1b[31m${line}\x1b[0m`);
+    }
+  }
+  if (result.error) {
+    ui?.writeln(`\x1b[31mError: ${result.error.message}\x1b[0m`);
+  } else if (result.status !== 0) {
+    ui?.writeln(`\x1b[31mexit ${result.status}\x1b[0m`);
+  }
+  return result;
 }
