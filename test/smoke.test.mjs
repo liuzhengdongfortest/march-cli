@@ -402,8 +402,11 @@ function cleanup(dir) {
 
 {
   console.log("--- smoke: diff formatting ---");
-  // We can't import formatDiff directly (not exported), so test via edit scenario
-  // Just verify the UI module exports all expected methods
+  const { formatDiff } = await import("../src/agent/tools.mjs");
+  const diff = formatDiff("a\nold\nc", "a\nnew\nc");
+  assert.ok(diff.some((line) => line.type === "del" && line.text === "old"));
+  assert.ok(diff.some((line) => line.type === "add" && line.text === "new"));
+
   const ui = (await import("../src/cli/ui.mjs")).createUI({ json: false });
   assert.equal(typeof ui.readline, "function");
   assert.equal(typeof ui.write, "function");
