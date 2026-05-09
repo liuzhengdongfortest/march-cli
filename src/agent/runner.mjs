@@ -15,6 +15,7 @@ import { Type } from "typebox";
 import { ContextEngine } from "../context/engine.mjs";
 
 const LINE_RANGE_RE = /^(\d+)(?:\s*-\s*(\d+))?$/;
+export const MARCH_BASE_TOOL_NAMES = ["read", "bash", "edit", "write", "grep", "find", "ls"];
 
 function resolveApiKey(provider) {
   const envMap = {
@@ -99,7 +100,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
     name: "edit_file",
     label: "Edit File",
     description:
-      "Replace text in an open file. oldString can be a line range (\"55-64\" or \"55\") or exact text. File must be in [open_files]. Use write_file for new files.",
+      "Replace text in an open file. oldString can be a line range (\"55-64\" or \"55\") or exact text. File must be in [open_files]. Use write for new files.",
     parameters: Type.Object({
       path: Type.String({ description: "Absolute or relative path. Must be in [open_files]." }),
       oldString: Type.String({
@@ -181,11 +182,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
 
   const customTools = [openFileTool, closeFileTool, editFileTool, ...platformTools, ...memoryTools, ...skillTools];
 
-  engine.setToolDefs(customTools.map((t) => ({
-    name: t.name,
-    description: t.description,
-    parameters: t.parameters ? describeParams(t.parameters) : null,
-  })));
+  const activeToolNames = [...MARCH_BASE_TOOL_NAMES, ...customTools.map((tool) => tool.name)];
 
   const { session } = await createAgentSession({
     cwd,
@@ -195,9 +192,19 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
     authStorage,
     modelRegistry,
     customTools,
+    tools: activeToolNames,
     sessionManager: SessionManager.inMemory(cwd),
     settingsManager,
   });
+
+  engine.setToolDefs(session.getActiveToolNames().map((name) => {
+    const tool = session.getToolDefinition(name);
+    return {
+      name,
+      description: tool?.description ?? "",
+      parameters: tool?.parameters ? describeParams(tool.parameters) : null,
+    };
+  }));
 
   return {
     engine,

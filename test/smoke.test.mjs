@@ -94,6 +94,8 @@ function cleanup(dir) {
   assert.ok(ctx.includes("[runtime_status]"));
   assert.ok(ctx.includes("[recent_chat]"));
   assert.ok(ctx.includes("(no prior turns)"));
+  assert.ok(ctx.includes("Use write(path, content)"));
+  assert.ok(!ctx.includes("write_file"));
   assert.ok(!ctx.includes("[memory]")); // no graph attached
 
   // Record a turn
@@ -139,6 +141,15 @@ function cleanup(dir) {
   assert.ok(ctx4.includes("test_tool"));
 
   cleanup(dir);
+  console.log("  PASS");
+}
+
+// ── 3b. March tool set ───────────────────────────────────────────────
+
+{
+  console.log("--- smoke: March tool set ---");
+  const { MARCH_BASE_TOOL_NAMES } = await import("../src/agent/runner.mjs");
+  assert.deepEqual(MARCH_BASE_TOOL_NAMES, ["read", "bash", "edit", "write", "grep", "find", "ls"]);
   console.log("  PASS");
 }
 
