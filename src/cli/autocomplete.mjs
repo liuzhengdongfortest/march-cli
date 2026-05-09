@@ -29,6 +29,7 @@ const MARCH_COMMANDS = [
   { name: "mouse", description: "Toggle mouse tracking (for text selection vs click-to-expand)" },
   { name: "hotkeys", description: "Show keyboard shortcuts and input prefixes" },
   { name: "templates", description: "List project prompt templates" },
+  { name: "export jsonl", description: "Export current session turns as JSONL" },
   { name: "settings", description: "Show or edit global/project settings" },
 ];
 

@@ -19,9 +19,11 @@ import { runSessionOptionsSmoke } from "./session-options.smoke.mjs";
 import { runSlashCommandSmoke } from "./slash-command.smoke.mjs";
 import { runTurnEventsSmoke } from "./turn-events.smoke.mjs";
 import { runDefaultStartupFlowSmoke } from "./default-startup-flow.smoke.mjs";
+import { runExportCommandSmoke } from "./export-command.smoke.mjs";
 
 export async function runCliCommandSuiteSmoke({ setupTmp, cleanup }) {
   await runThinkingCommandHandlingSmoke();
+  await runExportCommandSmoke({ setupTmp, cleanup });
   await runSelectorListSmoke();
   await runModelCommandSmoke();
   await runSessionCommandSmoke();

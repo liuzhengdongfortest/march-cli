@@ -99,6 +99,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.equal(help.handled, true);
   assert.ok(output.join("\n").includes("/extensions"));
   assert.ok(output.join("\n").includes("/templates"));
+  assert.ok(output.join("\n").includes("/export jsonl"));
   assert.ok(output.join("\n").includes("/settings"));
   assert.ok(output.join("\n").includes("/copy"));
   assert.ok(output.join("\n").includes("/name"));
@@ -130,6 +131,11 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.equal(templates.handled, true);
   assert.ok(output.join("\n").includes("/review"));
   assert.ok(output.join("\n").includes("bad template"));
+  const exportJsonl = await handleSlashCommand("/export jsonl", { ui, runner, sessionState, sessionsRoot, projectMarchDir, sessionSource: "pi" });
+  assert.equal(exportJsonl.handled, true);
+  assert.ok(output.join("\n").includes("Exported JSONL:"));
+  assert.ok(output.join("\n").includes("(1 turns)"));
+  assert.ok(existsSync(join(projectMarchDir, "exports")));
   const settings = await handleSlashCommand("/settings", { ui, runner, sessionState, sessionsRoot, projectMarchDir, settingsHomeDir: dir });
   assert.equal(settings.handled, true);
   assert.ok(output.join("\n").includes("Settings:"));
