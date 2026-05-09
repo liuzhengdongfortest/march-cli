@@ -289,6 +289,7 @@ function createTuiUI({ cwd = process.cwd(), skillPool = [] } = {}) {
   tui.setFocus(editor);
 
   let spinnerTimer = null;
+  let retryTimer = null;
   let started = false;
   let mouseOn = false;
   let toolsExpanded = false;
@@ -315,6 +316,13 @@ function createTuiUI({ cwd = process.cwd(), skillPool = [] } = {}) {
     }
     output.setSpinner(false, "");
     requestRender();
+  }
+
+  function stopRetryTimer() {
+    if (retryTimer) {
+      clearInterval(retryTimer);
+      retryTimer = null;
+    }
   }
 
   let onEscapeHandler = null;
@@ -386,6 +394,38 @@ function createTuiUI({ cwd = process.cwd(), skillPool = [] } = {}) {
     output.writeln(`\x1b[90m● tool output: ${toolsExpanded ? "expanded" : "collapsed"}\x1b[0m`);
     requestRender();
     return toolsExpanded;
+  }
+
+  function retryStart({ attempt, maxAttempts, delayMs, errorMessage }) {
+    ensureStarted();
+    stopSpinner();
+    stopRetryTimer();
+    const startedAt = Date.now();
+    const message = () => {
+      const remainingMs = Math.max(0, delayMs - (Date.now() - startedAt));
+      const seconds = Math.ceil(remainingMs / 1000);
+      return `Retrying (${attempt}/${maxAttempts}) in ${seconds}s... Esc to cancel`;
+    };
+    output.writeln(`\x1b[33m● retrying after error: ${String(errorMessage || "Unknown error").slice(0, 160)}\x1b[0m`);
+    output.setSpinner(true, message());
+    retryTimer = setInterval(() => {
+      output.setSpinner(true, message());
+      output.tick();
+      requestRender();
+    }, 250);
+    requestRender();
+  }
+
+  function retryEnd({ success, attempt, finalError }) {
+    ensureStarted();
+    stopRetryTimer();
+    stopSpinner();
+    if (success) {
+      output.writeln(`\x1b[90m● retry recovered after ${attempt} attempt${attempt === 1 ? "" : "s"}\x1b[0m`);
+    } else {
+      output.writeln(`\x1b[31m● retry stopped after ${attempt} attempt${attempt === 1 ? "" : "s"}${finalError ? `: ${finalError}` : ""}\x1b[0m`);
+    }
+    requestRender();
   }
 
   let onSubmitResolve = null;
@@ -506,6 +546,8 @@ function createTuiUI({ cwd = process.cwd(), skillPool = [] } = {}) {
       output.writeln(`\x1b[90m● summary · done\x1b[0m`);
       requestRender();
     },
+    retryStart,
+    retryEnd,
 
     editDiff: (path, diffLines) => {
       ensureStarted();
@@ -543,6 +585,7 @@ function createTuiUI({ cwd = process.cwd(), skillPool = [] } = {}) {
 
     close: () => {
       stopSpinner();
+      stopRetryTimer();
       if (started) {
         if (mouseOn) terminal.write("\x1b[?1002l\x1b[?1006l");
         tui.stop();
@@ -585,6 +628,12 @@ function createJsonUI() {
     turnEnd: () => {},
     summaryStart: () => {},
     summaryDone: () => {},
+    retryStart: (event) => {
+      stdout.write(JSON.stringify({ type: "retry_start", ...event }) + "\n");
+    },
+    retryEnd: (event) => {
+      stdout.write(JSON.stringify({ type: "retry_end", ...event }) + "\n");
+    },
     editDiff: (path, diffLines) => {
       stdout.write(JSON.stringify({ type: "edit_diff", path, diff: diffLines }) + "\n");
     },
@@ -638,6 +687,13 @@ function createPlainUI() {
     turnEnd: () => {},
     summaryStart: () => {},
     summaryDone: () => { stdout.write(`\n\x1b[90m● summary · done\x1b[0m\n`); },
+    retryStart: ({ attempt, maxAttempts, delayMs, errorMessage }) => {
+      stdout.write(`\x1b[33m● retrying (${attempt}/${maxAttempts}) in ${Math.ceil(delayMs / 1000)}s: ${errorMessage || "Unknown error"}\x1b[0m\n`);
+    },
+    retryEnd: ({ success, attempt, finalError }) => {
+      const status = success ? "recovered" : "stopped";
+      stdout.write(`\x1b[90m● retry ${status} after ${attempt} attempt${attempt === 1 ? "" : "s"}${finalError ? `: ${finalError}` : ""}\x1b[0m\n`);
+    },
     editDiff: (path, diffLines) => {
       stdout.write(`\n\x1b[2m  ± ${path}\x1b[0m\n`);
       for (const d of diffLines) {

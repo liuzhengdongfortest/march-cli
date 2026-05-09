@@ -39,7 +39,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
 
   const settingsManager = SettingsManager.inMemory({
     compaction: { enabled: true, reserveTokens: 262144, keepRecentTokens: 32768 },
-    retry: { enabled: true, maxRetries: 1 },
+    retry: { enabled: true, maxRetries: 3, baseDelayMs: 2000 },
   });
 
   const engine = new ContextEngine({ cwd, modelId, provider, skills, skillPool, pins, graph, glossary, namespace });
@@ -251,6 +251,21 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
         if (event.type === "compaction_end" && !event.aborted && event.result?.summary) {
           engine.recordCompaction(event.result.summary);
         }
+        if (event.type === "auto_retry_start" && !summarizing) {
+          ui.retryStart?.({
+            attempt: event.attempt,
+            maxAttempts: event.maxAttempts,
+            delayMs: event.delayMs,
+            errorMessage: event.errorMessage,
+          });
+        }
+        if (event.type === "auto_retry_end" && !summarizing) {
+          ui.retryEnd?.({
+            success: event.success,
+            attempt: event.attempt,
+            finalError: event.finalError,
+          });
+        }
       });
 
       try {
@@ -298,6 +313,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
     },
 
     abort() {
+      session.abortRetry?.();
       return session.abort();
     },
 
