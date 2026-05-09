@@ -89,6 +89,7 @@ function createTuiUI({ cwd = process.cwd(), skillPool = [] } = {}) {
 
   let onEscapeHandler = null;
   let onShiftTabHandler = null;
+  let onCtrlTHandler = null;
   let onCtrlLHandler = null;
 
   function ensureStarted() {
@@ -102,6 +103,11 @@ function createTuiUI({ cwd = process.cwd(), skillPool = [] } = {}) {
         // Shift+Tab: cycle thinking level
         if (data === "\x1b[Z" && onShiftTabHandler) {
           onShiftTabHandler();
+          return { consume: true };
+        }
+        // Ctrl+T: cycle thinking level (first slice of thinking selector)
+        if (data === "\x14" && onCtrlTHandler) {
+          onCtrlTHandler();
           return { consume: true };
         }
         // Ctrl+L: cycle model (first slice of model selector)
@@ -347,6 +353,7 @@ function createTuiUI({ cwd = process.cwd(), skillPool = [] } = {}) {
 
     setEscapeHandler: (fn) => { onEscapeHandler = fn; },
     setShiftTabHandler: (fn) => { onShiftTabHandler = fn; },
+    setCtrlTHandler: (fn) => { onCtrlTHandler = fn; },
     setCtrlLHandler: (fn) => { onCtrlLHandler = fn; },
 
     openExternalEditor: () => { openExternalEditor(); },
@@ -408,6 +415,7 @@ function createJsonUI() {
     },
     setEscapeHandler: () => {},
     setShiftTabHandler: () => {},
+    setCtrlTHandler: () => {},
     setCtrlLHandler: () => {},
     openExternalEditor: () => {},
     toggleMouse: () => false,
@@ -474,6 +482,7 @@ function createPlainUI() {
     },
     setEscapeHandler: () => {},
     setShiftTabHandler: () => {},
+    setCtrlTHandler: () => {},
     setCtrlLHandler: () => {},
     openExternalEditor: () => {},
     toggleMouse: () => false,

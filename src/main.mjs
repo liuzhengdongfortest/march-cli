@@ -118,12 +118,15 @@ export async function run(argv) {
     }
   });
 
-  ui.setShiftTabHandler(() => {
+  const cycleThinkingLevel = () => {
     const level = runner.cycleThinkingLevel();
     if (level) {
       ui.writeln(`\x1b[90m● thinking: ${level}\x1b[0m`);
     }
-  });
+  };
+
+  ui.setShiftTabHandler(cycleThinkingLevel);
+  ui.setCtrlTHandler(cycleThinkingLevel);
 
   ui.setCtrlLHandler(async () => {
     try {
@@ -238,7 +241,7 @@ export async function run(argv) {
     }
     if (trimmed === "/help") {
       ui.writeln("Commands: /exit, /help, /hotkeys, /model, /models, /compact, /session, /sessions, /status, /save, /mouse, /pin <path>, /unpin <path>, /pins");
-      ui.writeln("Shortcuts: Esc = abort turn, Ctrl+O = toggle tool output, Ctrl+G = external editor, Shift+Tab = thinking level");
+      ui.writeln("Shortcuts: Esc = abort turn, Ctrl+O = toggle tool output, Ctrl+G = external editor, Shift+Tab/Ctrl+T = thinking level, Ctrl+L = model");
       continue;
     }
     if (trimmed === "/hotkeys") {

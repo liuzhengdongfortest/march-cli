@@ -222,6 +222,7 @@ function cleanup(dir) {
   const panel = formatHotkeysPanel().join("\n");
   assert.ok(panel.includes("Ctrl+O"));
   assert.ok(panel.includes("Ctrl+L"));
+  assert.ok(panel.includes("Ctrl+T"));
   assert.ok(panel.includes("!!"));
   assert.ok(panel.includes("@"));
   console.log("  PASS");
@@ -352,6 +353,7 @@ function cleanup(dir) {
   assert.equal(typeof ui.toggleToolOutput, "function");
   assert.equal(typeof ui.retryStart, "function");
   assert.equal(typeof ui.retryEnd, "function");
+  assert.equal(typeof ui.setCtrlTHandler, "function");
   assert.equal(typeof ui.setCtrlLHandler, "function");
   assert.equal(typeof ui.close, "function");
   ui.close();
