@@ -250,6 +250,32 @@ function cleanup(dir) {
   console.log("  PASS");
 }
 
+// ── 3i. Slash command handling ──────────────────────────────────────
+
+{
+  console.log("--- smoke: slash command handling ---");
+  const { handleSlashCommand } = await import("../src/cli/slash-commands.mjs");
+  const output = [];
+  const ui = { writeln: (text) => output.push(text), toggleMouse: () => false };
+  const runner = {
+    engine: {
+      modelId: "test-model",
+      turns: [1, 2],
+      openFiles: new Map(),
+      skills: [],
+      getPins: () => [],
+    },
+    session: {},
+  };
+  const sessionState = { sessionId: "s1", sessionDir: "unused" };
+  const status = await handleSlashCommand("/status", { ui, runner, sessionState, sessionsRoot: "unused" });
+  assert.equal(status.handled, true);
+  assert.ok(output.join("\n").includes("session: s1"));
+  const unknown = await handleSlashCommand("/unknown", { ui, runner, sessionState, sessionsRoot: "unused" });
+  assert.equal(unknown.handled, false);
+  console.log("  PASS");
+}
+
 // ── 4. Session persistence ──────────────────────────────────────────
 
 {

@@ -5,8 +5,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseCliArgs, showHelp } from "./cli/args.mjs";
 import { createUI } from "./cli/ui.mjs";
+import { handleSlashCommand } from "./cli/slash-commands.mjs";
 import {
-  formatHotkeysPanel,
   parseInlineShellInput,
   parseSkillInvocation,
   runInlineShellCommand,
@@ -22,8 +22,7 @@ import { SystemViews } from "./memory/system-views.mjs";
 import { loadSkillPool, loadSkillFromFile } from "./skills/loader.mjs";
 import { createSkillTools } from "./skills/tools.mjs";
 import { loadConfig } from "./config/loader.mjs";
-import { saveSession, loadSession, listSessions, forkSession } from "./session/persist.mjs";
-import { formatSessionTree } from "./session/tree.mjs";
+import { saveSession, loadSession } from "./session/persist.mjs";
 
 export async function run(argv) {
   const args = parseCliArgs(argv);
@@ -77,8 +76,11 @@ export async function run(argv) {
 
   // Session persistence
   const sessionsRoot = join(projectMarchDir, "sessions");
-  let sessionId = args.resume ?? Date.now().toString(36);
-  let sessionDir = join(sessionsRoot, sessionId);
+  const sessionState = {
+    sessionId: args.resume ?? Date.now().toString(36),
+    sessionDir: null,
+  };
+  sessionState.sessionDir = join(sessionsRoot, sessionState.sessionId);
 
   const ui = createUI({ json: args.json, cwd, skillPool });
 
@@ -92,7 +94,7 @@ export async function run(argv) {
     return 1;
   }
 
-  ui.status(`Starting March session ${sessionId} in ${cwd}`);
+  ui.status(`Starting March session ${sessionState.sessionId} in ${cwd}`);
 
   // Esc to abort current turn
   let turnRunning = false;
@@ -161,12 +163,12 @@ export async function run(argv) {
 
   // Resume session
   if (args.resume) {
-    const saved = loadSession(sessionDir);
+    const saved = loadSession(sessionState.sessionDir);
     if (saved) {
       runner.engine.restoreSession(saved, skillPool);
-      ui.status(`Resumed session ${sessionId} (${saved.turns.length} turns)`);
+      ui.status(`Resumed session ${sessionState.sessionId} (${saved.turns.length} turns)`);
     } else {
-      ui.status(`Session ${sessionId} not found — starting fresh`);
+      ui.status(`Session ${sessionState.sessionId} not found — starting fresh`);
     }
   }
 
@@ -183,7 +185,7 @@ export async function run(argv) {
       const postCtx = runner.engine.buildContext("");
       writeFileSync(resolve(projectMarchDir, "context-snapshot.txt"), postCtx, "utf8");
     }
-    saveSession(sessionDir, runner.engine);
+    saveSession(sessionState.sessionDir, runner.engine);
     runner.dispose();
     ui.writeln("");
     ui.close();
@@ -205,17 +207,11 @@ export async function run(argv) {
   for (;;) {
     const line = await ui.readline("> ");
     if (line === null) {
-      saveSession(sessionDir, runner.engine);
+      saveSession(sessionState.sessionDir, runner.engine);
       break;
     }
     let trimmed = line.trim();
     if (!trimmed) continue;
-
-    if (trimmed === "/exit" || trimmed === "/quit") {
-      saveSession(sessionDir, runner.engine);
-      ui.writeln(`Session saved: ${sessionId}`);
-      break;
-    }
     const inlineShell = parseInlineShellInput(trimmed, lastInlineShellCommand);
     if (inlineShell.type === "error") {
       ui.writeln(`Error: ${inlineShell.message}`);
@@ -241,139 +237,15 @@ export async function run(argv) {
       if (!skillInvocation.prompt) continue;
       trimmed = skillInvocation.prompt;
     }
-    if (trimmed === "/help") {
-      ui.writeln("Commands: /exit, /help, /hotkeys, /model, /models, /compact, /session, /sessions, /sessions tree, /fork, /status, /save, /mouse, /pin <path>, /unpin <path>, /pins");
-      ui.writeln("Shortcuts: Esc = abort turn, Ctrl+O = toggle tool output, Ctrl+G = external editor, Shift+Tab/Ctrl+T = thinking level, Ctrl+L = model");
-      continue;
-    }
-    if (trimmed === "/hotkeys") {
-      for (const line of formatHotkeysPanel()) ui.writeln(line);
-      continue;
-    }
-    if (trimmed === "/thinking") {
-      ui.writeln("Thinking blocks are always expanded (italic).");
-      continue;
-    }
-    if (trimmed === "/mouse") {
-      const on = ui.toggleMouse();
-      ui.writeln(on ? "Mouse tracking: ON (click-to-expand enabled, text selection disabled)" : "Mouse tracking: OFF (text selection enabled)");
-      continue;
-    }
-    if (trimmed === "/status") {
-      const s = runner.engine;
-      ui.writeln(`session: ${sessionId}  model: ${s.modelId}  turns: ${s.turns.length}  open: ${s.openFiles.size}  skills: ${s.skills.map(s => typeof s === "string" ? s : s.name).join(", ") || "(none)"}  pins: ${s.getPins().join(", ") || "(none)"}`);
-      continue;
-    }
-    if (trimmed === "/save") {
-      saveSession(sessionDir, runner.engine);
-      ui.writeln(`Session saved: ${sessionId}`);
-      continue;
-    }
-    if (trimmed === "/fork") {
-      const forked = forkSession(sessionsRoot, sessionId, runner.engine);
-      sessionId = forked.id;
-      sessionDir = forked.sessionDir;
-      ui.writeln(`Forked session: ${sessionId} (parent: ${forked.state.parentSessionId})`);
-      continue;
-    }
-    if (trimmed.startsWith("/pin ")) {
-      const raw = trimmed.slice(5).trim();
-      const absPath = runner.engine.resolvePath(raw);
-      runner.engine.addPin(absPath);
-      if (!runner.engine.isOpen(absPath)) {
-        try {
-          runner.engine.openFile(absPath);
-        } catch {
-          // File can't be opened yet — just pin it
-        }
-      }
-      ui.writeln(`Pinned: ${absPath}`);
-      continue;
-    }
-    if (trimmed === "/pins") {
-      const pins = runner.engine.getPins();
-      ui.writeln(pins.length > 0 ? pins.join("\n") : "(no pinned files)");
-      continue;
-    }
-    if (trimmed === "/sessions" || trimmed === "/sessions tree") {
-      const sessions = listSessions(sessionsRoot);
-      if (trimmed === "/sessions tree") {
-        for (const line of formatSessionTree(sessions, sessionId)) ui.writeln(line);
-        continue;
-      }
-      if (sessions.length === 0) {
-        ui.writeln("(no saved sessions)");
-      } else {
-        for (const s of sessions) {
-          const marker = s.id === sessionId ? " *" : "  ";
-          const parent = s.parentSessionId ? `  fork:${s.parentSessionId}` : "";
-          ui.writeln(`${marker} ${s.id}  ${s.turnCount}t  ${s.cwd}  ${s.savedAt?.slice(0, 19) ?? "?"}${parent}`);
-        }
-        ui.writeln("(* = current session)");
-      }
-      continue;
-    }
-    if (trimmed.startsWith("/unpin ")) {
-      const raw = trimmed.slice(7).trim();
-      const absPath = runner.engine.resolvePath(raw);
-      runner.engine.removePin(absPath);
-      ui.writeln(`Unpinned: ${absPath}`);
-      continue;
-    }
 
-    if (trimmed === "/model") {
-      try {
-        const result = await runner.session.cycleModel();
-        if (result) {
-          const name = result.model.name || result.model.id;
-          ui.writeln(`Model: ${name} (${result.model.provider})  thinking: ${result.thinkingLevel}`);
-        } else {
-          ui.writeln("(only one model available)");
-        }
-      } catch (err) {
-        ui.writeln(`Error: ${err.message}`);
-      }
-      continue;
-    }
-
-    if (trimmed === "/models") {
-      const current = runner.session.model;
-      if (current) {
-        ui.writeln(`Current: ${current.name || current.id} (${current.provider})`);
-      }
-      const scoped = runner.session.scopedModels;
-      if (scoped.length > 0) {
-        for (const s of scoped) {
-          const name = s.model.name || s.model.id;
-          const mark = (current && s.model.id === current.id && s.model.provider === current.provider) ? " *" : "  ";
-          ui.writeln(`${mark} ${name} (${s.model.provider})`);
-        }
-      } else {
-        ui.writeln("(no scoped models — use --model flag or /model to cycle)");
-      }
-      continue;
-    }
-
-    if (trimmed === "/compact") {
-      try {
-        const result = await runner.session.compact();
-        if (result) {
-          ui.writeln(`Compacted: ${result.summary?.length ?? 0} char summary`);
-        } else {
-          ui.writeln("Compaction complete (nothing to compact)");
-        }
-      } catch (err) {
-        ui.writeln(`Error: ${err.message}`);
-      }
-      continue;
-    }
-
-    if (trimmed === "/session") {
-      const stats = runner.session.getSessionStats();
-      ui.writeln(`session: ${stats.sessionId}`);
-      ui.writeln(`messages: ${stats.userMessages}u + ${stats.assistantMessages}a + ${stats.toolCalls}t = ${stats.totalMessages} total`);
-      ui.writeln(`tokens: ${stats.tokens.input} in / ${stats.tokens.output} out (${stats.tokens.cacheRead} cache read, ${stats.tokens.cacheWrite} cache write)`);
-      ui.writeln(`cost: $${stats.cost.toFixed(4)}`);
+    const slashResult = await handleSlashCommand(trimmed, {
+      ui,
+      runner,
+      sessionState,
+      sessionsRoot,
+    });
+    if (slashResult.exit) break;
+    if (slashResult.handled) {
       continue;
     }
 
