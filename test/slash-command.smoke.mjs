@@ -103,6 +103,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(output.join("\n").includes("/templates"));
   assert.ok(output.join("\n").includes("/export jsonl"));
   assert.ok(output.join("\n").includes("/export html"));
+  assert.ok(output.join("\n").includes("/export gist <jsonl|html>"));
   assert.ok(output.join("\n").includes("/settings"));
   assert.ok(output.join("\n").includes("/copy"));
   assert.ok(output.join("\n").includes("/name"));

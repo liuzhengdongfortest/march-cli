@@ -31,6 +31,8 @@ const MARCH_COMMANDS = [
   { name: "templates", description: "List project prompt templates" },
   { name: "export jsonl", description: "Export current session turns as JSONL" },
   { name: "export html", description: "Export current session turns as HTML" },
+  { name: "export gist html", description: "Share current session HTML as a private GitHub Gist" },
+  { name: "export gist jsonl", description: "Share current session JSONL as a private GitHub Gist" },
   { name: "settings", description: "Show or edit global/project settings" },
 ];
 

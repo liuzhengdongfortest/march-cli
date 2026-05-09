@@ -7,6 +7,7 @@ export async function runExportCommandSmoke({ setupTmp, cleanup }) {
   const {
     buildSessionHtml,
     buildSessionJsonlRecords,
+    createSessionGist,
     exportSessionHtml,
     exportSessionJsonl,
     handleExportCommand,
@@ -42,6 +43,9 @@ export async function runExportCommandSmoke({ setupTmp, cleanup }) {
   assert.deepEqual(parseExportCommand("/exportjsonl"), { type: "none" });
   assert.deepEqual(parseExportCommand("/export jsonl"), { type: "jsonl" });
   assert.deepEqual(parseExportCommand("/export html"), { type: "html" });
+  assert.deepEqual(parseExportCommand("/export gist html"), { type: "gist", format: "html" });
+  assert.equal(parseExportCommand("/export gist").message, "usage: /export gist <jsonl|html>");
+  assert.equal(parseExportCommand("/export gist xml").message, "unsupported gist export format: xml");
   assert.equal(parseExportCommand("/export").type, "error");
   assert.equal(parseExportCommand("/export xml").message, "unsupported export format: xml");
 
@@ -98,7 +102,7 @@ export async function runExportCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(exportedHtml.path.endsWith("2026-05-10T01-02-03-004Z_s_1.html"));
   assert.ok(readFileSync(exportedHtml.path, "utf8").includes("Sprint"));
 
-  const output = handleExportCommand({ type: "jsonl" }, {
+  const output = await handleExportCommand({ type: "jsonl" }, {
     runner: { engine, getSessionStats: () => sessionStats },
     sessionState: { sessionId: "legacy" },
     sessionSource: "pi",
@@ -107,7 +111,7 @@ export async function runExportCommandSmoke({ setupTmp, cleanup }) {
   });
   assert.ok(output[0].includes("Exported JSONL:"));
   assert.ok(output[0].includes("(2 turns)"));
-  const htmlOutput = handleExportCommand({ type: "html" }, {
+  const htmlOutput = await handleExportCommand({ type: "html" }, {
     runner: { engine, getSessionStats: () => sessionStats },
     sessionState: { sessionId: "legacy" },
     sessionSource: "pi",
@@ -116,6 +120,46 @@ export async function runExportCommandSmoke({ setupTmp, cleanup }) {
   });
   assert.ok(htmlOutput[0].includes("Exported HTML:"));
   assert.ok(htmlOutput[0].includes("(2 turns)"));
+  await assert.rejects(() => createSessionGist({
+    engine,
+    sessionStats,
+    sessionState: { sessionId: "legacy" },
+    sessionSource: "pi",
+    now,
+    env: {},
+    fetchImpl: async () => ({}),
+  }), /GITHUB_TOKEN or GH_TOKEN is required/);
+  const gistRequests = [];
+  const gist = await createSessionGist({
+    engine,
+    sessionStats,
+    sessionState: { sessionId: "legacy" },
+    sessionSource: "pi",
+    now,
+    format: "html",
+    env: { GH_TOKEN: "secret", GITHUB_API_URL: "https://api.test" },
+    fetchImpl: async (url, request) => {
+      gistRequests.push({ url, request });
+      return { ok: true, json: async () => ({ html_url: "https://gist.github.com/example" }) };
+    },
+  });
+  assert.equal(gist.url, "https://gist.github.com/example");
+  assert.equal(gist.filename, "2026-05-10T01-02-03-004Z_s_1.html");
+  assert.equal(gistRequests[0].url, "https://api.test/gists");
+  assert.equal(gistRequests[0].request.method, "POST");
+  assert.equal(gistRequests[0].request.headers.Authorization, "Bearer secret");
+  const gistPayload = JSON.parse(gistRequests[0].request.body);
+  assert.equal(gistPayload.public, false);
+  assert.ok(gistPayload.files["2026-05-10T01-02-03-004Z_s_1.html"].content.includes("<!doctype html>"));
+  const gistOutput = await handleExportCommand({ type: "gist", format: "jsonl" }, {
+    runner: { engine, getSessionStats: () => sessionStats },
+    sessionState: { sessionId: "legacy" },
+    sessionSource: "pi",
+    now,
+    env: { GITHUB_TOKEN: "secret" },
+    fetchImpl: async () => ({ ok: true, json: async () => ({ html_url: "https://gist.github.com/jsonl" }) }),
+  });
+  assert.deepEqual(gistOutput, ["Created Gist: https://gist.github.com/jsonl"]);
 
   cleanup(dir);
   console.log("  PASS");

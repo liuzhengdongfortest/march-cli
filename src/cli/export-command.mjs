@@ -4,15 +4,20 @@ import { join } from "node:path";
 export function parseExportCommand(input) {
   if (input !== "/export" && !input.startsWith("/export ")) return { type: "none" };
   const args = input.slice("/export".length).trim().split(/\s+/).filter(Boolean);
-  if (args.length === 0) return { type: "error", message: "usage: /export jsonl|html" };
-  if (args.length > 1) return { type: "error", message: "usage: /export jsonl|html" };
+  if (args.length === 0) return { type: "error", message: "usage: /export jsonl|html|gist <jsonl|html>" };
+  if (args[0] === "gist") {
+    if (args.length !== 2) return { type: "error", message: "usage: /export gist <jsonl|html>" };
+    if (args[1] !== "jsonl" && args[1] !== "html") return { type: "error", message: `unsupported gist export format: ${args[1]}` };
+    return { type: "gist", format: args[1] };
+  }
+  if (args.length > 1) return { type: "error", message: "usage: /export jsonl|html|gist <jsonl|html>" };
   if (args[0] !== "jsonl" && args[0] !== "html") return { type: "error", message: `unsupported export format: ${args[0]}` };
   return { type: args[0] };
 }
 
-export function handleExportCommand(command, { runner, sessionState, sessionSource, projectMarchDir, now = new Date() }) {
+export async function handleExportCommand(command, { runner, sessionState, sessionSource, projectMarchDir, now = new Date(), env = process.env, fetchImpl = globalThis.fetch } = {}) {
   if (command.type === "error") return [`Error: ${command.message}`];
-  if (command.type !== "jsonl" && command.type !== "html") return [];
+  if (command.type !== "jsonl" && command.type !== "html" && command.type !== "gist") return [];
 
   const options = {
     engine: runner.engine,
@@ -22,6 +27,14 @@ export function handleExportCommand(command, { runner, sessionState, sessionSour
     projectMarchDir,
     now,
   };
+  if (command.type === "gist") {
+    try {
+      const result = await createSessionGist({ ...options, format: command.format, env, fetchImpl });
+      return [`Created Gist: ${result.url}`];
+    } catch (err) {
+      return [`Error: ${err.message}`];
+    }
+  }
   const result = command.type === "jsonl"
     ? exportSessionJsonl(options)
     : exportSessionHtml(options);
@@ -48,6 +61,44 @@ export function exportSessionHtml({ engine, sessionStats, sessionState, sessionS
   const records = buildSessionJsonlRecords({ engine, sessionStats, sessionState, sessionSource, now });
   writeFileSync(path, buildSessionHtml(records), "utf8");
   return { path, turnCount: engine.turns.length };
+}
+
+export async function createSessionGist({ engine, sessionStats, sessionState, sessionSource = "legacy", now = new Date(), format = "html", env = process.env, fetchImpl = globalThis.fetch }) {
+  const token = env.GITHUB_TOKEN || env.GH_TOKEN;
+  if (!token) throw new Error("GITHUB_TOKEN or GH_TOKEN is required for /export gist");
+  if (typeof fetchImpl !== "function") throw new Error("fetch is not available for /export gist");
+
+  const records = buildSessionJsonlRecords({ engine, sessionStats, sessionState, sessionSource, now });
+  const session = records.find((record) => record.type === "session") ?? {};
+  const sessionId = session.sessionId ?? "session";
+  const extension = format === "html" ? "html" : "jsonl";
+  const filename = `${formatTimestamp(now)}_${sanitizeFilename(sessionId)}.${extension}`;
+  const content = format === "html"
+    ? buildSessionHtml(records)
+    : records.map((record) => JSON.stringify(record)).join("\n") + "\n";
+  const response = await fetchImpl(`${env.GITHUB_API_URL || "https://api.github.com"}/gists`, {
+    method: "POST",
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "X-GitHub-Api-Version": "2022-11-28",
+      "Content-Type": "application/json",
+      "User-Agent": "march-cli",
+    },
+    body: JSON.stringify({
+      description: `March session export: ${session.sessionName || sessionId}`,
+      public: false,
+      files: {
+        [filename]: { content },
+      },
+    }),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(`GitHub Gist create failed (${response.status}): ${body.message || response.statusText || "unknown error"}`);
+  }
+  if (!body.html_url) throw new Error("GitHub Gist create response did not include html_url");
+  return { url: body.html_url, filename };
 }
 
 export function buildSessionJsonlRecords({ engine, sessionStats, sessionState, sessionSource = "legacy", now = new Date() }) {
