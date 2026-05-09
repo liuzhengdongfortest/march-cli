@@ -7,6 +7,7 @@ import {
   SettingsManager,
 } from "@mariozechner/pi-coding-agent";
 import { ContextEngine } from "../context/engine.mjs";
+import { createSessionBinding } from "./session-binding.mjs";
 import { createMarchCustomTools } from "./tools.mjs";
 
 export const MARCH_BASE_TOOL_NAMES = ["read", "bash", "edit", "write", "grep", "find", "ls"];
@@ -62,6 +63,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
     sessionManager: resolveRunnerSessionManager(cwd, sessionManager),
     settingsManager,
   });
+  const sessionBinding = createSessionBinding(session);
 
   engine.setToolDefs(session.getActiveToolNames().map((name) => {
     const tool = session.getToolDefinition(name);
@@ -74,16 +76,19 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
 
   return {
     engine,
-    session,
+    get session() {
+      return sessionBinding.get();
+    },
 
     async runTurn(prompt, userMessage) {
+      const activeSession = sessionBinding.get();
       let draft = "";
       let summaryDraft = "";
       let thinkingText = "";
       let summarizing = false;
       ui.turnStart();
 
-      const unsubscribe = session.subscribe((event) => {
+      const unsubscribe = activeSession.subscribe((event) => {
         if (event.type === "message_update" && event.assistantMessageEvent) {
           const ae = event.assistantMessageEvent;
           if (ae.type === "text_delta") {
@@ -135,19 +140,19 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       });
 
       try {
-        await session.prompt(prompt);
+        await activeSession.prompt(prompt);
 
         // Post-turn: inject summary prompt with tools + thinking stripped
         summarizing = true;
         ui.summaryStart();
 
-        const originalTools = session.getActiveToolNames();
-        const originalThinking = session.thinkingLevel;
-        session.setActiveToolsByName([]);
-        session.setThinkingLevel("off");
+        const originalTools = activeSession.getActiveToolNames();
+        const originalThinking = activeSession.thinkingLevel;
+        activeSession.setActiveToolsByName([]);
+        activeSession.setThinkingLevel("off");
 
         try {
-          await session.prompt(
+          await activeSession.prompt(
             "[system]\nSummarize the work you just completed in 1-2 paragraphs for the next turn's context. " +
             "Focus on: what was accomplished, what decisions were made, and what's left to do. " +
             "Output ONLY the summary — no tools, no code, just the summary text.\n\n" +
@@ -159,8 +164,8 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
           }
         }
 
-        session.setActiveToolsByName(originalTools);
-        session.setThinkingLevel(originalThinking);
+        activeSession.setActiveToolsByName(originalTools);
+        activeSession.setThinkingLevel(originalThinking);
         ui.summaryDone();
 
         const summary = (summaryDraft || "(no summary)").slice(0, 4000);
@@ -179,60 +184,64 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
     },
 
     abort() {
-      session.abortRetry?.();
-      return session.abort();
+      const activeSession = sessionBinding.get();
+      activeSession.abortRetry?.();
+      return activeSession.abort();
     },
 
     async cycleModel() {
-      return session.cycleModel();
+      return sessionBinding.get().cycleModel();
     },
 
     getCurrentModel() {
-      return session.model;
+      return sessionBinding.get().model;
     },
 
     async setModel(model) {
-      await session.setModel(model);
-      return session.model;
+      const activeSession = sessionBinding.get();
+      await activeSession.setModel(model);
+      return activeSession.model;
     },
 
     getScopedModels() {
-      return session.scopedModels;
+      return sessionBinding.get().scopedModels;
     },
 
     async compact() {
-      return session.compact();
+      return sessionBinding.get().compact();
     },
 
     getSessionStats() {
-      const stats = session.getSessionStats();
-      const manager = session.sessionManager;
+      const activeSession = sessionBinding.get();
+      const stats = activeSession.getSessionStats();
+      const manager = activeSession.sessionManager;
       return {
         ...stats,
-        persisted: manager?.isPersisted?.() ?? Boolean(session.sessionFile),
-        sessionFile: manager?.getSessionFile?.() ?? session.sessionFile,
+        persisted: manager?.isPersisted?.() ?? Boolean(activeSession.sessionFile),
+        sessionFile: manager?.getSessionFile?.() ?? activeSession.sessionFile,
       };
     },
 
     cycleThinkingLevel() {
-      return session.cycleThinkingLevel();
+      return sessionBinding.get().cycleThinkingLevel();
     },
 
     getThinkingLevel() {
-      return session.thinkingLevel;
+      return sessionBinding.get().thinkingLevel;
     },
 
     setThinkingLevel(level) {
-      session.setThinkingLevel(level);
-      return session.thinkingLevel;
+      const activeSession = sessionBinding.get();
+      activeSession.setThinkingLevel(level);
+      return activeSession.thinkingLevel;
     },
 
     getAvailableThinkingLevels() {
-      return session.getAvailableThinkingLevels();
+      return sessionBinding.get().getAvailableThinkingLevels();
     },
 
     dispose() {
-      session.dispose();
+      sessionBinding.get().dispose();
     },
   };
 }

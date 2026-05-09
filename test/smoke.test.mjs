@@ -184,11 +184,16 @@ function cleanup(dir) {
 {
   console.log("--- smoke: runner session manager seam ---");
   const { createDefaultSessionManager, resolveRunnerSessionManager } = await import("../src/agent/runner.mjs");
+  const { createSessionBinding } = await import("../src/agent/session-binding.mjs");
   const manager = createDefaultSessionManager(process.cwd());
   assert.equal(manager.getCwd(), process.cwd());
   assert.equal(manager.isPersisted(), false);
   const injected = { id: "injected" };
   assert.equal(resolveRunnerSessionManager(process.cwd(), injected), injected);
+  const binding = createSessionBinding({ id: "s1" });
+  assert.equal(binding.get().id, "s1");
+  assert.equal(binding.set({ id: "s2" }).id, "s2");
+  assert.equal(binding.get().id, "s2");
   console.log("  PASS");
 }
 
