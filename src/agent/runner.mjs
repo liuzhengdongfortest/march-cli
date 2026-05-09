@@ -11,6 +11,14 @@ import { createMarchCustomTools } from "./tools.mjs";
 
 export const MARCH_BASE_TOOL_NAMES = ["read", "bash", "edit", "write", "grep", "find", "ls"];
 
+export function createDefaultSessionManager(cwd) {
+  return SessionManager.inMemory(cwd);
+}
+
+export function resolveRunnerSessionManager(cwd, sessionManager = null) {
+  return sessionManager ?? createDefaultSessionManager(cwd);
+}
+
 function resolveApiKey(provider) {
   const envMap = {
     deepseek: "DEEPSEEK_API_KEY",
@@ -23,7 +31,7 @@ function resolveApiKey(provider) {
   return key;
 }
 
-export async function createRunner({ cwd, modelId, provider = "deepseek", stateRoot, ui, skills, skillPool = [], pins, graph = null, glossary = null, memoryTools = [], skillTools = [], namespace = "" }) {
+export async function createRunner({ cwd, modelId, provider = "deepseek", stateRoot, ui, skills, skillPool = [], pins, graph = null, glossary = null, memoryTools = [], skillTools = [], namespace = "", sessionManager = null }) {
   const authStorage = AuthStorage.create();
   authStorage.setRuntimeApiKey(provider, resolveApiKey(provider));
 
@@ -51,7 +59,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
     modelRegistry,
     customTools,
     tools: activeToolNames,
-    sessionManager: SessionManager.inMemory(cwd),
+    sessionManager: resolveRunnerSessionManager(cwd, sessionManager),
     settingsManager,
   });
 

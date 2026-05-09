@@ -173,6 +173,19 @@ function cleanup(dir) {
   console.log("  PASS");
 }
 
+// ── 3d. Runner session manager seam ─────────────────────────────────
+
+{
+  console.log("--- smoke: runner session manager seam ---");
+  const { createDefaultSessionManager, resolveRunnerSessionManager } = await import("../src/agent/runner.mjs");
+  const manager = createDefaultSessionManager(process.cwd());
+  assert.equal(manager.getCwd(), process.cwd());
+  assert.equal(manager.isPersisted(), false);
+  const injected = { id: "injected" };
+  assert.equal(resolveRunnerSessionManager(process.cwd(), injected), injected);
+  console.log("  PASS");
+}
+
 // ── 3d. Autocomplete provider ───────────────────────────────────────
 
 {
