@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { runModelCommandSmoke, runSelectorListSmoke, runSessionCommandSmoke, runSessionListCommandSmoke, runSessionSwitchCommandSmoke } from "./command-smoke.mjs";
 import { runDiffAndUiSmoke, runMemorySystemSmoke } from "./memory-and-diff.smoke.mjs";
+import { runPiSessionManagerFactorySmoke, runSessionPersistenceSmoke, runSessionTreeSmoke } from "./session.smoke.mjs";
 
 // Minimal mocks for smoke testing without DEEPSEEK_API_KEY
 
@@ -408,108 +409,11 @@ await runSessionSwitchCommandSmoke({ setupTmp, cleanup });
   console.log("  PASS");
 }
 
-// ── 4. Session persistence ──────────────────────────────────────────
+// ── 4. Session smoke ────────────────────────────────────────────────
 
-{
-  console.log("--- smoke: session persistence ---");
-  const { ContextEngine } = await import("../src/context/engine.mjs");
-  const { saveSession, loadSession, forkSession, listSessions } = await import("../src/session/persist.mjs");
-  const dir = setupTmp();
-  const sessionsRoot = join(dir, "sessions");
-  const sessionDir = join(sessionsRoot, "test-session");
-
-  const engine = new ContextEngine({
-    cwd: dir,
-    modelId: "test",
-    provider: "deepseek",
-    skills: [],
-    pins: [],
-  });
-
-  engine.recordTurn({ userMessage: "turn 1", summary: "did thing 1" });
-  engine.recordTurn({ userMessage: "turn 2", summary: "did thing 2" });
-  engine.addPin("/fake/path.txt");
-
-  const saved = saveSession(sessionDir, engine);
-  assert.equal(saved.turns.length, 2);
-  assert.equal(saved.pins.length, 1);
-
-  const loaded = loadSession(sessionDir);
-  assert.equal(loaded.turns.length, 2);
-  assert.equal(loaded.pins[0], "/fake/path.txt");
-  assert.equal(loaded.modelId, "test");
-
-  // Restore into a new engine
-  const engine2 = new ContextEngine({
-    cwd: dir,
-    modelId: "test",
-    provider: "deepseek",
-    skills: [],
-    pins: [],
-  });
-  engine2.restoreSession(loaded);
-  assert.equal(engine2.turns.length, 2);
-  assert.equal(engine2.getPins().length, 1);
-
-  const replacement = new ContextEngine({
-    cwd: dir,
-    modelId: "test",
-    provider: "deepseek",
-    skills: [],
-    pins: ["/old/pin.txt"],
-  });
-  replacement.recordTurn({ userMessage: "old", summary: "old" });
-  replacement.restoreSession(loaded, [], { replace: true });
-  assert.equal(replacement.turns.length, 2);
-  assert.deepEqual(replacement.getPins(), ["/fake/path.txt"]);
-
-  const forked = forkSession(sessionsRoot, "test-session", engine, { targetSessionId: "forked-session" });
-  assert.equal(forked.id, "forked-session");
-  assert.equal(forked.state.parentSessionId, "test-session");
-  const forkedLoaded = loadSession(forked.sessionDir);
-  assert.equal(forkedLoaded.parentSessionId, "test-session");
-  assert.equal(forkedLoaded.turns.length, 2);
-  assert.ok(listSessions(sessionsRoot).some((s) => s.id === "forked-session" && s.parentSessionId === "test-session"));
-
-  cleanup(dir);
-  console.log("  PASS");
-}
-
-// ── 4a. pi SessionManager factory ──────────────────────────────────
-
-{
-  console.log("--- smoke: pi SessionManager factory ---");
-  const { createPiSessionManager, getPiSessionDir } = await import("../src/session/pi-manager.mjs");
-  const dir = setupTmp();
-  const projectMarchDir = join(dir, ".march");
-  const manager = createPiSessionManager({ cwd: dir, projectMarchDir });
-  assert.equal(getPiSessionDir(projectMarchDir), join(projectMarchDir, "pi-sessions"));
-  assert.equal(manager.getCwd(), dir);
-  assert.equal(manager.getSessionDir(), join(projectMarchDir, "pi-sessions"));
-  assert.equal(manager.isPersisted(), true);
-  assert.ok(manager.getSessionFile().endsWith(".jsonl"));
-  cleanup(dir);
-  console.log("  PASS");
-}
-
-// ── 4b. Session tree formatting ─────────────────────────────────────
-
-{
-  console.log("--- smoke: session tree formatting ---");
-  const { buildSessionTree, formatSessionTree } = await import("../src/session/tree.mjs");
-  const sessions = [
-    { id: "root", savedAt: "2026-05-09T10:00:00.000Z", turnCount: 2, parentSessionId: null },
-    { id: "child", savedAt: "2026-05-09T11:00:00.000Z", turnCount: 3, parentSessionId: "root" },
-    { id: "grandchild", savedAt: "2026-05-09T12:00:00.000Z", turnCount: 4, parentSessionId: "child" },
-  ];
-  const tree = buildSessionTree(sessions);
-  assert.equal(tree.length, 1);
-  assert.equal(tree[0].children[0].children[0].id, "grandchild");
-  const lines = formatSessionTree(sessions, "child");
-  assert.ok(lines.some((line) => line.startsWith("  * child")));
-  assert.ok(lines.some((line) => line.startsWith("    - grandchild")));
-  console.log("  PASS");
-}
+await runSessionPersistenceSmoke({ setupTmp, cleanup });
+await runPiSessionManagerFactorySmoke({ setupTmp, cleanup });
+await runSessionTreeSmoke();
 
 // ── 5. Memory, diff and UI API smoke ────────────────────────────────
 
