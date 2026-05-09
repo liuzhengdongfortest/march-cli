@@ -11,8 +11,9 @@ export async function runRuntimeFactorySmoke() {
     authStorage: { id: "auth" },
     settingsManager: { id: "settings" },
     modelRegistry: { id: "registry" },
+    resourceLoaderOptions: { additionalExtensionPaths: ["D:/repo/ext.ts"] },
     createServices: async (options) => {
-      calls.push(["services", options.cwd, options.agentDir, options.authStorage.id]);
+      calls.push(["services", options.cwd, options.agentDir, options.authStorage.id, options.resourceLoaderOptions.additionalExtensionPaths.join(",")]);
       return { cwd: options.cwd, agentDir: options.agentDir, diagnostics: [{ type: "info", message: "ok" }] };
     },
     resolveSessionOptions: async ({ cwd, services }) => {
@@ -35,7 +36,7 @@ export async function runRuntimeFactorySmoke() {
   assert.equal(result.services.cwd, "D:/repo");
   assert.deepEqual(result.diagnostics, [{ type: "info", message: "ok" }]);
   assert.deepEqual(calls, [
-    ["services", "D:/repo", "agent-dir", "auth"],
+    ["services", "D:/repo", "agent-dir", "auth", "D:/repo/ext.ts"],
     ["options", "D:/repo", "agent-dir"],
     ["session", "D:/repo", "manager", "session_start", "read"],
   ]);

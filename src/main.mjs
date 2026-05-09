@@ -51,6 +51,7 @@ export async function run(argv) {
   const model = args.model ?? config.model ?? "deepseek-v4-pro";
   const skills = [...config.skills, ...args.skills];
   const pins = [...config.pins, ...args.pins];
+  const extensionPaths = args.extensions.map((extensionPath) => resolve(cwd, extensionPath));
 
   // Memory system: global SQLite database at ~/.march/memory.db
   // Project isolation via .march/project-id namespace
@@ -122,6 +123,7 @@ export async function run(argv) {
     skillTools,
     namespace,
     projectMarchDir,
+    extensionPaths,
     sessionManager: resolvePiSessionManager({
       cwd,
       projectMarchDir,

@@ -37,7 +37,7 @@ function resolveApiKey(provider) {
   return key;
 }
 
-export async function createRunner({ cwd, modelId, provider = "deepseek", stateRoot, ui, skills, skillPool = [], pins, graph = null, glossary = null, memoryTools = [], skillTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices }) {
+export async function createRunner({ cwd, modelId, provider = "deepseek", stateRoot, ui, skills, skillPool = [], pins, graph = null, glossary = null, memoryTools = [], skillTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices }) {
   const authStorage = AuthStorage.create();
   authStorage.setRuntimeApiKey(provider, resolveApiKey(provider));
 
@@ -67,12 +67,16 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       ui,
       memoryTools,
       skillTools,
+      extensionPaths,
       onRebind: (session) => syncEngineSessionState(engine, session),
       createAgentSessionRuntimeImpl,
       createServices: createRuntimeServices,
       createFromServices: createRuntimeSessionFromServices,
     });
   } else {
+    if (extensionPaths.length > 0) {
+      throw new Error("--extension requires the default pi runtime host path; remove --legacy-sessions to load extensions");
+    }
     const sessionOptions = resolveRunnerSessionOptions({
       cwd,
       provider,

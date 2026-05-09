@@ -17,6 +17,7 @@ export async function createRunnerRuntimeHost({
   ui,
   memoryTools = [],
   skillTools = [],
+  extensionPaths = [],
   onRebind = null,
   createAgentSessionRuntimeImpl = createAgentSessionRuntime,
   createServices,
@@ -29,6 +30,9 @@ export async function createRunnerRuntimeHost({
     modelRegistry,
     createServices,
     createFromServices,
+    resourceLoaderOptions: {
+      additionalExtensionPaths: extensionPaths,
+    },
     resolveSessionOptions: ({ cwd: sessionCwd, services }) => resolveRunnerSessionOptions({
       cwd: sessionCwd,
       provider,

@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runRunnerRuntimeHostSmoke() {
   console.log("--- smoke: runner runtime host composition ---");
+  const { createRunner } = await import("../src/agent/runner.mjs");
   const { createRunnerRuntimeHost } = await import("../src/agent/runner-runtime-host.mjs");
   const { createSessionBinding } = await import("../src/agent/session-binding.mjs");
 
@@ -25,8 +26,9 @@ export async function runRunnerRuntimeHostSmoke() {
     engine: { cwd: "D:/repo" },
     ui: { editDiff: () => {} },
     memoryTools: [{ name: "remember" }],
+    extensionPaths: ["D:/repo/ext.ts"],
     createServices: async (options) => {
-      calls.push(["services", options.cwd, options.agentDir, options.authStorage.id]);
+      calls.push(["services", options.cwd, options.agentDir, options.authStorage.id, options.resourceLoaderOptions.additionalExtensionPaths.join(",")]);
       return { ...options, diagnostics: [{ type: "info", message: "ok" }] };
     },
     createFromServices: async (options) => {
@@ -62,7 +64,7 @@ export async function runRunnerRuntimeHostSmoke() {
   assert.equal(binding.get().id, "initial");
   assert.deepEqual(calls, [
     ["runtime", "D:/repo", "D:/state", "manager"],
-    ["services", "D:/repo", "D:/state", "auth"],
+    ["services", "D:/repo", "D:/state", "auth", "D:/repo/ext.ts"],
     ["session", "D:/repo", "manager", true],
   ]);
 
@@ -70,5 +72,22 @@ export async function runRunnerRuntimeHostSmoke() {
   assert.equal(binding.get().id, "new");
   await host.dispose();
   assert.deepEqual(calls.at(-1), ["dispose"]);
+
+  process.env.TEST_API_KEY = "test";
+  await assert.rejects(
+    () => createRunner({
+      cwd: "D:/repo",
+      stateRoot: "D:/state",
+      provider: "test",
+      modelId: "model",
+      ui: { editDiff: () => {} },
+      skills: [],
+      pins: [],
+      extensionPaths: ["D:/repo/ext.ts"],
+      useRuntimeHost: false,
+      createAgentSessionImpl: async () => ({ session: { id: "unused" } }),
+    }),
+    /--extension requires the default pi runtime host path/,
+  );
   console.log("  PASS");
 }

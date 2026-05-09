@@ -9,6 +9,7 @@ export function createMarchRuntimeFactory({
   settingsManager,
   modelRegistry,
   resolveSessionOptions,
+  resourceLoaderOptions = {},
   createServices = createAgentSessionServices,
   createFromServices = createAgentSessionFromServices,
 }) {
@@ -23,6 +24,7 @@ export function createMarchRuntimeFactory({
       authStorage,
       settingsManager,
       modelRegistry,
+      resourceLoaderOptions,
     });
     const sessionOptions = await resolveSessionOptions({ cwd, services });
     const result = await createFromServices({

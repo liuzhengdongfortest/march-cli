@@ -37,10 +37,11 @@ function cleanup(dir) {
   console.log("--- smoke: CLI args parsing ---");
   const { parseCliArgs, showHelp } = await import("../src/cli/args.mjs");
 
-  const args = parseCliArgs(["-m", "deepseek-chat", "--json", "--pin", "foo.js", "hello world"]);
+  const args = parseCliArgs(["-m", "deepseek-chat", "--json", "--pin", "foo.js", "-e", "ext.ts", "hello world"]);
   assert.equal(args.model, "deepseek-chat");
   assert.equal(args.json, true);
   assert.deepEqual(args.pins, ["foo.js"]);
+  assert.deepEqual(args.extensions, ["ext.ts"]);
   assert.equal(args.prompt, "hello world");
   assert.equal(args.help, false);
   assert.equal(args.piSessions, false);

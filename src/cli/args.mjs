@@ -10,6 +10,7 @@ export function parseCliArgs(argv) {
       json: { type: "boolean" },
       pin: { type: "string", multiple: true },
       skill: { type: "string", multiple: true },
+      extension: { type: "string", short: "e", multiple: true },
       "dump-context": { type: "boolean" },
       "pi-sessions": { type: "boolean" },
       "pi-runtime-host": { type: "boolean" },
@@ -27,6 +28,7 @@ export function parseCliArgs(argv) {
     json: values.json ?? false,
     pins: values.pin ?? [],
     skills: values.skill ?? [],
+    extensions: values.extension ?? [],
     dumpContext: values["dump-context"] ?? false,
     piSessions: values["pi-sessions"] ?? false,
     piRuntimeHost: values["pi-runtime-host"] ?? false,
@@ -56,6 +58,8 @@ Options:
   --pi-session-defaults Compatibility alias for the default pi session mode
   --pin <path>         Pin a file in context (repeatable)
   --skill <name>       Activate a skill (repeatable)
+  -e, --extension <path>
+                       Load a pi extension path in the default runtime host (repeatable)
   -h, --help           Show this help
 `);
 }
