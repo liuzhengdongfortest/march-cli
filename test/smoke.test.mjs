@@ -7,6 +7,7 @@ import { runModelCommandSmoke, runSelectorListSmoke, runSessionCommandSmoke, run
 import { runDiffAndUiSmoke, runMemorySystemSmoke } from "./memory-and-diff.smoke.mjs";
 import { runRuntimeFactorySmoke } from "./runtime-factory.smoke.mjs";
 import { runRuntimeHostSmoke } from "./runtime-host.smoke.mjs";
+import { runRunnerRuntimeHostSmoke } from "./runner-runtime-host.smoke.mjs";
 import { runPiSessionManagerFactorySmoke, runSessionPersistenceSmoke, runSessionTreeSmoke } from "./session.smoke.mjs";
 import { runSessionOptionsSmoke } from "./session-options.smoke.mjs";
 import { runSlashCommandSmoke } from "./slash-command.smoke.mjs";
@@ -367,6 +368,7 @@ await runSlashCommandSmoke({ setupTmp, cleanup });
 await runSessionOptionsSmoke();
 await runRuntimeFactorySmoke();
 await runRuntimeHostSmoke();
+await runRunnerRuntimeHostSmoke();
 
 // ── 4. Session smoke ────────────────────────────────────────────────
 
