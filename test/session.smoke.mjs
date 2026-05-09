@@ -20,10 +20,12 @@ export async function runSessionPersistenceSmoke({ setupTmp, cleanup }) {
 
   engine.recordTurn({ userMessage: "turn 1", summary: "did thing 1" });
   engine.recordTurn({ userMessage: "turn 2", summary: "did thing 2" });
+  engine.setSessionName("Saved Session");
   engine.addPin("/fake/path.txt");
 
   const saved = saveSession(sessionDir, engine);
   assert.equal(saved.turns.length, 2);
+  assert.equal(saved.sessionName, "Saved Session");
   assert.equal(saved.pins.length, 1);
 
   const loaded = loadSession(sessionDir);
@@ -35,6 +37,7 @@ export async function runSessionPersistenceSmoke({ setupTmp, cleanup }) {
   const engine2 = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: [], pins: [] });
   engine2.restoreSession(loaded);
   assert.equal(engine2.turns.length, 2);
+  assert.equal(engine2.sessionName, "Saved Session");
   assert.equal(engine2.getPins().length, 1);
 
   const replacement = new ContextEngine({
@@ -55,7 +58,9 @@ export async function runSessionPersistenceSmoke({ setupTmp, cleanup }) {
   const forkedLoaded = loadSession(forked.sessionDir);
   assert.equal(forkedLoaded.parentSessionId, "test-session");
   assert.equal(forkedLoaded.turns.length, 2);
-  assert.ok(listSessions(sessionsRoot).some((s) => s.id === "forked-session" && s.parentSessionId === "test-session"));
+  const listed = listSessions(sessionsRoot);
+  assert.ok(listed.some((s) => s.id === "forked-session" && s.parentSessionId === "test-session"));
+  assert.ok(listed.some((s) => s.id === "test-session" && s.name === "Saved Session"));
 
   cleanup(dir);
   console.log("  PASS");
@@ -121,6 +126,7 @@ export async function runPiSessionSidecarSmoke({ setupTmp, cleanup }) {
     namespace: "project-ns",
   });
   engine.recordTurn({ userMessage: "hello", summary: "summary" });
+  engine.setSessionName("Pi Sidecar");
 
   const saved = savePiSessionSidecar({
     projectMarchDir,
@@ -132,6 +138,7 @@ export async function runPiSessionSidecarSmoke({ setupTmp, cleanup }) {
   assert.equal(saved.state.sessionId, "pi1");
   assert.equal(saved.state.namespace, "project-ns");
   assert.equal(saved.state.thinkingLevel, "high");
+  assert.equal(saved.state.sessionName, "Pi Sidecar");
   assert.deepEqual(saved.state.pins, ["/pinned.txt"]);
   assert.deepEqual(saved.state.skills, ["review"]);
 

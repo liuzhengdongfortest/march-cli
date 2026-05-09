@@ -13,6 +13,7 @@ export class ContextEngine {
     this.skillPool = skillPool;
     this.pins = new Set(pins);
     this.turns = [];
+    this.sessionName = "";
     this.openFiles = new Map();
     this.toolDefs = [];
     this.graph = graph;
@@ -131,16 +132,19 @@ export class ContextEngine {
     if (provider) this.provider = provider;
     if (thinkingLevel) this.thinkingLevel = thinkingLevel;
   }
+  setSessionName(name) { this.sessionName = String(name || "").trim(); }
 
   restoreSession(data, pool, { replace = false } = {}) {
     if (replace) {
       this.turns = [];
+      this.sessionName = "";
       this.openFiles = new Map();
       this.pins = new Set();
       this.skills = [];
       this._compactionSummary = null;
     }
     if (data.turns) this.turns = data.turns;
+    if (typeof data.sessionName === "string") this.sessionName = data.sessionName;
     if (data._compactionSummary) this._compactionSummary = data._compactionSummary;
     this.setRuntimeState(data);
     if (data.pins) {
@@ -317,6 +321,7 @@ ${tree}`;
       `turn: ${turnCount + 1}`,
       `context_pressure: ${pressure}`,
     ];
+    if (this.sessionName) parts.push(`session_name: ${this.sessionName}`);
     parts.push(`open_files: ${this.openFiles.size}`);
     if (this.pins.size > 0) {
       parts.push(`pinned_files:`);

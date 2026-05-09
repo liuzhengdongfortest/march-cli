@@ -10,6 +10,7 @@ export function saveSession(sessionDir, engine, metadata = {}) {
     cwd: engine.cwd,
     modelId: engine.modelId,
     provider: engine.provider,
+    sessionName: engine.sessionName ?? "",
     thinkingLevel: engine.thinkingLevel,
     turns: engine.turns,
     _compactionSummary: engine._compactionSummary,
@@ -54,8 +55,8 @@ export function listSessions(sessionsRoot) {
       if (!existsSync(sessionFile)) return null;
       try {
         const raw = readFileSync(sessionFile, "utf8");
-        const { savedAt, cwd, turns, parentSessionId } = JSON.parse(raw);
-        return { id: e.name, savedAt, cwd, turnCount: turns?.length ?? 0, parentSessionId: parentSessionId ?? null };
+        const { savedAt, cwd, turns, parentSessionId, sessionName } = JSON.parse(raw);
+        return { id: e.name, savedAt, cwd, turnCount: turns?.length ?? 0, parentSessionId: parentSessionId ?? null, name: sessionName ?? "" };
       } catch {
         return null;
       }

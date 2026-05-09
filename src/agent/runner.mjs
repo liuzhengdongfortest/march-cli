@@ -216,6 +216,12 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       return getRunnerSessionStats(sessionBinding.get(), runtimeHost);
     },
 
+    setSessionName(name) {
+      engine.setSessionName(name);
+      syncCurrentPiSidecar();
+      return engine.sessionName;
+    },
+
     canSwitchPiSession() {
       return Boolean(runtimeHost);
     },

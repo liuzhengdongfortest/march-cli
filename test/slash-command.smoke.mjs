@@ -42,10 +42,12 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
       provider: "deepseek",
       thinkingLevel: "medium",
       turns: [{ assistantMessage: "previous answer" }],
+      sessionName: "",
       openFiles: new Map(),
       skills: [],
       pins: new Set(),
       getPins: () => [],
+      setSessionName(name) { this.sessionName = name; },
       restoreSession: (state) => {
         restored = state;
       },
@@ -99,6 +101,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(output.join("\n").includes("/templates"));
   assert.ok(output.join("\n").includes("/settings"));
   assert.ok(output.join("\n").includes("/copy"));
+  assert.ok(output.join("\n").includes("/name"));
   assert.ok(output.join("\n").includes("/sessions and /resume <id> use default pi JSONL sessions"));
   assert.ok(output.join("\n").includes("/sessions pi and /resume-pi <id> are explicit pi aliases"));
   assert.ok(output.join("\n").includes("legacy .march/sessions use /sessions legacy"));
@@ -207,6 +210,10 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   const defaultPiSave = await handleSlashCommand("/save", { ui, runner, sessionState, sessionsRoot, projectMarchDir, sessionSource: "pi" });
   assert.equal(defaultPiSave.handled, true);
   assert.ok(output.join("\n").includes("Pi session auto-saved: s1"));
+  const name = await handleSlashCommand("/name Sprint", { ui, runner, sessionState, sessionsRoot, projectMarchDir, sessionSource: "pi" });
+  assert.equal(name.handled, true);
+  assert.equal(runner.engine.sessionName, "Sprint");
+  assert.ok(output.join("\n").includes("Session named: Sprint"));
   const copied = [];
   const copy = await handleSlashCommand("/copy", {
     ui,

@@ -23,6 +23,7 @@ import { runPiSessionForkCommandSmoke } from "./pi-session-fork-command.smoke.mj
 import { runPiSessionForkResetSmoke } from "./pi-session-fork-reset.smoke.mjs";
 import { runPiSessionManagerFactorySmoke, runPiSessionSidecarSmoke, runPiSessionSidecarSyncSmoke, runSessionPersistenceSmoke, runSessionTreeSmoke } from "./session.smoke.mjs";
 import { runSessionOptionsSmoke } from "./session-options.smoke.mjs";
+import { runSessionNameCommandSmoke } from "./session-name-command.smoke.mjs";
 import { runSlashCommandSmoke } from "./slash-command.smoke.mjs";
 import { runStartupResumeSmoke } from "./startup-resume.smoke.mjs";
 import { runTurnEventsSmoke } from "./turn-events.smoke.mjs";
@@ -81,6 +82,7 @@ await runExtensionLifecycleAdapterSmoke();
 await runKeybindingsSmoke({ setupTmp, cleanup });
 await runPromptTemplatesSmoke({ setupTmp, cleanup });
 await runSettingsCommandSmoke({ setupTmp, cleanup });
+await runSessionNameCommandSmoke({ setupTmp, cleanup });
 
 // ── 2. Config loading ────────────────────────────────────────────────
 
