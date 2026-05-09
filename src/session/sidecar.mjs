@@ -29,9 +29,17 @@ export function captureContextSidecar(engine, metadata = {}) {
 }
 
 export function savePiSessionSidecar({ projectMarchDir, sessionRef, engine, metadata = {} }) {
+  return savePiSessionSidecarState({
+    projectMarchDir,
+    sessionRef,
+    state: captureContextSidecar(engine, metadata),
+  });
+}
+
+export function savePiSessionSidecarState({ projectMarchDir, sessionRef, state }) {
   const sidecarDir = getPiSidecarDir(projectMarchDir);
   mkdirSync(sidecarDir, { recursive: true });
-  const state = captureContextSidecar(engine, metadata);
+  validateSidecarState(state);
   const path = getPiSidecarPath(projectMarchDir, sessionRef);
   writeFileSync(path, JSON.stringify(state, null, 2), "utf8");
   return { path, state };
@@ -41,10 +49,18 @@ export function loadPiSessionSidecar({ projectMarchDir, sessionRef }) {
   const path = getPiSidecarPath(projectMarchDir, sessionRef);
   if (!existsSync(path)) return null;
   const state = JSON.parse(readFileSync(path, "utf8"));
-  if (state.version !== PI_SIDECAR_VERSION || !state.cwd || !Array.isArray(state.turns)) {
+  if (!isValidSidecarState(state)) {
     throw new Error("Invalid pi session sidecar");
   }
   return { path, state };
+}
+
+function validateSidecarState(state) {
+  if (!isValidSidecarState(state)) throw new Error("Invalid pi session sidecar");
+}
+
+function isValidSidecarState(state) {
+  return state?.version === PI_SIDECAR_VERSION && Boolean(state.cwd) && Array.isArray(state.turns);
 }
 
 function normalizeSessionRef(sessionRef) {

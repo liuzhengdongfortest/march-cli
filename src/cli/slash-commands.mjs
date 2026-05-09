@@ -2,7 +2,7 @@ import { saveSession, listSessions, forkSession } from "../session/persist.mjs";
 import { listPiSessionInfos } from "../session/pi-manager.mjs";
 import { handleModelCommand, listModels, parseModelCommand } from "./model-command.mjs";
 import { clonePiSession, parseClonePiCommand } from "./pi-session-clone-command.mjs";
-import { listPiForkCandidates, parseForkPiCommand } from "./pi-session-fork-command.mjs";
+import { forkPiSessionResetContext, listPiForkCandidates, parseForkPiCommand } from "./pi-session-fork-command.mjs";
 import { parseResumePiCommand, resumePiSessionById } from "./pi-session-switch-command.mjs";
 import { formatHotkeysPanel } from "./repl-commands.mjs";
 import { compactSession, listSessionStats } from "./session-command.mjs";
@@ -158,6 +158,8 @@ export async function handleSlashCommand(trimmed, {
   if (forkPiCommand.type !== "none") {
     if (forkPiCommand.type === "error") {
       ui.writeln(`Error: ${forkPiCommand.message}`);
+    } else if (forkPiCommand.type === "fork-pi-reset") {
+      for (const line of await forkPiSessionResetContext(forkPiCommand.entryId, { runner })) ui.writeln(line);
     } else {
       for (const line of listPiForkCandidates({ runner })) ui.writeln(line);
     }

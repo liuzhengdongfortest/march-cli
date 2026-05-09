@@ -8,6 +8,7 @@ import {
 import { ContextEngine } from "../context/engine.mjs";
 import { syncPiSessionSidecar } from "../session/sidecar-sync.mjs";
 import { cloneCurrentPiSession } from "./pi-session-clone.mjs";
+import { forkPiSessionWithResetContext } from "./pi-session-fork-reset.mjs";
 import { createRunnerRuntimeHost } from "./runner-runtime-host.mjs";
 import { resolveRunnerSessionOptions } from "./session-options.mjs";
 import { createSessionBinding } from "./session-binding.mjs";
@@ -262,6 +263,18 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
     getPiForkCandidates() {
       if (!runtimeHost) throw new Error("pi runtime host is not enabled");
       return sessionBinding.get().getUserMessagesForForking();
+    },
+
+    async forkPiSessionWithResetContext(entryId) {
+      return forkPiSessionWithResetContext({
+        runtimeHost,
+        sessionBinding,
+        engine,
+        projectMarchDir,
+        skillPool,
+        entryId,
+        getSessionStats: getRunnerSessionStats,
+      });
     },
 
     cycleThinkingLevel() {
