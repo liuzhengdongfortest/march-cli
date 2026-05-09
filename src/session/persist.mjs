@@ -1,10 +1,11 @@
 import { writeFileSync, readFileSync, readdirSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
-export function saveSession(sessionDir, engine) {
+export function saveSession(sessionDir, engine, metadata = {}) {
   mkdirSync(sessionDir, { recursive: true });
 
   const state = {
+    ...metadata,
     savedAt: new Date().toISOString(),
     cwd: engine.cwd,
     modelId: engine.modelId,
@@ -18,6 +19,14 @@ export function saveSession(sessionDir, engine) {
 
   writeFileSync(join(sessionDir, "session.json"), JSON.stringify(state, null, 2), "utf8");
   return state;
+}
+
+export function forkSession(sessionsRoot, sourceSessionId, engine, { targetSessionId = null } = {}) {
+  const forkedAt = new Date().toISOString();
+  const id = targetSessionId ?? `${Date.now().toString(36)}-fork`;
+  const sessionDir = join(sessionsRoot, id);
+  const state = saveSession(sessionDir, engine, { parentSessionId: sourceSessionId, forkedAt });
+  return { id, sessionDir, state };
 }
 
 export function loadSession(sessionDir) {
@@ -44,8 +53,8 @@ export function listSessions(sessionsRoot) {
       if (!existsSync(sessionFile)) return null;
       try {
         const raw = readFileSync(sessionFile, "utf8");
-        const { savedAt, cwd, turns } = JSON.parse(raw);
-        return { id: e.name, savedAt, cwd, turnCount: turns?.length ?? 0 };
+        const { savedAt, cwd, turns, parentSessionId } = JSON.parse(raw);
+        return { id: e.name, savedAt, cwd, turnCount: turns?.length ?? 0, parentSessionId: parentSessionId ?? null };
       } catch {
         return null;
       }

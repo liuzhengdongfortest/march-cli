@@ -11,6 +11,7 @@ const MARCH_COMMANDS = [
   { name: "compact", description: "Compact session context" },
   { name: "session", description: "Show session stats (tokens, cost, messages)" },
   { name: "sessions", description: "List saved sessions" },
+  { name: "fork", description: "Fork current session" },
   { name: "status", description: "Show current session status" },
   { name: "save", description: "Save current session" },
   { name: "pin", description: "Pin a file to context" },

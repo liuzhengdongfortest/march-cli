@@ -22,7 +22,7 @@ import { SystemViews } from "./memory/system-views.mjs";
 import { loadSkillPool, loadSkillFromFile } from "./skills/loader.mjs";
 import { createSkillTools } from "./skills/tools.mjs";
 import { loadConfig } from "./config/loader.mjs";
-import { saveSession, loadSession, listSessions } from "./session/persist.mjs";
+import { saveSession, loadSession, listSessions, forkSession } from "./session/persist.mjs";
 
 export async function run(argv) {
   const args = parseCliArgs(argv);
@@ -75,8 +75,9 @@ export async function run(argv) {
   const skillTools = createSkillTools(skillState, skillPool);
 
   // Session persistence
-  const sessionId = args.resume ?? Date.now().toString(36);
-  const sessionDir = join(projectMarchDir, "sessions", sessionId);
+  const sessionsRoot = join(projectMarchDir, "sessions");
+  let sessionId = args.resume ?? Date.now().toString(36);
+  let sessionDir = join(sessionsRoot, sessionId);
 
   const ui = createUI({ json: args.json, cwd, skillPool });
 
@@ -240,7 +241,7 @@ export async function run(argv) {
       trimmed = skillInvocation.prompt;
     }
     if (trimmed === "/help") {
-      ui.writeln("Commands: /exit, /help, /hotkeys, /model, /models, /compact, /session, /sessions, /status, /save, /mouse, /pin <path>, /unpin <path>, /pins");
+      ui.writeln("Commands: /exit, /help, /hotkeys, /model, /models, /compact, /session, /sessions, /fork, /status, /save, /mouse, /pin <path>, /unpin <path>, /pins");
       ui.writeln("Shortcuts: Esc = abort turn, Ctrl+O = toggle tool output, Ctrl+G = external editor, Shift+Tab/Ctrl+T = thinking level, Ctrl+L = model");
       continue;
     }
@@ -267,6 +268,13 @@ export async function run(argv) {
       ui.writeln(`Session saved: ${sessionId}`);
       continue;
     }
+    if (trimmed === "/fork") {
+      const forked = forkSession(sessionsRoot, sessionId, runner.engine);
+      sessionId = forked.id;
+      sessionDir = forked.sessionDir;
+      ui.writeln(`Forked session: ${sessionId} (parent: ${forked.state.parentSessionId})`);
+      continue;
+    }
     if (trimmed.startsWith("/pin ")) {
       const raw = trimmed.slice(5).trim();
       const absPath = runner.engine.resolvePath(raw);
@@ -287,13 +295,14 @@ export async function run(argv) {
       continue;
     }
     if (trimmed === "/sessions") {
-      const sessions = listSessions(join(projectMarchDir, "sessions"));
+      const sessions = listSessions(sessionsRoot);
       if (sessions.length === 0) {
         ui.writeln("(no saved sessions)");
       } else {
         for (const s of sessions) {
           const marker = s.id === sessionId ? " *" : "  ";
-          ui.writeln(`${marker} ${s.id}  ${s.turnCount}t  ${s.cwd}  ${s.savedAt?.slice(0, 19) ?? "?"}`);
+          const parent = s.parentSessionId ? `  fork:${s.parentSessionId}` : "";
+          ui.writeln(`${marker} ${s.id}  ${s.turnCount}t  ${s.cwd}  ${s.savedAt?.slice(0, 19) ?? "?"}${parent}`);
         }
         ui.writeln("(* = current session)");
       }

@@ -165,6 +165,7 @@ function cleanup(dir) {
     { name: "review", description: "Review code" },
   ]);
   assert.ok(commands.some((command) => command.name === "hotkeys"));
+  assert.ok(commands.some((command) => command.name === "fork"));
   assert.ok(commands.some((command) => command.name === "skill:review"));
 
   const provider = new MarchAutocompleteProvider(commands, dir);
@@ -244,9 +245,10 @@ function cleanup(dir) {
 {
   console.log("--- smoke: session persistence ---");
   const { ContextEngine } = await import("../src/context/engine.mjs");
-  const { saveSession, loadSession } = await import("../src/session/persist.mjs");
+  const { saveSession, loadSession, forkSession, listSessions } = await import("../src/session/persist.mjs");
   const dir = setupTmp();
-  const sessionDir = join(dir, "test-session");
+  const sessionsRoot = join(dir, "sessions");
+  const sessionDir = join(sessionsRoot, "test-session");
 
   const engine = new ContextEngine({
     cwd: dir,
@@ -280,6 +282,14 @@ function cleanup(dir) {
   engine2.restoreSession(loaded);
   assert.equal(engine2.turns.length, 2);
   assert.equal(engine2.getPins().length, 1);
+
+  const forked = forkSession(sessionsRoot, "test-session", engine, { targetSessionId: "forked-session" });
+  assert.equal(forked.id, "forked-session");
+  assert.equal(forked.state.parentSessionId, "test-session");
+  const forkedLoaded = loadSession(forked.sessionDir);
+  assert.equal(forkedLoaded.parentSessionId, "test-session");
+  assert.equal(forkedLoaded.turns.length, 2);
+  assert.ok(listSessions(sessionsRoot).some((s) => s.id === "forked-session" && s.parentSessionId === "test-session"));
 
   cleanup(dir);
   console.log("  PASS");
