@@ -12,6 +12,7 @@ import {
   runInlineShellCommand,
 } from "./cli/repl-commands.mjs";
 import { buildModelSelectItems } from "./cli/model-command.mjs";
+import { buildThinkingSelectItems } from "./cli/thinking-command.mjs";
 import { createRunner } from "./agent/runner.mjs";
 import { openDatabase } from "./memory/database.mjs";
 import { GraphService } from "./memory/graph.mjs";
@@ -131,7 +132,29 @@ export async function run(argv) {
   };
 
   ui.setShiftTabHandler(cycleThinkingLevel);
-  ui.setCtrlTHandler(cycleThinkingLevel);
+  ui.setCtrlTHandler(async () => {
+    try {
+      const levels = runner.getAvailableThinkingLevels?.() || [];
+      if (ui.selectList && levels.length > 0) {
+        const current = runner.getThinkingLevel?.();
+        const selectedIndex = Math.max(0, levels.indexOf(current));
+        const item = await ui.selectList({
+          items: buildThinkingSelectItems(levels, current),
+          selectedIndex,
+          width: 48,
+        });
+        if (!item) {
+          ui.writeln(`\x1b[90m● thinking: unchanged\x1b[0m`);
+          return;
+        }
+        ui.writeln(`\x1b[90m● thinking: ${runner.setThinkingLevel(item.level)}\x1b[0m`);
+        return;
+      }
+      cycleThinkingLevel();
+    } catch (err) {
+      ui.writeln(`Error: ${err.message}`);
+    }
+  });
 
   ui.setCtrlLHandler(async () => {
     try {

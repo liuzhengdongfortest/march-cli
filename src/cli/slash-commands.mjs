@@ -21,7 +21,7 @@ export async function handleSlashCommand(trimmed, {
 
   if (trimmed === "/help") {
     ui.writeln("Commands: /exit, /help, /hotkeys, /model, /models, /compact, /session, /sessions, /sessions tree, /resume <id>, /fork, /status, /save, /mouse, /pin <path>, /unpin <path>, /pins");
-    ui.writeln("Shortcuts: Esc = abort turn, Ctrl+O = toggle tool output, Ctrl+G = external editor, Shift+Tab/Ctrl+T = thinking level, Ctrl+L = model selector");
+    ui.writeln("Shortcuts: Esc = abort turn, Ctrl+O = toggle tool output, Ctrl+G = external editor, Shift+Tab = cycle thinking, Ctrl+T = thinking selector, Ctrl+L = model selector");
     return { handled: true };
   }
 

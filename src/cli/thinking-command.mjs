@@ -27,6 +27,16 @@ export function formatThinkingLevels(levels, current) {
   });
 }
 
+export function buildThinkingSelectItems(levels, current) {
+  const available = Array.isArray(levels) && levels.length > 0 ? levels : THINKING_LEVELS;
+  return available.map((level, index) => ({
+    value: String(index),
+    label: level,
+    description: level === current ? "current" : "",
+    level,
+  }));
+}
+
 export function selectThinkingByIndex(index, { runner }) {
   const levels = runner.getAvailableThinkingLevels?.() || THINKING_LEVELS;
   const level = levels[index - 1];

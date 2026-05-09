@@ -277,6 +277,7 @@ function cleanup(dir) {
 {
   console.log("--- smoke: thinking command handling ---");
   const {
+    buildThinkingSelectItems,
     formatThinkingLevels,
     handleThinkingCommand,
     parseThinkingCommand,
@@ -293,6 +294,10 @@ function cleanup(dir) {
     "  1. off",
     "* 2. medium",
     "Use /thinking <index> to select.",
+  ]);
+  assert.deepEqual(buildThinkingSelectItems(["off", "medium"], "medium"), [
+    { value: "0", label: "off", description: "", level: "off" },
+    { value: "1", label: "medium", description: "current", level: "medium" },
   ]);
 
   let level = "medium";
