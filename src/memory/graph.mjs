@@ -7,6 +7,12 @@ import {
 } from "./graph-read.mjs";
 import { getGraphDiagnostics } from "./graph-diagnostics.mjs";
 import {
+  escapeLikePath,
+  graphUri,
+  leafName,
+  pathExists,
+} from "./graph-path-utils.mjs";
+import {
   countMemoriesForNode,
   countPathsForEdge,
   ensureNode,
@@ -121,7 +127,7 @@ export class GraphService {
   // ═══════════════════════════════════════════════════════════════════
 
   #deleteSubtreePaths(domain, path, namespace = "") {
-    const safe = path.replace(/[%_]/g, "\\$&");
+    const safe = escapeLikePath(path);
     const rows = this.db.prepare(`
       SELECT namespace, domain, path, edge_id, node_uuid
       FROM paths
@@ -222,15 +228,12 @@ export class GraphService {
       ? (parentPath ? `${parentPath}/${title}` : title)
       : `${parentPath ? parentPath + "/" : ""}${getNextChildNumber(this.db, parentUuid, this.#ns(namespace))}`;
 
-    const existing = this.db.prepare(
-      "SELECT 1 FROM paths WHERE namespace = ? AND domain = ? AND path = ?"
-    ).get(namespace, domain, finalPath);
-    if (existing) throw new Error(`Path '${domain}://${finalPath}' already exists`);
+    if (pathExists(this.db, namespace, domain, finalPath)) throw new Error(`Path '${graphUri(domain, finalPath)}' already exists`);
 
     const newUuid = randomUUID();
     ensureNode(this.db, newUuid);
     const memory = insertMemory(this.db, newUuid, content);
-    const edgeName = title ?? finalPath.split("/").pop();
+    const edgeName = title ?? leafName(finalPath);
 
     const created = this.#createEdgeWithPaths(parentUuid, newUuid, edgeName, domain, finalPath, priority, disclosure, namespace);
 
@@ -243,7 +246,7 @@ export class GraphService {
 
     return {
       id: memory.id, node_uuid: newUuid, domain, path: finalPath,
-      uri: `${domain}://${finalPath}`, priority,
+      uri: graphUri(domain, finalPath), priority,
     };
   }
 
@@ -255,7 +258,7 @@ export class GraphService {
 
     const resolved = resolveGraphPath(this.db, path, domain, namespace);
     if (!resolved || !resolved.edge) {
-      throw new Error(`Path '${domain}://${path}' not found`);
+      throw new Error(`Path '${graphUri(domain, path)}' not found`);
     }
 
     const { edge, node_uuid: nodeUuid } = resolved;
@@ -298,7 +301,7 @@ export class GraphService {
     }
 
     return {
-      domain, path, uri: `${domain}://${path}`,
+      domain, path, uri: graphUri(domain, path),
       old_memory_id: oldMemoryId, new_memory_id: newMemoryId ?? oldMemoryId, node_uuid: nodeUuid,
     };
   }
@@ -323,16 +326,13 @@ export class GraphService {
     if (newPath === "") throw new Error("Cannot create alias at root path.");
 
     const target = resolveGraphPath(this.db, targetPath, targetDomain, namespace);
-    if (!target) throw new Error(`Target '${targetDomain}://${targetPath}' not found`);
+    if (!target) throw new Error(`Target '${graphUri(targetDomain, targetPath)}' not found`);
 
     const parentUuid = newPath.includes("/")
       ? resolveGraphPath(this.db, newPath.substring(0, newPath.lastIndexOf("/")), newDomain, namespace)?.node_uuid ?? ROOT_NODE_UUID
       : ROOT_NODE_UUID;
 
-    const existing = this.db.prepare(
-      "SELECT 1 FROM paths WHERE namespace = ? AND domain = ? AND path = ?"
-    ).get(namespace, newDomain, newPath);
-    if (existing) throw new Error(`Path '${newDomain}://${newPath}' already exists`);
+    if (pathExists(this.db, namespace, newDomain, newPath)) throw new Error(`Path '${graphUri(newDomain, newPath)}' already exists`);
 
     if (wouldCreateCycle(this.db, parentUuid, target.node_uuid)) {
       throw new Error(`Cannot create alias: would create a cycle.`);
@@ -340,13 +340,13 @@ export class GraphService {
 
     const result = this.#createEdgeWithPaths(
       parentUuid, target.node_uuid,
-      newPath.split("/").pop(), newDomain, newPath,
+      leafName(newPath), newDomain, newPath,
       priority, disclosure ?? target.edge?.disclosure, namespace,
     );
 
     return {
-      new_uri: `${newDomain}://${newPath}`,
-      target_uri: `${targetDomain}://${targetPath}`,
+      new_uri: graphUri(newDomain, newPath),
+      target_uri: graphUri(targetDomain, targetPath),
       node_uuid: target.node_uuid,
       edge_id: result.edge_id, edge_created: result.edge_created,
     };
@@ -356,7 +356,7 @@ export class GraphService {
     if (path === "") throw new Error("Cannot remove root path.");
 
     const target = resolveGraphPath(this.db, path, domain, namespace);
-    if (!target) throw new Error(`Path '${domain}://${path}' not found`);
+    if (!target) throw new Error(`Path '${graphUri(domain, path)}' not found`);
 
     const targetNodeUuid = target.node_uuid;
     const targetEdge = target.edge;
@@ -369,7 +369,7 @@ export class GraphService {
     ).all(targetNodeUuid);
 
     const wouldOrphan = [];
-    const safe = path.replace(/[%_]/g, "\\$&");
+    const safe = escapeLikePath(path);
 
     for (const childEdge of childEdges) {
       // Count surviving paths for child (excluding paths being deleted)
@@ -396,7 +396,7 @@ export class GraphService {
 
     if (wouldOrphan.length > 0) {
       const details = wouldOrphan.map(e => `'${e.name}' (${e.child_uuid.slice(0, 8)}...)`).join(", ");
-      throw new Error(`Cannot remove '${domain}://${path}': children would become unreachable: ${details}`);
+      throw new Error(`Cannot remove '${graphUri(domain, path)}': children would become unreachable: ${details}`);
     }
 
     // Proceed with deletion
@@ -406,7 +406,7 @@ export class GraphService {
     this.#gcEdgeIfPathless(targetEdge);
     this.#gcNodeSoft(targetNodeUuid);
 
-    return { deleted: `${domain}://${path}` };
+    return { deleted: graphUri(domain, path) };
   }
 
   restorePath(path, domain, nodeUuid, { parentUuid = null, priority = 0, disclosure = null, namespace = "" } = {}) {
@@ -429,10 +429,7 @@ export class GraphService {
       ).run(latest.id);
     }
 
-    const existing = this.db.prepare(
-      "SELECT 1 FROM paths WHERE namespace = ? AND domain = ? AND path = ?"
-    ).get(namespace, domain, path);
-    if (existing) throw new Error(`Path '${domain}://${path}' already exists`);
+    if (pathExists(this.db, namespace, domain, path)) throw new Error(`Path '${graphUri(domain, path)}' already exists`);
 
     if (!parentUuid) {
       if (path.includes("/")) {
@@ -444,11 +441,11 @@ export class GraphService {
       }
     }
 
-    const edgeName = path.split("/").pop();
+    const edgeName = leafName(path);
     const { edge } = getOrCreateEdge(this.db, parentUuid, nodeUuid, edgeName, priority, disclosure);
     insertPath(this.db, namespace, domain, path, edge.id, nodeUuid);
 
-    return { uri: `${domain}://${path}`, node_uuid: nodeUuid };
+    return { uri: graphUri(domain, path), node_uuid: nodeUuid };
   }
 }
 
