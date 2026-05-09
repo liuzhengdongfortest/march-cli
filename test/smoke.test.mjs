@@ -4,24 +4,19 @@ import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { runAuthStorageSmoke } from "./auth-storage.smoke.mjs";
-import { runAttachmentReferencesSmoke } from "./attachment-references.smoke.mjs";
-import { runAttachmentsSmoke } from "./attachments.smoke.mjs";
 import { runCopyCommandSmoke } from "./copy-command.smoke.mjs";
 import { runCliCommandSuiteSmoke } from "./cli-command-suite.smoke.mjs";
 import { runDiffAndUiSmoke, runMemorySystemSmoke } from "./memory-and-diff.smoke.mjs";
 import { runExtensionDiscoverySmoke } from "./extension-discovery.smoke.mjs";
 import { runExtensionLifecycleAdapterSmoke } from "./extension-lifecycle-adapter.smoke.mjs";
 import { runExtensionLifecycleManifestSmoke } from "./extension-lifecycle-manifest.smoke.mjs";
-import { runImageClipboardSmoke } from "./image-clipboard.smoke.mjs";
+import { runImageSmokeSuite } from "./image-smoke-suite.smoke.mjs";
 import { runKeybindingsSmoke } from "./keybindings.smoke.mjs";
-import { runPasteImageCommandSmoke } from "./paste-image-command.smoke.mjs";
 import { runPromptTemplatesSmoke } from "./prompt-templates.smoke.mjs";
-import { runRunnerImageAttachmentsSmoke } from "./runner-image-attachments.smoke.mjs";
 import { runSettingsCommandSmoke } from "./settings-command.smoke.mjs";
 import { runPiSessionManagerFactorySmoke, runPiSessionSidecarSmoke, runPiSessionSidecarSyncSmoke, runSessionPersistenceSmoke, runSessionTreeSmoke } from "./session.smoke.mjs";
 import { runSessionNameCommandSmoke } from "./session-name-command.smoke.mjs";
 import { runStartupResumeSmoke } from "./startup-resume.smoke.mjs";
-import { runTuiPasteImageSmoke } from "./tui-paste-image.smoke.mjs";
 
 // Minimal mocks for smoke testing without DEEPSEEK_API_KEY
 
@@ -70,18 +65,13 @@ function cleanup(dir) {
 
 await runStartupResumeSmoke({ setupTmp, cleanup });
 await runAuthStorageSmoke({ setupTmp, cleanup });
-await runAttachmentsSmoke({ setupTmp, cleanup });
-await runAttachmentReferencesSmoke({ setupTmp, cleanup });
+await runImageSmokeSuite({ setupTmp, cleanup });
 await runCopyCommandSmoke();
 await runExtensionDiscoverySmoke({ setupTmp, cleanup });
 await runExtensionLifecycleManifestSmoke({ setupTmp, cleanup });
-await runImageClipboardSmoke();
 await runExtensionLifecycleAdapterSmoke();
 await runKeybindingsSmoke({ setupTmp, cleanup });
-await runPasteImageCommandSmoke();
-await runTuiPasteImageSmoke({ setupTmp, cleanup });
 await runPromptTemplatesSmoke({ setupTmp, cleanup });
-await runRunnerImageAttachmentsSmoke({ setupTmp, cleanup });
 await runSettingsCommandSmoke({ setupTmp, cleanup });
 await runSessionNameCommandSmoke({ setupTmp, cleanup });
 
