@@ -100,6 +100,18 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(output.join("\n").includes("/sessions pi and /resume-pi <id> are explicit pi aliases"));
   assert.ok(output.join("\n").includes("legacy .march/sessions use /sessions legacy"));
   assert.ok(output.join("\n").includes("/session entries and /fork-pi list in-file entry candidates"));
+  const hotkeys = await handleSlashCommand("/hotkeys", {
+    ui,
+    runner,
+    sessionState,
+    sessionsRoot,
+    projectMarchDir,
+    keybindings: { modelSelector: "Ctrl+M" },
+    keybindingDiagnostics: [{ type: "warning", message: "bad key" }],
+  });
+  assert.equal(hotkeys.handled, true);
+  assert.ok(output.join("\n").includes("Ctrl+M"));
+  assert.ok(output.join("\n").includes("bad key"));
   const thinking = await handleSlashCommand("/thinking list", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(thinking.handled, true);
   assert.ok(output.join("\n").includes("* 3. high"));

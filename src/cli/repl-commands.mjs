@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { DEFAULT_KEYBINDINGS, formatKeybindingLines } from "./keybindings.mjs";
 
 export function parseInlineShellInput(input, lastCommand = "") {
   if (input === "!!") {
@@ -50,20 +51,24 @@ export function runInlineShellCommand(command, { cwd = process.cwd(), ui } = {})
   return result;
 }
 
-export function formatHotkeysPanel() {
+export function formatHotkeysPanel(keybindings = DEFAULT_KEYBINDINGS, diagnostics = []) {
   return [
     "Keyboard shortcuts:",
-    "  Esc        Abort current turn; cancel retry wait",
-    "  Shift+Tab  Cycle thinking level",
-    "  Ctrl+T     Open thinking selector",
-    "  Ctrl+L     Open model selector",
-    "  Ctrl+G     Open external editor ($VISUAL or $EDITOR)",
-    "  Ctrl+O     Toggle tool output collapsed/expanded",
+    ...formatKeybindingLines(keybindings),
+    ...formatKeybindingDiagnostics(diagnostics),
     "Input prefixes:",
     "  /          Slash command autocomplete",
     "  /thinking  Cycle or list/set thinking level",
     "  @          File path autocomplete",
     "  ! cmd      Run local shell command without sending to the model",
     "  !!         Repeat previous local shell command",
+  ];
+}
+
+function formatKeybindingDiagnostics(diagnostics) {
+  if (!diagnostics || diagnostics.length === 0) return [];
+  return [
+    "Keybinding diagnostics:",
+    ...diagnostics.map((diagnostic) => `  - ${diagnostic.type ?? "warning"}: ${diagnostic.message}`),
   ];
 }

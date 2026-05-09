@@ -10,6 +10,7 @@ import { runExtensionDiscoverySmoke } from "./extension-discovery.smoke.mjs";
 import { runExtensionLifecycleAdapterSmoke } from "./extension-lifecycle-adapter.smoke.mjs";
 import { runExtensionLifecycleManifestSmoke } from "./extension-lifecycle-manifest.smoke.mjs";
 import { runRuntimeFactorySmoke } from "./runtime-factory.smoke.mjs";
+import { runKeybindingsSmoke } from "./keybindings.smoke.mjs";
 import { runRuntimeHostSmoke } from "./runtime-host.smoke.mjs";
 import { runRunnerCompactionSmoke } from "./runner-compaction.smoke.mjs";
 import { runRunnerRuntimeHostSmoke } from "./runner-runtime-host.smoke.mjs";
@@ -71,6 +72,7 @@ await runStartupResumeSmoke({ setupTmp, cleanup });
 await runExtensionDiscoverySmoke({ setupTmp, cleanup });
 await runExtensionLifecycleManifestSmoke({ setupTmp, cleanup });
 await runExtensionLifecycleAdapterSmoke();
+await runKeybindingsSmoke({ setupTmp, cleanup });
 
 // ── 2. Config loading ────────────────────────────────────────────────
 
@@ -325,10 +327,12 @@ await runExtensionLifecycleAdapterSmoke();
 {
   console.log("--- smoke: hotkeys panel ---");
   const { formatHotkeysPanel } = await import("../src/cli/repl-commands.mjs");
-  const panel = formatHotkeysPanel().join("\n");
+  const panel = formatHotkeysPanel({ modelSelector: "Ctrl+M" }, [{ type: "warning", message: "bad key" }]).join("\n");
   assert.ok(panel.includes("Ctrl+O"));
-  assert.ok(panel.includes("Ctrl+L"));
+  assert.ok(panel.includes("Ctrl+M"));
   assert.ok(panel.includes("Ctrl+T"));
+  assert.ok(panel.includes("Keybinding diagnostics:"));
+  assert.ok(panel.includes("bad key"));
   assert.ok(panel.includes("!!"));
   assert.ok(panel.includes("@"));
   console.log("  PASS");

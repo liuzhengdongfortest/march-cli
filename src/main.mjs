@@ -13,6 +13,7 @@ import {
 } from "./cli/repl-commands.mjs";
 import { buildModelSelectItems } from "./cli/model-command.mjs";
 import { buildThinkingSelectItems } from "./cli/thinking-command.mjs";
+import { loadKeybindings } from "./cli/keybindings.mjs";
 import { createRunner } from "./agent/runner.mjs";
 import { openDatabase } from "./memory/database.mjs";
 import { GraphService } from "./memory/graph.mjs";
@@ -58,6 +59,7 @@ export async function run(argv) {
     ...args.extensions.map((extensionPath) => resolve(cwd, extensionPath)),
   ];
   const lifecycleManifests = loadProjectLifecycleHookManifests(cwd);
+  const keybindingConfig = loadKeybindings(cwd);
 
   // Memory system: global SQLite database at ~/.march/memory.db
   // Project isolation via .march/project-id namespace
@@ -316,6 +318,8 @@ export async function run(argv) {
       skillPool,
       sessionSource,
       extensionPaths,
+      keybindings: keybindingConfig.keybindings,
+      keybindingDiagnostics: keybindingConfig.diagnostics,
     });
     if (slashResult.exit) break;
     if (slashResult.handled) {

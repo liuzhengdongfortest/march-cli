@@ -20,6 +20,8 @@ export async function handleSlashCommand(trimmed, {
   skillPool = [],
   sessionSource = "legacy",
   extensionPaths = [],
+  keybindings,
+  keybindingDiagnostics = [],
 }) {
   if (trimmed === "/exit" || trimmed === "/quit") {
     writeSessionSaveStatus({ ui, runner, sessionState, sessionSource });
@@ -32,7 +34,7 @@ export async function handleSlashCommand(trimmed, {
   }
 
   if (trimmed === "/hotkeys") {
-    for (const line of formatHotkeysPanel()) ui.writeln(line);
+    for (const line of formatHotkeysPanel(keybindings, keybindingDiagnostics)) ui.writeln(line);
     return { handled: true };
   }
 
