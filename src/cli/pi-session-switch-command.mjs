@@ -1,5 +1,5 @@
 export function parseResumePiCommand(input) {
-  if (!input.startsWith("/resume-pi")) return { type: "none" };
+  if (input !== "/resume-pi" && !input.startsWith("/resume-pi ")) return { type: "none" };
   const id = input.slice("/resume-pi".length).trim();
   if (!id) return { type: "error", message: "Usage: /resume-pi <id>" };
   if (id.includes("/") || id.includes("\\")) {

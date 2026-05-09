@@ -192,6 +192,7 @@ export async function runPiSessionSwitchCommandSmoke() {
   const { parseResumePiCommand, resumePiSessionById } = await import("../src/cli/pi-session-switch-command.mjs");
 
   assert.deepEqual(parseResumePiCommand("hello"), { type: "none" });
+  assert.deepEqual(parseResumePiCommand("/resume-piabc"), { type: "none" });
   assert.deepEqual(parseResumePiCommand("/resume-pi abc"), { type: "resume-pi", id: "abc" });
   assert.equal(parseResumePiCommand("/resume-pi").type, "error");
   assert.equal(parseResumePiCommand("/resume-pi ../bad").type, "error");
