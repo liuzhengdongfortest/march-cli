@@ -14,6 +14,7 @@ export function parseCliArgs(argv) {
       "pi-sessions": { type: "boolean" },
       "pi-runtime-host": { type: "boolean" },
       "pi-session-defaults": { type: "boolean" },
+      "legacy-sessions": { type: "boolean" },
       help: { type: "boolean", short: "h" },
     },
     allowPositionals: true,
@@ -30,6 +31,7 @@ export function parseCliArgs(argv) {
     piSessions: values["pi-sessions"] ?? false,
     piRuntimeHost: values["pi-runtime-host"] ?? false,
     piSessionDefaults: values["pi-session-defaults"] ?? false,
+    legacySessions: values["legacy-sessions"] ?? false,
     help: values.help ?? false,
     prompt: positionals.join(" "),
   };
@@ -45,12 +47,13 @@ Usage:
 Options:
   -m, --model <id>     Model ID (default: deepseek-v4-pro)
   --provider <name>    AI provider: deepseek, openai, anthropic (default: deepseek)
-  --resume <id>        Resume a previous session
+  --resume <id>        Resume a pi session by default
   --json               JSON output mode (no TUI)
   --dump-context       Write context snapshot to .march/context-snapshot.txt each turn
-  --pi-sessions        Opt in to pi JSONL SessionManager persistence
-  --pi-runtime-host    Opt in to pi AgentSessionRuntime host path
-  --pi-session-defaults Preview pi-backed default session commands
+  --legacy-sessions    Use old .march/sessions startup and command semantics
+  --pi-sessions        Force pi JSONL SessionManager persistence
+  --pi-runtime-host    Force pi AgentSessionRuntime host path
+  --pi-session-defaults Compatibility alias for the default pi session mode
   --pin <path>         Pin a file in context (repeatable)
   --skill <name>       Activate a skill (repeatable)
   -h, --help           Show this help

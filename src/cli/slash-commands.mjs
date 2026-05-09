@@ -20,8 +20,7 @@ export async function handleSlashCommand(trimmed, {
   sessionSource = "legacy",
 }) {
   if (trimmed === "/exit" || trimmed === "/quit") {
-    saveSession(sessionState.sessionDir, runner.engine);
-    ui.writeln(`Session saved: ${sessionState.sessionId}`);
+    writeSessionSaveStatus({ ui, runner, sessionState, sessionSource });
     return { handled: true, exit: true };
   }
 
@@ -55,8 +54,7 @@ export async function handleSlashCommand(trimmed, {
   }
 
   if (trimmed === "/save") {
-    saveSession(sessionState.sessionDir, runner.engine);
-    ui.writeln(`Session saved: ${sessionState.sessionId}`);
+    writeSessionSaveStatus({ ui, runner, sessionState, sessionSource });
     return { handled: true };
   }
 
@@ -256,6 +254,16 @@ export async function handleSlashCommand(trimmed, {
   }
 
   return { handled: false };
+}
+
+function writeSessionSaveStatus({ ui, runner, sessionState, sessionSource }) {
+  if (sessionSource === "pi") {
+    const stats = runner.getSessionStats?.();
+    ui.writeln(`Pi session auto-saved: ${stats?.sessionId ?? sessionState.sessionId}`);
+    return;
+  }
+  saveSession(sessionState.sessionDir, runner.engine);
+  ui.writeln(`Session saved: ${sessionState.sessionId}`);
 }
 
 async function listCurrentPiSessions({ tree, runner, projectMarchDir }) {

@@ -60,7 +60,7 @@ export async function runStartupResumeSmoke({ setupTmp, cleanup }) {
   });
   assert.equal(legacy.source, "legacy");
   assert.equal(restoredLegacy, true);
-  assert.ok(statuses.includes("Resumed session old (2 turns)"));
+  assert.ok(statuses.includes("Resumed legacy session old (2 turns)"));
   cleanup(dir);
   console.log("  PASS");
 }

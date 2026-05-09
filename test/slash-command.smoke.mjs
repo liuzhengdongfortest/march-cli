@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
@@ -129,12 +129,16 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   const forkPiReset = await handleSlashCommand("/fork-pi u1 --reset-context", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(forkPiReset.handled, true);
   assert.ok(output.join("\n").includes("Forked pi session: pi-fork (from: s1, entry: u1)"));
-  const forkLegacy = await handleSlashCommand("/fork-legacy", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
-  assert.equal(forkLegacy.handled, true);
-  assert.ok(output.join("\n").includes("Forked legacy session:"));
   const defaultPiFork = await handleSlashCommand("/fork", { ui, runner, sessionState, sessionsRoot, projectMarchDir, sessionSource: "pi" });
   assert.equal(defaultPiFork.handled, true);
   assert.ok(output.join("\n").includes("Pi sessions use explicit branch commands"));
+  const defaultPiSave = await handleSlashCommand("/save", { ui, runner, sessionState, sessionsRoot, projectMarchDir, sessionSource: "pi" });
+  assert.equal(defaultPiSave.handled, true);
+  assert.ok(output.join("\n").includes("Pi session auto-saved: s1"));
+  assert.equal(existsSync(join(sessionState.sessionDir, "session.json")), false);
+  const forkLegacy = await handleSlashCommand("/fork-legacy", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
+  assert.equal(forkLegacy.handled, true);
+  assert.ok(output.join("\n").includes("Forked legacy session:"));
   const compact = await handleSlashCommand("/compact", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(compact.handled, true);
   assert.ok(output.join("\n").includes("Compacted: 15 char summary"));

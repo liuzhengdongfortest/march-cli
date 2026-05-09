@@ -79,7 +79,7 @@ export async function run(argv) {
   const skillTools = createSkillTools(skillState, skillPool);
 
   // Session persistence
-  const usePiSessionDefaults = args.piSessionDefaults;
+  const usePiSessionDefaults = args.piSessionDefaults || !args.legacySessions;
   const usePiSessions = args.piSessions || usePiSessionDefaults;
   const usePiRuntimeHost = args.piRuntimeHost || usePiSessionDefaults;
   const sessionSource = usePiSessionDefaults ? "pi" : "legacy";
@@ -244,7 +244,7 @@ export async function run(argv) {
       const postCtx = runner.engine.buildContext("");
       writeFileSync(resolve(projectMarchDir, "context-snapshot.txt"), postCtx, "utf8");
     }
-    saveSession(sessionState.sessionDir, runner.engine);
+    if (!usePiSessionDefaults) saveSession(sessionState.sessionDir, runner.engine);
     runner.dispose();
     ui.writeln("");
     ui.close();
@@ -266,7 +266,7 @@ export async function run(argv) {
   for (;;) {
     const line = await ui.readline("> ");
     if (line === null) {
-      saveSession(sessionState.sessionDir, runner.engine);
+      if (!usePiSessionDefaults) saveSession(sessionState.sessionDir, runner.engine);
       break;
     }
     let trimmed = line.trim();
@@ -403,7 +403,7 @@ export async function resumeStartupSession({
   const saved = loadLegacySession(sessionState.sessionDir);
   if (saved) {
     runner.engine.restoreSession(saved, skillPool);
-    const line = `Resumed session ${sessionState.sessionId} (${saved.turns.length} turns)`;
+    const line = `Resumed legacy session ${sessionState.sessionId} (${saved.turns.length} turns)`;
     ui.status(line);
     return { source: "legacy", lines: [line] };
   }
