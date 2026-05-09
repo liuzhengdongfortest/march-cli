@@ -78,6 +78,10 @@ export async function run(argv) {
   const skillTools = createSkillTools(skillState, skillPool);
 
   // Session persistence
+  const usePiSessionDefaults = args.piSessionDefaults;
+  const usePiSessions = args.piSessions || usePiSessionDefaults;
+  const usePiRuntimeHost = args.piRuntimeHost || usePiSessionDefaults;
+  const sessionSource = usePiSessionDefaults ? "pi" : "legacy";
   const sessionsRoot = join(projectMarchDir, "sessions");
   const sessionState = {
     sessionId: args.resume ?? Date.now().toString(36),
@@ -120,10 +124,10 @@ export async function run(argv) {
     sessionManager: resolvePiSessionManager({
       cwd,
       projectMarchDir,
-      enabled: args.piSessions,
+      enabled: usePiSessions,
     }),
-    useRuntimeHost: args.piRuntimeHost,
-    syncPiSidecar: args.piSessions || args.piRuntimeHost,
+    useRuntimeHost: usePiRuntimeHost,
+    syncPiSidecar: usePiSessions || usePiRuntimeHost,
   });
 
   ui.setEscapeHandler(() => {
@@ -216,12 +220,16 @@ export async function run(argv) {
 
   // Resume session
   if (args.resume) {
-    const saved = loadSession(sessionState.sessionDir);
-    if (saved) {
-      runner.engine.restoreSession(saved, skillPool);
-      ui.status(`Resumed session ${sessionState.sessionId} (${saved.turns.length} turns)`);
+    if (usePiSessionDefaults) {
+      ui.status(`Pi session defaults enabled; use /resume ${args.resume} after startup to restore pi session ${args.resume}`);
     } else {
-      ui.status(`Session ${sessionState.sessionId} not found — starting fresh`);
+      const saved = loadSession(sessionState.sessionDir);
+      if (saved) {
+        runner.engine.restoreSession(saved, skillPool);
+        ui.status(`Resumed session ${sessionState.sessionId} (${saved.turns.length} turns)`);
+      } else {
+        ui.status(`Session ${sessionState.sessionId} not found — starting fresh`);
+      }
     }
   }
 
@@ -298,6 +306,7 @@ export async function run(argv) {
       sessionsRoot,
       projectMarchDir,
       skillPool,
+      sessionSource,
     });
     if (slashResult.exit) break;
     if (slashResult.handled) {

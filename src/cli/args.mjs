@@ -13,6 +13,7 @@ export function parseCliArgs(argv) {
       "dump-context": { type: "boolean" },
       "pi-sessions": { type: "boolean" },
       "pi-runtime-host": { type: "boolean" },
+      "pi-session-defaults": { type: "boolean" },
       help: { type: "boolean", short: "h" },
     },
     allowPositionals: true,
@@ -28,6 +29,7 @@ export function parseCliArgs(argv) {
     dumpContext: values["dump-context"] ?? false,
     piSessions: values["pi-sessions"] ?? false,
     piRuntimeHost: values["pi-runtime-host"] ?? false,
+    piSessionDefaults: values["pi-session-defaults"] ?? false,
     help: values.help ?? false,
     prompt: positionals.join(" "),
   };
@@ -48,6 +50,7 @@ Options:
   --dump-context       Write context snapshot to .march/context-snapshot.txt each turn
   --pi-sessions        Opt in to pi JSONL SessionManager persistence
   --pi-runtime-host    Opt in to pi AgentSessionRuntime host path
+  --pi-session-defaults Preview pi-backed default session commands
   --pin <path>         Pin a file in context (repeatable)
   --skill <name>       Activate a skill (repeatable)
   -h, --help           Show this help
