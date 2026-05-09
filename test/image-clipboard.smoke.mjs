@@ -25,6 +25,7 @@ export async function runImageClipboardSmoke() {
   assert.equal(ok.mimeType, "image/png");
   assert.equal(ok.data, "AQID");
   assert.equal(spawnCalls[0].bin, "powershell.exe");
+  assert.ok(spawnCalls[0].args.includes("-Sta"));
   assert.ok(spawnCalls[0].args.includes("-NonInteractive"));
   assert.equal(spawnCalls[0].options.windowsHide, true);
 

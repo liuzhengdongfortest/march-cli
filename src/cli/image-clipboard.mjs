@@ -23,6 +23,7 @@ export function readClipboardImage({
 
   const result = spawnSyncImpl("powershell.exe", [
     "-NoProfile",
+    "-Sta",
     "-NonInteractive",
     "-Command",
     WINDOWS_CLIPBOARD_IMAGE_SCRIPT,
