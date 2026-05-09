@@ -19,6 +19,7 @@ import { runSettingsCommandSmoke } from "./settings-command.smoke.mjs";
 import { runPiSessionManagerFactorySmoke, runPiSessionSidecarSmoke, runPiSessionSidecarSyncSmoke, runSessionPersistenceSmoke, runSessionTreeSmoke } from "./session.smoke.mjs";
 import { runSessionNameCommandSmoke } from "./session-name-command.smoke.mjs";
 import { runStartupResumeSmoke } from "./startup-resume.smoke.mjs";
+import { runTuiPasteImageSmoke } from "./tui-paste-image.smoke.mjs";
 
 // Minimal mocks for smoke testing without DEEPSEEK_API_KEY
 
@@ -75,6 +76,7 @@ await runImageClipboardSmoke();
 await runExtensionLifecycleAdapterSmoke();
 await runKeybindingsSmoke({ setupTmp, cleanup });
 await runPasteImageCommandSmoke();
+await runTuiPasteImageSmoke({ setupTmp, cleanup });
 await runPromptTemplatesSmoke({ setupTmp, cleanup });
 await runSettingsCommandSmoke({ setupTmp, cleanup });
 await runSessionNameCommandSmoke({ setupTmp, cleanup });

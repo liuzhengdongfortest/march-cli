@@ -33,8 +33,13 @@ const EDITOR_THEME = {
 
 // ── TUI-based UI ────────────────────────────────────────────────────
 
-function createTuiUI({ cwd = process.cwd(), skillPool = [], keybindings, promptTemplates = [] } = {}) {
-  const terminal = new ProcessTerminal();
+export function createTuiUI({
+  cwd = process.cwd(),
+  skillPool = [],
+  keybindings,
+  promptTemplates = [],
+  terminal = new ProcessTerminal(),
+} = {}) {
   const tui = new TUI(terminal);
   const output = new OutputBuffer();
   const statusBar = new StatusBar();
