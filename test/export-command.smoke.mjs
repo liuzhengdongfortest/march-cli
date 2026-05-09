@@ -5,7 +5,9 @@ import { join } from "node:path";
 export async function runExportCommandSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: export command ---");
   const {
+    buildSessionHtml,
     buildSessionJsonlRecords,
+    exportSessionHtml,
     exportSessionJsonl,
     handleExportCommand,
     parseExportCommand,
@@ -39,8 +41,9 @@ export async function runExportCommandSmoke({ setupTmp, cleanup }) {
   assert.deepEqual(parseExportCommand("hello"), { type: "none" });
   assert.deepEqual(parseExportCommand("/exportjsonl"), { type: "none" });
   assert.deepEqual(parseExportCommand("/export jsonl"), { type: "jsonl" });
+  assert.deepEqual(parseExportCommand("/export html"), { type: "html" });
   assert.equal(parseExportCommand("/export").type, "error");
-  assert.equal(parseExportCommand("/export html").message, "unsupported export format: html");
+  assert.equal(parseExportCommand("/export xml").message, "unsupported export format: xml");
 
   const records = buildSessionJsonlRecords({
     engine,
@@ -72,6 +75,29 @@ export async function runExportCommandSmoke({ setupTmp, cleanup }) {
   assert.equal(lines[0].source, "pi");
   assert.equal(lines[2].userMessage, "hello");
 
+  const html = buildSessionHtml(records);
+  assert.ok(html.includes("<!doctype html>"));
+  assert.ok(html.includes("Sprint"));
+  assert.ok(html.includes("older work"));
+  assert.ok(html.includes("Turn 2"));
+  const escapedHtml = buildSessionHtml([{ type: "session", sessionName: "<bad>" }, { type: "turn", index: 1, userMessage: "<u>", summary: "\"s\"", assistantMessage: "&a" }]);
+  assert.ok(escapedHtml.includes("&lt;bad&gt;"));
+  assert.ok(escapedHtml.includes("&lt;u&gt;"));
+  assert.ok(escapedHtml.includes("&quot;s&quot;"));
+  assert.ok(escapedHtml.includes("&amp;a"));
+
+  const exportedHtml = exportSessionHtml({
+    engine,
+    sessionStats,
+    sessionState: { sessionId: "legacy" },
+    sessionSource: "pi",
+    projectMarchDir,
+    now,
+  });
+  assert.equal(exportedHtml.turnCount, 2);
+  assert.ok(exportedHtml.path.endsWith("2026-05-10T01-02-03-004Z_s_1.html"));
+  assert.ok(readFileSync(exportedHtml.path, "utf8").includes("Sprint"));
+
   const output = handleExportCommand({ type: "jsonl" }, {
     runner: { engine, getSessionStats: () => sessionStats },
     sessionState: { sessionId: "legacy" },
@@ -81,6 +107,15 @@ export async function runExportCommandSmoke({ setupTmp, cleanup }) {
   });
   assert.ok(output[0].includes("Exported JSONL:"));
   assert.ok(output[0].includes("(2 turns)"));
+  const htmlOutput = handleExportCommand({ type: "html" }, {
+    runner: { engine, getSessionStats: () => sessionStats },
+    sessionState: { sessionId: "legacy" },
+    sessionSource: "pi",
+    projectMarchDir,
+    now,
+  });
+  assert.ok(htmlOutput[0].includes("Exported HTML:"));
+  assert.ok(htmlOutput[0].includes("(2 turns)"));
 
   cleanup(dir);
   console.log("  PASS");

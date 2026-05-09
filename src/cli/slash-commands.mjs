@@ -320,7 +320,7 @@ export async function handleSlashCommand(trimmed, {
 
 function formatHelpLines() {
   return [
-    "Commands: /exit, /help, /hotkeys, /templates, /export jsonl, /settings, /extensions, /model, /models, /compact, /session, /session entries, /sessions, /sessions tree, /sessions pi, /sessions legacy, /resume <id>, /resume-pi <id>, /resume-legacy <id>, /clone-pi, /fork-pi, /fork, /fork-legacy, /status, /save, /name, /copy, /mouse, /pin <path>, /unpin <path>, /pins",
+    "Commands: /exit, /help, /hotkeys, /templates, /export jsonl, /export html, /settings, /extensions, /model, /models, /compact, /session, /session entries, /sessions, /sessions tree, /sessions pi, /sessions legacy, /resume <id>, /resume-pi <id>, /resume-legacy <id>, /clone-pi, /fork-pi, /fork, /fork-legacy, /status, /save, /name, /copy, /mouse, /pin <path>, /unpin <path>, /pins",
     "Sessions: /sessions and /resume <id> use default pi JSONL sessions; /sessions pi and /resume-pi <id> are explicit pi aliases; legacy .march/sessions use /sessions legacy, /resume-legacy <id>, /fork-legacy, or --legacy-sessions.",
     "Branches: /clone-pi clones the current pi branch; /session entries and /fork-pi list in-file entry candidates; /fork-pi requires --reset-context to write a historical fork.",
     "Shortcuts: Esc = abort turn, Ctrl+O = toggle tool output, Ctrl+G = external editor, Shift+Tab = cycle thinking, Ctrl+T = thinking selector, Ctrl+L = model selector",

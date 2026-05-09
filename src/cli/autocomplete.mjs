@@ -30,6 +30,7 @@ const MARCH_COMMANDS = [
   { name: "hotkeys", description: "Show keyboard shortcuts and input prefixes" },
   { name: "templates", description: "List project prompt templates" },
   { name: "export jsonl", description: "Export current session turns as JSONL" },
+  { name: "export html", description: "Export current session turns as HTML" },
   { name: "settings", description: "Show or edit global/project settings" },
 ];
 
