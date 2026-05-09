@@ -11,6 +11,7 @@ import { runDiffAndUiSmoke, runMemorySystemSmoke } from "./memory-and-diff.smoke
 import { runExtensionDiscoverySmoke } from "./extension-discovery.smoke.mjs";
 import { runExtensionLifecycleAdapterSmoke } from "./extension-lifecycle-adapter.smoke.mjs";
 import { runExtensionLifecycleManifestSmoke } from "./extension-lifecycle-manifest.smoke.mjs";
+import { runImageClipboardSmoke } from "./image-clipboard.smoke.mjs";
 import { runKeybindingsSmoke } from "./keybindings.smoke.mjs";
 import { runPromptTemplatesSmoke } from "./prompt-templates.smoke.mjs";
 import { runSettingsCommandSmoke } from "./settings-command.smoke.mjs";
@@ -69,6 +70,7 @@ await runAttachmentsSmoke({ setupTmp, cleanup });
 await runCopyCommandSmoke();
 await runExtensionDiscoverySmoke({ setupTmp, cleanup });
 await runExtensionLifecycleManifestSmoke({ setupTmp, cleanup });
+await runImageClipboardSmoke();
 await runExtensionLifecycleAdapterSmoke();
 await runKeybindingsSmoke({ setupTmp, cleanup });
 await runPromptTemplatesSmoke({ setupTmp, cleanup });
