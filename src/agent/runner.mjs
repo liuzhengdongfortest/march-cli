@@ -233,6 +233,8 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       const manager = activeSession.sessionManager;
       return {
         ...stats,
+        runtimeHost: Boolean(runtimeHost),
+        piSessionSwitching: Boolean(runtimeHost),
         persisted: manager?.isPersisted?.() ?? Boolean(activeSession.sessionFile),
         sessionFile: manager?.getSessionFile?.() ?? activeSession.sessionFile,
       };

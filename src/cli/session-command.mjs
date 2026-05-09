@@ -20,6 +20,12 @@ export function formatSessionStats(stats) {
     const suffix = stats.sessionFile ? ` (${stats.sessionFile})` : "";
     lines.splice(1, 0, `persistence: ${mode}${suffix}`);
   }
+  if (typeof stats.runtimeHost === "boolean") {
+    const mode = stats.runtimeHost ? "pi-runtime-host" : "direct-agent-session";
+    const command = stats.piSessionSwitching ? "available" : "requires --pi-runtime-host";
+    const insertAt = typeof stats.persisted === "boolean" ? 2 : 1;
+    lines.splice(insertAt, 0, `runtime: ${mode}`, `/resume-pi: ${command}`);
+  }
   return lines;
 }
 

@@ -96,6 +96,17 @@ export async function runSessionCommandSmoke() {
     "tokens: 10 in / 20 out (3 cache read, 4 cache write)",
     "cost: $0.1235",
   ]);
+  assert.deepEqual(formatSessionStats({ ...stats, persisted: false, runtimeHost: false, piSessionSwitching: false }), [
+    "session: s1",
+    "persistence: in-memory",
+    "runtime: direct-agent-session",
+    "/resume-pi: requires --pi-runtime-host",
+    "messages: 2u + 3a + 4t = 9 total",
+    "tokens: 10 in / 20 out (3 cache read, 4 cache write)",
+    "cost: $0.1235",
+  ]);
+  assert.ok(formatSessionStats({ ...stats, runtimeHost: true, piSessionSwitching: true }).includes("runtime: pi-runtime-host"));
+  assert.ok(formatSessionStats({ ...stats, runtimeHost: true, piSessionSwitching: true }).includes("/resume-pi: available"));
   assert.ok(formatSessionStats({ ...stats, persisted: true, sessionFile: "session.jsonl" }).includes("persistence: pi-jsonl (session.jsonl)"));
   const runner = {
     compact: async () => ({ summary: "hello" }),
