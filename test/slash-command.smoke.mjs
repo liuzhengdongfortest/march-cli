@@ -84,7 +84,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(output.join("\n").includes("/sessions and /resume <id> use default pi JSONL sessions"));
   assert.ok(output.join("\n").includes("/sessions pi and /resume-pi <id> are explicit pi aliases"));
   assert.ok(output.join("\n").includes("legacy .march/sessions use /sessions legacy"));
-  assert.ok(output.join("\n").includes("/fork-pi lists entry candidates and requires --reset-context"));
+  assert.ok(output.join("\n").includes("/session entries and /fork-pi list in-file entry candidates"));
   const thinking = await handleSlashCommand("/thinking list", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(thinking.handled, true);
   assert.ok(output.join("\n").includes("* 3. high"));
@@ -132,6 +132,10 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   const forkPi = await handleSlashCommand("/fork-pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(forkPi.handled, true);
   assert.ok(output.join("\n").includes("1. u1  fork me"));
+  assert.ok(output.join("\n").includes("These are in-file user entries, not /sessions tree files."));
+  const sessionEntries = await handleSlashCommand("/session entries", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
+  assert.equal(sessionEntries.handled, true);
+  assert.ok(output.join("\n").includes("Pi session entry fork candidates (current JSONL file):"));
   const forkPiReset = await handleSlashCommand("/fork-pi u1 --reset-context", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(forkPiReset.handled, true);
   assert.ok(output.join("\n").includes("Forked pi session: pi-fork (from: s1, entry: u1)"));

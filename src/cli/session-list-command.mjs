@@ -63,6 +63,6 @@ export function formatPiSessionTree(sessions, currentSessionId = null) {
   };
 
   for (const root of roots) visit(root, 0);
-  lines.push("(* = current pi session; file-level tree uses pi JSONL parentSessionPath; in-file entry branches use /fork-pi candidates)");
+  lines.push("(* = current pi session; file-level tree uses pi JSONL parentSessionPath; in-file entry branches use /session entries or /fork-pi)");
   return lines;
 }

@@ -13,8 +13,12 @@ export function parseForkPiCommand(input) {
 }
 
 export function listPiForkCandidates({ runner }) {
+  return listPiSessionEntryCandidates({ runner, commandName: "/fork-pi" });
+}
+
+export function listPiSessionEntryCandidates({ runner, commandName = "/session entries" }) {
   if (!runner.canSwitchPiSession?.()) {
-    return ["Error: /fork-pi requires the pi runtime host"];
+    return [`Error: ${commandName} requires the pi runtime host`];
   }
 
   let candidates;
@@ -24,15 +28,16 @@ export function listPiForkCandidates({ runner }) {
     return [`Error: failed to list pi fork candidates: ${err.message}`];
   }
   if (!candidates.length) {
-    return ["(no pi fork candidates)"];
+    return ["(no pi session entry fork candidates)"];
   }
 
   return [
-    "Pi fork candidates:",
+    "Pi session entry fork candidates (current JSONL file):",
     ...candidates.map((candidate, index) => {
       const text = singleLine(candidate.text).slice(0, 120) || "(empty)";
       return `${index + 1}. ${candidate.entryId}  ${text}`;
     }),
+    "These are in-file user entries, not /sessions tree files.",
     "Use /fork-pi <entry-id> --reset-context to create a fork without inheriting ContextEngine state.",
   ];
 }

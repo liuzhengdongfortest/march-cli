@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runPiSessionForkCommandSmoke() {
   console.log("--- smoke: pi session fork command handling ---");
-  const { forkPiSessionResetContext, listPiForkCandidates, parseForkPiCommand } = await import("../src/cli/pi-session-fork-command.mjs");
+  const { forkPiSessionResetContext, listPiForkCandidates, listPiSessionEntryCandidates, parseForkPiCommand } = await import("../src/cli/pi-session-fork-command.mjs");
 
   assert.deepEqual(parseForkPiCommand("hello"), { type: "none" });
   assert.deepEqual(parseForkPiCommand("/fork-piabc"), { type: "none" });
@@ -18,7 +18,7 @@ export async function runPiSessionForkCommandSmoke() {
       canSwitchPiSession: () => true,
       getPiForkCandidates: () => [],
     },
-  }), ["(no pi fork candidates)"]);
+  }), ["(no pi session entry fork candidates)"]);
 
   const lines = listPiForkCandidates({
     runner: {
@@ -30,10 +30,14 @@ export async function runPiSessionForkCommandSmoke() {
     },
   });
   assert.deepEqual(lines, [
-    "Pi fork candidates:",
+    "Pi session entry fork candidates (current JSONL file):",
     "1. u1  first message",
     "2. u2  second message",
+    "These are in-file user entries, not /sessions tree files.",
     "Use /fork-pi <entry-id> --reset-context to create a fork without inheriting ContextEngine state.",
+  ]);
+  assert.deepEqual(listPiSessionEntryCandidates({ runner: { canSwitchPiSession: () => false } }), [
+    "Error: /session entries requires the pi runtime host",
   ]);
 
   assert.deepEqual(listPiForkCandidates({

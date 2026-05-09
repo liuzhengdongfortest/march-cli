@@ -185,7 +185,7 @@ export async function runSessionListCommandSmoke() {
   assert.ok(piTree.some((line) => line.startsWith("- parent")));
   assert.ok(piTree.some((line) => line.startsWith("  * child")));
   assert.ok(piTree.at(-1).includes("file-level tree"));
-  assert.ok(piTree.at(-1).includes("/fork-pi candidates"));
+  assert.ok(piTree.at(-1).includes("/session entries or /fork-pi"));
   console.log("  PASS");
 }
 
