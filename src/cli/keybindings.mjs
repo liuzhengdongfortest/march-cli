@@ -8,6 +8,7 @@ export const DEFAULT_KEYBINDINGS = Object.freeze({
   modelSelector: "Ctrl+L",
   externalEditor: "Ctrl+G",
   toggleToolOutput: "Ctrl+O",
+  pasteImage: "Alt+V",
 });
 
 export const KEYBINDING_ACTIONS = Object.freeze({
@@ -17,6 +18,7 @@ export const KEYBINDING_ACTIONS = Object.freeze({
   modelSelector: "Open model selector",
   externalEditor: "Open external editor ($VISUAL or $EDITOR)",
   toggleToolOutput: "Toggle tool output collapsed/expanded",
+  pasteImage: "Paste clipboard image as attachment",
 });
 
 export function loadKeybindings(cwd) {
@@ -70,7 +72,7 @@ export function formatKeybindingLines(keybindings = DEFAULT_KEYBINDINGS) {
 }
 
 function isSupportedKey(key) {
-  return typeof key === "string" && /^(Esc|Shift\+Tab|Ctrl\+[A-Z])$/.test(key);
+  return typeof key === "string" && /^(Esc|Shift\+Tab|Ctrl\+[A-Z]|Alt\+[A-Z])$/.test(key);
 }
 
 function padKey(key) {

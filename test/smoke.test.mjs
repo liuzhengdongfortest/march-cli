@@ -13,6 +13,7 @@ import { runExtensionLifecycleAdapterSmoke } from "./extension-lifecycle-adapter
 import { runExtensionLifecycleManifestSmoke } from "./extension-lifecycle-manifest.smoke.mjs";
 import { runImageClipboardSmoke } from "./image-clipboard.smoke.mjs";
 import { runKeybindingsSmoke } from "./keybindings.smoke.mjs";
+import { runPasteImageCommandSmoke } from "./paste-image-command.smoke.mjs";
 import { runPromptTemplatesSmoke } from "./prompt-templates.smoke.mjs";
 import { runSettingsCommandSmoke } from "./settings-command.smoke.mjs";
 import { runPiSessionManagerFactorySmoke, runPiSessionSidecarSmoke, runPiSessionSidecarSyncSmoke, runSessionPersistenceSmoke, runSessionTreeSmoke } from "./session.smoke.mjs";
@@ -73,6 +74,7 @@ await runExtensionLifecycleManifestSmoke({ setupTmp, cleanup });
 await runImageClipboardSmoke();
 await runExtensionLifecycleAdapterSmoke();
 await runKeybindingsSmoke({ setupTmp, cleanup });
+await runPasteImageCommandSmoke();
 await runPromptTemplatesSmoke({ setupTmp, cleanup });
 await runSettingsCommandSmoke({ setupTmp, cleanup });
 await runSessionNameCommandSmoke({ setupTmp, cleanup });

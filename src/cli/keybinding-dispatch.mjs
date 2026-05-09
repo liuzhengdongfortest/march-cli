@@ -9,6 +9,12 @@ export const TERMINAL_KEY_SEQUENCES = Object.freeze({
       return [`Ctrl+${letter}`, String.fromCharCode(index + 1)];
     })
   ),
+  ...Object.fromEntries(
+    Array.from({ length: 26 }, (_, index) => {
+      const letter = String.fromCharCode("A".charCodeAt(0) + index);
+      return [`Alt+${letter}`, `\x1b${letter.toLowerCase()}`];
+    })
+  ),
 });
 
 export function createKeybindingDispatcher({

@@ -14,6 +14,7 @@ import {
 import { buildModelSelectItems } from "./cli/model-command.mjs";
 import { buildThinkingSelectItems } from "./cli/thinking-command.mjs";
 import { loadKeybindings } from "./cli/keybindings.mjs";
+import { pasteClipboardImage } from "./cli/paste-image-command.mjs";
 import { expandPromptTemplate, loadPromptTemplates } from "./cli/prompt-templates.mjs";
 import { createStatusLineUpdater } from "./cli/status-line-updater.mjs";
 import { createMarchAuthStorage } from "./auth/storage.mjs";
@@ -229,6 +230,12 @@ export async function run(argv) {
       }
     } catch (err) {
       ui.writeln(`Error: ${err.message}`);
+    }
+  });
+  ui.setPasteImageHandler(() => {
+    const sessionId = runner.getSessionStats?.().sessionId ?? sessionState.sessionId;
+    for (const line of pasteClipboardImage({ ui, projectMarchDir, sessionId })) {
+      ui.status(line);
     }
   });
 

@@ -88,6 +88,7 @@ function createTuiUI({ cwd = process.cwd(), skillPool = [], keybindings, promptT
   let onShiftTabHandler = null;
   let onCtrlTHandler = null;
   let onCtrlLHandler = null;
+  let onPasteImageHandler = null;
   const keybindingDispatcher = createKeybindingDispatcher({
     keybindings,
     handlers: {
@@ -97,6 +98,7 @@ function createTuiUI({ cwd = process.cwd(), skillPool = [], keybindings, promptT
       modelSelector: () => onCtrlLHandler?.(),
       externalEditor: () => openExternalEditor(),
       toggleToolOutput: () => toggleToolOutput(),
+      pasteImage: () => onPasteImageHandler?.(),
     },
     isAutocompleteOpen: () => editor.isShowingAutocomplete(),
     hasOverlay: () => tui.hasOverlay(),
@@ -373,8 +375,14 @@ function createTuiUI({ cwd = process.cwd(), skillPool = [], keybindings, promptT
     setShiftTabHandler: (fn) => { onShiftTabHandler = fn; },
     setCtrlTHandler: (fn) => { onCtrlTHandler = fn; },
     setCtrlLHandler: (fn) => { onCtrlLHandler = fn; },
+    setPasteImageHandler: (fn) => { onPasteImageHandler = fn; },
 
     selectList,
+    getInputText: () => editor.getText(),
+    insertTextAtCursor: (text) => {
+      editor.insertTextAtCursor(text);
+      requestRender();
+    },
     openExternalEditor: () => { openExternalEditor(); },
     toggleToolOutput,
 

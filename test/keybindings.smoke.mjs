@@ -24,8 +24,8 @@ export async function runKeybindingsSmoke({ setupTmp, cleanup }) {
     externalEditor: "Alt+E",
   });
   assert.equal(normalized.keybindings.modelSelector, "Ctrl+M");
-  assert.equal(normalized.keybindings.externalEditor, DEFAULT_KEYBINDINGS.externalEditor);
-  assert.equal(normalized.diagnostics.length, 2);
+  assert.equal(normalized.keybindings.externalEditor, "Alt+E");
+  assert.equal(normalized.diagnostics.length, 1);
 
   const dir = setupTmp();
   const marchDir = join(dir, ".march");
@@ -58,6 +58,13 @@ export async function runKeybindingsSmoke({ setupTmp, cleanup }) {
   assert.equal(customDispatcher.dispatch(TERMINAL_KEY_SEQUENCES["Ctrl+L"]), undefined);
   assert.deepEqual(customDispatcher.dispatch(TERMINAL_KEY_SEQUENCES["Ctrl+B"]), { consume: true });
   assert.equal(modelSelections, 1);
+
+  let pasted = 0;
+  const pasteDispatcher = createKeybindingDispatcher({
+    handlers: { pasteImage: () => { pasted += 1; } },
+  });
+  assert.deepEqual(pasteDispatcher.dispatch(TERMINAL_KEY_SEQUENCES["Alt+V"]), { consume: true });
+  assert.equal(pasted, 1);
 
   let aborts = 0;
   const overlayDispatcher = createKeybindingDispatcher({
