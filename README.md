@@ -25,7 +25,7 @@ node .\march-cli\bin\march.mjs "把这个函数的变量名改成有意义的英
 # 交互式 TUI
 node .\march-cli\bin\march.mjs
 
-# 查看完整上下文快照（不调 API）
+# 启动并写出完整上下文快照
 node .\march-cli\bin\march.mjs --dump-context
 ```
 
@@ -99,7 +99,7 @@ npm run context
 
 `[system_core]` → `[injections]` → `[session_status]` → `[memory]` → `[active_skills]` → `[open_files]` → `[tools]` → `[runtime_status]` → `[recent_chat]`
 
-运行 `node .\march-cli\bin\march.mjs --dump-context` 可看到完整快照。
+运行 `node .\march-cli\bin\march.mjs --dump-context` 可看到完整快照。该命令会启动 March runtime 并检查 provider API key；不输入 prompt 时只写启动期上下文快照，不发起模型 turn。
 
 ### 记忆系统
 
