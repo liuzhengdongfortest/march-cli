@@ -149,6 +149,12 @@ export async function runSessionListCommandSmoke() {
     turnCount: 2,
     firstMessage: "hello pi",
   }]).some((line) => line.includes("pi1") && line.includes("hello pi")));
+  assert.ok(formatPiSessionList([{
+    id: "pi1",
+    savedAt: "2026-05-10T00:00:00.000Z",
+    turnCount: 2,
+    firstMessage: "hello pi",
+  }]).some((line) => line.includes("/resume-pi <id>") && line.includes("--pi-runtime-host")));
   console.log("  PASS");
 }
 

@@ -23,6 +23,6 @@ export function formatPiSessionList(sessions) {
     const savedAt = session.savedAt?.slice(0, 19) ?? "?";
     return `  ${session.id}  ${session.turnCount}m  ${savedAt}  ${label}`;
   });
-  lines.push("(pi JSONL sessions; use --pi-sessions to write new ones)");
+  lines.push("(pi JSONL sessions; write with --pi-sessions, resume with /resume-pi <id> under --pi-runtime-host)");
   return lines;
 }
