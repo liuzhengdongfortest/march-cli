@@ -96,6 +96,55 @@ export async function runPiSessionManagerFactorySmoke({ setupTmp, cleanup }) {
   console.log("  PASS");
 }
 
+export async function runPiSessionSidecarSmoke({ setupTmp, cleanup }) {
+  console.log("--- smoke: pi session sidecar ---");
+  const { mkdirSync, writeFileSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const { ContextEngine } = await import("../src/context/engine.mjs");
+  const {
+    getPiSidecarPath,
+    loadPiSessionSidecar,
+    savePiSessionSidecar,
+  } = await import("../src/session/sidecar.mjs");
+
+  const dir = setupTmp();
+  const projectMarchDir = join(dir, ".march");
+  mkdirSync(projectMarchDir, { recursive: true });
+  const engine = new ContextEngine({
+    cwd: dir,
+    modelId: "model",
+    provider: "deepseek",
+    skills: ["review"],
+    pins: ["/pinned.txt"],
+    namespace: "project-ns",
+  });
+  engine.recordTurn({ userMessage: "hello", summary: "summary" });
+
+  const saved = savePiSessionSidecar({
+    projectMarchDir,
+    sessionRef: "2026-05-10T00-00-00-000Z_test.jsonl",
+    engine,
+    metadata: { sessionId: "pi1", sessionFile: "session.jsonl" },
+  });
+  assert.ok(saved.path.endsWith(join("pi-sidecars", "2026-05-10T00-00-00-000Z_test.json")));
+  assert.equal(saved.state.sessionId, "pi1");
+  assert.equal(saved.state.namespace, "project-ns");
+  assert.deepEqual(saved.state.pins, ["/pinned.txt"]);
+  assert.deepEqual(saved.state.skills, ["review"]);
+
+  const loaded = loadPiSessionSidecar({ projectMarchDir, sessionRef: "2026-05-10T00-00-00-000Z_test" });
+  assert.equal(loaded.path, saved.path);
+  assert.equal(loaded.state.turns[0].summary, "summary");
+  assert.equal(loadPiSessionSidecar({ projectMarchDir, sessionRef: "missing" }), null);
+
+  const invalidPath = getPiSidecarPath(projectMarchDir, "invalid");
+  writeFileSync(invalidPath, JSON.stringify({ version: 999 }), "utf8");
+  assert.throws(() => loadPiSessionSidecar({ projectMarchDir, sessionRef: "invalid" }), /Invalid pi session sidecar/);
+
+  cleanup(dir);
+  console.log("  PASS");
+}
+
 export async function runSessionTreeSmoke() {
   console.log("--- smoke: session tree formatting ---");
   const { buildSessionTree, formatSessionTree } = await import("../src/session/tree.mjs");

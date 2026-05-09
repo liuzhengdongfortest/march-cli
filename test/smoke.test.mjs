@@ -8,7 +8,7 @@ import { runDiffAndUiSmoke, runMemorySystemSmoke } from "./memory-and-diff.smoke
 import { runRuntimeFactorySmoke } from "./runtime-factory.smoke.mjs";
 import { runRuntimeHostSmoke } from "./runtime-host.smoke.mjs";
 import { runRunnerRuntimeHostSmoke } from "./runner-runtime-host.smoke.mjs";
-import { runPiSessionManagerFactorySmoke, runSessionPersistenceSmoke, runSessionTreeSmoke } from "./session.smoke.mjs";
+import { runPiSessionManagerFactorySmoke, runPiSessionSidecarSmoke, runSessionPersistenceSmoke, runSessionTreeSmoke } from "./session.smoke.mjs";
 import { runSessionOptionsSmoke } from "./session-options.smoke.mjs";
 import { runSlashCommandSmoke } from "./slash-command.smoke.mjs";
 
@@ -377,6 +377,7 @@ await runRunnerRuntimeHostSmoke();
 
 await runSessionPersistenceSmoke({ setupTmp, cleanup });
 await runPiSessionManagerFactorySmoke({ setupTmp, cleanup });
+await runPiSessionSidecarSmoke({ setupTmp, cleanup });
 await runSessionTreeSmoke();
 
 // ── 5. Memory, diff and UI API smoke ────────────────────────────────
