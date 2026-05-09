@@ -259,6 +259,11 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       });
     },
 
+    getPiForkCandidates() {
+      if (!runtimeHost) throw new Error("pi runtime host is not enabled");
+      return sessionBinding.get().getUserMessagesForForking();
+    },
+
     cycleThinkingLevel() {
       return sessionBinding.get().cycleThinkingLevel();
     },

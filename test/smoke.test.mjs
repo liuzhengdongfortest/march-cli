@@ -8,6 +8,7 @@ import { runDiffAndUiSmoke, runMemorySystemSmoke } from "./memory-and-diff.smoke
 import { runRuntimeFactorySmoke } from "./runtime-factory.smoke.mjs";
 import { runRuntimeHostSmoke } from "./runtime-host.smoke.mjs";
 import { runRunnerRuntimeHostSmoke } from "./runner-runtime-host.smoke.mjs";
+import { runPiSessionForkCommandSmoke } from "./pi-session-fork-command.smoke.mjs";
 import { runPiSessionManagerFactorySmoke, runPiSessionSidecarSmoke, runPiSessionSidecarSyncSmoke, runSessionPersistenceSmoke, runSessionTreeSmoke } from "./session.smoke.mjs";
 import { runSessionOptionsSmoke } from "./session-options.smoke.mjs";
 import { runSlashCommandSmoke } from "./slash-command.smoke.mjs";
@@ -365,6 +366,7 @@ await runSessionListCommandSmoke();
 await runSessionSwitchCommandSmoke({ setupTmp, cleanup });
 await runPiSessionSwitchCommandSmoke();
 await runPiSessionCloneCommandSmoke({ setupTmp, cleanup });
+await runPiSessionForkCommandSmoke();
 
 // ── 3l. Slash command handling ──────────────────────────────────────
 

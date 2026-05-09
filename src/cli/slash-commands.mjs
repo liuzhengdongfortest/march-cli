@@ -2,6 +2,7 @@ import { saveSession, listSessions, forkSession } from "../session/persist.mjs";
 import { listPiSessionInfos } from "../session/pi-manager.mjs";
 import { handleModelCommand, listModels, parseModelCommand } from "./model-command.mjs";
 import { clonePiSession, parseClonePiCommand } from "./pi-session-clone-command.mjs";
+import { listPiForkCandidates, parseForkPiCommand } from "./pi-session-fork-command.mjs";
 import { parseResumePiCommand, resumePiSessionById } from "./pi-session-switch-command.mjs";
 import { formatHotkeysPanel } from "./repl-commands.mjs";
 import { compactSession, listSessionStats } from "./session-command.mjs";
@@ -24,7 +25,7 @@ export async function handleSlashCommand(trimmed, {
   }
 
   if (trimmed === "/help") {
-    ui.writeln("Commands: /exit, /help, /hotkeys, /model, /models, /compact, /session, /sessions, /sessions tree, /sessions pi, /resume <id>, /resume-pi <id>, /clone-pi, /fork, /status, /save, /mouse, /pin <path>, /unpin <path>, /pins");
+    ui.writeln("Commands: /exit, /help, /hotkeys, /model, /models, /compact, /session, /sessions, /sessions tree, /sessions pi, /resume <id>, /resume-pi <id>, /clone-pi, /fork-pi, /fork, /status, /save, /mouse, /pin <path>, /unpin <path>, /pins");
     ui.writeln("Shortcuts: Esc = abort turn, Ctrl+O = toggle tool output, Ctrl+G = external editor, Shift+Tab = cycle thinking, Ctrl+T = thinking selector, Ctrl+L = model selector");
     return { handled: true };
   }
@@ -149,6 +150,16 @@ export async function handleSlashCommand(trimmed, {
       ui.writeln(`Error: ${clonePiCommand.message}`);
     } else {
       for (const line of await clonePiSession({ runner })) ui.writeln(line);
+    }
+    return { handled: true };
+  }
+
+  const forkPiCommand = parseForkPiCommand(trimmed);
+  if (forkPiCommand.type !== "none") {
+    if (forkPiCommand.type === "error") {
+      ui.writeln(`Error: ${forkPiCommand.message}`);
+    } else {
+      for (const line of listPiForkCandidates({ runner })) ui.writeln(line);
     }
     return { handled: true };
   }
