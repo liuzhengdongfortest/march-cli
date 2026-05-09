@@ -7,7 +7,7 @@ export function parseClonePiCommand(input) {
 
 export async function clonePiSession({ runner }) {
   if (!runner.canSwitchPiSession?.()) {
-    return ["Error: /clone-pi requires --pi-runtime-host"];
+    return ["Error: /clone-pi requires the pi runtime host"];
   }
 
   let result;

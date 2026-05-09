@@ -12,7 +12,7 @@ export function parseResumePiCommand(input) {
 
 export async function resumePiSessionById(id, { runner, sessions, projectMarchDir, skillPool = [] }) {
   if (!runner.canSwitchPiSession?.()) {
-    return ["Error: /resume-pi requires --pi-runtime-host"];
+    return ["Error: pi session resume requires the pi runtime host"];
   }
 
   const matches = sessions.filter((session) => session.id.startsWith(id));

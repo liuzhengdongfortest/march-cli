@@ -11,7 +11,7 @@ export async function runPiSessionForkCommandSmoke() {
   assert.deepEqual(parseForkPiCommand("/fork-pi u1 --reset-context"), { type: "fork-pi-reset", entryId: "u1" });
 
   assert.deepEqual(listPiForkCandidates({ runner: { canSwitchPiSession: () => false } }), [
-    "Error: /fork-pi requires --pi-runtime-host",
+    "Error: /fork-pi requires the pi runtime host",
   ]);
   assert.deepEqual(listPiForkCandidates({
     runner: {
@@ -44,7 +44,7 @@ export async function runPiSessionForkCommandSmoke() {
   }), ["Error: failed to list pi fork candidates: runtime exploded"]);
 
   assert.deepEqual(await forkPiSessionResetContext("u1", { runner: { canSwitchPiSession: () => false } }), [
-    "Error: /fork-pi requires --pi-runtime-host",
+    "Error: /fork-pi requires the pi runtime host",
   ]);
   assert.deepEqual(await forkPiSessionResetContext("u1", {
     runner: {

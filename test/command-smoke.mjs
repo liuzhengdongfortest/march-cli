@@ -100,7 +100,7 @@ export async function runSessionCommandSmoke() {
     "session: s1",
     "persistence: in-memory",
     "runtime: direct-agent-session",
-    "/resume-pi: requires --pi-runtime-host",
+    "/resume-pi: requires pi runtime host",
     "messages: 2u + 3a + 4t = 9 total",
     "tokens: 10 in / 20 out (3 cache read, 4 cache write)",
     "cost: $0.1235",
@@ -154,7 +154,7 @@ export async function runSessionListCommandSmoke() {
     savedAt: "2026-05-10T00:00:00.000Z",
     turnCount: 2,
     firstMessage: "hello pi",
-  }]).some((line) => line.includes("/sessions pi tree") && line.includes("not in-file entry branches") && line.includes("/resume-pi <id>") && line.includes("--pi-runtime-host")));
+  }]).some((line) => line.includes("/sessions tree") && line.includes("not in-file entry branches") && line.includes("/resume <id>") && line.includes("/sessions legacy")));
   const piTree = formatPiSessionTree([
     {
       id: "parent",
@@ -247,7 +247,7 @@ export async function runPiSessionSwitchCommandSmoke() {
   ];
   const disabled = { canSwitchPiSession: () => false };
   assert.deepEqual(await resumePiSessionById("abc", { runner: disabled, sessions, projectMarchDir: "unused" }), [
-    "Error: /resume-pi requires --pi-runtime-host",
+    "Error: pi session resume requires the pi runtime host",
   ]);
 
   const tempRoot = mkdtempSync(join(tmpdir(), "march-pi-switch-"));
@@ -353,7 +353,7 @@ export async function runPiSessionCloneCommandSmoke({ setupTmp, cleanup }) {
   assert.deepEqual(parseClonePiCommand("/clone-pi"), { type: "clone-pi" });
   assert.equal(parseClonePiCommand("/clone-pi extra").type, "error");
   assert.deepEqual(await clonePiSession({ runner: { canSwitchPiSession: () => false } }), [
-    "Error: /clone-pi requires --pi-runtime-host",
+    "Error: /clone-pi requires the pi runtime host",
   ]);
   assert.deepEqual(await clonePiSession({
     runner: {

@@ -14,7 +14,7 @@ export function parseForkPiCommand(input) {
 
 export function listPiForkCandidates({ runner }) {
   if (!runner.canSwitchPiSession?.()) {
-    return ["Error: /fork-pi requires --pi-runtime-host"];
+    return ["Error: /fork-pi requires the pi runtime host"];
   }
 
   let candidates;
@@ -43,7 +43,7 @@ function singleLine(text) {
 
 export async function forkPiSessionResetContext(entryId, { runner }) {
   if (!runner.canSwitchPiSession?.()) {
-    return ["Error: /fork-pi requires --pi-runtime-host"];
+    return ["Error: /fork-pi requires the pi runtime host"];
   }
 
   let result;
