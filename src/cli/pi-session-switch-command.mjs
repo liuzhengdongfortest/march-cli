@@ -35,7 +35,12 @@ export async function resumePiSessionById(id, { runner, sessions, projectMarchDi
     return [`Error: pi session sidecar cwd mismatch for ${session.id}: ${sidecar.state.cwd}`];
   }
 
-  const result = await runner.switchPiSession(session.path);
+  let result;
+  try {
+    result = await runner.switchPiSession(session.path);
+  } catch (err) {
+    return [`Error: failed to switch pi session ${session.id}: ${err.message}`];
+  }
   if (result?.cancelled) return [`Resume pi session cancelled: ${session.id}`];
   runner.engine.restoreSession(toContextSessionState(sidecar.state), skillPool, { replace: true });
   return [`Resumed pi session: ${session.id}`];

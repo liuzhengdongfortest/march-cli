@@ -195,7 +195,7 @@ export async function runSessionSwitchCommandSmoke({ setupTmp, cleanup }) {
 
 export async function runPiSessionSwitchCommandSmoke() {
   console.log("--- smoke: pi session switch command handling ---");
-  const { mkdirSync, mkdtempSync, rmSync } = await import("node:fs");
+  const { mkdirSync, mkdtempSync, rmSync, writeFileSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
   const { join } = await import("node:path");
   const { parseResumePiCommand, resumePiSessionById } = await import("../src/cli/pi-session-switch-command.mjs");
@@ -250,6 +250,7 @@ export async function runPiSessionSwitchCommandSmoke() {
     engine: sourceEngine,
     metadata: { sessionId: "def456", sessionFile: "def.jsonl" },
   });
+  writeFileSync(join(sidecarDir, "bad.json"), JSON.stringify({ version: 999 }), "utf8");
   const runner = {
     canSwitchPiSession: () => true,
     engine,
@@ -268,11 +269,31 @@ export async function runPiSessionSwitchCommandSmoke() {
   assert.deepEqual(await resumePiSessionById("a", { runner, sessions: [{ id: "aa", path: "1" }, { id: "ab", path: "2" }], projectMarchDir }), [
     "Error: pi session id is ambiguous: a (aa, ab)",
   ]);
+  assert.deepEqual(await resumePiSessionById("bad", {
+    runner,
+    sessions: [{ id: "bad999", path: "bad.jsonl" }],
+    projectMarchDir,
+  }), ["Error: pi session sidecar is invalid for bad999: Invalid pi session sidecar"]);
   assert.deepEqual(await resumePiSessionById("def", {
     runner: { canSwitchPiSession: () => true, engine: { cwd: "D:/repo" }, switchPiSession: async () => ({ cancelled: true }) },
     sessions,
     projectMarchDir,
   }), ["Resume pi session cancelled: def456"]);
+
+  let restoreCalled = false;
+  assert.deepEqual(await resumePiSessionById("abc", {
+    runner: {
+      canSwitchPiSession: () => true,
+      engine: {
+        cwd: "D:/repo",
+        restoreSession: () => { restoreCalled = true; },
+      },
+      switchPiSession: async () => { throw new Error("runtime exploded"); },
+    },
+    sessions,
+    projectMarchDir,
+  }), ["Error: failed to switch pi session abc123: runtime exploded"]);
+  assert.equal(restoreCalled, false);
 
   const mismatchEngine = new ContextEngine({ cwd: "D:/other", modelId: "test", provider: "deepseek", skills: [], pins: [] });
   assert.deepEqual(await resumePiSessionById("abc", {
