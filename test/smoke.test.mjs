@@ -186,7 +186,7 @@ function cleanup(dir) {
 
 {
   console.log("--- smoke: inline shell parsing ---");
-  const { parseInlineShellInput } = await import("../src/main.mjs");
+  const { parseInlineShellInput } = await import("../src/cli/repl-commands.mjs");
   assert.deepEqual(parseInlineShellInput("hello"), { type: "none" });
   assert.deepEqual(parseInlineShellInput("! npm test"), { type: "command", command: "npm test", repeated: false });
   assert.deepEqual(parseInlineShellInput("!!", "npm test"), { type: "command", command: "npm test", repeated: true });
@@ -199,9 +199,10 @@ function cleanup(dir) {
 
 {
   console.log("--- smoke: hotkeys panel ---");
-  const { formatHotkeysPanel } = await import("../src/main.mjs");
+  const { formatHotkeysPanel } = await import("../src/cli/repl-commands.mjs");
   const panel = formatHotkeysPanel().join("\n");
   assert.ok(panel.includes("Ctrl+O"));
+  assert.ok(panel.includes("Ctrl+L"));
   assert.ok(panel.includes("!!"));
   assert.ok(panel.includes("@"));
   console.log("  PASS");
@@ -211,7 +212,7 @@ function cleanup(dir) {
 
 {
   console.log("--- smoke: skill invocation parsing ---");
-  const { parseSkillInvocation } = await import("../src/main.mjs");
+  const { parseSkillInvocation } = await import("../src/cli/repl-commands.mjs");
   assert.deepEqual(parseSkillInvocation("hello"), { type: "none" });
   assert.deepEqual(parseSkillInvocation("/skill:review"), { type: "skill", name: "review", prompt: "" });
   assert.deepEqual(parseSkillInvocation("/skill:review check this"), { type: "skill", name: "review", prompt: "check this" });
@@ -332,6 +333,7 @@ function cleanup(dir) {
   assert.equal(typeof ui.toggleToolOutput, "function");
   assert.equal(typeof ui.retryStart, "function");
   assert.equal(typeof ui.retryEnd, "function");
+  assert.equal(typeof ui.setCtrlLHandler, "function");
   assert.equal(typeof ui.close, "function");
   ui.close();
   console.log("  PASS");
