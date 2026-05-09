@@ -1,41 +1,19 @@
 import { stdout } from "node:process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import {
-  CombinedAutocompleteProvider,
   Editor,
   ProcessTerminal,
   TUI,
-  visibleWidth,
-  truncateToWidth,
 } from "@mariozechner/pi-tui";
+import { buildMarchCommands, MarchAutocompleteProvider } from "./autocomplete.mjs";
+import { OutputBuffer } from "./output-buffer.mjs";
 
-const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+export { buildMarchCommands, MarchAutocompleteProvider } from "./autocomplete.mjs";
+
 const SPINNER_INTERVAL = 80;
-
-// Word-wrap a string at `maxWidth` visible columns, breaking at grapheme
-// boundaries. Returns an array of lines each ≤ maxWidth visible width.
-function wrapLine(text, maxWidth) {
-  if (maxWidth <= 0) return [""];
-  const result = [];
-  let cur = "";
-  let curW = 0;
-  for (const ch of text) {
-    const w = visibleWidth(ch);
-    if (curW + w > maxWidth) {
-      result.push(cur);
-      cur = ch;
-      curW = w;
-    } else {
-      cur += ch;
-      curW += w;
-    }
-  }
-  if (cur) result.push(cur);
-  return result.length > 0 ? result : [""];
-}
 
 function extractToolOutput(result) {
   try {
@@ -45,103 +23,6 @@ function extractToolOutput(result) {
     }
   } catch {}
   return "";
-}
-
-const MARCH_COMMANDS = [
-  { name: "exit", description: "Exit March" },
-  { name: "quit", description: "Exit March" },
-  { name: "help", description: "Show available commands" },
-  { name: "model", description: "Cycle to next available model" },
-  { name: "models", description: "List available models" },
-  { name: "compact", description: "Compact session context" },
-  { name: "session", description: "Show session stats (tokens, cost, messages)" },
-  { name: "sessions", description: "List saved sessions" },
-  { name: "status", description: "Show current session status" },
-  { name: "save", description: "Save current session" },
-  { name: "pin", description: "Pin a file to context" },
-  { name: "unpin", description: "Unpin a file from context" },
-  { name: "pins", description: "List pinned files" },
-  { name: "thinking", description: "Toggle last thinking block expand/collapse" },
-  { name: "mouse", description: "Toggle mouse tracking (for text selection vs click-to-expand)" },
-  { name: "hotkeys", description: "Show keyboard shortcuts and input prefixes" },
-];
-
-export function buildMarchCommands(skillPool = []) {
-  const skillCommands = skillPool
-    .map((skill) => ({
-      name: `skill:${typeof skill === "string" ? skill : skill.name}`,
-      description: typeof skill === "string" ? "Activate skill" : (skill.description || "Activate skill"),
-    }))
-    .filter((command) => command.name !== "skill:undefined");
-  return [...MARCH_COMMANDS, ...skillCommands];
-}
-
-export class MarchAutocompleteProvider {
-  constructor(commands, cwd) {
-    this.base = new CombinedAutocompleteProvider(commands, cwd);
-    this.cwd = cwd;
-  }
-
-  async getSuggestions(lines, cursorLine, cursorCol, options) {
-    const suggestions = await this.base.getSuggestions(lines, cursorLine, cursorCol, options);
-    if (suggestions) return suggestions;
-    return this.getAtFileSuggestions(lines, cursorLine, cursorCol);
-  }
-
-  applyCompletion(lines, cursorLine, cursorCol, item, prefix) {
-    return this.base.applyCompletion(lines, cursorLine, cursorCol, item, prefix);
-  }
-
-  shouldTriggerFileCompletion(lines, cursorLine, cursorCol) {
-    return this.base.shouldTriggerFileCompletion(lines, cursorLine, cursorCol);
-  }
-
-  getAtFileSuggestions(lines, cursorLine, cursorCol) {
-    const currentLine = lines[cursorLine] || "";
-    const textBeforeCursor = currentLine.slice(0, cursorCol);
-    const match = textBeforeCursor.match(/(?:^|[\s([{])(@[^\s]*)$/);
-    if (!match) return null;
-
-    const prefix = match[1];
-    const query = prefix.slice(1);
-    const displayDotSlash = query.startsWith("./");
-    const normalizedQuery = query.replace(/^[.][/\\]/, "").replace(/\\/g, "/").toLowerCase();
-    const items = [];
-    const skip = new Set([".git", "node_modules"]);
-
-    const walk = (dir, relative = "", depth = 0) => {
-      if (items.length >= 50 || depth > 5) return;
-      let entries;
-      try {
-        entries = readdirSync(dir, { withFileTypes: true });
-      } catch {
-        return;
-      }
-      for (const entry of entries) {
-        if (items.length >= 50) return;
-        if (skip.has(entry.name)) continue;
-        const rel = relative ? `${relative}/${entry.name}` : entry.name;
-        const isDirectory = entry.isDirectory();
-        const relForMatch = rel.toLowerCase();
-        if (!normalizedQuery || relForMatch.includes(normalizedQuery)) {
-          const displayPath = `${displayDotSlash ? "./" : ""}${rel}${isDirectory ? "/" : ""}`;
-          items.push({
-            value: `@${displayPath}`,
-            label: `${entry.name}${isDirectory ? "/" : ""}`,
-            description: displayPath,
-          });
-        }
-        if (isDirectory) {
-          walk(join(dir, entry.name), rel, depth + 1);
-        }
-      }
-    };
-
-    walk(this.cwd);
-    if (items.length === 0) return null;
-    items.sort((a, b) => a.description.localeCompare(b.description));
-    return { items, prefix };
-  }
 }
 
 const EDITOR_THEME = {
@@ -154,126 +35,6 @@ const EDITOR_THEME = {
     noMatch: (text) => `\x1b[90m${text}\x1b[0m`,
   },
 };
-
-// ── OutputBuffer (segment-based) ────────────────────────────────────
-// Stores text and thinking blocks as segments.
-// Thinking blocks are collapsed by default; expand via Tab or /thinking.
-
-class OutputBuffer {
-  constructor() {
-    this.segments = [];
-    this.currentText = [""];
-    this.spinning = false;
-    this.spinnerText = "";
-    this.spinnerIdx = 0;
-    this._activeThinking = null;
-  }
-
-  // ── text accumulation ──────────────────────────────────────────
-
-  write(text) {
-    const parts = text.split("\n");
-    this.currentText[this.currentText.length - 1] += parts[0];
-    for (let i = 1; i < parts.length; i++) {
-      this.currentText.push(parts[i]);
-    }
-  }
-
-  writeln(text) {
-    this.currentText[this.currentText.length - 1] += text;
-    this.currentText.push("");
-  }
-
-  // ── thinking blocks ─────────────────────────────────────────────
-
-  startThinking() {
-    this._flushText();
-    const seg = { type: "thinking", tokens: 0, content: [] };
-    this.segments.push(seg);
-    this._activeThinking = seg;
-  }
-
-  appendThinking(text) {
-    if (!this._activeThinking) this.startThinking();
-    const parts = text.split("\n");
-    const lastIdx = this._activeThinking.content.length - 1;
-    if (lastIdx >= 0) {
-      this._activeThinking.content[lastIdx] += parts[0];
-    } else {
-      this._activeThinking.content.push(parts[0]);
-    }
-    for (let i = 1; i < parts.length; i++) {
-      this._activeThinking.content.push(parts[i]);
-    }
-  }
-
-  endThinking(tokens) {
-    if (this._activeThinking) {
-      this._activeThinking.tokens = tokens;
-      this._activeThinking = null;
-    }
-  }
-
-  // Legacy: add a pre-built thinking block (used by JSON/plain UI fallbacks)
-  addThinkingBlock(tokens, content) {
-    this._flushText();
-    this.segments.push({
-      type: "thinking",
-      tokens,
-      content: content.split("\n"),
-    });
-  }
-
-  _flushText() {
-    if (this.currentText.length > 1 || this.currentText[0] !== "") {
-      this.segments.push({ type: "text", lines: [...this.currentText] });
-      this.currentText = [""];
-    }
-  }
-
-  // ── spinner ─────────────────────────────────────────────────────
-
-  setSpinner(on, text) {
-    this.spinning = on;
-    if (text !== undefined) this.spinnerText = text;
-  }
-
-  tick() {
-    this.spinnerIdx = (this.spinnerIdx + 1) % SPINNER_FRAMES.length;
-  }
-
-  invalidate() {}
-
-  // ── render ──────────────────────────────────────────────────────
-
-  render(width) {
-    const lines = [];
-    for (const seg of this.segments) {
-      if (seg.type === "text") {
-        for (const line of seg.lines) {
-          lines.push(visibleWidth(line) > width ? truncateToWidth(line, width) : line);
-        }
-      } else if (seg.type === "thinking") {
-        lines.push(`\x1b[3;90m· thinking (${seg.tokens} tokens)\x1b[0m`);
-        const indent = width > 40 ? width - 40 : width - 2;
-        const maxContentWidth = Math.max(20, indent);
-        for (const line of seg.content) {
-          for (const w of wrapLine(line, maxContentWidth)) {
-            lines.push(`\x1b[3;90m  ${w}\x1b[0m`);
-          }
-        }
-      }
-    }
-    for (const line of this.currentText) {
-      lines.push(visibleWidth(line) > width ? truncateToWidth(line, width) : line);
-    }
-    if (this.spinning) {
-      const frame = SPINNER_FRAMES[this.spinnerIdx];
-      lines.push(`\x1b[90m${frame} ${this.spinnerText}\x1b[0m`);
-    }
-    return lines;
-  }
-}
 
 // ── TUI-based UI ────────────────────────────────────────────────────
 

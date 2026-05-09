@@ -157,7 +157,7 @@ function cleanup(dir) {
 
 {
   console.log("--- smoke: autocomplete provider ---");
-  const { buildMarchCommands, MarchAutocompleteProvider } = await import("../src/cli/ui.mjs");
+  const { buildMarchCommands, MarchAutocompleteProvider } = await import("../src/cli/autocomplete.mjs");
   const dir = setupTmp();
   writeFileSync(join(dir, "sample-file.txt"), "data");
 
@@ -182,7 +182,26 @@ function cleanup(dir) {
   console.log("  PASS");
 }
 
-// ── 3d. Inline shell parsing ────────────────────────────────────────
+// ── 3d. Output buffer rendering ─────────────────────────────────────
+
+{
+  console.log("--- smoke: output buffer rendering ---");
+  const { OutputBuffer } = await import("../src/cli/output-buffer.mjs");
+  const buffer = new OutputBuffer();
+  buffer.write("hello");
+  buffer.startThinking();
+  buffer.appendThinking("reasoning line");
+  buffer.endThinking(12);
+  buffer.setSpinner(true, "Thinking...");
+  const rendered = buffer.render(80).join("\n");
+  assert.ok(rendered.includes("hello"));
+  assert.ok(rendered.includes("thinking (12 tokens)"));
+  assert.ok(rendered.includes("reasoning line"));
+  assert.ok(rendered.includes("Thinking..."));
+  console.log("  PASS");
+}
+
+// ── 3e. Inline shell parsing ────────────────────────────────────────
 
 {
   console.log("--- smoke: inline shell parsing ---");
@@ -195,7 +214,7 @@ function cleanup(dir) {
   console.log("  PASS");
 }
 
-// ── 3e. Hotkeys panel ───────────────────────────────────────────────
+// ── 3f. Hotkeys panel ───────────────────────────────────────────────
 
 {
   console.log("--- smoke: hotkeys panel ---");
@@ -208,7 +227,7 @@ function cleanup(dir) {
   console.log("  PASS");
 }
 
-// ── 3f. Skill invocation parsing ────────────────────────────────────
+// ── 3g. Skill invocation parsing ────────────────────────────────────
 
 {
   console.log("--- smoke: skill invocation parsing ---");
