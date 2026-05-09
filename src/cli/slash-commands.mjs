@@ -4,7 +4,7 @@ import { handleModelCommand, listModels, parseModelCommand } from "./model-comma
 import { parseResumePiCommand, resumePiSessionById } from "./pi-session-switch-command.mjs";
 import { formatHotkeysPanel } from "./repl-commands.mjs";
 import { compactSession, listSessionStats } from "./session-command.mjs";
-import { formatPiSessionList, listSessionCommand } from "./session-list-command.mjs";
+import { formatPiSessionList, formatPiSessionTree, listSessionCommand } from "./session-list-command.mjs";
 import { parseResumeCommand, resumeSessionById } from "./session-switch-command.mjs";
 import { handleThinkingCommand, parseThinkingCommand } from "./thinking-command.mjs";
 
@@ -96,12 +96,16 @@ export async function handleSlashCommand(trimmed, {
     return { handled: true };
   }
 
-  if (trimmed === "/sessions pi") {
+  if (trimmed === "/sessions pi" || trimmed === "/sessions pi tree") {
     const sessions = await listPiSessionInfos({
       cwd: runner.engine.cwd,
       projectMarchDir,
     });
-    for (const line of formatPiSessionList(sessions)) ui.writeln(line);
+    const currentPiSessionId = runner.getSessionStats?.().sessionId ?? null;
+    const lines = trimmed === "/sessions pi tree"
+      ? formatPiSessionTree(sessions, currentPiSessionId)
+      : formatPiSessionList(sessions);
+    for (const line of lines) ui.writeln(line);
     return { handled: true };
   }
 

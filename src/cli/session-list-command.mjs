@@ -23,6 +23,46 @@ export function formatPiSessionList(sessions) {
     const savedAt = session.savedAt?.slice(0, 19) ?? "?";
     return `  ${session.id}  ${session.turnCount}m  ${savedAt}  ${label}`;
   });
-  lines.push("(pi JSONL sessions; write with --pi-sessions, resume with /resume-pi <id> under --pi-runtime-host)");
+  lines.push("(pi JSONL sessions; use /sessions pi tree for file-level parent view; write with --pi-sessions, resume with /resume-pi <id> under --pi-runtime-host)");
+  return lines;
+}
+
+export function formatPiSessionTree(sessions, currentSessionId = null) {
+  if (sessions.length === 0) return ["(no pi sessions)"];
+
+  const nodes = new Map();
+  const byPath = new Map();
+  for (const session of sessions) {
+    const node = { ...session, children: [] };
+    nodes.set(session.id, node);
+    if (session.path) byPath.set(session.path, node);
+  }
+
+  const roots = [];
+  for (const node of nodes.values()) {
+    const parent = node.parentSessionPath ? byPath.get(node.parentSessionPath) : null;
+    if (parent) parent.children.push(node);
+    else roots.push(node);
+  }
+
+  const bySavedAtDesc = (a, b) => (b.savedAt ?? "").localeCompare(a.savedAt ?? "");
+  const sortDeep = (items) => {
+    items.sort(bySavedAtDesc);
+    for (const item of items) sortDeep(item.children);
+  };
+  sortDeep(roots);
+
+  const lines = [];
+  const visit = (node, depth) => {
+    const marker = node.id === currentSessionId ? "*" : "-";
+    const savedAt = node.savedAt?.slice(0, 19) ?? "?";
+    const label = node.name || node.firstMessage || "(no messages)";
+    const indent = "  ".repeat(depth);
+    lines.push(`${indent}${marker} ${node.id}  ${node.turnCount ?? 0}m  ${savedAt}  ${label}`);
+    for (const child of node.children) visit(child, depth + 1);
+  };
+
+  for (const root of roots) visit(root, 0);
+  lines.push("(* = current pi session; tree uses pi JSONL parentSessionPath)");
   return lines;
 }

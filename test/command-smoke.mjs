@@ -119,7 +119,7 @@ export async function runSessionCommandSmoke() {
 
 export async function runSessionListCommandSmoke() {
   console.log("--- smoke: session list command handling ---");
-  const { formatPiSessionList, formatSessionList, listSessionCommand } = await import("../src/cli/session-list-command.mjs");
+  const { formatPiSessionList, formatPiSessionTree, formatSessionList, listSessionCommand } = await import("../src/cli/session-list-command.mjs");
   const sessions = [
     {
       id: "root",
@@ -154,7 +154,37 @@ export async function runSessionListCommandSmoke() {
     savedAt: "2026-05-10T00:00:00.000Z",
     turnCount: 2,
     firstMessage: "hello pi",
-  }]).some((line) => line.includes("/resume-pi <id>") && line.includes("--pi-runtime-host")));
+  }]).some((line) => line.includes("/sessions pi tree") && line.includes("/resume-pi <id>") && line.includes("--pi-runtime-host")));
+  const piTree = formatPiSessionTree([
+    {
+      id: "parent",
+      path: "parent.jsonl",
+      savedAt: "2026-05-10T00:00:00.000Z",
+      turnCount: 2,
+      firstMessage: "parent message",
+      parentSessionPath: null,
+    },
+    {
+      id: "child",
+      path: "child.jsonl",
+      savedAt: "2026-05-10T00:01:00.000Z",
+      turnCount: 3,
+      firstMessage: "child message",
+      parentSessionPath: "parent.jsonl",
+    },
+    {
+      id: "orphan",
+      path: "orphan.jsonl",
+      savedAt: "2026-05-10T00:02:00.000Z",
+      turnCount: 1,
+      firstMessage: "orphan message",
+      parentSessionPath: "missing.jsonl",
+    },
+  ], "child");
+  assert.ok(piTree.some((line) => line.startsWith("- orphan")));
+  assert.ok(piTree.some((line) => line.startsWith("- parent")));
+  assert.ok(piTree.some((line) => line.startsWith("  * child")));
+  assert.ok(piTree.at(-1).includes("parentSessionPath"));
   console.log("  PASS");
 }
 
