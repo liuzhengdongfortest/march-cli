@@ -5,6 +5,7 @@ import { join } from "node:path";
 export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: slash command handling ---");
   const { handleSlashCommand } = await import("../src/cli/slash-commands.mjs");
+  const { savePiSessionSidecar } = await import("../src/session/sidecar.mjs");
   const output = [];
   const ui = { writeln: (text) => output.push(text), toggleMouse: () => false };
   const dir = setupTmp();
@@ -17,6 +18,23 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
     JSON.stringify({ type: "message", id: "a1", parentId: "u1", timestamp: "2026-05-10T00:00:02.000Z", message: { role: "assistant", content: [{ type: "text", text: "ok" }], provider: "test", model: "test", usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: "stop", timestamp: 1778342402000 } }),
     "",
   ].join("\n"));
+  savePiSessionSidecar({
+    projectMarchDir,
+    sessionRef: "2026-05-10T00-00-00-000Z_pi.jsonl",
+    engine: {
+      cwd: dir,
+      modelId: "test-model",
+      provider: "deepseek",
+      namespace: "ns",
+      turns: [{ index: 1, userMessage: "slash pi", summary: "summary" }],
+      _compactionSummary: null,
+      pins: new Set(),
+      skills: [],
+      openFiles: new Map(),
+    },
+    metadata: { sessionId: "pi-slash", sessionFile: "2026-05-10T00-00-00-000Z_pi.jsonl" },
+  });
+  let restored = null;
   const runner = {
     engine: {
       cwd: dir,
@@ -25,6 +43,9 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
       openFiles: new Map(),
       skills: [],
       getPins: () => [],
+      restoreSession: (state) => {
+        restored = state;
+      },
     },
     cycleThinkingLevel: () => "high",
     getAvailableThinkingLevels: () => ["off", "medium", "high"],
@@ -72,6 +93,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   const resumePi = await handleSlashCommand("/resume-pi pi", { ui, runner, sessionState, sessionsRoot: "unused", projectMarchDir });
   assert.equal(resumePi.handled, true);
   assert.ok(output.join("\n").includes("Resumed pi session: pi-slash"));
+  assert.equal(restored.turns[0].summary, "summary");
   const compact = await handleSlashCommand("/compact", { ui, runner, sessionState, sessionsRoot: "unused", projectMarchDir });
   assert.equal(compact.handled, true);
   assert.ok(output.join("\n").includes("Compacted: 15 char summary"));

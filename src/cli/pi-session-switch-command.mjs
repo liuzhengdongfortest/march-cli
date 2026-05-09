@@ -1,3 +1,5 @@
+import { loadPiSessionSidecar } from "../session/sidecar.mjs";
+
 export function parseResumePiCommand(input) {
   if (input !== "/resume-pi" && !input.startsWith("/resume-pi ")) return { type: "none" };
   const id = input.slice("/resume-pi".length).trim();
@@ -8,7 +10,7 @@ export function parseResumePiCommand(input) {
   return { type: "resume-pi", id };
 }
 
-export async function resumePiSessionById(id, { runner, sessions }) {
+export async function resumePiSessionById(id, { runner, sessions, projectMarchDir, skillPool = [] }) {
   if (!runner.canSwitchPiSession?.()) {
     return ["Error: /resume-pi requires --pi-runtime-host"];
   }
@@ -20,7 +22,28 @@ export async function resumePiSessionById(id, { runner, sessions }) {
   }
 
   const session = matches[0];
+  let sidecar;
+  try {
+    sidecar = loadPiSessionSidecar({ projectMarchDir, sessionRef: session.path });
+  } catch (err) {
+    return [`Error: pi session sidecar is invalid for ${session.id}: ${err.message}`];
+  }
+  if (!sidecar) {
+    return [`Error: pi session sidecar not found for ${session.id}; refusing partial resume`];
+  }
+  if (sidecar.state.cwd && sidecar.state.cwd !== runner.engine.cwd) {
+    return [`Error: pi session sidecar cwd mismatch for ${session.id}: ${sidecar.state.cwd}`];
+  }
+
   const result = await runner.switchPiSession(session.path);
   if (result?.cancelled) return [`Resume pi session cancelled: ${session.id}`];
+  runner.engine.restoreSession(toContextSessionState(sidecar.state), skillPool, { replace: true });
   return [`Resumed pi session: ${session.id}`];
+}
+
+function toContextSessionState(sidecarState) {
+  return {
+    ...sidecarState,
+    _compactionSummary: sidecarState.compactionSummary,
+  };
 }

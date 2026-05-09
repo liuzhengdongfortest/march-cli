@@ -195,7 +195,12 @@ export async function runSessionSwitchCommandSmoke({ setupTmp, cleanup }) {
 
 export async function runPiSessionSwitchCommandSmoke() {
   console.log("--- smoke: pi session switch command handling ---");
+  const { mkdirSync, mkdtempSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
   const { parseResumePiCommand, resumePiSessionById } = await import("../src/cli/pi-session-switch-command.mjs");
+  const { ContextEngine } = await import("../src/context/engine.mjs");
+  const { savePiSessionSidecar } = await import("../src/session/sidecar.mjs");
 
   assert.deepEqual(parseResumePiCommand("hello"), { type: "none" });
   assert.deepEqual(parseResumePiCommand("/resume-piabc"), { type: "none" });
@@ -208,27 +213,73 @@ export async function runPiSessionSwitchCommandSmoke() {
     { id: "def456", path: "def.jsonl" },
   ];
   const disabled = { canSwitchPiSession: () => false };
-  assert.deepEqual(await resumePiSessionById("abc", { runner: disabled, sessions }), [
+  assert.deepEqual(await resumePiSessionById("abc", { runner: disabled, sessions, projectMarchDir: "unused" }), [
     "Error: /resume-pi requires --pi-runtime-host",
   ]);
 
+  const tempRoot = mkdtempSync(join(tmpdir(), "march-pi-switch-"));
+  const projectMarchDir = join(tempRoot, ".march");
+  assert.deepEqual(await resumePiSessionById("abc", {
+    runner: { canSwitchPiSession: () => true, engine: { cwd: "D:/repo" } },
+    sessions,
+    projectMarchDir,
+  }), ["Error: pi session sidecar not found for abc123; refusing partial resume"]);
+
   let switchedPath = null;
+  const engine = new ContextEngine({ cwd: "D:/repo", modelId: "test", provider: "deepseek", skills: [], pins: [] });
+  const sidecarDir = join(projectMarchDir, "pi-sidecars");
+  mkdirSync(sidecarDir, { recursive: true });
+  const sourceEngine = new ContextEngine({
+    cwd: "D:/repo",
+    modelId: "test",
+    provider: "deepseek",
+    skills: ["review"],
+    pins: ["/target.txt"],
+    namespace: "ns",
+  });
+  sourceEngine.recordTurn({ userMessage: "hello", summary: "summary" });
+  savePiSessionSidecar({
+    projectMarchDir,
+    sessionRef: "abc.jsonl",
+    engine: sourceEngine,
+    metadata: { sessionId: "abc123", sessionFile: "abc.jsonl" },
+  });
+  savePiSessionSidecar({
+    projectMarchDir,
+    sessionRef: "def.jsonl",
+    engine: sourceEngine,
+    metadata: { sessionId: "def456", sessionFile: "def.jsonl" },
+  });
   const runner = {
     canSwitchPiSession: () => true,
+    engine,
     switchPiSession: async (path) => {
       switchedPath = path;
       return { cancelled: false };
     },
   };
-  assert.deepEqual(await resumePiSessionById("abc", { runner, sessions }), ["Resumed pi session: abc123"]);
+  const skillPool = [{ name: "review", body: "review body" }];
+  assert.deepEqual(await resumePiSessionById("abc", { runner, sessions, projectMarchDir, skillPool }), ["Resumed pi session: abc123"]);
   assert.equal(switchedPath, "abc.jsonl");
-  assert.deepEqual(await resumePiSessionById("missing", { runner, sessions }), ["Error: pi session not found: missing"]);
-  assert.deepEqual(await resumePiSessionById("a", { runner, sessions: [{ id: "aa", path: "1" }, { id: "ab", path: "2" }] }), [
+  assert.deepEqual(engine.getPins(), ["/target.txt"]);
+  assert.deepEqual(engine.skills, skillPool);
+  assert.equal(engine.turns[0].summary, "summary");
+  assert.deepEqual(await resumePiSessionById("missing", { runner, sessions, projectMarchDir }), ["Error: pi session not found: missing"]);
+  assert.deepEqual(await resumePiSessionById("a", { runner, sessions: [{ id: "aa", path: "1" }, { id: "ab", path: "2" }], projectMarchDir }), [
     "Error: pi session id is ambiguous: a (aa, ab)",
   ]);
   assert.deepEqual(await resumePiSessionById("def", {
-    runner: { canSwitchPiSession: () => true, switchPiSession: async () => ({ cancelled: true }) },
+    runner: { canSwitchPiSession: () => true, engine: { cwd: "D:/repo" }, switchPiSession: async () => ({ cancelled: true }) },
     sessions,
+    projectMarchDir,
   }), ["Resume pi session cancelled: def456"]);
+
+  const mismatchEngine = new ContextEngine({ cwd: "D:/other", modelId: "test", provider: "deepseek", skills: [], pins: [] });
+  assert.deepEqual(await resumePiSessionById("abc", {
+    runner: { canSwitchPiSession: () => true, engine: mismatchEngine },
+    sessions,
+    projectMarchDir,
+  }), ["Error: pi session sidecar cwd mismatch for abc123: D:/repo"]);
+  rmSync(tempRoot, { recursive: true, force: true });
   console.log("  PASS");
 }

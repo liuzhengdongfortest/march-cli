@@ -126,7 +126,12 @@ export async function handleSlashCommand(trimmed, {
         cwd: runner.engine.cwd,
         projectMarchDir,
       });
-      for (const line of await resumePiSessionById(resumePiCommand.id, { runner, sessions })) {
+      for (const line of await resumePiSessionById(resumePiCommand.id, {
+        runner,
+        sessions,
+        projectMarchDir,
+        skillPool,
+      })) {
         ui.writeln(line);
       }
     }
