@@ -1,13 +1,15 @@
 import { strict as assert } from "node:assert";
 import {
   runModelCommandSmoke,
+  runSelectorListSmoke,
+} from "./command-smoke.mjs";
+import {
   runPiSessionCloneCommandSmoke,
   runPiSessionSwitchCommandSmoke,
-  runSelectorListSmoke,
   runSessionCommandSmoke,
   runSessionListCommandSmoke,
   runSessionSwitchCommandSmoke,
-} from "./command-smoke.mjs";
+} from "./session-command-smoke.mjs";
 import { runPiSessionForkCommandSmoke } from "./pi-session-fork-command.smoke.mjs";
 import { runPiSessionForkResetSmoke } from "./pi-session-fork-reset.smoke.mjs";
 import { runRunnerCompactionSmoke } from "./runner-compaction.smoke.mjs";

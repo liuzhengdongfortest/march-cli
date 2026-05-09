@@ -1,0 +1,386 @@
+import { strict as assert } from "node:assert";
+
+export async function runSessionCommandSmoke() {
+  console.log("--- smoke: session command handling ---");
+  const { compactSession, formatSessionStats, listSessionStats } = await import("../src/cli/session-command.mjs");
+  const stats = {
+    sessionId: "s1",
+    userMessages: 2,
+    assistantMessages: 3,
+    toolCalls: 4,
+    totalMessages: 9,
+    tokens: { input: 10, output: 20, cacheRead: 3, cacheWrite: 4 },
+    cost: 0.12345,
+  };
+  assert.deepEqual(formatSessionStats(stats), [
+    "session: s1",
+    "messages: 2u + 3a + 4t = 9 total",
+    "tokens: 10 in / 20 out (3 cache read, 4 cache write)",
+    "cost: $0.1235",
+  ]);
+  assert.deepEqual(formatSessionStats({ ...stats, persisted: false, sessionFile: undefined }), [
+    "session: s1",
+    "persistence: in-memory",
+    "messages: 2u + 3a + 4t = 9 total",
+    "tokens: 10 in / 20 out (3 cache read, 4 cache write)",
+    "cost: $0.1235",
+  ]);
+  assert.deepEqual(formatSessionStats({ ...stats, persisted: false, runtimeHost: false, piSessionSwitching: false }), [
+    "session: s1",
+    "persistence: in-memory",
+    "runtime: direct-agent-session",
+    "/resume-pi: requires pi runtime host",
+    "messages: 2u + 3a + 4t = 9 total",
+    "tokens: 10 in / 20 out (3 cache read, 4 cache write)",
+    "cost: $0.1235",
+  ]);
+  assert.ok(formatSessionStats({ ...stats, runtimeHost: true, piSessionSwitching: true }).includes("runtime: pi-runtime-host"));
+  assert.ok(formatSessionStats({ ...stats, runtimeHost: true, piSessionSwitching: true }).includes("/resume-pi: available"));
+  assert.ok(formatSessionStats({ ...stats, persisted: true, sessionFile: "session.jsonl" }).includes("persistence: pi-jsonl (session.jsonl)"));
+  const runner = {
+    compact: async () => ({ summary: "hello" }),
+    getSessionStats: () => stats,
+  };
+  assert.deepEqual(await compactSession({ runner }), ["Compacted: 5 char summary"]);
+  assert.equal(listSessionStats({ runner })[0], "session: s1");
+  console.log("  PASS");
+}
+
+export async function runSessionListCommandSmoke() {
+  console.log("--- smoke: session list command handling ---");
+  const { formatPiSessionList, formatPiSessionTree, formatSessionList, listSessionCommand } = await import("../src/cli/session-list-command.mjs");
+  const sessions = [
+    {
+      id: "root",
+      savedAt: "2026-05-10T00:00:00.000Z",
+      turnCount: 2,
+      cwd: "D:/repo",
+      parentSessionId: null,
+    },
+    {
+      id: "child",
+      savedAt: "2026-05-10T00:01:00.000Z",
+      turnCount: 3,
+      cwd: "D:/repo",
+      parentSessionId: "root",
+    },
+  ];
+  assert.deepEqual(formatSessionList([], "root"), ["(no saved sessions)"]);
+  const flat = formatSessionList(sessions, "child");
+  assert.ok(flat.some((line) => line.includes("* child")));
+  assert.ok(flat.some((line) => line.includes("fork:root")));
+  const tree = listSessionCommand({ sessions, currentSessionId: "child", tree: true });
+  assert.ok(tree.some((line) => line.startsWith("  * child")));
+  assert.deepEqual(formatPiSessionList([]), ["(no pi sessions)"]);
+  assert.ok(formatPiSessionList([{
+    id: "pi1",
+    savedAt: "2026-05-10T00:00:00.000Z",
+    turnCount: 2,
+    firstMessage: "hello pi",
+  }]).some((line) => line.includes("pi1") && line.includes("hello pi")));
+  assert.ok(formatPiSessionList([{
+    id: "pi1",
+    savedAt: "2026-05-10T00:00:00.000Z",
+    turnCount: 2,
+    firstMessage: "hello pi",
+  }]).some((line) => line.includes("/sessions tree") && line.includes("not in-file entry branches") && line.includes("/resume <id>") && line.includes("/sessions legacy")));
+  const piTree = formatPiSessionTree([
+    {
+      id: "parent",
+      path: "parent.jsonl",
+      savedAt: "2026-05-10T00:00:00.000Z",
+      turnCount: 2,
+      firstMessage: "parent message",
+      parentSessionPath: null,
+    },
+    {
+      id: "child",
+      path: "child.jsonl",
+      savedAt: "2026-05-10T00:01:00.000Z",
+      turnCount: 3,
+      firstMessage: "child message",
+      parentSessionPath: "parent.jsonl",
+    },
+    {
+      id: "orphan",
+      path: "orphan.jsonl",
+      savedAt: "2026-05-10T00:02:00.000Z",
+      turnCount: 1,
+      firstMessage: "orphan message",
+      parentSessionPath: "missing.jsonl",
+    },
+  ], "child");
+  assert.ok(piTree.some((line) => line.startsWith("- orphan")));
+  assert.ok(piTree.some((line) => line.startsWith("- parent")));
+  assert.ok(piTree.some((line) => line.startsWith("  * child")));
+  assert.ok(piTree.at(-1).includes("file-level tree"));
+  assert.ok(piTree.at(-1).includes("/session entries or /fork-pi"));
+  console.log("  PASS");
+}
+
+export async function runSessionSwitchCommandSmoke({ setupTmp, cleanup }) {
+  console.log("--- smoke: session switch command handling ---");
+  const { mkdirSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const { ContextEngine } = await import("../src/context/engine.mjs");
+  const { parseResumeCommand, resumeSessionById } = await import("../src/cli/session-switch-command.mjs");
+  const { saveSession } = await import("../src/session/persist.mjs");
+
+  assert.deepEqual(parseResumeCommand("hello"), { type: "none" });
+  assert.deepEqual(parseResumeCommand("/resume target"), { type: "resume", id: "target" });
+  assert.deepEqual(parseResumeCommand("/resume-legacy target", "/resume-legacy"), { type: "resume", id: "target" });
+  assert.equal(parseResumeCommand("/resume").type, "error");
+  assert.equal(parseResumeCommand("/resume-legacy", "/resume-legacy").type, "error");
+  assert.equal(parseResumeCommand("/resume ../bad").type, "error");
+
+  const dir = setupTmp();
+  const sessionsRoot = join(dir, "sessions");
+  mkdirSync(sessionsRoot, { recursive: true });
+
+  const currentEngine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: [], pins: [] });
+  currentEngine.recordTurn({ userMessage: "current", summary: "current" });
+  const targetEngine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: [], pins: ["/target.txt"] });
+  targetEngine.recordTurn({ userMessage: "target", summary: "target" });
+  saveSession(join(sessionsRoot, "target"), targetEngine);
+
+  const runner = { engine: currentEngine };
+  const sessionState = { sessionId: "current", sessionDir: join(sessionsRoot, "current") };
+  const lines = resumeSessionById("target", { runner, sessionState, sessionsRoot });
+  assert.deepEqual(lines, ["Resumed session: target (1 turns)"]);
+  assert.equal(sessionState.sessionId, "target");
+  assert.equal(runner.engine.turns[0].userMessage, "target");
+  assert.deepEqual(runner.engine.getPins(), ["/target.txt"]);
+
+  cleanup(dir);
+  console.log("  PASS");
+}
+
+export async function runPiSessionSwitchCommandSmoke() {
+  console.log("--- smoke: pi session switch command handling ---");
+  const { mkdirSync, mkdtempSync, rmSync, writeFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { parseResumePiCommand, resumePiSessionById } = await import("../src/cli/pi-session-switch-command.mjs");
+  const { ContextEngine } = await import("../src/context/engine.mjs");
+  const { savePiSessionSidecar } = await import("../src/session/sidecar.mjs");
+
+  assert.deepEqual(parseResumePiCommand("hello"), { type: "none" });
+  assert.deepEqual(parseResumePiCommand("/resume-piabc"), { type: "none" });
+  assert.deepEqual(parseResumePiCommand("/resume-pi abc"), { type: "resume-pi", id: "abc" });
+  assert.equal(parseResumePiCommand("/resume-pi").type, "error");
+  assert.equal(parseResumePiCommand("/resume-pi ../bad").type, "error");
+
+  const sessions = [
+    { id: "abc123", path: "abc.jsonl" },
+    { id: "def456", path: "def.jsonl" },
+  ];
+  const disabled = { canSwitchPiSession: () => false };
+  assert.deepEqual(await resumePiSessionById("abc", { runner: disabled, sessions, projectMarchDir: "unused" }), [
+    "Error: pi session resume requires the pi runtime host",
+  ]);
+
+  const tempRoot = mkdtempSync(join(tmpdir(), "march-pi-switch-"));
+  const projectMarchDir = join(tempRoot, ".march");
+  assert.deepEqual(await resumePiSessionById("abc", {
+    runner: { canSwitchPiSession: () => true, engine: { cwd: "D:/repo" } },
+    sessions,
+    projectMarchDir,
+  }), ["Error: pi session sidecar not found for abc123; refusing partial resume"]);
+
+  let switchedPath = null;
+  const engine = new ContextEngine({ cwd: "D:/repo", modelId: "test", provider: "deepseek", skills: [], pins: [] });
+  const sidecarDir = join(projectMarchDir, "pi-sidecars");
+  mkdirSync(sidecarDir, { recursive: true });
+  const sourceEngine = new ContextEngine({
+    cwd: "D:/repo",
+    modelId: "test",
+    provider: "deepseek",
+    thinkingLevel: "high",
+    skills: ["review"],
+    pins: ["/target.txt"],
+    namespace: "ns",
+  });
+  sourceEngine.recordTurn({ userMessage: "hello", summary: "summary" });
+  savePiSessionSidecar({
+    projectMarchDir,
+    sessionRef: "abc.jsonl",
+    engine: sourceEngine,
+    metadata: { sessionId: "abc123", sessionFile: "abc.jsonl" },
+  });
+  savePiSessionSidecar({
+    projectMarchDir,
+    sessionRef: "def.jsonl",
+    engine: sourceEngine,
+    metadata: { sessionId: "def456", sessionFile: "def.jsonl" },
+  });
+  writeFileSync(join(sidecarDir, "bad.json"), JSON.stringify({ version: 999 }), "utf8");
+  const runner = {
+    canSwitchPiSession: () => true,
+    engine,
+    switchPiSession: async (path) => {
+      switchedPath = path;
+      return { cancelled: false };
+    },
+  };
+  const skillPool = [{ name: "review", body: "review body" }];
+  assert.deepEqual(await resumePiSessionById("abc", { runner, sessions, projectMarchDir, skillPool }), ["Resumed pi session: abc123"]);
+  assert.equal(switchedPath, "abc.jsonl");
+  assert.deepEqual(engine.getPins(), ["/target.txt"]);
+  assert.deepEqual(engine.skills, skillPool);
+  assert.equal(engine.thinkingLevel, "high");
+  assert.equal(engine.turns[0].summary, "summary");
+  assert.deepEqual(await resumePiSessionById("missing", { runner, sessions, projectMarchDir }), ["Error: pi session not found: missing"]);
+  assert.deepEqual(await resumePiSessionById("a", { runner, sessions: [{ id: "aa", path: "1" }, { id: "ab", path: "2" }], projectMarchDir }), [
+    "Error: pi session id is ambiguous: a (aa, ab)",
+  ]);
+  assert.deepEqual(await resumePiSessionById("bad", {
+    runner,
+    sessions: [{ id: "bad999", path: "bad.jsonl" }],
+    projectMarchDir,
+  }), ["Error: pi session sidecar is invalid for bad999: Invalid pi session sidecar"]);
+  assert.deepEqual(await resumePiSessionById("def", {
+    runner: { canSwitchPiSession: () => true, engine: { cwd: "D:/repo" }, switchPiSession: async () => ({ cancelled: true }) },
+    sessions,
+    projectMarchDir,
+  }), ["Resume pi session cancelled: def456"]);
+
+  let restoreCalled = false;
+  assert.deepEqual(await resumePiSessionById("abc", {
+    runner: {
+      canSwitchPiSession: () => true,
+      engine: {
+        cwd: "D:/repo",
+        restoreSession: () => { restoreCalled = true; },
+      },
+      switchPiSession: async () => { throw new Error("runtime exploded"); },
+    },
+    sessions,
+    projectMarchDir,
+  }), ["Error: failed to switch pi session abc123: runtime exploded"]);
+  assert.equal(restoreCalled, false);
+
+  const mismatchEngine = new ContextEngine({ cwd: "D:/other", modelId: "test", provider: "deepseek", skills: [], pins: [] });
+  assert.deepEqual(await resumePiSessionById("abc", {
+    runner: { canSwitchPiSession: () => true, engine: mismatchEngine },
+    sessions,
+    projectMarchDir,
+  }), ["Error: pi session sidecar cwd mismatch for abc123: D:/repo"]);
+  rmSync(tempRoot, { recursive: true, force: true });
+  console.log("  PASS");
+}
+
+export async function runPiSessionCloneCommandSmoke({ setupTmp, cleanup }) {
+  console.log("--- smoke: pi session clone command handling ---");
+  const { cloneCurrentPiSession } = await import("../src/agent/pi-session-clone.mjs");
+  const { createSessionBinding } = await import("../src/agent/session-binding.mjs");
+  const { clonePiSession, parseClonePiCommand } = await import("../src/cli/pi-session-clone-command.mjs");
+  const { ContextEngine } = await import("../src/context/engine.mjs");
+  const { loadPiSessionSidecar } = await import("../src/session/sidecar.mjs");
+
+  assert.deepEqual(parseClonePiCommand("hello"), { type: "none" });
+  assert.deepEqual(parseClonePiCommand("/clone-piabc"), { type: "none" });
+  assert.deepEqual(parseClonePiCommand("/clone-pi"), { type: "clone-pi" });
+  assert.equal(parseClonePiCommand("/clone-pi extra").type, "error");
+  assert.deepEqual(await clonePiSession({ runner: { canSwitchPiSession: () => false } }), [
+    "Error: /clone-pi requires the pi runtime host",
+  ]);
+  assert.deepEqual(await clonePiSession({
+    runner: {
+      canSwitchPiSession: () => true,
+      clonePiSession: async () => ({ cancelled: false, sessionId: "new", sourceSessionId: "old" }),
+    },
+  }), ["Cloned pi session: new (from: old)"]);
+  assert.deepEqual(await clonePiSession({
+    runner: {
+      canSwitchPiSession: () => true,
+      clonePiSession: async () => ({ cancelled: true, sourceSessionId: "old" }),
+    },
+  }), ["Clone pi session cancelled: old"]);
+
+  const dir = setupTmp();
+  const projectMarchDir = `${dir}/.march`;
+  const engine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: ["s1"], pins: ["pinned"], namespace: "ns" });
+  engine.recordTurn({ userMessage: "u", summary: "s" });
+  let activeSession = {
+    sessionManager: { getLeafId: () => "leaf-1" },
+    getSessionStats: () => ({ sessionId: "old", sessionFile: "old.jsonl" }),
+  };
+  const binding = createSessionBinding(activeSession);
+  const runtimeHost = {
+    async fork(entryId, options) {
+      assert.equal(entryId, "leaf-1");
+      assert.deepEqual(options, { position: "at" });
+      activeSession = {
+        sessionManager: { getLeafId: () => "leaf-2" },
+        getSessionStats: () => ({ sessionId: "new", sessionFile: "new.jsonl" }),
+      };
+      binding.set(activeSession);
+      return { cancelled: false };
+    },
+  };
+  const result = await cloneCurrentPiSession({
+    runtimeHost,
+    sessionBinding: binding,
+    engine,
+    projectMarchDir,
+    getSessionStats: (session) => ({
+      ...session.getSessionStats(),
+      persisted: true,
+      runtimeHost: true,
+    }),
+    now: () => new Date("2026-05-10T00:00:00.000Z"),
+  });
+  assert.equal(result.sessionId, "new");
+  const sidecar = loadPiSessionSidecar({ projectMarchDir, sessionRef: "new.jsonl" });
+  assert.equal(sidecar.state.derivedBy, "clone");
+  assert.equal(sidecar.state.derivedAt, "2026-05-10T00:00:00.000Z");
+  assert.equal(sidecar.state.derivedFromPiSessionId, "old");
+  assert.equal(sidecar.state.derivedFromPiSessionFile, "old.jsonl");
+  assert.equal(sidecar.state.turns[0].summary, "s");
+
+  let rolledBackTo = null;
+  const rollbackSource = {
+    sessionManager: { getLeafId: () => "leaf-rollback" },
+    getSessionStats: () => ({ sessionId: "old-rollback", sessionFile: "old-rollback.jsonl" }),
+  };
+  const rollbackBinding = createSessionBinding(rollbackSource);
+  await assert.rejects(() => cloneCurrentPiSession({
+    runtimeHost: {
+      async fork() {
+        rollbackBinding.set({
+          sessionManager: { getLeafId: () => "new-rollback-leaf" },
+          getSessionStats: () => ({ sessionId: "new-rollback", sessionFile: "new-rollback.jsonl" }),
+        });
+        return { cancelled: false };
+      },
+      async switchSession(sessionFile) {
+        rolledBackTo = sessionFile;
+        rollbackBinding.set(rollbackSource);
+        return { cancelled: false };
+      },
+    },
+    sessionBinding: rollbackBinding,
+    engine,
+    projectMarchDir: null,
+    getSessionStats: (session) => ({
+      ...session.getSessionStats(),
+      persisted: true,
+      runtimeHost: true,
+    }),
+  }), /failed to write pi session sidecar after clone: sidecar sync skipped; rolled back to source session/);
+  assert.equal(rolledBackTo, "old-rollback.jsonl");
+  assert.equal(rollbackBinding.get().getSessionStats().sessionId, "old-rollback");
+
+  await assert.rejects(() => cloneCurrentPiSession({
+    runtimeHost,
+    sessionBinding: createSessionBinding({
+      sessionManager: { getLeafId: () => null },
+      getSessionStats: () => ({ sessionId: "empty", sessionFile: "empty.jsonl" }),
+    }),
+    engine,
+    projectMarchDir,
+    getSessionStats: (session) => ({ ...session.getSessionStats(), persisted: true }),
+  }), /no active leaf/);
+  cleanup(dir);
+  console.log("  PASS");
+}
