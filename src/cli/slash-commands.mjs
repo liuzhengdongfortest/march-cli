@@ -37,7 +37,11 @@ export async function handleSlashCommand(trimmed, {
   }
 
   if (trimmed === "/extensions") {
-    for (const line of listExtensionPathsCommand(extensionPaths, runner.getExtensionDiagnostics?.())) ui.writeln(line);
+    for (const line of listExtensionPathsCommand(
+      extensionPaths,
+      runner.getExtensionDiagnostics?.(),
+      runner.getExtensionLifecycleState?.(),
+    )) ui.writeln(line);
     return { handled: true };
   }
 

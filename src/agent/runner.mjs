@@ -6,6 +6,7 @@ import {
   SettingsManager,
 } from "@mariozechner/pi-coding-agent";
 import { ContextEngine } from "../context/engine.mjs";
+import { createMarchLifecycleAdapter } from "../extensions/lifecycle-adapter.mjs";
 import { syncPiSessionSidecar } from "../session/sidecar-sync.mjs";
 import { cloneCurrentPiSession } from "./pi-session-clone.mjs";
 import { forkPiSessionWithResetContext } from "./pi-session-fork-reset.mjs";
@@ -51,6 +52,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
   const resolvedSessionManager = resolveRunnerSessionManager(cwd, sessionManager);
   const sessionBinding = createSessionBinding(null);
   let runtimeHost = null;
+  let lifecycleAdapter = null;
 
   if (useRuntimeHost) {
     runtimeHost = await createRunnerRuntimeHost({
@@ -100,6 +102,15 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
   }
 
   syncEngineSessionState(engine, sessionBinding.get());
+  lifecycleAdapter = createMarchLifecycleAdapter({
+    cwd,
+    projectMarchDir,
+    extensionPaths,
+    sessionBinding,
+    engine,
+    getSessionStats: () => getRunnerSessionStats(sessionBinding.get(), runtimeHost),
+    getRuntimeDiagnostics: () => runtimeHost?.getDiagnostics?.() ?? [],
+  });
 
   return {
     engine,
@@ -218,6 +229,10 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
 
     getExtensionDiagnostics() {
       return runtimeHost?.getDiagnostics?.() ?? [];
+    },
+
+    getExtensionLifecycleState() {
+      return lifecycleAdapter.getState();
     },
 
     async switchPiSession(sessionPath) {
