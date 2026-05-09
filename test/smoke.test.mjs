@@ -16,6 +16,7 @@ import { runPiSessionForkResetSmoke } from "./pi-session-fork-reset.smoke.mjs";
 import { runPiSessionManagerFactorySmoke, runPiSessionSidecarSmoke, runPiSessionSidecarSyncSmoke, runSessionPersistenceSmoke, runSessionTreeSmoke } from "./session.smoke.mjs";
 import { runSessionOptionsSmoke } from "./session-options.smoke.mjs";
 import { runSlashCommandSmoke } from "./slash-command.smoke.mjs";
+import { runStartupResumeSmoke } from "./startup-resume.smoke.mjs";
 import { runTurnEventsSmoke } from "./turn-events.smoke.mjs";
 
 // Minimal mocks for smoke testing without DEEPSEEK_API_KEY
@@ -59,6 +60,8 @@ function cleanup(dir) {
 
   console.log("  PASS");
 }
+
+await runStartupResumeSmoke({ setupTmp, cleanup });
 
 // ── 2. Config loading ────────────────────────────────────────────────
 

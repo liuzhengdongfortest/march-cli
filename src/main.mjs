@@ -25,7 +25,8 @@ import { loadSkillPool, loadSkillFromFile } from "./skills/loader.mjs";
 import { createSkillTools } from "./skills/tools.mjs";
 import { loadConfig } from "./config/loader.mjs";
 import { saveSession, loadSession } from "./session/persist.mjs";
-import { resolvePiSessionManager } from "./session/pi-manager.mjs";
+import { listPiSessionInfos, resolvePiSessionManager } from "./session/pi-manager.mjs";
+import { resumePiSessionById } from "./cli/pi-session-switch-command.mjs";
 
 export async function run(argv) {
   const args = parseCliArgs(argv);
@@ -219,19 +220,16 @@ export async function run(argv) {
   }
 
   // Resume session
-  if (args.resume) {
-    if (usePiSessionDefaults) {
-      ui.status(`Pi session defaults enabled; use /resume ${args.resume} after startup to restore pi session ${args.resume}`);
-    } else {
-      const saved = loadSession(sessionState.sessionDir);
-      if (saved) {
-        runner.engine.restoreSession(saved, skillPool);
-        ui.status(`Resumed session ${sessionState.sessionId} (${saved.turns.length} turns)`);
-      } else {
-        ui.status(`Session ${sessionState.sessionId} not found — starting fresh`);
-      }
-    }
-  }
+  await resumeStartupSession({
+    resumeId: args.resume,
+    usePiSessionDefaults,
+    runner,
+    sessionState,
+    sessionsRoot,
+    projectMarchDir,
+    skillPool,
+    ui,
+  });
 
   // Single-shot mode
   if (args.prompt) {
@@ -371,4 +369,46 @@ function loadDotEnv(filePath) {
   } catch {
     // .env file not found or unreadable — not an error
   }
+}
+
+export async function resumeStartupSession({
+  resumeId,
+  usePiSessionDefaults,
+  runner,
+  sessionState,
+  sessionsRoot,
+  projectMarchDir,
+  skillPool = [],
+  ui,
+  listPiSessions = listPiSessionInfos,
+  loadLegacySession = loadSession,
+}) {
+  if (!resumeId) return { source: "none", lines: [] };
+
+  if (usePiSessionDefaults) {
+    const sessions = await listPiSessions({
+      cwd: runner.engine.cwd,
+      projectMarchDir,
+    });
+    const lines = await resumePiSessionById(resumeId, {
+      runner,
+      sessions,
+      projectMarchDir,
+      skillPool,
+    });
+    for (const line of lines) ui.status(line);
+    return { source: "pi", lines };
+  }
+
+  const saved = loadLegacySession(sessionState.sessionDir);
+  if (saved) {
+    runner.engine.restoreSession(saved, skillPool);
+    const line = `Resumed session ${sessionState.sessionId} (${saved.turns.length} turns)`;
+    ui.status(line);
+    return { source: "legacy", lines: [line] };
+  }
+
+  const line = `Session ${sessionState.sessionId} not found — starting fresh`;
+  ui.status(line);
+  return { source: "legacy", lines: [line] };
 }
