@@ -15,3 +15,14 @@ export function listSessionCommand({ sessions, currentSessionId, tree = false })
   if (tree) return formatSessionTree(sessions, currentSessionId);
   return formatSessionList(sessions, currentSessionId);
 }
+
+export function formatPiSessionList(sessions) {
+  if (sessions.length === 0) return ["(no pi sessions)"];
+  const lines = sessions.map((session) => {
+    const label = session.name || session.firstMessage || "(no messages)";
+    const savedAt = session.savedAt?.slice(0, 19) ?? "?";
+    return `  ${session.id}  ${session.turnCount}m  ${savedAt}  ${label}`;
+  });
+  lines.push("(pi JSONL sessions; use --pi-sessions to write new ones)");
+  return lines;
+}

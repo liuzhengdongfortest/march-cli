@@ -293,6 +293,7 @@ export async function run(argv) {
       runner,
       sessionState,
       sessionsRoot,
+      projectMarchDir,
       skillPool,
     });
     if (slashResult.exit) break;

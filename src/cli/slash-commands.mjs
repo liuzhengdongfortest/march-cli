@@ -1,8 +1,9 @@
 import { saveSession, listSessions, forkSession } from "../session/persist.mjs";
+import { listPiSessionInfos } from "../session/pi-manager.mjs";
 import { handleModelCommand, listModels, parseModelCommand } from "./model-command.mjs";
 import { formatHotkeysPanel } from "./repl-commands.mjs";
 import { compactSession, listSessionStats } from "./session-command.mjs";
-import { listSessionCommand } from "./session-list-command.mjs";
+import { formatPiSessionList, listSessionCommand } from "./session-list-command.mjs";
 import { parseResumeCommand, resumeSessionById } from "./session-switch-command.mjs";
 import { handleThinkingCommand, parseThinkingCommand } from "./thinking-command.mjs";
 
@@ -11,6 +12,7 @@ export async function handleSlashCommand(trimmed, {
   runner,
   sessionState,
   sessionsRoot,
+  projectMarchDir,
   skillPool = [],
 }) {
   if (trimmed === "/exit" || trimmed === "/quit") {
@@ -20,7 +22,7 @@ export async function handleSlashCommand(trimmed, {
   }
 
   if (trimmed === "/help") {
-    ui.writeln("Commands: /exit, /help, /hotkeys, /model, /models, /compact, /session, /sessions, /sessions tree, /resume <id>, /fork, /status, /save, /mouse, /pin <path>, /unpin <path>, /pins");
+    ui.writeln("Commands: /exit, /help, /hotkeys, /model, /models, /compact, /session, /sessions, /sessions tree, /sessions pi, /resume <id>, /fork, /status, /save, /mouse, /pin <path>, /unpin <path>, /pins");
     ui.writeln("Shortcuts: Esc = abort turn, Ctrl+O = toggle tool output, Ctrl+G = external editor, Shift+Tab = cycle thinking, Ctrl+T = thinking selector, Ctrl+L = model selector");
     return { handled: true };
   }
@@ -90,6 +92,15 @@ export async function handleSlashCommand(trimmed, {
       currentSessionId: sessionState.sessionId,
       tree: trimmed === "/sessions tree",
     })) ui.writeln(line);
+    return { handled: true };
+  }
+
+  if (trimmed === "/sessions pi") {
+    const sessions = await listPiSessionInfos({
+      cwd: runner.engine.cwd,
+      projectMarchDir,
+    });
+    for (const line of formatPiSessionList(sessions)) ui.writeln(line);
     return { handled: true };
   }
 

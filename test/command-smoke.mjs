@@ -108,7 +108,7 @@ export async function runSessionCommandSmoke() {
 
 export async function runSessionListCommandSmoke() {
   console.log("--- smoke: session list command handling ---");
-  const { formatSessionList, listSessionCommand } = await import("../src/cli/session-list-command.mjs");
+  const { formatPiSessionList, formatSessionList, listSessionCommand } = await import("../src/cli/session-list-command.mjs");
   const sessions = [
     {
       id: "root",
@@ -131,6 +131,13 @@ export async function runSessionListCommandSmoke() {
   assert.ok(flat.some((line) => line.includes("fork:root")));
   const tree = listSessionCommand({ sessions, currentSessionId: "child", tree: true });
   assert.ok(tree.some((line) => line.startsWith("  * child")));
+  assert.deepEqual(formatPiSessionList([]), ["(no pi sessions)"]);
+  assert.ok(formatPiSessionList([{
+    id: "pi1",
+    savedAt: "2026-05-10T00:00:00.000Z",
+    turnCount: 2,
+    firstMessage: "hello pi",
+  }]).some((line) => line.includes("pi1") && line.includes("hello pi")));
   console.log("  PASS");
 }
 
