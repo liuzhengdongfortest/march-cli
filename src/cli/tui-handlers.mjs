@@ -9,6 +9,7 @@ export function wireTuiHandlers({
   projectMarchDir,
   refreshStatusBar = () => {},
   isTurnRunning = () => false,
+  pasteClipboardImageImpl = pasteClipboardImage,
 } = {}) {
   ui.setEscapeHandler(() => {
     if (isTurnRunning()) {
@@ -89,7 +90,7 @@ export function wireTuiHandlers({
 
   ui.setPasteImageHandler(() => {
     const sessionId = runner.getSessionStats?.().sessionId ?? sessionState.sessionId;
-    for (const line of pasteClipboardImage({ ui, projectMarchDir, sessionId })) {
+    for (const line of pasteClipboardImageImpl({ ui, projectMarchDir, sessionId })) {
       ui.status(line);
     }
   });
