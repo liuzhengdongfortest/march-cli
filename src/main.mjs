@@ -116,12 +116,14 @@ export async function run(argv) {
     memoryTools,
     skillTools,
     namespace,
+    projectMarchDir,
     sessionManager: resolvePiSessionManager({
       cwd,
       projectMarchDir,
       enabled: args.piSessions,
     }),
     useRuntimeHost: args.piRuntimeHost,
+    syncPiSidecar: args.piSessions || args.piRuntimeHost,
   });
 
   ui.setEscapeHandler(() => {

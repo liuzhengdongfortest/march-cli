@@ -6,6 +6,7 @@ import {
   SettingsManager,
 } from "@mariozechner/pi-coding-agent";
 import { ContextEngine } from "../context/engine.mjs";
+import { syncPiSessionSidecar } from "../session/sidecar-sync.mjs";
 import { createRunnerRuntimeHost } from "./runner-runtime-host.mjs";
 import { resolveRunnerSessionOptions } from "./session-options.mjs";
 import { createSessionBinding } from "./session-binding.mjs";
@@ -33,7 +34,7 @@ function resolveApiKey(provider) {
   return key;
 }
 
-export async function createRunner({ cwd, modelId, provider = "deepseek", stateRoot, ui, skills, skillPool = [], pins, graph = null, glossary = null, memoryTools = [], skillTools = [], namespace = "", sessionManager = null, useRuntimeHost = false }) {
+export async function createRunner({ cwd, modelId, provider = "deepseek", stateRoot, ui, skills, skillPool = [], pins, graph = null, glossary = null, memoryTools = [], skillTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false }) {
   const authStorage = AuthStorage.create();
   authStorage.setRuntimeApiKey(provider, resolveApiKey(provider));
 
@@ -192,6 +193,13 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
           assistantMessage: draft,
         });
 
+        syncPiSessionSidecar({
+          enabled: syncPiSidecar,
+          projectMarchDir,
+          engine,
+          sessionStats: getRunnerSessionStats(sessionBinding.get(), runtimeHost),
+        });
+
         return { draft, summary };
       } finally {
         ui.turnEnd();
@@ -228,16 +236,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
     },
 
     getSessionStats() {
-      const activeSession = sessionBinding.get();
-      const stats = activeSession.getSessionStats();
-      const manager = activeSession.sessionManager;
-      return {
-        ...stats,
-        runtimeHost: Boolean(runtimeHost),
-        piSessionSwitching: Boolean(runtimeHost),
-        persisted: manager?.isPersisted?.() ?? Boolean(activeSession.sessionFile),
-        sessionFile: manager?.getSessionFile?.() ?? activeSession.sessionFile,
-      };
+      return getRunnerSessionStats(sessionBinding.get(), runtimeHost);
     },
 
     canSwitchPiSession() {
@@ -270,6 +269,18 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
     dispose() {
       return runtimeHost?.dispose() ?? sessionBinding.get().dispose();
     },
+  };
+}
+
+function getRunnerSessionStats(activeSession, runtimeHost) {
+  const stats = activeSession.getSessionStats();
+  const manager = activeSession.sessionManager;
+  return {
+    ...stats,
+    runtimeHost: Boolean(runtimeHost),
+    piSessionSwitching: Boolean(runtimeHost),
+    persisted: manager?.isPersisted?.() ?? Boolean(activeSession.sessionFile),
+    sessionFile: manager?.getSessionFile?.() ?? activeSession.sessionFile,
   };
 }
 

@@ -145,6 +145,58 @@ export async function runPiSessionSidecarSmoke({ setupTmp, cleanup }) {
   console.log("  PASS");
 }
 
+export async function runPiSessionSidecarSyncSmoke({ setupTmp, cleanup }) {
+  console.log("--- smoke: pi session sidecar sync ---");
+  const { ContextEngine } = await import("../src/context/engine.mjs");
+  const { loadPiSessionSidecar } = await import("../src/session/sidecar.mjs");
+  const { syncPiSessionSidecar } = await import("../src/session/sidecar-sync.mjs");
+
+  const dir = setupTmp();
+  const projectMarchDir = join(dir, ".march");
+  const engine = new ContextEngine({
+    cwd: dir,
+    modelId: "model",
+    provider: "deepseek",
+    skills: ["review"],
+    pins: ["/pinned.txt"],
+    namespace: "project-ns",
+  });
+  engine.recordTurn({ userMessage: "hello", summary: "summary" });
+
+  assert.equal(syncPiSessionSidecar({
+    enabled: false,
+    projectMarchDir,
+    engine,
+    sessionStats: { persisted: true, sessionFile: "pi.jsonl" },
+  }), null);
+  assert.equal(syncPiSessionSidecar({
+    enabled: true,
+    projectMarchDir,
+    engine,
+    sessionStats: { persisted: false, sessionFile: "pi.jsonl" },
+  }), null);
+
+  const synced = syncPiSessionSidecar({
+    enabled: true,
+    projectMarchDir,
+    engine,
+    sessionStats: {
+      sessionId: "pi1",
+      persisted: true,
+      sessionFile: "2026-05-10T00-00-00-000Z_test.jsonl",
+      runtimeHost: true,
+    },
+  });
+  assert.ok(synced.path.endsWith(join("pi-sidecars", "2026-05-10T00-00-00-000Z_test.json")));
+  const loaded = loadPiSessionSidecar({ projectMarchDir, sessionRef: "2026-05-10T00-00-00-000Z_test.jsonl" });
+  assert.equal(loaded.state.sessionId, "pi1");
+  assert.equal(loaded.state.runtimeHost, true);
+  assert.equal(loaded.state.turns[0].summary, "summary");
+
+  cleanup(dir);
+  console.log("  PASS");
+}
+
 export async function runSessionTreeSmoke() {
   console.log("--- smoke: session tree formatting ---");
   const { buildSessionTree, formatSessionTree } = await import("../src/session/tree.mjs");
