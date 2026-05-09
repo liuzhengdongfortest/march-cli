@@ -22,6 +22,7 @@ export async function runSelectorListSmoke() {
 export async function runModelCommandSmoke() {
   console.log("--- smoke: model command handling ---");
   const {
+    buildModelSelectItems,
     cycleModel,
     formatModelsList,
     handleModelCommand,
@@ -38,6 +39,10 @@ export async function runModelCommandSmoke() {
     " * 1. Model A (test)",
     "   2. b (test)",
     "Use /model <index> to select.",
+  ]);
+  assert.deepEqual(buildModelSelectItems({ current: models[0].model, scopedModels: models }), [
+    { value: "0", label: "Model A", description: "test  current", model: models[0].model },
+    { value: "1", label: "b", description: "test", model: models[1].model },
   ]);
   assert.deepEqual(formatModelsList({ current: null, scopedModels: [] }), [
     "(no scoped models - use --model flag or /model to cycle)",

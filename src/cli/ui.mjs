@@ -6,6 +6,7 @@ import { spawnSync } from "node:child_process";
 import {
   Editor,
   ProcessTerminal,
+  SelectList,
   TUI,
 } from "@mariozechner/pi-tui";
 import { buildMarchCommands, MarchAutocompleteProvider } from "./autocomplete.mjs";
@@ -90,20 +91,24 @@ function createTuiUI({ cwd = process.cwd(), skillPool = [] } = {}) {
         // Esc: cancel autocomplete if active, otherwise invoke app handler
         if (data === "\x1b") {
           if (editor.isShowingAutocomplete()) return; // let Editor cancel it
+          if (tui.hasOverlay()) return;
           if (onEscapeHandler) { onEscapeHandler(); return { consume: true }; }
         }
         // Shift+Tab: cycle thinking level
         if (data === "\x1b[Z" && onShiftTabHandler) {
+          if (tui.hasOverlay()) return;
           onShiftTabHandler();
           return { consume: true };
         }
-        // Ctrl+T: cycle thinking level (first slice of thinking selector)
+        // Ctrl+T: cycle thinking level
         if (data === "\x14" && onCtrlTHandler) {
+          if (tui.hasOverlay()) return;
           onCtrlTHandler();
           return { consume: true };
         }
-        // Ctrl+L: cycle model (first slice of model selector)
+        // Ctrl+L: open model selector
         if (data === "\x0c" && onCtrlLHandler) {
+          if (tui.hasOverlay()) return;
           onCtrlLHandler();
           return { consume: true };
         }
@@ -160,6 +165,37 @@ function createTuiUI({ cwd = process.cwd(), skillPool = [] } = {}) {
     output.writeln(`\x1b[90m● tool output: ${toolsExpanded ? "expanded" : "collapsed"}\x1b[0m`);
     requestRender();
     return toolsExpanded;
+  }
+
+  function selectList({ items, selectedIndex = 0, maxVisible = 8, width = 64 }) {
+    ensureStarted();
+    if (!Array.isArray(items) || items.length === 0) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      const list = new SelectList(items, maxVisible, EDITOR_THEME.selectList, {
+        minPrimaryColumnWidth: 18,
+        maxPrimaryColumnWidth: 32,
+      });
+      let settled = false;
+      let handle = null;
+      const finish = (item) => {
+        if (settled) return;
+        settled = true;
+        if (handle) handle.hide();
+        requestRender();
+        resolve(item);
+      };
+      list.setSelectedIndex(selectedIndex);
+      list.onSelect = (item) => finish(item);
+      list.onCancel = () => finish(null);
+      handle = tui.showOverlay(list, {
+        width,
+        minWidth: 40,
+        maxHeight: maxVisible + 1,
+        anchor: "bottom-center",
+        margin: 1,
+      });
+      requestRender();
+    });
   }
 
   function retryStart({ attempt, maxAttempts, delayMs, errorMessage }) {
@@ -348,6 +384,7 @@ function createTuiUI({ cwd = process.cwd(), skillPool = [] } = {}) {
     setCtrlTHandler: (fn) => { onCtrlTHandler = fn; },
     setCtrlLHandler: (fn) => { onCtrlLHandler = fn; },
 
+    selectList,
     openExternalEditor: () => { openExternalEditor(); },
     toggleToolOutput,
 

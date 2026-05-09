@@ -28,6 +28,15 @@ export async function selectModelByIndex(index, { runner }) {
   return `Model: ${name} (${selected.model.provider})`;
 }
 
+export function buildModelSelectItems({ current, scopedModels = [] }) {
+  return scopedModels.map(({ model }, index) => ({
+    value: String(index),
+    label: model.name || model.id,
+    description: `${model.provider}${current && model.id === current.id && model.provider === current.provider ? "  current" : ""}`,
+    model,
+  }));
+}
+
 export async function handleModelCommand(parsed, { runner }) {
   if (parsed.type === "cycle") return cycleModel({ runner });
   if (parsed.type === "select") return selectModelByIndex(parsed.index, { runner });

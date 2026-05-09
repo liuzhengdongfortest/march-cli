@@ -11,6 +11,7 @@ import {
   parseSkillInvocation,
   runInlineShellCommand,
 } from "./cli/repl-commands.mjs";
+import { buildModelSelectItems } from "./cli/model-command.mjs";
 import { createRunner } from "./agent/runner.mjs";
 import { openDatabase } from "./memory/database.mjs";
 import { GraphService } from "./memory/graph.mjs";
@@ -134,6 +135,26 @@ export async function run(argv) {
 
   ui.setCtrlLHandler(async () => {
     try {
+      const scopedModels = runner.getScopedModels?.() || [];
+      if (ui.selectList && scopedModels.length > 0) {
+        const current = runner.getCurrentModel?.();
+        const selectedIndex = Math.max(0, scopedModels.findIndex(({ model }) =>
+          current && model.id === current.id && model.provider === current.provider
+        ));
+        const item = await ui.selectList({
+          items: buildModelSelectItems({ current, scopedModels }),
+          selectedIndex,
+          width: 72,
+        });
+        if (!item) {
+          ui.writeln(`\x1b[90m● model: unchanged\x1b[0m`);
+          return;
+        }
+        const model = await runner.setModel(item.model);
+        const name = model.name || model.id;
+        ui.writeln(`\x1b[90m● model: ${name} (${model.provider})\x1b[0m`);
+        return;
+      }
       const result = await runner.cycleModel();
       if (result) {
         const name = result.model.name || result.model.id;

@@ -56,7 +56,7 @@ export function formatHotkeysPanel() {
     "  Esc        Abort current turn; cancel retry wait",
     "  Shift+Tab  Cycle thinking level",
     "  Ctrl+T     Cycle thinking level",
-    "  Ctrl+L     Cycle model",
+    "  Ctrl+L     Open model selector",
     "  Ctrl+G     Open external editor ($VISUAL or $EDITOR)",
     "  Ctrl+O     Toggle tool output collapsed/expanded",
     "Input prefixes:",
