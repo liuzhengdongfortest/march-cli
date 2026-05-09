@@ -81,10 +81,17 @@ npm run context
 
 ## 配置
 
-项目根目录的 `.marchrc`（JSON）：
+配置按顺序合并，后者覆盖前者的标量值，`skills` 和 `pins` 会去重追加：
+
+1. `~/.march/config`
+2. 项目根目录 `.marchrc`
+3. 项目根目录 `.march/config`
+
+`/settings` 命令会写入 `~/.march/config` 或 `.march/config`。配置文件是 JSON：
 
 ```json
 {
+  "provider": "deepseek",
   "model": "deepseek-v4-pro",
   "skills": [],
   "pins": []
@@ -116,7 +123,7 @@ npm run context
 - `~/.march/skills/` — 全局技能
 - `.march/skills/` — 项目技能（同名覆盖全局）
 
-文件第一行 `#` 标题为技能名。通过 `--skill` 参数或 Agent 主动调用 `activate_skill` 激活。
+支持 `.march/skills/<name>/SKILL.md` 或扁平 `.md` 文件。通过 `--skill` 参数、`/skill:name` 输入前缀或 Agent 主动调用 `activate_skill` 激活。
 
 ### 文件追踪
 
