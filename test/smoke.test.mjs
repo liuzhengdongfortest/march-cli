@@ -13,6 +13,7 @@ import { runPiSessionForkResetSmoke } from "./pi-session-fork-reset.smoke.mjs";
 import { runPiSessionManagerFactorySmoke, runPiSessionSidecarSmoke, runPiSessionSidecarSyncSmoke, runSessionPersistenceSmoke, runSessionTreeSmoke } from "./session.smoke.mjs";
 import { runSessionOptionsSmoke } from "./session-options.smoke.mjs";
 import { runSlashCommandSmoke } from "./slash-command.smoke.mjs";
+import { runTurnEventsSmoke } from "./turn-events.smoke.mjs";
 
 // Minimal mocks for smoke testing without DEEPSEEK_API_KEY
 
@@ -374,6 +375,7 @@ await runPiSessionForkResetSmoke({ setupTmp, cleanup });
 
 await runSlashCommandSmoke({ setupTmp, cleanup });
 await runSessionOptionsSmoke();
+await runTurnEventsSmoke();
 await runRuntimeFactorySmoke();
 await runRuntimeHostSmoke();
 await runRunnerRuntimeHostSmoke();

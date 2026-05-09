@@ -13,6 +13,7 @@ import { createRunnerRuntimeHost } from "./runner-runtime-host.mjs";
 import { resolveRunnerSessionOptions } from "./session-options.mjs";
 import { createSessionBinding } from "./session-binding.mjs";
 import { MARCH_BASE_TOOL_NAMES } from "./tool-names.mjs";
+import { createTurnEventState, handleRunnerSessionEvent } from "./turn-events.mjs";
 
 export { MARCH_BASE_TOOL_NAMES };
 
@@ -101,68 +102,18 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
 
     async runTurn(prompt, userMessage) {
       const activeSession = sessionBinding.get();
-      let draft = "";
-      let summaryDraft = "";
-      let thinkingText = "";
-      let summarizing = false;
+      const turnState = createTurnEventState();
       ui.turnStart();
 
       const unsubscribe = activeSession.subscribe((event) => {
-        if (event.type === "message_update" && event.assistantMessageEvent) {
-          const ae = event.assistantMessageEvent;
-          if (ae.type === "text_delta") {
-            if (summarizing) {
-              summaryDraft += ae.delta;
-            } else {
-              draft += ae.delta;
-              ui.textDelta(ae.delta);
-            }
-          }
-          if (ae.type === "thinking_start" && !summarizing) {
-            thinkingText = "";
-            ui.thinkingStart();
-          }
-          if (ae.type === "thinking_delta" && !summarizing) {
-            thinkingText += ae.delta;
-            ui.thinkingDelta(ae.delta);
-          }
-          if (ae.type === "thinking_end" && !summarizing && thinkingText) {
-            const tokens = Math.round(thinkingText.length / 4);
-            ui.thinkingEnd(tokens);
-            thinkingText = "";
-          }
-        }
-        if (event.type === "tool_execution_start") {
-          if (!summarizing) ui.toolStart(event.toolName, event.args);
-        }
-        if (event.type === "tool_execution_end") {
-          if (!summarizing) ui.toolEnd(event.toolName, event.isError, event.result);
-        }
-        if (event.type === "compaction_end" && !event.aborted && event.result?.summary) {
-          engine.recordCompaction(event.result.summary);
-        }
-        if (event.type === "auto_retry_start" && !summarizing) {
-          ui.retryStart?.({
-            attempt: event.attempt,
-            maxAttempts: event.maxAttempts,
-            delayMs: event.delayMs,
-            errorMessage: event.errorMessage,
-          });
-        }
-        if (event.type === "auto_retry_end" && !summarizing) {
-          ui.retryEnd?.({
-            success: event.success,
-            attempt: event.attempt,
-            finalError: event.finalError,
-          });
-        }
+        handleRunnerSessionEvent(event, { ui, engine, state: turnState });
       });
 
       try {
         await activeSession.prompt(prompt);
 
         // Post-turn: inject summary prompt with tools + thinking stripped
-        summarizing = true;
+        turnState.summarizing = true;
         ui.summaryStart();
 
         const originalTools = activeSession.getActiveToolNames();
@@ -178,8 +129,8 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
             "Keep it under 1k tokens.",
           );
         } catch {
-          if (!summaryDraft) {
-            summaryDraft = draft.slice(0, 300) || "(no output)";
+          if (!turnState.summaryDraft) {
+            turnState.summaryDraft = turnState.draft.slice(0, 300) || "(no output)";
           }
         }
 
@@ -187,12 +138,12 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
         activeSession.setThinkingLevel(originalThinking);
         ui.summaryDone();
 
-        const summary = (summaryDraft || "(no summary)").slice(0, 4000);
+        const summary = (turnState.summaryDraft || "(no summary)").slice(0, 4000);
 
         engine.recordTurn({
           userMessage: userMessage ?? prompt.slice(0, 300),
           summary,
-          assistantMessage: draft,
+          assistantMessage: turnState.draft,
         });
 
         syncPiSessionSidecar({
@@ -202,7 +153,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
           sessionStats: getRunnerSessionStats(sessionBinding.get(), runtimeHost),
         });
 
-        return { draft, summary };
+        return { draft: turnState.draft, summary };
       } finally {
         ui.turnEnd();
         unsubscribe();
