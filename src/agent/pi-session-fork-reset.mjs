@@ -1,4 +1,5 @@
 import { PI_SIDECAR_VERSION, savePiSessionSidecarState } from "../session/sidecar.mjs";
+import { createSidecarWriteFailure } from "./pi-session-sidecar-failure.mjs";
 
 export async function forkPiSessionWithResetContext({
   runtimeHost,
@@ -35,13 +36,23 @@ export async function forkPiSessionWithResetContext({
     entryId,
     savedAt: now().toISOString(),
   });
-  engine.restoreSession(toContextSessionState(resetState), skillPool, { replace: true });
 
-  const sidecar = savePiSessionSidecarState({
-    projectMarchDir,
-    sessionRef: forkedStats.sessionFile,
-    state: resetState,
-  });
+  let sidecar;
+  try {
+    sidecar = savePiSessionSidecarState({
+      projectMarchDir,
+      sessionRef: forkedStats.sessionFile,
+      state: resetState,
+    });
+  } catch (err) {
+    throw await createSidecarWriteFailure({
+      runtimeHost,
+      sourceSessionFile: sourceStats.sessionFile,
+      action: "fork reset",
+      cause: err,
+    });
+  }
+  engine.restoreSession(toContextSessionState(resetState), skillPool, { replace: true });
 
   return {
     cancelled: false,

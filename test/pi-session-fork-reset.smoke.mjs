@@ -59,6 +59,45 @@ export async function runPiSessionForkResetSmoke({ setupTmp, cleanup }) {
   assert.deepEqual(sidecar.state.openFiles, []);
   assert.deepEqual(sidecar.state.skills, []);
 
+  let rolledBackTo = null;
+  const rollbackEngine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: ["s1"], pins: ["pinned"], namespace: "ns" });
+  rollbackEngine.recordTurn({ userMessage: "current", summary: "current" });
+  const rollbackSource = {
+    getUserMessagesForForking: () => [{ entryId: "u1", text: "old prompt" }],
+    getSessionStats: () => ({ sessionId: "old-rollback", sessionFile: "old-rollback.jsonl" }),
+  };
+  const rollbackBinding = createSessionBinding(rollbackSource);
+  await assert.rejects(() => forkPiSessionWithResetContext({
+    runtimeHost: {
+      async fork() {
+        rollbackBinding.set({
+          getUserMessagesForForking: () => [],
+          getSessionStats: () => ({ sessionId: "new-rollback", sessionFile: "new-rollback.jsonl" }),
+        });
+        return { cancelled: false };
+      },
+      async switchSession(sessionFile) {
+        rolledBackTo = sessionFile;
+        rollbackBinding.set(rollbackSource);
+        return { cancelled: false };
+      },
+    },
+    sessionBinding: rollbackBinding,
+    engine: rollbackEngine,
+    projectMarchDir: null,
+    entryId: "u1",
+    getSessionStats: (session) => ({
+      ...session.getSessionStats(),
+      persisted: true,
+      runtimeHost: true,
+    }),
+  }), /failed to write pi session sidecar after fork reset: .*rolled back to source session/);
+  assert.equal(rolledBackTo, "old-rollback.jsonl");
+  assert.equal(rollbackBinding.get().getSessionStats().sessionId, "old-rollback");
+  assert.equal(rollbackEngine.turns.length, 1);
+  assert.deepEqual(rollbackEngine.getPins(), ["pinned"]);
+  assert.deepEqual(rollbackEngine.skills, ["s1"]);
+
   await assert.rejects(() => forkPiSessionWithResetContext({
     runtimeHost,
     sessionBinding: createSessionBinding({

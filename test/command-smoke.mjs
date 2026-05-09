@@ -404,6 +404,39 @@ export async function runPiSessionCloneCommandSmoke({ setupTmp, cleanup }) {
   assert.equal(sidecar.state.derivedFromPiSessionFile, "old.jsonl");
   assert.equal(sidecar.state.turns[0].summary, "s");
 
+  let rolledBackTo = null;
+  const rollbackSource = {
+    sessionManager: { getLeafId: () => "leaf-rollback" },
+    getSessionStats: () => ({ sessionId: "old-rollback", sessionFile: "old-rollback.jsonl" }),
+  };
+  const rollbackBinding = createSessionBinding(rollbackSource);
+  await assert.rejects(() => cloneCurrentPiSession({
+    runtimeHost: {
+      async fork() {
+        rollbackBinding.set({
+          sessionManager: { getLeafId: () => "new-rollback-leaf" },
+          getSessionStats: () => ({ sessionId: "new-rollback", sessionFile: "new-rollback.jsonl" }),
+        });
+        return { cancelled: false };
+      },
+      async switchSession(sessionFile) {
+        rolledBackTo = sessionFile;
+        rollbackBinding.set(rollbackSource);
+        return { cancelled: false };
+      },
+    },
+    sessionBinding: rollbackBinding,
+    engine,
+    projectMarchDir: null,
+    getSessionStats: (session) => ({
+      ...session.getSessionStats(),
+      persisted: true,
+      runtimeHost: true,
+    }),
+  }), /failed to write pi session sidecar after clone: sidecar sync skipped; rolled back to source session/);
+  assert.equal(rolledBackTo, "old-rollback.jsonl");
+  assert.equal(rollbackBinding.get().getSessionStats().sessionId, "old-rollback");
+
   await assert.rejects(() => cloneCurrentPiSession({
     runtimeHost,
     sessionBinding: createSessionBinding({

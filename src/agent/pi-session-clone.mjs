@@ -1,4 +1,5 @@
 import { syncPiSessionSidecar } from "../session/sidecar-sync.mjs";
+import { createSidecarWriteFailure } from "./pi-session-sidecar-failure.mjs";
 
 export async function cloneCurrentPiSession({
   runtimeHost,
@@ -25,20 +26,28 @@ export async function cloneCurrentPiSession({
   }
 
   const clonedStats = getSessionStats(sessionBinding.get(), runtimeHost);
-  const sidecar = syncPiSessionSidecar({
-    enabled: true,
-    projectMarchDir,
-    engine,
-    sessionStats: clonedStats,
-    metadata: {
-      derivedBy: "clone",
-      derivedAt: now().toISOString(),
-      derivedFromPiSessionId: sourceStats.sessionId,
-      derivedFromPiSessionFile: sourceStats.sessionFile,
-    },
-  });
-  if (!sidecar) {
-    throw new Error("failed to write pi session sidecar");
+  let sidecar;
+  try {
+    sidecar = syncPiSessionSidecar({
+      enabled: true,
+      projectMarchDir,
+      engine,
+      sessionStats: clonedStats,
+      metadata: {
+        derivedBy: "clone",
+        derivedAt: now().toISOString(),
+        derivedFromPiSessionId: sourceStats.sessionId,
+        derivedFromPiSessionFile: sourceStats.sessionFile,
+      },
+    });
+    if (!sidecar) throw new Error("sidecar sync skipped");
+  } catch (err) {
+    throw await createSidecarWriteFailure({
+      runtimeHost,
+      sourceSessionFile: sourceStats.sessionFile,
+      action: "clone",
+      cause: err,
+    });
   }
 
   return {
