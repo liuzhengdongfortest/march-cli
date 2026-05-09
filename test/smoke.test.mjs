@@ -295,6 +295,25 @@ function cleanup(dir) {
   console.log("  PASS");
 }
 
+// ── 4b. Session tree formatting ─────────────────────────────────────
+
+{
+  console.log("--- smoke: session tree formatting ---");
+  const { buildSessionTree, formatSessionTree } = await import("../src/session/tree.mjs");
+  const sessions = [
+    { id: "root", savedAt: "2026-05-09T10:00:00.000Z", turnCount: 2, parentSessionId: null },
+    { id: "child", savedAt: "2026-05-09T11:00:00.000Z", turnCount: 3, parentSessionId: "root" },
+    { id: "grandchild", savedAt: "2026-05-09T12:00:00.000Z", turnCount: 4, parentSessionId: "child" },
+  ];
+  const tree = buildSessionTree(sessions);
+  assert.equal(tree.length, 1);
+  assert.equal(tree[0].children[0].children[0].id, "grandchild");
+  const lines = formatSessionTree(sessions, "child");
+  assert.ok(lines.some((line) => line.startsWith("  * child")));
+  assert.ok(lines.some((line) => line.startsWith("    - grandchild")));
+  console.log("  PASS");
+}
+
 // ── 5. Memory system (SQLite, requires Node 24+) ─────────────────────
 
 {

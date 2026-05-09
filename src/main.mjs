@@ -23,6 +23,7 @@ import { loadSkillPool, loadSkillFromFile } from "./skills/loader.mjs";
 import { createSkillTools } from "./skills/tools.mjs";
 import { loadConfig } from "./config/loader.mjs";
 import { saveSession, loadSession, listSessions, forkSession } from "./session/persist.mjs";
+import { formatSessionTree } from "./session/tree.mjs";
 
 export async function run(argv) {
   const args = parseCliArgs(argv);
@@ -241,7 +242,7 @@ export async function run(argv) {
       trimmed = skillInvocation.prompt;
     }
     if (trimmed === "/help") {
-      ui.writeln("Commands: /exit, /help, /hotkeys, /model, /models, /compact, /session, /sessions, /fork, /status, /save, /mouse, /pin <path>, /unpin <path>, /pins");
+      ui.writeln("Commands: /exit, /help, /hotkeys, /model, /models, /compact, /session, /sessions, /sessions tree, /fork, /status, /save, /mouse, /pin <path>, /unpin <path>, /pins");
       ui.writeln("Shortcuts: Esc = abort turn, Ctrl+O = toggle tool output, Ctrl+G = external editor, Shift+Tab/Ctrl+T = thinking level, Ctrl+L = model");
       continue;
     }
@@ -294,8 +295,12 @@ export async function run(argv) {
       ui.writeln(pins.length > 0 ? pins.join("\n") : "(no pinned files)");
       continue;
     }
-    if (trimmed === "/sessions") {
+    if (trimmed === "/sessions" || trimmed === "/sessions tree") {
       const sessions = listSessions(sessionsRoot);
+      if (trimmed === "/sessions tree") {
+        for (const line of formatSessionTree(sessions, sessionId)) ui.writeln(line);
+        continue;
+      }
       if (sessions.length === 0) {
         ui.writeln("(no saved sessions)");
       } else {
