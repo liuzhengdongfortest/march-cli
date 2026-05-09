@@ -7,16 +7,28 @@ export function parseThinkingCommand(input) {
   const arg = input.slice("/thinking".length).trim();
   if (!arg) return { type: "cycle" };
   if (arg === "list") return { type: "list" };
+  const index = Number(arg);
+  if (Number.isInteger(index) && index > 0) return { type: "select", index };
   if (THINKING_LEVELS.includes(arg)) return { type: "set", level: arg };
   return {
     type: "error",
-    message: `Usage: /thinking [list|${THINKING_LEVELS.join("|")}]`,
+    message: `Usage: /thinking [list|index|${THINKING_LEVELS.join("|")}]`,
   };
 }
 
 export function formatThinkingLevels(levels, current) {
   const available = Array.isArray(levels) && levels.length > 0 ? levels : THINKING_LEVELS;
-  return available.map((level) => `${level === current ? "*" : " "} ${level}`);
+  return [
+    ...available.map((level, index) => `${level === current ? "*" : " "} ${index + 1}. ${level}`),
+    "Use /thinking <index> to select.",
+  ];
+}
+
+export function selectThinkingByIndex(index, { runner }) {
+  const levels = runner.getAvailableThinkingLevels?.() || THINKING_LEVELS;
+  const level = levels[index - 1];
+  if (!level) return `Error: thinking index out of range: ${index}`;
+  return `thinking: ${runner.setThinkingLevel(level)}`;
 }
 
 export function handleThinkingCommand(parsed, { runner }) {
@@ -31,6 +43,7 @@ export function handleThinkingCommand(parsed, { runner }) {
       runner.getThinkingLevel?.(),
     );
   }
+  if (parsed.type === "select") return [selectThinkingByIndex(parsed.index, { runner })];
   if (parsed.type === "set") {
     const level = runner.setThinkingLevel(parsed.level);
     return [`thinking: ${level}`];

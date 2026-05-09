@@ -279,14 +279,20 @@ function cleanup(dir) {
     formatThinkingLevels,
     handleThinkingCommand,
     parseThinkingCommand,
+    selectThinkingByIndex,
   } = await import("../src/cli/thinking-command.mjs");
 
   assert.deepEqual(parseThinkingCommand("hello"), { type: "none" });
   assert.deepEqual(parseThinkingCommand("/thinking"), { type: "cycle" });
   assert.deepEqual(parseThinkingCommand("/thinking list"), { type: "list" });
   assert.deepEqual(parseThinkingCommand("/thinking high"), { type: "set", level: "high" });
+  assert.deepEqual(parseThinkingCommand("/thinking 2"), { type: "select", index: 2 });
   assert.equal(parseThinkingCommand("/thinking invalid").type, "error");
-  assert.deepEqual(formatThinkingLevels(["off", "medium"], "medium"), ["  off", "* medium"]);
+  assert.deepEqual(formatThinkingLevels(["off", "medium"], "medium"), [
+    "  1. off",
+    "* 2. medium",
+    "Use /thinking <index> to select.",
+  ]);
 
   let level = "medium";
   const runner = {
@@ -302,8 +308,15 @@ function cleanup(dir) {
     },
   };
   assert.deepEqual(handleThinkingCommand({ type: "cycle" }, { runner }), ["thinking: high"]);
+  assert.equal(selectThinkingByIndex(2, { runner }), "thinking: medium");
+  assert.equal(selectThinkingByIndex(4, { runner }), "Error: thinking index out of range: 4");
   assert.deepEqual(handleThinkingCommand({ type: "set", level: "off" }, { runner }), ["thinking: off"]);
-  assert.deepEqual(handleThinkingCommand({ type: "list" }, { runner }), ["* off", "  medium", "  high"]);
+  assert.deepEqual(handleThinkingCommand({ type: "list" }, { runner }), [
+    "* 1. off",
+    "  2. medium",
+    "  3. high",
+    "Use /thinking <index> to select.",
+  ]);
   console.log("  PASS");
 }
 
@@ -353,7 +366,10 @@ await runSessionListCommandSmoke();
   assert.ok(output.join("\n").includes("session: s1"));
   const thinking = await handleSlashCommand("/thinking list", { ui, runner, sessionState, sessionsRoot: "unused" });
   assert.equal(thinking.handled, true);
-  assert.ok(output.join("\n").includes("* high"));
+  assert.ok(output.join("\n").includes("* 3. high"));
+  const indexedThinking = await handleSlashCommand("/thinking 2", { ui, runner, sessionState, sessionsRoot: "unused" });
+  assert.equal(indexedThinking.handled, true);
+  assert.ok(output.join("\n").includes("thinking: medium"));
   const model = await handleSlashCommand("/model", { ui, runner, sessionState, sessionsRoot: "unused" });
   assert.equal(model.handled, true);
   assert.ok(output.join("\n").includes("Model: m2 (test)"));
