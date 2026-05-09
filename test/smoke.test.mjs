@@ -202,7 +202,17 @@ function cleanup(dir) {
   console.log("  PASS");
 }
 
-// ── 3e. Inline shell parsing ────────────────────────────────────────
+// ── 3e. Tool output extraction ──────────────────────────────────────
+
+{
+  console.log("--- smoke: tool output extraction ---");
+  const { extractToolOutput } = await import("../src/cli/tool-output.mjs");
+  assert.equal(extractToolOutput({ content: [{ type: "text", text: "a" }, { type: "image", data: "x" }, { type: "text", text: "b" }] }), "a\nb");
+  assert.equal(extractToolOutput({ content: [] }), "");
+  console.log("  PASS");
+}
+
+// ── 3f. Inline shell parsing ────────────────────────────────────────
 
 {
   console.log("--- smoke: inline shell parsing ---");
@@ -215,7 +225,7 @@ function cleanup(dir) {
   console.log("  PASS");
 }
 
-// ── 3f. Hotkeys panel ───────────────────────────────────────────────
+// ── 3g. Hotkeys panel ───────────────────────────────────────────────
 
 {
   console.log("--- smoke: hotkeys panel ---");
@@ -229,7 +239,7 @@ function cleanup(dir) {
   console.log("  PASS");
 }
 
-// ── 3g. Skill invocation parsing ────────────────────────────────────
+// ── 3h. Skill invocation parsing ────────────────────────────────────
 
 {
   console.log("--- smoke: skill invocation parsing ---");
