@@ -37,5 +37,41 @@ export async function runKeybindingsSmoke({ setupTmp, cleanup }) {
   assert.equal(loaded.keybindings.toggleToolOutput, "Ctrl+Y");
   assert.ok(formatKeybindingLines(loaded.keybindings).join("\n").includes("Ctrl+Y"));
   cleanup(dir);
+
+  const {
+    createKeybindingDispatcher,
+    TERMINAL_KEY_SEQUENCES,
+  } = await import("../src/cli/keybinding-dispatch.mjs");
+
+  let toggles = 0;
+  const defaultDispatcher = createKeybindingDispatcher({
+    handlers: { toggleToolOutput: () => { toggles += 1; } },
+  });
+  assert.deepEqual(defaultDispatcher.dispatch(TERMINAL_KEY_SEQUENCES["Ctrl+O"]), { consume: true });
+  assert.equal(toggles, 1);
+
+  let modelSelections = 0;
+  const customDispatcher = createKeybindingDispatcher({
+    keybindings: { ...DEFAULT_KEYBINDINGS, modelSelector: "Ctrl+B" },
+    handlers: { modelSelector: () => { modelSelections += 1; } },
+  });
+  assert.equal(customDispatcher.dispatch(TERMINAL_KEY_SEQUENCES["Ctrl+L"]), undefined);
+  assert.deepEqual(customDispatcher.dispatch(TERMINAL_KEY_SEQUENCES["Ctrl+B"]), { consume: true });
+  assert.equal(modelSelections, 1);
+
+  let aborts = 0;
+  const overlayDispatcher = createKeybindingDispatcher({
+    handlers: { abort: () => { aborts += 1; } },
+    hasOverlay: () => true,
+  });
+  assert.equal(overlayDispatcher.dispatch(TERMINAL_KEY_SEQUENCES.Esc), undefined);
+  assert.equal(aborts, 0);
+
+  const autocompleteDispatcher = createKeybindingDispatcher({
+    handlers: { abort: () => { aborts += 1; } },
+    isAutocompleteOpen: () => true,
+  });
+  assert.equal(autocompleteDispatcher.dispatch(TERMINAL_KEY_SEQUENCES.Esc), undefined);
+  assert.equal(aborts, 0);
   console.log("  PASS");
 }

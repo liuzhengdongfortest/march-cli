@@ -99,7 +99,7 @@ export async function run(argv) {
   };
   sessionState.sessionDir = join(sessionsRoot, sessionState.sessionId);
 
-  const ui = createUI({ json: args.json, cwd, skillPool });
+  const ui = createUI({ json: args.json, cwd, skillPool, keybindings: keybindingConfig.keybindings });
 
   const apiKeyEnv = provider === "deepseek" ? "DEEPSEEK_API_KEY"
     : provider === "openai" ? "OPENAI_API_KEY"

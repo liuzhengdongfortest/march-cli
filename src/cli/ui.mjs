@@ -11,6 +11,7 @@ import {
 } from "@mariozechner/pi-tui";
 import { buildMarchCommands, MarchAutocompleteProvider } from "./autocomplete.mjs";
 import { createJsonUI, createPlainUI } from "./fallback-ui.mjs";
+import { createKeybindingDispatcher } from "./keybinding-dispatch.mjs";
 import { OutputBuffer } from "./output-buffer.mjs";
 import { extractToolOutput } from "./tool-output.mjs";
 
@@ -31,7 +32,7 @@ const EDITOR_THEME = {
 
 // ── TUI-based UI ────────────────────────────────────────────────────
 
-function createTuiUI({ cwd = process.cwd(), skillPool = [] } = {}) {
+function createTuiUI({ cwd = process.cwd(), skillPool = [], keybindings } = {}) {
   const terminal = new ProcessTerminal();
   const tui = new TUI(terminal);
   const output = new OutputBuffer();
@@ -84,44 +85,25 @@ function createTuiUI({ cwd = process.cwd(), skillPool = [] } = {}) {
   let onShiftTabHandler = null;
   let onCtrlTHandler = null;
   let onCtrlLHandler = null;
+  const keybindingDispatcher = createKeybindingDispatcher({
+    keybindings,
+    handlers: {
+      abort: () => onEscapeHandler?.(),
+      cycleThinking: () => onShiftTabHandler?.(),
+      thinkingSelector: () => onCtrlTHandler?.(),
+      modelSelector: () => onCtrlLHandler?.(),
+      externalEditor: () => openExternalEditor(),
+      toggleToolOutput: () => toggleToolOutput(),
+    },
+    isAutocompleteOpen: () => editor.isShowingAutocomplete(),
+    hasOverlay: () => tui.hasOverlay(),
+  });
 
   function ensureStarted() {
     if (!started) {
       tui.addInputListener((data) => {
-        // Esc: cancel autocomplete if active, otherwise invoke app handler
-        if (data === "\x1b") {
-          if (editor.isShowingAutocomplete()) return; // let Editor cancel it
-          if (tui.hasOverlay()) return;
-          if (onEscapeHandler) { onEscapeHandler(); return { consume: true }; }
-        }
-        // Shift+Tab: cycle thinking level
-        if (data === "\x1b[Z" && onShiftTabHandler) {
-          if (tui.hasOverlay()) return;
-          onShiftTabHandler();
-          return { consume: true };
-        }
-        // Ctrl+T: cycle thinking level
-        if (data === "\x14" && onCtrlTHandler) {
-          if (tui.hasOverlay()) return;
-          onCtrlTHandler();
-          return { consume: true };
-        }
-        // Ctrl+L: open model selector
-        if (data === "\x0c" && onCtrlLHandler) {
-          if (tui.hasOverlay()) return;
-          onCtrlLHandler();
-          return { consume: true };
-        }
-        // Ctrl+G: open external editor
-        if (data === "\x07") {
-          openExternalEditor();
-          return { consume: true };
-        }
-        // Ctrl+O: toggle tool output expansion
-        if (data === "\x0f") {
-          toggleToolOutput();
-          return { consume: true };
-        }
+        const dispatched = keybindingDispatcher.dispatch(data);
+        if (dispatched) return dispatched;
       });
       tui.start();
       started = true;
@@ -401,8 +383,8 @@ function createTuiUI({ cwd = process.cwd(), skillPool = [] } = {}) {
 
 // ── Public API ──────────────────────────────────────────────────────
 
-export function createUI({ json, cwd = process.cwd(), skillPool = [] }) {
+export function createUI({ json, cwd = process.cwd(), skillPool = [], keybindings } = {}) {
   if (json) return createJsonUI();
   if (!stdout.isTTY) return createPlainUI();
-  return createTuiUI({ cwd, skillPool });
+  return createTuiUI({ cwd, skillPool, keybindings });
 }
