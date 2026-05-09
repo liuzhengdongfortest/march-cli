@@ -8,6 +8,7 @@ import { runDiffAndUiSmoke, runMemorySystemSmoke } from "./memory-and-diff.smoke
 import { runRuntimeFactorySmoke } from "./runtime-factory.smoke.mjs";
 import { runRuntimeHostSmoke } from "./runtime-host.smoke.mjs";
 import { runPiSessionManagerFactorySmoke, runSessionPersistenceSmoke, runSessionTreeSmoke } from "./session.smoke.mjs";
+import { runSessionOptionsSmoke } from "./session-options.smoke.mjs";
 import { runSlashCommandSmoke } from "./slash-command.smoke.mjs";
 
 // Minimal mocks for smoke testing without DEEPSEEK_API_KEY
@@ -363,6 +364,7 @@ await runSessionSwitchCommandSmoke({ setupTmp, cleanup });
 // ── 3l. Slash command handling ──────────────────────────────────────
 
 await runSlashCommandSmoke({ setupTmp, cleanup });
+await runSessionOptionsSmoke();
 await runRuntimeFactorySmoke();
 await runRuntimeHostSmoke();
 

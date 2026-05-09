@@ -1,4 +1,3 @@
-import { getModel } from "@mariozechner/pi-ai";
 import {
   AuthStorage,
   createAgentSession,
@@ -7,10 +6,11 @@ import {
   SettingsManager,
 } from "@mariozechner/pi-coding-agent";
 import { ContextEngine } from "../context/engine.mjs";
+import { resolveRunnerSessionOptions } from "./session-options.mjs";
 import { createSessionBinding } from "./session-binding.mjs";
-import { createMarchCustomTools } from "./tools.mjs";
+import { MARCH_BASE_TOOL_NAMES } from "./tool-names.mjs";
 
-export const MARCH_BASE_TOOL_NAMES = ["read", "bash", "edit", "write", "grep", "find", "ls"];
+export { MARCH_BASE_TOOL_NAMES };
 
 export function createDefaultSessionManager(cwd) {
   return SessionManager.inMemory(cwd);
@@ -37,9 +37,6 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
   authStorage.setRuntimeApiKey(provider, resolveApiKey(provider));
 
   const modelRegistry = ModelRegistry.create(authStorage);
-  const model = modelRegistry.find(provider, modelId) ?? getModel(provider, modelId);
-  if (!model) throw new Error(`Model not found: ${provider}/${modelId}`);
-
   const settingsManager = SettingsManager.inMemory({
     compaction: { enabled: true, reserveTokens: 262144, keepRecentTokens: 32768 },
     retry: { enabled: true, maxRetries: 3, baseDelayMs: 2000 },
@@ -47,19 +44,23 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
 
   const engine = new ContextEngine({ cwd, modelId, provider, skills, skillPool, pins, graph, glossary, namespace });
 
-  const customTools = createMarchCustomTools({ cwd, engine, ui, memoryTools, skillTools });
-
-  const activeToolNames = [...MARCH_BASE_TOOL_NAMES, ...customTools.map((tool) => tool.name)];
+  const sessionOptions = resolveRunnerSessionOptions({
+    cwd,
+    provider,
+    modelId,
+    modelRegistry,
+    engine,
+    ui,
+    memoryTools,
+    skillTools,
+  });
 
   const { session } = await createAgentSession({
     cwd,
     agentDir: stateRoot,
-    model,
-    thinkingLevel: "medium",
+    ...sessionOptions,
     authStorage,
     modelRegistry,
-    customTools,
-    tools: activeToolNames,
     sessionManager: resolveRunnerSessionManager(cwd, sessionManager),
     settingsManager,
   });
