@@ -5,7 +5,7 @@
 ## 环境要求
 
 - Node.js 22+
-- DeepSeek API key（在项目根目录 `.env` 中设置 `deepseek_api_key=sk-...`）
+- Provider API key（在项目根目录 `.env` 中设置）：`DEEPSEEK_API_KEY`、`OPENAI_API_KEY` 或 `ANTHROPIC_API_KEY`
 
 ## 安装
 
