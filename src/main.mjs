@@ -14,6 +14,7 @@ import {
 import { buildModelSelectItems } from "./cli/model-command.mjs";
 import { buildThinkingSelectItems } from "./cli/thinking-command.mjs";
 import { loadKeybindings } from "./cli/keybindings.mjs";
+import { expandPromptTemplate, loadPromptTemplates } from "./cli/prompt-templates.mjs";
 import { createRunner } from "./agent/runner.mjs";
 import { openDatabase } from "./memory/database.mjs";
 import { GraphService } from "./memory/graph.mjs";
@@ -60,6 +61,7 @@ export async function run(argv) {
   ];
   const lifecycleManifests = loadProjectLifecycleHookManifests(cwd);
   const keybindingConfig = loadKeybindings(cwd);
+  const promptTemplateConfig = loadPromptTemplates(cwd);
 
   // Memory system: global SQLite database at ~/.march/memory.db
   // Project isolation via .march/project-id namespace
@@ -99,7 +101,13 @@ export async function run(argv) {
   };
   sessionState.sessionDir = join(sessionsRoot, sessionState.sessionId);
 
-  const ui = createUI({ json: args.json, cwd, skillPool, keybindings: keybindingConfig.keybindings });
+  const ui = createUI({
+    json: args.json,
+    cwd,
+    skillPool,
+    keybindings: keybindingConfig.keybindings,
+    promptTemplates: promptTemplateConfig.templates,
+  });
 
   const apiKeyEnv = provider === "deepseek" ? "DEEPSEEK_API_KEY"
     : provider === "openai" ? "OPENAI_API_KEY"
@@ -320,10 +328,18 @@ export async function run(argv) {
       extensionPaths,
       keybindings: keybindingConfig.keybindings,
       keybindingDiagnostics: keybindingConfig.diagnostics,
+      promptTemplates: promptTemplateConfig.templates,
+      promptTemplateDiagnostics: promptTemplateConfig.diagnostics,
     });
     if (slashResult.exit) break;
     if (slashResult.handled) {
       continue;
+    }
+
+    const templateResult = expandPromptTemplate(trimmed, promptTemplateConfig.templates);
+    if (templateResult.type === "template") {
+      ui.writeln(`\x1b[90m● template: ${templateResult.name}\x1b[0m`);
+      trimmed = templateResult.prompt;
     }
 
     const context = runner.engine.buildContext(args.prompt || trimmed);

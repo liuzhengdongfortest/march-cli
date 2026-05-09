@@ -96,6 +96,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   const help = await handleSlashCommand("/help", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(help.handled, true);
   assert.ok(output.join("\n").includes("/extensions"));
+  assert.ok(output.join("\n").includes("/templates"));
   assert.ok(output.join("\n").includes("/sessions and /resume <id> use default pi JSONL sessions"));
   assert.ok(output.join("\n").includes("/sessions pi and /resume-pi <id> are explicit pi aliases"));
   assert.ok(output.join("\n").includes("legacy .march/sessions use /sessions legacy"));
@@ -112,6 +113,18 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.equal(hotkeys.handled, true);
   assert.ok(output.join("\n").includes("Ctrl+M"));
   assert.ok(output.join("\n").includes("bad key"));
+  const templates = await handleSlashCommand("/templates", {
+    ui,
+    runner,
+    sessionState,
+    sessionsRoot,
+    projectMarchDir,
+    promptTemplates: [{ name: "review", path: "review.md", body: "" }],
+    promptTemplateDiagnostics: [{ type: "warning", message: "bad template" }],
+  });
+  assert.equal(templates.handled, true);
+  assert.ok(output.join("\n").includes("/review"));
+  assert.ok(output.join("\n").includes("bad template"));
   const thinking = await handleSlashCommand("/thinking list", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(thinking.handled, true);
   assert.ok(output.join("\n").includes("* 3. high"));

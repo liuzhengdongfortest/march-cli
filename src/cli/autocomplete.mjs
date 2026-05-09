@@ -26,16 +26,23 @@ const MARCH_COMMANDS = [
   { name: "thinking list", description: "List available thinking levels" },
   { name: "mouse", description: "Toggle mouse tracking (for text selection vs click-to-expand)" },
   { name: "hotkeys", description: "Show keyboard shortcuts and input prefixes" },
+  { name: "templates", description: "List project prompt templates" },
 ];
 
-export function buildMarchCommands(skillPool = []) {
+export function buildMarchCommands(skillPool = [], promptTemplates = []) {
   const skillCommands = skillPool
     .map((skill) => ({
       name: `skill:${typeof skill === "string" ? skill : skill.name}`,
       description: typeof skill === "string" ? "Activate skill" : (skill.description || "Activate skill"),
     }))
     .filter((command) => command.name !== "skill:undefined");
-  return [...MARCH_COMMANDS, ...skillCommands];
+  const templateCommands = promptTemplates
+    .map((template) => ({
+      name: typeof template === "string" ? template : template.name,
+      description: "Expand prompt template",
+    }))
+    .filter((command) => command.name && !command.name.startsWith("/"));
+  return [...MARCH_COMMANDS, ...skillCommands, ...templateCommands];
 }
 
 export class MarchAutocompleteProvider {

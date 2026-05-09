@@ -32,12 +32,12 @@ const EDITOR_THEME = {
 
 // ── TUI-based UI ────────────────────────────────────────────────────
 
-function createTuiUI({ cwd = process.cwd(), skillPool = [], keybindings } = {}) {
+function createTuiUI({ cwd = process.cwd(), skillPool = [], keybindings, promptTemplates = [] } = {}) {
   const terminal = new ProcessTerminal();
   const tui = new TUI(terminal);
   const output = new OutputBuffer();
   const editor = new Editor(tui, EDITOR_THEME, { paddingX: 1 });
-  const autocomplete = new MarchAutocompleteProvider(buildMarchCommands(skillPool), cwd);
+  const autocomplete = new MarchAutocompleteProvider(buildMarchCommands(skillPool, promptTemplates), cwd);
   editor.setAutocompleteProvider(autocomplete);
 
   tui.addChild(output);
@@ -383,8 +383,8 @@ function createTuiUI({ cwd = process.cwd(), skillPool = [], keybindings } = {}) 
 
 // ── Public API ──────────────────────────────────────────────────────
 
-export function createUI({ json, cwd = process.cwd(), skillPool = [], keybindings } = {}) {
+export function createUI({ json, cwd = process.cwd(), skillPool = [], keybindings, promptTemplates = [] } = {}) {
   if (json) return createJsonUI();
   if (!stdout.isTTY) return createPlainUI();
-  return createTuiUI({ cwd, skillPool, keybindings });
+  return createTuiUI({ cwd, skillPool, keybindings, promptTemplates });
 }

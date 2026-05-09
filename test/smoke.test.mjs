@@ -11,6 +11,7 @@ import { runExtensionLifecycleAdapterSmoke } from "./extension-lifecycle-adapter
 import { runExtensionLifecycleManifestSmoke } from "./extension-lifecycle-manifest.smoke.mjs";
 import { runRuntimeFactorySmoke } from "./runtime-factory.smoke.mjs";
 import { runKeybindingsSmoke } from "./keybindings.smoke.mjs";
+import { runPromptTemplatesSmoke } from "./prompt-templates.smoke.mjs";
 import { runRuntimeHostSmoke } from "./runtime-host.smoke.mjs";
 import { runRunnerCompactionSmoke } from "./runner-compaction.smoke.mjs";
 import { runRunnerRuntimeHostSmoke } from "./runner-runtime-host.smoke.mjs";
@@ -73,6 +74,7 @@ await runExtensionDiscoverySmoke({ setupTmp, cleanup });
 await runExtensionLifecycleManifestSmoke({ setupTmp, cleanup });
 await runExtensionLifecycleAdapterSmoke();
 await runKeybindingsSmoke({ setupTmp, cleanup });
+await runPromptTemplatesSmoke({ setupTmp, cleanup });
 
 // ── 2. Config loading ────────────────────────────────────────────────
 
@@ -255,8 +257,10 @@ await runKeybindingsSmoke({ setupTmp, cleanup });
 
   const commands = buildMarchCommands([
     { name: "review", description: "Review code" },
-  ]);
+  ], [{ name: "fix" }]);
   assert.ok(commands.some((command) => command.name === "hotkeys"));
+  assert.ok(commands.some((command) => command.name === "templates"));
+  assert.ok(commands.some((command) => command.name === "fix"));
   assert.ok(commands.some((command) => command.name === "fork"));
   assert.ok(commands.some((command) => command.name === "resume"));
   assert.ok(commands.some((command) => command.name === "thinking list"));
