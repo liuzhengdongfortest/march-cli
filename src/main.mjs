@@ -24,6 +24,7 @@ import { SystemViews } from "./memory/system-views.mjs";
 import { loadSkillPool, loadSkillFromFile } from "./skills/loader.mjs";
 import { createSkillTools } from "./skills/tools.mjs";
 import { loadConfig } from "./config/loader.mjs";
+import { discoverProjectExtensionPaths } from "./extensions/discovery.mjs";
 import { saveSession, loadSession } from "./session/persist.mjs";
 import { listPiSessionInfos, resolvePiSessionManager } from "./session/pi-manager.mjs";
 import { resumePiSessionById } from "./cli/pi-session-switch-command.mjs";
@@ -51,7 +52,10 @@ export async function run(argv) {
   const model = args.model ?? config.model ?? "deepseek-v4-pro";
   const skills = [...config.skills, ...args.skills];
   const pins = [...config.pins, ...args.pins];
-  const extensionPaths = args.extensions.map((extensionPath) => resolve(cwd, extensionPath));
+  const extensionPaths = [
+    ...discoverProjectExtensionPaths(cwd),
+    ...args.extensions.map((extensionPath) => resolve(cwd, extensionPath)),
+  ];
 
   // Memory system: global SQLite database at ~/.march/memory.db
   // Project isolation via .march/project-id namespace
