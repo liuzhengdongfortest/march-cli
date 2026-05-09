@@ -6,6 +6,17 @@ import {
   getRecentMemories,
 } from "./graph-read.mjs";
 import { getGraphDiagnostics } from "./graph-diagnostics.mjs";
+import {
+  countMemoriesForNode,
+  countPathsForEdge,
+  ensureNode,
+  getNextChildNumber,
+  getOrCreateEdge,
+  insertMemory,
+  insertPath,
+  resolveGraphPath,
+  wouldCreateCycle,
+} from "./graph-primitives.mjs";
 
 export class GraphService {
   constructor(db, { changesetStore = null, searchIndexer = null, namespace = "" } = {}) {
@@ -39,7 +50,7 @@ export class GraphService {
   }
 
   resolvePath(path, domain = "core", namespace = "") {
-    return this.#resolvePath(path, domain, namespace);
+    return resolveGraphPath(this.db, path, domain, namespace);
   }
 
   getPathsForNode(nodeUuid, namespace = "") {
@@ -62,113 +73,6 @@ export class GraphService {
 
   getDiagnostics(namespace = "", daysStale = 30, maxChildren = 10) {
     return getGraphDiagnostics(this.db, namespace, daysStale, maxChildren);
-  }
-
-  // ═══════════════════════════════════════════════════════════════════
-  // Layer 0: Row-Level Primitives
-  // ═══════════════════════════════════════════════════════════════════
-
-  #ensureNode(nodeUuid) {
-    const existing = this.db.prepare("SELECT uuid FROM nodes WHERE uuid = ?").get(nodeUuid);
-    if (!existing) {
-      this.db.prepare("INSERT INTO nodes (uuid) VALUES (?)").run(nodeUuid);
-    }
-    return nodeUuid;
-  }
-
-  #insertMemory(nodeUuid, content, deprecated = false) {
-    const result = this.db.prepare(
-      "INSERT INTO memories (node_uuid, content, deprecated) VALUES (?, ?, ?)"
-    ).run(nodeUuid, content, deprecated ? 1 : 0);
-    return { id: Number(result.lastInsertRowid), node_uuid: nodeUuid, content, deprecated: deprecated ? 1 : 0 };
-  }
-
-  #getOrCreateEdge(parentUuid, childUuid, name, priority = 0, disclosure = null) {
-    const existing = this.db.prepare(
-      "SELECT id, parent_uuid, child_uuid, name, priority, disclosure FROM edges WHERE parent_uuid = ? AND child_uuid = ?"
-    ).get(parentUuid, childUuid);
-
-    if (existing) return { edge: existing, created: false };
-
-    const result = this.db.prepare(
-      "INSERT INTO edges (parent_uuid, child_uuid, name, priority, disclosure) VALUES (?, ?, ?, ?, ?)"
-    ).run(parentUuid, childUuid, name, priority, disclosure);
-    const edge = {
-      id: Number(result.lastInsertRowid), parent_uuid: parentUuid, child_uuid: childUuid,
-      name, priority, disclosure,
-    };
-    return { edge, created: true };
-  }
-
-  #insertPath(namespace, domain, path, edgeId, nodeUuid) {
-    this.db.prepare(
-      "INSERT OR IGNORE INTO paths (namespace, domain, path, edge_id, node_uuid) VALUES (?, ?, ?, ?, ?)"
-    ).run(namespace, domain, path, edgeId, nodeUuid);
-  }
-
-  #resolvePath(path, domain = "core", namespace = "") {
-    if (path === "") {
-      return { node_uuid: ROOT_NODE_UUID, edge: null, path_obj: null };
-    }
-    const row = this.db.prepare(`
-      SELECT p.namespace, p.domain, p.path, p.edge_id, p.node_uuid,
-             e.parent_uuid, e.child_uuid, e.name, e.priority, e.disclosure
-      FROM paths p
-      JOIN edges e ON p.edge_id = e.id
-      WHERE p.namespace = ? AND p.domain = ? AND p.path = ?
-    `).get(namespace, domain, path);
-
-    if (!row) return null;
-    return {
-      path_obj: { namespace: row.namespace, domain: row.domain, path: row.path, edge_id: row.edge_id, node_uuid: row.node_uuid },
-      edge: { id: row.edge_id, parent_uuid: row.parent_uuid, child_uuid: row.child_uuid, name: row.name, priority: row.priority, disclosure: row.disclosure },
-      node_uuid: row.node_uuid,
-    };
-  }
-
-  #countPathsForEdge(edgeId) {
-    const row = this.db.prepare("SELECT COUNT(*) AS cnt FROM paths WHERE edge_id = ?").get(edgeId);
-    return row.cnt;
-  }
-
-  #countMemoriesForNode(nodeUuid) {
-    const row = this.db.prepare("SELECT COUNT(*) AS cnt FROM memories WHERE node_uuid = ?").get(nodeUuid);
-    return row.cnt;
-  }
-
-  #getNextChildNumber(parentUuid, namespace) {
-    const ns = this.#ns(namespace);
-    const rows = this.db.prepare(`
-      SELECT e.name FROM edges e
-      JOIN paths p ON p.edge_id = e.id
-      WHERE e.parent_uuid = ? AND p.namespace = ?
-    `).all(parentUuid, ns);
-    let maxNum = 0;
-    for (const row of rows) {
-      const num = parseInt(row.name, 10);
-      if (!Number.isNaN(num) && num > maxNum) maxNum = num;
-    }
-    return maxNum + 1;
-  }
-
-  #wouldCreateCycle(parentUuid, childUuid) {
-    if (parentUuid === ROOT_NODE_UUID) return false;
-    if (parentUuid === childUuid) return true;
-
-    const visited = new Set([childUuid]);
-    const queue = [childUuid];
-    while (queue.length > 0) {
-      const current = queue.shift();
-      const rows = this.db.prepare("SELECT child_uuid FROM edges WHERE parent_uuid = ?").all(current);
-      for (const row of rows) {
-        if (row.child_uuid === parentUuid) return true;
-        if (!visited.has(row.child_uuid)) {
-          visited.add(row.child_uuid);
-          queue.push(row.child_uuid);
-        }
-      }
-    }
-    return false;
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -204,7 +108,7 @@ export class GraphService {
       ).all(nodeUuid);
       for (const edge of childEdges) {
         const childPath = `${basePath}/${edge.name}`;
-        this.#insertPath(namespace, domain, childPath, edge.id, edge.child_uuid);
+        insertPath(this.db, namespace, domain, childPath, edge.id, edge.child_uuid);
         this.#cascadeCreatePaths(edge.child_uuid, domain, childPath, namespace, visited);
       }
     } finally {
@@ -260,8 +164,8 @@ export class GraphService {
   }
 
   #createEdgeWithPaths(parentUuid, childUuid, name, domain, path, priority = 0, disclosure = null, namespace = "") {
-    const { edge, created } = this.#getOrCreateEdge(parentUuid, childUuid, name, priority, disclosure);
-    this.#insertPath(namespace, domain, path, edge.id, childUuid);
+    const { edge, created } = getOrCreateEdge(this.db, parentUuid, childUuid, name, priority, disclosure);
+    insertPath(this.db, namespace, domain, path, edge.id, childUuid);
     this.#cascadeCreatePaths(childUuid, domain, path, namespace);
     return { edge, edge_id: edge.id, edge_created: created };
   }
@@ -271,7 +175,7 @@ export class GraphService {
   // ═══════════════════════════════════════════════════════════════════
 
   #gcEdgeIfPathless(edge) {
-    if (this.#countPathsForEdge(edge.id) > 0) return null;
+    if (countPathsForEdge(this.db, edge.id) > 0) return null;
     this.db.prepare("DELETE FROM edges WHERE id = ?").run(edge.id);
     return { edge_id: edge.id, parent_uuid: edge.parent_uuid, child_uuid: edge.child_uuid };
   }
@@ -297,7 +201,7 @@ export class GraphService {
   }
 
   #gcNodeIfMemoryless(nodeUuid) {
-    if (this.#countMemoriesForNode(nodeUuid) > 0) return null;
+    if (countMemoriesForNode(this.db, nodeUuid) > 0) return null;
     return this.cascadeDeleteNode(nodeUuid);
   }
 
@@ -308,7 +212,7 @@ export class GraphService {
   createMemory(parentPath, content, priority, { title = null, disclosure = null, domain = "core", namespace = "" } = {}) {
     const parentUuid = parentPath === ""
       ? ROOT_NODE_UUID
-      : this.#resolvePath(parentPath, domain, namespace)?.node_uuid;
+      : resolveGraphPath(this.db, parentPath, domain, namespace)?.node_uuid;
 
     if (!parentUuid && parentPath !== "") {
       throw new Error(`Parent '${domain}://${parentPath}' does not exist.`);
@@ -316,7 +220,7 @@ export class GraphService {
 
     const finalPath = title
       ? (parentPath ? `${parentPath}/${title}` : title)
-      : `${parentPath ? parentPath + "/" : ""}${this.#getNextChildNumber(parentUuid, namespace)}`;
+      : `${parentPath ? parentPath + "/" : ""}${getNextChildNumber(this.db, parentUuid, this.#ns(namespace))}`;
 
     const existing = this.db.prepare(
       "SELECT 1 FROM paths WHERE namespace = ? AND domain = ? AND path = ?"
@@ -324,8 +228,8 @@ export class GraphService {
     if (existing) throw new Error(`Path '${domain}://${finalPath}' already exists`);
 
     const newUuid = randomUUID();
-    this.#ensureNode(newUuid);
-    const memory = this.#insertMemory(newUuid, content);
+    ensureNode(this.db, newUuid);
+    const memory = insertMemory(this.db, newUuid, content);
     const edgeName = title ?? finalPath.split("/").pop();
 
     const created = this.#createEdgeWithPaths(parentUuid, newUuid, edgeName, domain, finalPath, priority, disclosure, namespace);
@@ -349,7 +253,7 @@ export class GraphService {
       throw new Error("At least one of content, priority, or disclosure must be set.");
     }
 
-    const resolved = this.#resolvePath(path, domain, namespace);
+    const resolved = resolveGraphPath(this.db, path, domain, namespace);
     if (!resolved || !resolved.edge) {
       throw new Error(`Path '${domain}://${path}' not found`);
     }
@@ -374,7 +278,7 @@ export class GraphService {
 
     // Content change → new memory version
     if (content !== null) {
-      const newMem = this.#insertMemory(nodeUuid, content, false);
+      const newMem = insertMemory(this.db, nodeUuid, content, false);
       newMemoryId = newMem.id;
       this.#deprecateNodeMemories(nodeUuid, newMemoryId);
       this.db.prepare(
@@ -418,11 +322,11 @@ export class GraphService {
   addPath(newPath, targetPath, { newDomain = "core", targetDomain = "core", priority = 0, disclosure = null, namespace = "" } = {}) {
     if (newPath === "") throw new Error("Cannot create alias at root path.");
 
-    const target = this.#resolvePath(targetPath, targetDomain, namespace);
+    const target = resolveGraphPath(this.db, targetPath, targetDomain, namespace);
     if (!target) throw new Error(`Target '${targetDomain}://${targetPath}' not found`);
 
     const parentUuid = newPath.includes("/")
-      ? this.#resolvePath(newPath.substring(0, newPath.lastIndexOf("/")), newDomain, namespace)?.node_uuid ?? ROOT_NODE_UUID
+      ? resolveGraphPath(this.db, newPath.substring(0, newPath.lastIndexOf("/")), newDomain, namespace)?.node_uuid ?? ROOT_NODE_UUID
       : ROOT_NODE_UUID;
 
     const existing = this.db.prepare(
@@ -430,7 +334,7 @@ export class GraphService {
     ).get(namespace, newDomain, newPath);
     if (existing) throw new Error(`Path '${newDomain}://${newPath}' already exists`);
 
-    if (this.#wouldCreateCycle(parentUuid, target.node_uuid)) {
+    if (wouldCreateCycle(this.db, parentUuid, target.node_uuid)) {
       throw new Error(`Cannot create alias: would create a cycle.`);
     }
 
@@ -451,7 +355,7 @@ export class GraphService {
   removePath(path, domain = "core", namespace = "") {
     if (path === "") throw new Error("Cannot remove root path.");
 
-    const target = this.#resolvePath(path, domain, namespace);
+    const target = resolveGraphPath(this.db, path, domain, namespace);
     if (!target) throw new Error(`Path '${domain}://${path}' not found`);
 
     const targetNodeUuid = target.node_uuid;
@@ -533,7 +437,7 @@ export class GraphService {
     if (!parentUuid) {
       if (path.includes("/")) {
         const parentPath = path.substring(0, path.lastIndexOf("/"));
-        const parent = this.#resolvePath(parentPath, domain, namespace);
+        const parent = resolveGraphPath(this.db, parentPath, domain, namespace);
         parentUuid = parent?.node_uuid ?? ROOT_NODE_UUID;
       } else {
         parentUuid = ROOT_NODE_UUID;
@@ -541,8 +445,8 @@ export class GraphService {
     }
 
     const edgeName = path.split("/").pop();
-    const { edge } = this.#getOrCreateEdge(parentUuid, nodeUuid, edgeName, priority, disclosure);
-    this.#insertPath(namespace, domain, path, edge.id, nodeUuid);
+    const { edge } = getOrCreateEdge(this.db, parentUuid, nodeUuid, edgeName, priority, disclosure);
+    insertPath(this.db, namespace, domain, path, edge.id, nodeUuid);
 
     return { uri: `${domain}://${path}`, node_uuid: nodeUuid };
   }
