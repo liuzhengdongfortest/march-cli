@@ -175,6 +175,18 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       return session.abort();
     },
 
+    async cycleModel() {
+      return session.cycleModel();
+    },
+
+    getCurrentModel() {
+      return session.model;
+    },
+
+    getScopedModels() {
+      return session.scopedModels;
+    },
+
     cycleThinkingLevel() {
       return session.cycleThinkingLevel();
     },

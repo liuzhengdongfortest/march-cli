@@ -305,7 +305,34 @@ function cleanup(dir) {
   console.log("  PASS");
 }
 
-// ── 3k. Slash command handling ──────────────────────────────────────
+// ── 3k. Model command handling ──────────────────────────────────────
+
+{
+  console.log("--- smoke: model command handling ---");
+  const { cycleModel, formatModelsList, listModels } = await import("../src/cli/model-command.mjs");
+  const models = [
+    { model: { id: "a", name: "Model A", provider: "test" } },
+    { model: { id: "b", provider: "test" } },
+  ];
+  assert.deepEqual(formatModelsList({ current: models[0].model, scopedModels: models }), [
+    "Current: Model A (test)",
+    " * Model A (test)",
+    "   b (test)",
+  ]);
+  assert.deepEqual(formatModelsList({ current: null, scopedModels: [] }), [
+    "(no scoped models - use --model flag or /model to cycle)",
+  ]);
+  const runner = {
+    cycleModel: async () => ({ model: models[1].model, thinkingLevel: "high" }),
+    getCurrentModel: () => models[0].model,
+    getScopedModels: () => models,
+  };
+  assert.equal(await cycleModel({ runner }), "Model: b (test)  thinking: high");
+  assert.ok(listModels({ runner }).join("\n").includes("Model A"));
+  console.log("  PASS");
+}
+
+// ── 3l. Slash command handling ──────────────────────────────────────
 
 {
   console.log("--- smoke: slash command handling ---");
@@ -324,7 +351,9 @@ function cleanup(dir) {
     getAvailableThinkingLevels: () => ["off", "medium", "high"],
     getThinkingLevel: () => "high",
     setThinkingLevel: (level) => level,
-    session: {},
+    cycleModel: async () => ({ model: { id: "m2", provider: "test" }, thinkingLevel: "medium" }),
+    getCurrentModel: () => ({ id: "m1", name: "Model One", provider: "test" }),
+    getScopedModels: () => [{ model: { id: "m1", name: "Model One", provider: "test" } }],
   };
   const sessionState = { sessionId: "s1", sessionDir: "unused" };
   const status = await handleSlashCommand("/status", { ui, runner, sessionState, sessionsRoot: "unused" });
@@ -333,6 +362,9 @@ function cleanup(dir) {
   const thinking = await handleSlashCommand("/thinking list", { ui, runner, sessionState, sessionsRoot: "unused" });
   assert.equal(thinking.handled, true);
   assert.ok(output.join("\n").includes("* high"));
+  const model = await handleSlashCommand("/model", { ui, runner, sessionState, sessionsRoot: "unused" });
+  assert.equal(model.handled, true);
+  assert.ok(output.join("\n").includes("Model: m2 (test)"));
   const unknown = await handleSlashCommand("/unknown", { ui, runner, sessionState, sessionsRoot: "unused" });
   assert.equal(unknown.handled, false);
   console.log("  PASS");

@@ -134,7 +134,7 @@ export async function run(argv) {
 
   ui.setCtrlLHandler(async () => {
     try {
-      const result = await runner.session.cycleModel();
+      const result = await runner.cycleModel();
       if (result) {
         const name = result.model.name || result.model.id;
         ui.writeln(`\x1b[90m● model: ${name} (${result.model.provider})  thinking: ${result.thinkingLevel}\x1b[0m`);

@@ -1,5 +1,6 @@
 import { saveSession, listSessions, forkSession } from "../session/persist.mjs";
 import { formatSessionTree } from "../session/tree.mjs";
+import { cycleModel, listModels } from "./model-command.mjs";
 import { formatHotkeysPanel } from "./repl-commands.mjs";
 import { handleThinkingCommand, parseThinkingCommand } from "./thinking-command.mjs";
 
@@ -108,13 +109,7 @@ export async function handleSlashCommand(trimmed, {
 
   if (trimmed === "/model") {
     try {
-      const result = await runner.session.cycleModel();
-      if (result) {
-        const name = result.model.name || result.model.id;
-        ui.writeln(`Model: ${name} (${result.model.provider})  thinking: ${result.thinkingLevel}`);
-      } else {
-        ui.writeln("(only one model available)");
-      }
+      ui.writeln(await cycleModel({ runner }));
     } catch (err) {
       ui.writeln(`Error: ${err.message}`);
     }
@@ -122,20 +117,7 @@ export async function handleSlashCommand(trimmed, {
   }
 
   if (trimmed === "/models") {
-    const current = runner.session.model;
-    if (current) {
-      ui.writeln(`Current: ${current.name || current.id} (${current.provider})`);
-    }
-    const scoped = runner.session.scopedModels;
-    if (scoped.length > 0) {
-      for (const s of scoped) {
-        const name = s.model.name || s.model.id;
-        const mark = (current && s.model.id === current.id && s.model.provider === current.provider) ? " *" : "  ";
-        ui.writeln(`${mark} ${name} (${s.model.provider})`);
-      }
-    } else {
-      ui.writeln("(no scoped models — use --model flag or /model to cycle)");
-    }
+    for (const line of listModels({ runner })) ui.writeln(line);
     return { handled: true };
   }
 
