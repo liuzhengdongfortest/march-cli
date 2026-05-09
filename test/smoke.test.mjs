@@ -207,6 +207,17 @@ function cleanup(dir) {
   console.log("  PASS");
 }
 
+// ── 3f. Skill invocation parsing ────────────────────────────────────
+
+{
+  console.log("--- smoke: skill invocation parsing ---");
+  const { parseSkillInvocation } = await import("../src/main.mjs");
+  assert.deepEqual(parseSkillInvocation("hello"), { type: "none" });
+  assert.deepEqual(parseSkillInvocation("/skill:review"), { type: "skill", name: "review", prompt: "" });
+  assert.deepEqual(parseSkillInvocation("/skill:review check this"), { type: "skill", name: "review", prompt: "check this" });
+  console.log("  PASS");
+}
+
 // ── 4. Session persistence ──────────────────────────────────────────
 
 {

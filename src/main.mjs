@@ -184,7 +184,7 @@ export async function run(argv) {
       saveSession(sessionDir, runner.engine);
       break;
     }
-    const trimmed = line.trim();
+    let trimmed = line.trim();
     if (!trimmed) continue;
 
     if (trimmed === "/exit" || trimmed === "/quit") {
@@ -201,6 +201,21 @@ export async function run(argv) {
       lastInlineShellCommand = inlineShell.command;
       runInlineShellCommand(inlineShell.command, { cwd, ui });
       continue;
+    }
+    const skillInvocation = parseSkillInvocation(trimmed);
+    if (skillInvocation.type === "skill") {
+      const skill = skillPool.find(s => s.name === skillInvocation.name);
+      if (!skill) {
+        ui.writeln(`Error: skill not found: ${skillInvocation.name}`);
+        continue;
+      }
+      if (!skillState.active.find(s => s.name === skill.name)) {
+        skillState.active.push(skill);
+        runner.engine.setSkills([...skillState.active]);
+      }
+      ui.writeln(`Activated skill: ${skill.name}`);
+      if (!skillInvocation.prompt) continue;
+      trimmed = skillInvocation.prompt;
     }
     if (trimmed === "/help") {
       ui.writeln("Commands: /exit, /help, /hotkeys, /model, /models, /compact, /session, /sessions, /status, /save, /mouse, /pin <path>, /unpin <path>, /pins");
@@ -395,6 +410,16 @@ export function parseInlineShellInput(input, lastCommand = "") {
   const command = input.slice(1).trim();
   if (!command) return { type: "error", message: "Usage: ! <command>" };
   return { type: "command", command, repeated: false };
+}
+
+export function parseSkillInvocation(input) {
+  const match = input.match(/^\/skill:([^\s]+)(?:\s+([\s\S]+))?$/);
+  if (!match) return { type: "none" };
+  return {
+    type: "skill",
+    name: match[1],
+    prompt: (match[2] || "").trim(),
+  };
 }
 
 export function runInlineShellCommand(command, { cwd = process.cwd(), ui } = {}) {
