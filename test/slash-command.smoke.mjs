@@ -94,7 +94,9 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   const sessionState = { sessionId: "s1", sessionDir: join(sessionsRoot, "s1") };
   const status = await handleSlashCommand("/status", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(status.handled, true);
-  assert.ok(output.join("\n").includes("session: s1"));
+  assert.ok(output.join("\n").includes("session:s1"));
+  assert.ok(output.join("\n").includes("model:test-model"));
+  assert.ok(output.join("\n").includes("tokens:1in/2out"));
   const help = await handleSlashCommand("/help", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(help.handled, true);
   assert.ok(output.join("\n").includes("/extensions"));

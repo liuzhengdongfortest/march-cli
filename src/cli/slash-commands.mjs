@@ -11,6 +11,7 @@ import { compactSession, listSessionStats } from "./session-command.mjs";
 import { copyLastAssistantMessage } from "./copy-command.mjs";
 import { formatPiSessionList, formatPiSessionTree, listSessionCommand } from "./session-list-command.mjs";
 import { parseResumeCommand, resumeSessionById } from "./session-switch-command.mjs";
+import { statusCommand } from "./status-command.mjs";
 import { handleThinkingCommand, parseThinkingCommand } from "./thinking-command.mjs";
 import { formatPromptTemplateLines } from "./prompt-templates.mjs";
 import { handleSettingsCommand, parseSettingsCommand } from "../config/settings-command.mjs";
@@ -88,8 +89,13 @@ export async function handleSlashCommand(trimmed, {
   }
 
   if (trimmed === "/status") {
-    const s = runner.engine;
-    ui.writeln(`session: ${sessionState.sessionId}  model: ${s.modelId}  turns: ${s.turns.length}  open: ${s.openFiles.size}  skills: ${s.skills.map(s => typeof s === "string" ? s : s.name).join(", ") || "(none)"}  pins: ${s.getPins().join(", ") || "(none)"}`);
+    for (const line of statusCommand({
+      runner,
+      sessionState,
+      sessionSource,
+      extensionDiagnostics: runner.getExtensionDiagnostics?.() ?? [],
+      lifecycleState: runner.getExtensionLifecycleState?.() ?? null,
+    })) ui.writeln(line);
     return { handled: true };
   }
 
