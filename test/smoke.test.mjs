@@ -184,6 +184,7 @@ function cleanup(dir) {
   ]);
   assert.ok(commands.some((command) => command.name === "hotkeys"));
   assert.ok(commands.some((command) => command.name === "fork"));
+  assert.ok(commands.some((command) => command.name === "thinking list"));
   assert.ok(commands.some((command) => command.name === "skill:review"));
 
   const provider = new MarchAutocompleteProvider(commands, dir);
@@ -268,7 +269,43 @@ function cleanup(dir) {
   console.log("  PASS");
 }
 
-// ── 3j. Slash command handling ──────────────────────────────────────
+// ── 3j. Thinking command handling ───────────────────────────────────
+
+{
+  console.log("--- smoke: thinking command handling ---");
+  const {
+    formatThinkingLevels,
+    handleThinkingCommand,
+    parseThinkingCommand,
+  } = await import("../src/cli/thinking-command.mjs");
+
+  assert.deepEqual(parseThinkingCommand("hello"), { type: "none" });
+  assert.deepEqual(parseThinkingCommand("/thinking"), { type: "cycle" });
+  assert.deepEqual(parseThinkingCommand("/thinking list"), { type: "list" });
+  assert.deepEqual(parseThinkingCommand("/thinking high"), { type: "set", level: "high" });
+  assert.equal(parseThinkingCommand("/thinking invalid").type, "error");
+  assert.deepEqual(formatThinkingLevels(["off", "medium"], "medium"), ["  off", "* medium"]);
+
+  let level = "medium";
+  const runner = {
+    cycleThinkingLevel: () => {
+      level = "high";
+      return level;
+    },
+    getAvailableThinkingLevels: () => ["off", "medium", "high"],
+    getThinkingLevel: () => level,
+    setThinkingLevel: (next) => {
+      level = next;
+      return level;
+    },
+  };
+  assert.deepEqual(handleThinkingCommand({ type: "cycle" }, { runner }), ["thinking: high"]);
+  assert.deepEqual(handleThinkingCommand({ type: "set", level: "off" }, { runner }), ["thinking: off"]);
+  assert.deepEqual(handleThinkingCommand({ type: "list" }, { runner }), ["* off", "  medium", "  high"]);
+  console.log("  PASS");
+}
+
+// ── 3k. Slash command handling ──────────────────────────────────────
 
 {
   console.log("--- smoke: slash command handling ---");
@@ -283,12 +320,19 @@ function cleanup(dir) {
       skills: [],
       getPins: () => [],
     },
+    cycleThinkingLevel: () => "high",
+    getAvailableThinkingLevels: () => ["off", "medium", "high"],
+    getThinkingLevel: () => "high",
+    setThinkingLevel: (level) => level,
     session: {},
   };
   const sessionState = { sessionId: "s1", sessionDir: "unused" };
   const status = await handleSlashCommand("/status", { ui, runner, sessionState, sessionsRoot: "unused" });
   assert.equal(status.handled, true);
   assert.ok(output.join("\n").includes("session: s1"));
+  const thinking = await handleSlashCommand("/thinking list", { ui, runner, sessionState, sessionsRoot: "unused" });
+  assert.equal(thinking.handled, true);
+  assert.ok(output.join("\n").includes("* high"));
   const unknown = await handleSlashCommand("/unknown", { ui, runner, sessionState, sessionsRoot: "unused" });
   assert.equal(unknown.handled, false);
   console.log("  PASS");

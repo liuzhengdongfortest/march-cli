@@ -61,6 +61,7 @@ export function formatHotkeysPanel() {
     "  Ctrl+O     Toggle tool output collapsed/expanded",
     "Input prefixes:",
     "  /          Slash command autocomplete",
+    "  /thinking  Cycle or list/set thinking level",
     "  @          File path autocomplete",
     "  ! cmd      Run local shell command without sending to the model",
     "  !!         Repeat previous local shell command",

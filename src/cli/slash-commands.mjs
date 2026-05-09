@@ -1,6 +1,7 @@
 import { saveSession, listSessions, forkSession } from "../session/persist.mjs";
 import { formatSessionTree } from "../session/tree.mjs";
 import { formatHotkeysPanel } from "./repl-commands.mjs";
+import { handleThinkingCommand, parseThinkingCommand } from "./thinking-command.mjs";
 
 export async function handleSlashCommand(trimmed, {
   ui,
@@ -25,8 +26,9 @@ export async function handleSlashCommand(trimmed, {
     return { handled: true };
   }
 
-  if (trimmed === "/thinking") {
-    ui.writeln("Thinking blocks are always expanded (italic).");
+  const thinkingCommand = parseThinkingCommand(trimmed);
+  if (thinkingCommand.type !== "none") {
+    for (const line of handleThinkingCommand(thinkingCommand, { runner })) ui.writeln(line);
     return { handled: true };
   }
 

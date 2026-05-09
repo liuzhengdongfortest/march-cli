@@ -17,7 +17,8 @@ const MARCH_COMMANDS = [
   { name: "pin", description: "Pin a file to context" },
   { name: "unpin", description: "Unpin a file from context" },
   { name: "pins", description: "List pinned files" },
-  { name: "thinking", description: "Toggle last thinking block expand/collapse" },
+  { name: "thinking", description: "Cycle thinking level" },
+  { name: "thinking list", description: "List available thinking levels" },
   { name: "mouse", description: "Toggle mouse tracking (for text selection vs click-to-expand)" },
   { name: "hotkeys", description: "Show keyboard shortcuts and input prefixes" },
 ];

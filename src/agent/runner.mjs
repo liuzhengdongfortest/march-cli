@@ -183,6 +183,15 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       return session.thinkingLevel;
     },
 
+    setThinkingLevel(level) {
+      session.setThinkingLevel(level);
+      return session.thinkingLevel;
+    },
+
+    getAvailableThinkingLevels() {
+      return session.getAvailableThinkingLevels();
+    },
+
     dispose() {
       session.dispose();
     },
