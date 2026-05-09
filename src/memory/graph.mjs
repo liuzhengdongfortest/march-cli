@@ -1,5 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { ROOT_NODE_UUID } from "./database.mjs";
+import {
+  getChildren,
+  getMemoryByPath,
+  getRecentMemories,
+} from "./graph-read.mjs";
+import { getGraphDiagnostics } from "./graph-diagnostics.mjs";
 
 export class GraphService {
   constructor(db, { changesetStore = null, searchIndexer = null, namespace = "" } = {}) {
@@ -21,139 +27,15 @@ export class GraphService {
   // ═══════════════════════════════════════════════════════════════════
 
   getMemoryByPath(path, domain = "core", namespace = "") {
-    if (path === "") {
-      return {
-        id: 0, node_uuid: ROOT_NODE_UUID,
-        content: `Root node for domain '${domain}'.`,
-        priority: 0, disclosure: null, deprecated: false,
-        created_at: null, domain, path: "", alias_count: 0,
-      };
-    }
-
-    const row = this.db.prepare(`
-      SELECT m.id, m.node_uuid, m.content, m.deprecated, m.created_at,
-             e.priority, e.disclosure, p.domain, p.path
-      FROM paths p
-      JOIN edges e ON p.edge_id = e.id
-      JOIN memories m ON m.node_uuid = e.child_uuid AND m.deprecated = 0
-      WHERE p.namespace = ? AND p.domain = ? AND p.path = ?
-      ORDER BY m.created_at DESC
-      LIMIT 1
-    `).get(namespace, domain, path);
-
-    if (!row) return null;
-
-    const totalPaths = this.#countIncomingPaths(row.node_uuid, namespace);
-    const aliasCount = Math.max(0, totalPaths - 1);
-
-    return {
-      id: row.id, node_uuid: row.node_uuid, content: row.content,
-      priority: row.priority, disclosure: row.disclosure,
-      deprecated: !!row.deprecated, created_at: row.created_at,
-      domain: row.domain, path: row.path, alias_count: aliasCount,
-    };
+    return getMemoryByPath(this.db, path, domain, namespace);
   }
 
   getChildren(nodeUuid = ROOT_NODE_UUID, contextDomain = null, contextPath = null, namespace = "") {
-    const ns = this.#ns(namespace);
-    // Join through paths to filter edges within this namespace
-    const rows = this.db.prepare(`
-      SELECT DISTINCT e.id AS edge_id, e.child_uuid, e.name, e.priority, e.disclosure,
-             m.content, m.id AS memory_id
-      FROM edges e
-      JOIN paths p ON p.edge_id = e.id
-      JOIN memories m ON m.node_uuid = e.child_uuid AND m.deprecated = 0
-      WHERE e.parent_uuid = ? AND p.namespace = ?
-      ORDER BY e.priority ASC, e.name
-    `).all(nodeUuid, ns);
-
-    const childUuids = [...new Set(rows.map(r => r.child_uuid))];
-    const edgeIds = [...new Set(rows.map(r => r.edge_id))];
-
-    const approxChildrenMap = {};
-    if (childUuids.length > 0) {
-      const placeholders = childUuids.map(() => "?").join(",");
-      const counts = this.db.prepare(`
-        SELECT e.parent_uuid, COUNT(DISTINCT e.id)
-        FROM edges e
-        JOIN paths p ON p.edge_id = e.id
-        WHERE e.parent_uuid IN (${placeholders}) AND p.namespace = ?
-        GROUP BY e.parent_uuid
-      `).all(...childUuids, ns);
-      for (const c of counts) {
-        approxChildrenMap[c[0]] = c[1];
-      }
-    }
-
-    const pathsByEdgeId = {};
-    if (edgeIds.length > 0) {
-      const placeholders = edgeIds.map(() => "?").join(",");
-      const pathRows = this.db.prepare(`
-        SELECT * FROM paths WHERE namespace = ? AND edge_id IN (${placeholders})
-      `).all(namespace, ...edgeIds);
-      for (const p of pathRows) {
-        if (!pathsByEdgeId[p.edge_id]) pathsByEdgeId[p.edge_id] = [];
-        pathsByEdgeId[p.edge_id].push(p);
-      }
-    }
-
-    const prefix = contextPath ? `${contextPath}/` : null;
-    const seen = new Set();
-    const children = [];
-
-    for (const row of rows) {
-      if (seen.has(row.child_uuid)) continue;
-      seen.add(row.child_uuid);
-
-      const allPaths = pathsByEdgeId[row.edge_id] ?? [];
-      if (nodeUuid === ROOT_NODE_UUID && contextDomain) {
-        if (!allPaths.some(p => p.domain === contextDomain)) continue;
-      }
-
-      const pathObj = pickBestPath(allPaths, contextDomain, prefix);
-      if (!pathObj) continue;
-
-      children.push({
-        node_uuid: row.child_uuid,
-        edge_id: row.edge_id,
-        name: row.name,
-        domain: pathObj.domain,
-        path: pathObj.path,
-        content_snippet: (row.content ?? "").slice(0, 100) + ((row.content ?? "").length > 100 ? "..." : ""),
-        priority: row.priority,
-        disclosure: row.disclosure,
-        approx_children_count: approxChildrenMap[row.child_uuid] ?? 0,
-      });
-    }
-
-    return children;
+    return getChildren(this.db, nodeUuid, contextDomain, contextPath, this.#ns(namespace));
   }
 
   getRecentMemories(limit = 10, namespace = "") {
-    const rows = this.db.prepare(`
-      SELECT m.id AS memory_id, m.created_at, e.priority, e.disclosure, p.domain, p.path
-      FROM paths p
-      JOIN edges e ON p.edge_id = e.id
-      JOIN memories m ON m.node_uuid = e.child_uuid AND m.deprecated = 0
-      WHERE p.namespace = ?
-      ORDER BY m.created_at DESC
-    `).all(namespace);
-
-    const seen = new Set();
-    const memories = [];
-    for (const row of rows) {
-      if (seen.has(row.memory_id)) continue;
-      seen.add(row.memory_id);
-      memories.push({
-        memory_id: row.memory_id,
-        uri: `${row.domain}://${row.path}`,
-        priority: row.priority,
-        disclosure: row.disclosure,
-        created_at: row.created_at,
-      });
-      if (memories.length >= limit) break;
-    }
-    return memories;
+    return getRecentMemories(this.db, limit, namespace);
   }
 
   resolvePath(path, domain = "core", namespace = "") {
@@ -179,77 +61,7 @@ export class GraphService {
   }
 
   getDiagnostics(namespace = "", daysStale = 30, maxChildren = 10) {
-    // Stale nodes: nodes whose effective last access is before cutoff
-    const cutoff = new Date(Date.now() - daysStale * 86400000).toISOString();
-
-    const allRows = this.db.prepare(`
-      SELECT p.domain, p.path, p.node_uuid, n.created_at, n.last_accessed_at,
-             e.priority, m.id AS memory_id
-      FROM paths p
-      JOIN edges e ON p.edge_id = e.id
-      JOIN nodes n ON n.uuid = e.child_uuid
-      JOIN memories m ON m.node_uuid = n.uuid AND m.deprecated = 0
-      WHERE p.namespace = ?
-    `).all(namespace);
-
-    const staleNodes = {};
-    for (const row of allRows) {
-      const effective = row.last_accessed_at ?? row.created_at ?? cutoff;
-      if (effective >= cutoff) continue;
-      const staleDays = Math.round((Date.now() - new Date(effective).getTime()) / 86400000);
-      const key = row.node_uuid;
-      if (!staleNodes[key] || (row.priority ?? 999) < (staleNodes[key].priority ?? 999)) {
-        staleNodes[key] = {
-          uuid: row.node_uuid,
-          uri: `${row.domain}://${row.path}`,
-          created_at: row.created_at,
-          last_accessed_at: row.last_accessed_at,
-          stale_days: staleDays,
-          priority: row.priority,
-          title: row.path.split("/").pop(),
-          memory_id: row.memory_id,
-        };
-      }
-    }
-
-    // Crowded parents
-    const crowdedRows = this.db.prepare(`
-      SELECT e.parent_uuid, COUNT(DISTINCT e.child_uuid) AS child_count
-      FROM edges e
-      JOIN paths p ON p.edge_id = e.id
-      WHERE p.namespace = ?
-      GROUP BY e.parent_uuid
-      HAVING child_count > ?
-    `).all(namespace, maxChildren);
-
-    const crowdedParents = {};
-    for (const row of crowdedRows) {
-      if (row.parent_uuid === ROOT_NODE_UUID) {
-        crowdedParents[row.parent_uuid] = {
-          uuid: row.parent_uuid,
-          uri: "core://",
-          title: "(root)",
-          child_count: row.child_count,
-        };
-      } else {
-        const p = this.db.prepare(
-          "SELECT domain, path FROM paths WHERE node_uuid = ? AND namespace = ? LIMIT 1"
-        ).get(row.parent_uuid, namespace);
-        if (p) {
-          crowdedParents[row.parent_uuid] = {
-            uuid: row.parent_uuid,
-            uri: `${p.domain}://${p.path}`,
-            title: p.path.split("/").pop(),
-            child_count: row.child_count,
-          };
-        }
-      }
-    }
-
-    return {
-      stale_nodes: Object.values(staleNodes).sort((a, b) => (a.last_accessed_at ?? a.created_at ?? "").localeCompare(b.last_accessed_at ?? b.created_at ?? "")),
-      crowded_nodes: Object.values(crowdedParents).sort((a, b) => b.child_count - a.child_count),
-    };
+    return getGraphDiagnostics(this.db, namespace, daysStale, maxChildren);
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -319,13 +131,6 @@ export class GraphService {
     return row.cnt;
   }
 
-  #countIncomingPaths(nodeUuid, namespace = "") {
-    const row = this.db.prepare(
-      "SELECT COUNT(*) AS cnt FROM paths WHERE node_uuid = ? AND namespace = ?"
-    ).get(nodeUuid, namespace);
-    return row.cnt;
-  }
-
   #countMemoriesForNode(nodeUuid) {
     const row = this.db.prepare("SELECT COUNT(*) AS cnt FROM memories WHERE node_uuid = ?").get(nodeUuid);
     return row.cnt;
@@ -388,15 +193,6 @@ export class GraphService {
       ).run(successorId, ...ids);
     }
     return ids;
-  }
-
-  #getSubtreePathRows(domain, basePath, namespace = "") {
-    const safe = basePath.replace(/[%_]/g, "\\$&");
-    return this.db.prepare(`
-      SELECT namespace, domain, path, edge_id, node_uuid
-      FROM paths
-      WHERE namespace = ? AND domain = ? AND (path = ? OR path LIKE ? ESCAPE '\\')
-    `).all(namespace, domain, basePath, `${safe}/%`);
   }
 
   #cascadeCreatePaths(nodeUuid, domain, basePath, namespace = "", visited = new Set()) {
@@ -752,23 +548,3 @@ export class GraphService {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// Helpers
-// ═══════════════════════════════════════════════════════════════════
-
-function pickBestPath(paths, contextDomain, prefix) {
-  if (paths.length === 0) return null;
-  if (paths.length === 1) return paths[0];
-
-  if (contextDomain && prefix) {
-    for (const p of paths) {
-      if (p.domain === contextDomain && p.path.startsWith(prefix)) return p;
-    }
-  }
-  if (contextDomain) {
-    for (const p of paths) {
-      if (p.domain === contextDomain) return p;
-    }
-  }
-  return paths[0];
-}
