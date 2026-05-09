@@ -73,7 +73,7 @@ npm run context
 | `/copy` | 复制最近一轮 assistant 输出 |
 | `/name [name]` | 查看或设置当前会话名称 |
 | `/hotkeys` | 快捷键和输入前缀面板 |
-| `/save` | 手动保存当前 session |
+| `/save` | 显示默认 pi session 自动保存状态；legacy 模式下手动保存 |
 | `/pin <path>` | 钉文件 |
 | `/unpin <path>` | 解钉 |
 | `/pins` | 列出已钉文件 |
