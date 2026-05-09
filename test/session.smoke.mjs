@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 export async function runSessionPersistenceSmoke({ setupTmp, cleanup }) {
@@ -62,7 +62,7 @@ export async function runSessionPersistenceSmoke({ setupTmp, cleanup }) {
 
 export async function runPiSessionManagerFactorySmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: pi SessionManager factory ---");
-  const { createPiSessionManager, getPiSessionDir, resolvePiSessionManager } = await import("../src/session/pi-manager.mjs");
+  const { createPiSessionManager, getPiSessionDir, listPiSessionInfos, resolvePiSessionManager } = await import("../src/session/pi-manager.mjs");
   const dir = setupTmp();
   const projectMarchDir = join(dir, ".march");
   assert.equal(resolvePiSessionManager({ cwd: dir, projectMarchDir, enabled: false }), null);
@@ -77,6 +77,21 @@ export async function runPiSessionManagerFactorySmoke({ setupTmp, cleanup }) {
   assert.equal(resolved.getCwd(), dir);
   assert.equal(resolved.getSessionDir(), join(projectMarchDir, "pi-sessions"));
   assert.equal(resolved.isPersisted(), true);
+
+  const sessionFile = join(getPiSessionDir(projectMarchDir), "2026-05-10T00-00-00-000Z_test.jsonl");
+  mkdirSync(getPiSessionDir(projectMarchDir), { recursive: true });
+  writeFileSync(sessionFile, [
+    JSON.stringify({ type: "session", version: 3, id: "pi-session", timestamp: "2026-05-10T00:00:00.000Z", cwd: dir }),
+    JSON.stringify({ type: "message", id: "u1", parentId: null, timestamp: "2026-05-10T00:00:01.000Z", message: { role: "user", content: "hello pi", timestamp: 1778342401000 } }),
+    JSON.stringify({ type: "message", id: "a1", parentId: "u1", timestamp: "2026-05-10T00:00:02.000Z", message: { role: "assistant", content: [{ type: "text", text: "hi" }], provider: "test", model: "test", usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: "stop", timestamp: 1778342402000 } }),
+    "",
+  ].join("\n"));
+  const listed = await listPiSessionInfos({ cwd: dir, projectMarchDir });
+  assert.equal(listed.length, 1);
+  assert.equal(listed[0].id, "pi-session");
+  assert.equal(listed[0].path, sessionFile);
+  assert.equal(listed[0].turnCount, 2);
+  assert.equal(listed[0].firstMessage, "hello pi");
   cleanup(dir);
   console.log("  PASS");
 }
