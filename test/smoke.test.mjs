@@ -37,9 +37,11 @@ function cleanup(dir) {
   assert.equal(args.prompt, "hello world");
   assert.equal(args.help, false);
   assert.equal(args.piSessions, false);
+  assert.equal(args.piRuntimeHost, false);
 
-  const piSessions = parseCliArgs(["--pi-sessions"]);
+  const piSessions = parseCliArgs(["--pi-sessions", "--pi-runtime-host"]);
   assert.equal(piSessions.piSessions, true);
+  assert.equal(piSessions.piRuntimeHost, true);
 
   const defaults = parseCliArgs([]);
   assert.equal(defaults.model, "deepseek-v4-pro");

@@ -121,6 +121,7 @@ export async function run(argv) {
       projectMarchDir,
       enabled: args.piSessions,
     }),
+    useRuntimeHost: args.piRuntimeHost,
   });
 
   ui.setEscapeHandler(() => {

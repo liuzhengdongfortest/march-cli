@@ -6,6 +6,7 @@ import {
   SettingsManager,
 } from "@mariozechner/pi-coding-agent";
 import { ContextEngine } from "../context/engine.mjs";
+import { createRunnerRuntimeHost } from "./runner-runtime-host.mjs";
 import { resolveRunnerSessionOptions } from "./session-options.mjs";
 import { createSessionBinding } from "./session-binding.mjs";
 import { MARCH_BASE_TOOL_NAMES } from "./tool-names.mjs";
@@ -32,7 +33,7 @@ function resolveApiKey(provider) {
   return key;
 }
 
-export async function createRunner({ cwd, modelId, provider = "deepseek", stateRoot, ui, skills, skillPool = [], pins, graph = null, glossary = null, memoryTools = [], skillTools = [], namespace = "", sessionManager = null }) {
+export async function createRunner({ cwd, modelId, provider = "deepseek", stateRoot, ui, skills, skillPool = [], pins, graph = null, glossary = null, memoryTools = [], skillTools = [], namespace = "", sessionManager = null, useRuntimeHost = false }) {
   const authStorage = AuthStorage.create();
   authStorage.setRuntimeApiKey(provider, resolveApiKey(provider));
 
@@ -43,37 +44,51 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
   });
 
   const engine = new ContextEngine({ cwd, modelId, provider, skills, skillPool, pins, graph, glossary, namespace });
+  const resolvedSessionManager = resolveRunnerSessionManager(cwd, sessionManager);
+  const sessionBinding = createSessionBinding(null);
+  let runtimeHost = null;
 
-  const sessionOptions = resolveRunnerSessionOptions({
-    cwd,
-    provider,
-    modelId,
-    modelRegistry,
-    engine,
-    ui,
-    memoryTools,
-    skillTools,
-  });
+  if (useRuntimeHost) {
+    runtimeHost = await createRunnerRuntimeHost({
+      cwd,
+      stateRoot,
+      provider,
+      modelId,
+      authStorage,
+      settingsManager,
+      modelRegistry,
+      sessionManager: resolvedSessionManager,
+      sessionBinding,
+      engine,
+      ui,
+      memoryTools,
+      skillTools,
+      onRebind: (session) => bindToolDefs(engine, session),
+    });
+  } else {
+    const sessionOptions = resolveRunnerSessionOptions({
+      cwd,
+      provider,
+      modelId,
+      modelRegistry,
+      engine,
+      ui,
+      memoryTools,
+      skillTools,
+    });
+    const { session } = await createAgentSession({
+      cwd,
+      agentDir: stateRoot,
+      ...sessionOptions,
+      authStorage,
+      modelRegistry,
+      sessionManager: resolvedSessionManager,
+      settingsManager,
+    });
+    sessionBinding.set(session);
+  }
 
-  const { session } = await createAgentSession({
-    cwd,
-    agentDir: stateRoot,
-    ...sessionOptions,
-    authStorage,
-    modelRegistry,
-    sessionManager: resolveRunnerSessionManager(cwd, sessionManager),
-    settingsManager,
-  });
-  const sessionBinding = createSessionBinding(session);
-
-  engine.setToolDefs(session.getActiveToolNames().map((name) => {
-    const tool = session.getToolDefinition(name);
-    return {
-      name,
-      description: tool?.description ?? "",
-      parameters: tool?.parameters ? describeParams(tool.parameters) : null,
-    };
-  }));
+  bindToolDefs(engine, sessionBinding.get());
 
   return {
     engine,
@@ -242,9 +257,20 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
     },
 
     dispose() {
-      sessionBinding.get().dispose();
+      return runtimeHost?.dispose() ?? sessionBinding.get().dispose();
     },
   };
+}
+
+function bindToolDefs(engine, session) {
+  engine.setToolDefs(session.getActiveToolNames().map((name) => {
+    const tool = session.getToolDefinition(name);
+    return {
+      name,
+      description: tool?.description ?? "",
+      parameters: tool?.parameters ? describeParams(tool.parameters) : null,
+    };
+  }));
 }
 
 function describeParams(schema) {

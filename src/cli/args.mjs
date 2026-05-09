@@ -12,6 +12,7 @@ export function parseCliArgs(argv) {
       skill: { type: "string", multiple: true },
       "dump-context": { type: "boolean" },
       "pi-sessions": { type: "boolean" },
+      "pi-runtime-host": { type: "boolean" },
       help: { type: "boolean", short: "h" },
     },
     allowPositionals: true,
@@ -26,6 +27,7 @@ export function parseCliArgs(argv) {
     skills: values.skill ?? [],
     dumpContext: values["dump-context"] ?? false,
     piSessions: values["pi-sessions"] ?? false,
+    piRuntimeHost: values["pi-runtime-host"] ?? false,
     help: values.help ?? false,
     prompt: positionals.join(" "),
   };
@@ -45,6 +47,7 @@ Options:
   --json               JSON output mode (no TUI)
   --dump-context       Write context snapshot to .march/context-snapshot.txt each turn
   --pi-sessions        Opt in to pi JSONL SessionManager persistence
+  --pi-runtime-host    Opt in to pi AgentSessionRuntime host path
   --pin <path>         Pin a file in context (repeatable)
   --skill <name>       Activate a skill (repeatable)
   -h, --help           Show this help
