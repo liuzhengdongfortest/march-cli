@@ -34,6 +34,8 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
     getCurrentModel: () => ({ id: "m1", name: "Model One", provider: "test" }),
     getScopedModels: () => [{ model: { id: "m1", name: "Model One", provider: "test" } }],
     setModel: async (model) => model,
+    canSwitchPiSession: () => true,
+    switchPiSession: async () => ({ cancelled: false }),
     compact: async () => ({ summary: "compact summary" }),
     getSessionStats: () => ({
       sessionId: "s1",
@@ -67,6 +69,9 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   const piSessions = await handleSlashCommand("/sessions pi", { ui, runner, sessionState, sessionsRoot: "unused", projectMarchDir });
   assert.equal(piSessions.handled, true);
   assert.ok(output.join("\n").includes("pi-slash"));
+  const resumePi = await handleSlashCommand("/resume-pi pi", { ui, runner, sessionState, sessionsRoot: "unused", projectMarchDir });
+  assert.equal(resumePi.handled, true);
+  assert.ok(output.join("\n").includes("Resumed pi session: pi-slash"));
   const compact = await handleSlashCommand("/compact", { ui, runner, sessionState, sessionsRoot: "unused", projectMarchDir });
   assert.equal(compact.handled, true);
   assert.ok(output.join("\n").includes("Compacted: 15 char summary"));

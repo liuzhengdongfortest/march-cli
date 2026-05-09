@@ -238,6 +238,15 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       };
     },
 
+    canSwitchPiSession() {
+      return Boolean(runtimeHost);
+    },
+
+    async switchPiSession(sessionPath) {
+      if (!runtimeHost) throw new Error("pi runtime host is not enabled");
+      return runtimeHost.switchSession(sessionPath);
+    },
+
     cycleThinkingLevel() {
       return sessionBinding.get().cycleThinkingLevel();
     },

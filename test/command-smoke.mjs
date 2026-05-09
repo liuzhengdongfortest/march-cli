@@ -175,3 +175,42 @@ export async function runSessionSwitchCommandSmoke({ setupTmp, cleanup }) {
   cleanup(dir);
   console.log("  PASS");
 }
+
+export async function runPiSessionSwitchCommandSmoke() {
+  console.log("--- smoke: pi session switch command handling ---");
+  const { parseResumePiCommand, resumePiSessionById } = await import("../src/cli/pi-session-switch-command.mjs");
+
+  assert.deepEqual(parseResumePiCommand("hello"), { type: "none" });
+  assert.deepEqual(parseResumePiCommand("/resume-pi abc"), { type: "resume-pi", id: "abc" });
+  assert.equal(parseResumePiCommand("/resume-pi").type, "error");
+  assert.equal(parseResumePiCommand("/resume-pi ../bad").type, "error");
+
+  const sessions = [
+    { id: "abc123", path: "abc.jsonl" },
+    { id: "def456", path: "def.jsonl" },
+  ];
+  const disabled = { canSwitchPiSession: () => false };
+  assert.deepEqual(await resumePiSessionById("abc", { runner: disabled, sessions }), [
+    "Error: /resume-pi requires --pi-runtime-host",
+  ]);
+
+  let switchedPath = null;
+  const runner = {
+    canSwitchPiSession: () => true,
+    switchPiSession: async (path) => {
+      switchedPath = path;
+      return { cancelled: false };
+    },
+  };
+  assert.deepEqual(await resumePiSessionById("abc", { runner, sessions }), ["Resumed pi session: abc123"]);
+  assert.equal(switchedPath, "abc.jsonl");
+  assert.deepEqual(await resumePiSessionById("missing", { runner, sessions }), ["Error: pi session not found: missing"]);
+  assert.deepEqual(await resumePiSessionById("a", { runner, sessions: [{ id: "aa", path: "1" }, { id: "ab", path: "2" }] }), [
+    "Error: pi session id is ambiguous: a (aa, ab)",
+  ]);
+  assert.deepEqual(await resumePiSessionById("def", {
+    runner: { canSwitchPiSession: () => true, switchPiSession: async () => ({ cancelled: true }) },
+    sessions,
+  }), ["Resume pi session cancelled: def456"]);
+  console.log("  PASS");
+}
