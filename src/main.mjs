@@ -15,6 +15,7 @@ import { buildModelSelectItems } from "./cli/model-command.mjs";
 import { buildThinkingSelectItems } from "./cli/thinking-command.mjs";
 import { loadKeybindings } from "./cli/keybindings.mjs";
 import { expandPromptTemplate, loadPromptTemplates } from "./cli/prompt-templates.mjs";
+import { createMarchAuthStorage } from "./auth/storage.mjs";
 import { createRunner } from "./agent/runner.mjs";
 import { openDatabase } from "./memory/database.mjs";
 import { GraphService } from "./memory/graph.mjs";
@@ -42,10 +43,6 @@ export async function run(argv) {
 
   const cwd = process.cwd();
 
-  // Load .env from project root (CONVENTIONS: API keys live in .env)
-  loadDotEnv(resolve(cwd, ".env"));
-  loadDotEnv(resolve(homedir(), ".march", ".env"));
-
   const stateRoot = join(homedir(), ".march");
   if (!existsSync(stateRoot)) mkdirSync(stateRoot, { recursive: true });
 
@@ -62,6 +59,7 @@ export async function run(argv) {
   const lifecycleManifests = loadProjectLifecycleHookManifests(cwd);
   const keybindingConfig = loadKeybindings(cwd);
   const promptTemplateConfig = loadPromptTemplates(cwd);
+  const authConfig = createMarchAuthStorage({ provider, cwd });
 
   // Memory system: global SQLite database at ~/.march/memory.db
   // Project isolation via .march/project-id namespace
@@ -109,12 +107,8 @@ export async function run(argv) {
     promptTemplates: promptTemplateConfig.templates,
   });
 
-  const apiKeyEnv = provider === "deepseek" ? "DEEPSEEK_API_KEY"
-    : provider === "openai" ? "OPENAI_API_KEY"
-    : provider === "anthropic" ? "ANTHROPIC_API_KEY"
-    : `${provider.toUpperCase()}_API_KEY`;
-  if (!process.env[apiKeyEnv]) {
-    ui.writeln(`Error: ${apiKeyEnv} environment variable is not set.`);
+  if (!authConfig.hasApiKey) {
+    ui.writeln(`Error: ${authConfig.apiKeyEnv} environment variable is not set.`);
     ui.close();
     return 1;
   }
@@ -149,6 +143,7 @@ export async function run(argv) {
     syncPiSidecar: usePiSessions || usePiRuntimeHost,
     lifecycleHooks: lifecycleManifests.hooks,
     lifecycleDiagnostics: lifecycleManifests.diagnostics,
+    authStorage: authConfig.authStorage,
   });
 
   ui.setEscapeHandler(() => {
@@ -379,27 +374,6 @@ function loadOrCreateProjectId(projectMarchDir) {
   const id = randomUUID();
   writeFileSync(idFile, id, "utf8");
   return id;
-}
-
-function loadDotEnv(filePath) {
-  try {
-    const content = readFileSync(filePath, "utf8");
-    for (const line of content.split("\n")) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#")) continue;
-      const eqIdx = trimmed.indexOf("=");
-      if (eqIdx === -1) continue;
-      const key = trimmed.slice(0, eqIdx).trim();
-      const value = trimmed.slice(eqIdx + 1).trim();
-      // Normalize to uppercase for case-insensitive matching (env vars are case-sensitive on Linux)
-      const normalizedKey = key.toUpperCase();
-      if (!process.env[key] && !process.env[normalizedKey]) {
-        process.env[normalizedKey] = value;
-      }
-    }
-  } catch {
-    // .env file not found or unreadable — not an error
-  }
 }
 
 export async function resumeStartupSession({

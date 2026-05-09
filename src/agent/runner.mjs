@@ -1,10 +1,10 @@
 import {
-  AuthStorage,
   createAgentSession,
   ModelRegistry,
   SessionManager,
   SettingsManager,
 } from "@mariozechner/pi-coding-agent";
+import { createMarchAuthStorage } from "../auth/storage.mjs";
 import { ContextEngine } from "../context/engine.mjs";
 import { createMarchLifecycleAdapter } from "../extensions/lifecycle-adapter.mjs";
 import { syncPiSessionSidecar } from "../session/sidecar-sync.mjs";
@@ -26,23 +26,14 @@ export function resolveRunnerSessionManager(cwd, sessionManager = null) {
   return sessionManager ?? createDefaultSessionManager(cwd);
 }
 
-function resolveApiKey(provider) {
-  const envMap = {
-    deepseek: "DEEPSEEK_API_KEY",
-    openai: "OPENAI_API_KEY",
-    anthropic: "ANTHROPIC_API_KEY",
-  };
-  const envVar = envMap[provider] ?? `${provider.toUpperCase()}_API_KEY`;
-  const key = process.env[envVar];
-  if (!key) throw new Error(`${envVar} environment variable is not set.`);
-  return key;
-}
+export async function createRunner({ cwd, modelId, provider = "deepseek", stateRoot, ui, skills, skillPool = [], pins, graph = null, glossary = null, memoryTools = [], skillTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices }) {
+  const authConfig = authStorage
+    ? { authStorage, hasApiKey: true }
+    : createMarchAuthStorage({ provider, cwd });
+  if (!authConfig.hasApiKey) throw new Error(`${authConfig.apiKeyEnv} environment variable is not set.`);
+  const resolvedAuth = authConfig.authStorage;
 
-export async function createRunner({ cwd, modelId, provider = "deepseek", stateRoot, ui, skills, skillPool = [], pins, graph = null, glossary = null, memoryTools = [], skillTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices }) {
-  const authStorage = AuthStorage.create();
-  authStorage.setRuntimeApiKey(provider, resolveApiKey(provider));
-
-  const modelRegistry = ModelRegistry.create(authStorage);
+  const modelRegistry = ModelRegistry.create(resolvedAuth);
   const settingsManager = SettingsManager.inMemory({
     compaction: { enabled: true, reserveTokens: 262144, keepRecentTokens: 32768 },
     retry: { enabled: true, maxRetries: 3, baseDelayMs: 2000 },
@@ -60,7 +51,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       stateRoot,
       provider,
       modelId,
-      authStorage,
+      authStorage: resolvedAuth,
       settingsManager,
       modelRegistry,
       sessionManager: resolvedSessionManager,
@@ -93,7 +84,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       cwd,
       agentDir: stateRoot,
       ...sessionOptions,
-      authStorage,
+      authStorage: resolvedAuth,
       modelRegistry,
       sessionManager: resolvedSessionManager,
       settingsManager,
