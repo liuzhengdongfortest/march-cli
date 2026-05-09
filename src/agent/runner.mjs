@@ -37,7 +37,7 @@ function resolveApiKey(provider) {
   return key;
 }
 
-export async function createRunner({ cwd, modelId, provider = "deepseek", stateRoot, ui, skills, skillPool = [], pins, graph = null, glossary = null, memoryTools = [], skillTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false }) {
+export async function createRunner({ cwd, modelId, provider = "deepseek", stateRoot, ui, skills, skillPool = [], pins, graph = null, glossary = null, memoryTools = [], skillTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, createAgentSessionImpl = createAgentSession }) {
   const authStorage = AuthStorage.create();
   authStorage.setRuntimeApiKey(provider, resolveApiKey(provider));
 
@@ -80,7 +80,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       memoryTools,
       skillTools,
     });
-    const { session } = await createAgentSession({
+    const { session } = await createAgentSessionImpl({
       cwd,
       agentDir: stateRoot,
       ...sessionOptions,
@@ -146,12 +146,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
           assistantMessage: turnState.draft,
         });
 
-        syncPiSessionSidecar({
-          enabled: syncPiSidecar,
-          projectMarchDir,
-          engine,
-          sessionStats: getRunnerSessionStats(sessionBinding.get(), runtimeHost),
-        });
+        syncCurrentPiSidecar();
 
         return { draft: turnState.draft, summary };
       } finally {
@@ -198,7 +193,12 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
     },
 
     async compact() {
-      return sessionBinding.get().compact();
+      const result = await sessionBinding.get().compact();
+      if (result?.summary) {
+        engine.recordCompaction(result.summary);
+        syncCurrentPiSidecar();
+      }
+      return result;
     },
 
     getSessionStats() {
@@ -266,6 +266,15 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       return runtimeHost?.dispose() ?? sessionBinding.get().dispose();
     },
   };
+
+  function syncCurrentPiSidecar() {
+    return syncPiSessionSidecar({
+      enabled: syncPiSidecar,
+      projectMarchDir,
+      engine,
+      sessionStats: getRunnerSessionStats(sessionBinding.get(), runtimeHost),
+    });
+  }
 }
 
 function getRunnerSessionStats(activeSession, runtimeHost) {

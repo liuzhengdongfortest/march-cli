@@ -7,6 +7,7 @@ import { runModelCommandSmoke, runPiSessionCloneCommandSmoke, runPiSessionSwitch
 import { runDiffAndUiSmoke, runMemorySystemSmoke } from "./memory-and-diff.smoke.mjs";
 import { runRuntimeFactorySmoke } from "./runtime-factory.smoke.mjs";
 import { runRuntimeHostSmoke } from "./runtime-host.smoke.mjs";
+import { runRunnerCompactionSmoke } from "./runner-compaction.smoke.mjs";
 import { runRunnerRuntimeHostSmoke } from "./runner-runtime-host.smoke.mjs";
 import { runPiSessionForkCommandSmoke } from "./pi-session-fork-command.smoke.mjs";
 import { runPiSessionForkResetSmoke } from "./pi-session-fork-reset.smoke.mjs";
@@ -396,6 +397,7 @@ await runPiSessionForkResetSmoke({ setupTmp, cleanup });
 await runSlashCommandSmoke({ setupTmp, cleanup });
 await runSessionOptionsSmoke();
 await runTurnEventsSmoke();
+await runRunnerCompactionSmoke({ setupTmp, cleanup });
 await runRuntimeFactorySmoke();
 await runRuntimeHostSmoke();
 await runRunnerRuntimeHostSmoke();
