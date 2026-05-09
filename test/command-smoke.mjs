@@ -154,7 +154,7 @@ export async function runSessionListCommandSmoke() {
     savedAt: "2026-05-10T00:00:00.000Z",
     turnCount: 2,
     firstMessage: "hello pi",
-  }]).some((line) => line.includes("/sessions pi tree") && line.includes("/resume-pi <id>") && line.includes("--pi-runtime-host")));
+  }]).some((line) => line.includes("/sessions pi tree") && line.includes("not in-file entry branches") && line.includes("/resume-pi <id>") && line.includes("--pi-runtime-host")));
   const piTree = formatPiSessionTree([
     {
       id: "parent",
@@ -184,7 +184,8 @@ export async function runSessionListCommandSmoke() {
   assert.ok(piTree.some((line) => line.startsWith("- orphan")));
   assert.ok(piTree.some((line) => line.startsWith("- parent")));
   assert.ok(piTree.some((line) => line.startsWith("  * child")));
-  assert.ok(piTree.at(-1).includes("parentSessionPath"));
+  assert.ok(piTree.at(-1).includes("file-level tree"));
+  assert.ok(piTree.at(-1).includes("/fork-pi candidates"));
   console.log("  PASS");
 }
 

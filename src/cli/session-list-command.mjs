@@ -23,7 +23,7 @@ export function formatPiSessionList(sessions) {
     const savedAt = session.savedAt?.slice(0, 19) ?? "?";
     return `  ${session.id}  ${session.turnCount}m  ${savedAt}  ${label}`;
   });
-  lines.push("(pi JSONL sessions; use /sessions pi tree for file-level parent view; write with --pi-sessions, resume with /resume-pi <id> under --pi-runtime-host)");
+  lines.push("(pi JSONL session files; /sessions pi tree shows file-level parentSessionPath only, not in-file entry branches; write with --pi-sessions, resume with /resume-pi <id> under --pi-runtime-host)");
   return lines;
 }
 
@@ -63,6 +63,6 @@ export function formatPiSessionTree(sessions, currentSessionId = null) {
   };
 
   for (const root of roots) visit(root, 0);
-  lines.push("(* = current pi session; tree uses pi JSONL parentSessionPath)");
+  lines.push("(* = current pi session; file-level tree uses pi JSONL parentSessionPath; in-file entry branches use /fork-pi candidates)");
   return lines;
 }

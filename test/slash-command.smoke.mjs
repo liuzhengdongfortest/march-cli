@@ -95,7 +95,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(output.join("\n").includes("pi-slash"));
   const piSessionTree = await handleSlashCommand("/sessions pi tree", { ui, runner, sessionState, sessionsRoot: "unused", projectMarchDir });
   assert.equal(piSessionTree.handled, true);
-  assert.ok(output.join("\n").includes("parentSessionPath"));
+  assert.ok(output.join("\n").includes("file-level tree uses pi JSONL parentSessionPath"));
   const resumePi = await handleSlashCommand("/resume-pi pi", { ui, runner, sessionState, sessionsRoot: "unused", projectMarchDir });
   assert.equal(resumePi.handled, true);
   assert.ok(output.join("\n").includes("Resumed pi session: pi-slash"));
