@@ -1,4 +1,5 @@
 import { saveSession, listSessions, forkSession } from "../session/persist.mjs";
+import { listExtensionPathsCommand } from "./extensions-command.mjs";
 import { listPiSessionInfos } from "../session/pi-manager.mjs";
 import { handleModelCommand, listModels, parseModelCommand } from "./model-command.mjs";
 import { clonePiSession, parseClonePiCommand } from "./pi-session-clone-command.mjs";
@@ -18,6 +19,7 @@ export async function handleSlashCommand(trimmed, {
   projectMarchDir,
   skillPool = [],
   sessionSource = "legacy",
+  extensionPaths = [],
 }) {
   if (trimmed === "/exit" || trimmed === "/quit") {
     writeSessionSaveStatus({ ui, runner, sessionState, sessionSource });
@@ -31,6 +33,11 @@ export async function handleSlashCommand(trimmed, {
 
   if (trimmed === "/hotkeys") {
     for (const line of formatHotkeysPanel()) ui.writeln(line);
+    return { handled: true };
+  }
+
+  if (trimmed === "/extensions") {
+    for (const line of listExtensionPathsCommand(extensionPaths)) ui.writeln(line);
     return { handled: true };
   }
 
@@ -262,7 +269,7 @@ export async function handleSlashCommand(trimmed, {
 
 function formatHelpLines() {
   return [
-    "Commands: /exit, /help, /hotkeys, /model, /models, /compact, /session, /session entries, /sessions, /sessions tree, /sessions pi, /sessions legacy, /resume <id>, /resume-pi <id>, /resume-legacy <id>, /clone-pi, /fork-pi, /fork, /fork-legacy, /status, /save, /mouse, /pin <path>, /unpin <path>, /pins",
+    "Commands: /exit, /help, /hotkeys, /extensions, /model, /models, /compact, /session, /session entries, /sessions, /sessions tree, /sessions pi, /sessions legacy, /resume <id>, /resume-pi <id>, /resume-legacy <id>, /clone-pi, /fork-pi, /fork, /fork-legacy, /status, /save, /mouse, /pin <path>, /unpin <path>, /pins",
     "Sessions: /sessions and /resume <id> use default pi JSONL sessions; /sessions pi and /resume-pi <id> are explicit pi aliases; legacy .march/sessions use /sessions legacy, /resume-legacy <id>, /fork-legacy, or --legacy-sessions.",
     "Branches: /clone-pi clones the current pi branch; /session entries and /fork-pi list in-file entry candidates; /fork-pi requires --reset-context to write a historical fork.",
     "Shortcuts: Esc = abort turn, Ctrl+O = toggle tool output, Ctrl+G = external editor, Shift+Tab = cycle thinking, Ctrl+T = thinking selector, Ctrl+L = model selector",

@@ -81,6 +81,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(output.join("\n").includes("session: s1"));
   const help = await handleSlashCommand("/help", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(help.handled, true);
+  assert.ok(output.join("\n").includes("/extensions"));
   assert.ok(output.join("\n").includes("/sessions and /resume <id> use default pi JSONL sessions"));
   assert.ok(output.join("\n").includes("/sessions pi and /resume-pi <id> are explicit pi aliases"));
   assert.ok(output.join("\n").includes("legacy .march/sessions use /sessions legacy"));
@@ -88,6 +89,17 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   const thinking = await handleSlashCommand("/thinking list", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(thinking.handled, true);
   assert.ok(output.join("\n").includes("* 3. high"));
+  const extensions = await handleSlashCommand("/extensions", {
+    ui,
+    runner,
+    sessionState,
+    sessionsRoot,
+    projectMarchDir,
+    extensionPaths: [join(dir, ".march", "extensions", "a.js")],
+  });
+  assert.equal(extensions.handled, true);
+  assert.ok(output.join("\n").includes("Configured extension paths:"));
+  assert.ok(output.join("\n").includes("this list does not guarantee successful extension startup"));
   const indexedThinking = await handleSlashCommand("/thinking 2", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(indexedThinking.handled, true);
   assert.ok(output.join("\n").includes("thinking: medium"));

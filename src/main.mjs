@@ -311,6 +311,7 @@ export async function run(argv) {
       projectMarchDir,
       skillPool,
       sessionSource,
+      extensionPaths,
     });
     if (slashResult.exit) break;
     if (slashResult.handled) {
