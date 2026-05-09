@@ -292,6 +292,7 @@ function cleanup(dir) {
   assert.equal(typeof ui.turnStart, "function");
   assert.equal(typeof ui.turnEnd, "function");
   assert.equal(typeof ui.editDiff, "function");
+  assert.equal(typeof ui.toggleToolOutput, "function");
   assert.equal(typeof ui.close, "function");
   ui.close();
   console.log("  PASS");

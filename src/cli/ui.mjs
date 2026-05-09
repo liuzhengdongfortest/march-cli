@@ -291,6 +291,7 @@ function createTuiUI({ cwd = process.cwd(), skillPool = [] } = {}) {
   let spinnerTimer = null;
   let started = false;
   let mouseOn = false;
+  let toolsExpanded = false;
 
   function requestRender() {
     tui.requestRender();
@@ -337,6 +338,11 @@ function createTuiUI({ cwd = process.cwd(), skillPool = [] } = {}) {
           openExternalEditor();
           return { consume: true };
         }
+        // Ctrl+O: toggle tool output expansion
+        if (data === "\x0f") {
+          toggleToolOutput();
+          return { consume: true };
+        }
       });
       tui.start();
       started = true;
@@ -373,6 +379,13 @@ function createTuiUI({ cwd = process.cwd(), skillPool = [] } = {}) {
       if (mouseOn) terminal.write("\x1b[?1002h\x1b[?1006h");
       tui.requestRender(true);
     }
+  }
+
+  function toggleToolOutput() {
+    toolsExpanded = !toolsExpanded;
+    output.writeln(`\x1b[90m● tool output: ${toolsExpanded ? "expanded" : "collapsed"}\x1b[0m`);
+    requestRender();
+    return toolsExpanded;
   }
 
   let onSubmitResolve = null;
@@ -449,11 +462,12 @@ function createTuiUI({ cwd = process.cwd(), skillPool = [] } = {}) {
         const out = extractToolOutput(result);
         if (out) {
           const lines = out.split("\n");
-          const show = lines.slice(0, 4);
+          const limit = toolsExpanded ? 40 : 4;
+          const show = lines.slice(0, limit);
           for (const line of show) {
             output.writeln(`\x1b[2m    ${line.slice(0, 120)}\x1b[0m`);
           }
-          if (lines.length > 4) output.writeln(`\x1b[2m    … (${lines.length - 4} more lines)\x1b[0m`);
+          if (lines.length > limit) output.writeln(`\x1b[2m    … (${lines.length - limit} more lines)\x1b[0m`);
           requestRender();
         }
       }
@@ -525,6 +539,7 @@ function createTuiUI({ cwd = process.cwd(), skillPool = [] } = {}) {
     setShiftTabHandler: (fn) => { onShiftTabHandler = fn; },
 
     openExternalEditor: () => { openExternalEditor(); },
+    toggleToolOutput,
 
     close: () => {
       stopSpinner();
@@ -577,6 +592,7 @@ function createJsonUI() {
     setShiftTabHandler: () => {},
     openExternalEditor: () => {},
     toggleMouse: () => false,
+    toggleToolOutput: () => false,
     close: () => {},
   };
 }
@@ -634,6 +650,7 @@ function createPlainUI() {
     setShiftTabHandler: () => {},
     openExternalEditor: () => {},
     toggleMouse: () => false,
+    toggleToolOutput: () => false,
     close: () => {},
   };
 }
