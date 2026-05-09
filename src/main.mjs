@@ -203,8 +203,12 @@ export async function run(argv) {
       continue;
     }
     if (trimmed === "/help") {
-      ui.writeln("Commands: /exit, /help, /model, /models, /compact, /session, /sessions, /status, /save, /mouse, /pin <path>, /unpin <path>, /pins");
-      ui.writeln("Shortcuts: Esc = abort turn, Ctrl+O = toggle tool output");
+      ui.writeln("Commands: /exit, /help, /hotkeys, /model, /models, /compact, /session, /sessions, /status, /save, /mouse, /pin <path>, /unpin <path>, /pins");
+      ui.writeln("Shortcuts: Esc = abort turn, Ctrl+O = toggle tool output, Ctrl+G = external editor, Shift+Tab = thinking level");
+      continue;
+    }
+    if (trimmed === "/hotkeys") {
+      for (const line of formatHotkeysPanel()) ui.writeln(line);
       continue;
     }
     if (trimmed === "/thinking") {
@@ -420,4 +424,19 @@ export function runInlineShellCommand(command, { cwd = process.cwd(), ui } = {})
     ui?.writeln(`\x1b[31mexit ${result.status}\x1b[0m`);
   }
   return result;
+}
+
+export function formatHotkeysPanel() {
+  return [
+    "Keyboard shortcuts:",
+    "  Esc        Abort current turn; cancel retry wait",
+    "  Shift+Tab  Cycle thinking level",
+    "  Ctrl+G     Open external editor ($VISUAL or $EDITOR)",
+    "  Ctrl+O     Toggle tool output collapsed/expanded",
+    "Input prefixes:",
+    "  /          Slash command autocomplete",
+    "  @          File path autocomplete",
+    "  ! cmd      Run local shell command without sending to the model",
+    "  !!         Repeat previous local shell command",
+  ];
 }

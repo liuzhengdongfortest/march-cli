@@ -63,6 +63,7 @@ const MARCH_COMMANDS = [
   { name: "pins", description: "List pinned files" },
   { name: "thinking", description: "Toggle last thinking block expand/collapse" },
   { name: "mouse", description: "Toggle mouse tracking (for text selection vs click-to-expand)" },
+  { name: "hotkeys", description: "Show keyboard shortcuts and input prefixes" },
 ];
 
 export function buildMarchCommands(skillPool = []) {

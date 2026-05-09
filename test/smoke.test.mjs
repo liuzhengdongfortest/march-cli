@@ -164,6 +164,7 @@ function cleanup(dir) {
   const commands = buildMarchCommands([
     { name: "review", description: "Review code" },
   ]);
+  assert.ok(commands.some((command) => command.name === "hotkeys"));
   assert.ok(commands.some((command) => command.name === "skill:review"));
 
   const provider = new MarchAutocompleteProvider(commands, dir);
@@ -191,6 +192,18 @@ function cleanup(dir) {
   assert.deepEqual(parseInlineShellInput("!!", "npm test"), { type: "command", command: "npm test", repeated: true });
   assert.equal(parseInlineShellInput("!!").type, "error");
   assert.equal(parseInlineShellInput("!").type, "error");
+  console.log("  PASS");
+}
+
+// ── 3e. Hotkeys panel ───────────────────────────────────────────────
+
+{
+  console.log("--- smoke: hotkeys panel ---");
+  const { formatHotkeysPanel } = await import("../src/main.mjs");
+  const panel = formatHotkeysPanel().join("\n");
+  assert.ok(panel.includes("Ctrl+O"));
+  assert.ok(panel.includes("!!"));
+  assert.ok(panel.includes("@"));
   console.log("  PASS");
 }
 
