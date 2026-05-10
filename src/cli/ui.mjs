@@ -2,7 +2,6 @@ import { stdout } from "node:process";
 import {
   Editor,
   ProcessTerminal,
-  SelectList,
   TUI,
 } from "@mariozechner/pi-tui";
 import { resolveAttachmentTokens, uniqueAttachmentToken, withLeadingSpace } from "./attachment-tokens.mjs";
@@ -13,6 +12,7 @@ import { createKeybindingDispatcher } from "./keybinding-dispatch.mjs";
 import { OutputBuffer } from "./output-buffer.mjs";
 import { createRetryStatusController } from "./retry-status.mjs";
 import { ShellDrawer } from "./shell-drawer.mjs";
+import { showSelectListOverlay } from "./select-list-overlay.mjs";
 import { createSpinnerStatusController } from "./spinner-status.mjs";
 import { StatusBar } from "./status-bar.mjs";
 import { extractToolOutput } from "./tool-output.mjs";
@@ -148,33 +148,7 @@ export function createTuiUI({
 
   function selectList({ items, selectedIndex = 0, maxVisible = 8, width = 64 }) {
     ensureStarted();
-    if (!Array.isArray(items) || items.length === 0) return Promise.resolve(null);
-    return new Promise((resolve) => {
-      const list = new SelectList(items, maxVisible, EDITOR_THEME.selectList, {
-        minPrimaryColumnWidth: 18,
-        maxPrimaryColumnWidth: 32,
-      });
-      let settled = false;
-      let handle = null;
-      const finish = (item) => {
-        if (settled) return;
-        settled = true;
-        if (handle) handle.hide();
-        requestRender();
-        resolve(item);
-      };
-      list.setSelectedIndex(selectedIndex);
-      list.onSelect = (item) => finish(item);
-      list.onCancel = () => finish(null);
-      handle = tui.showOverlay(list, {
-        width,
-        minWidth: 40,
-        maxHeight: maxVisible + 1,
-        anchor: "bottom-center",
-        margin: 1,
-      });
-      requestRender();
-    });
+    return showSelectListOverlay({ tui, items, selectedIndex, maxVisible, width, requestRender });
   }
 
   function retryStart({ attempt, maxAttempts, delayMs, errorMessage }) {
