@@ -9,6 +9,7 @@ import {
   SelectList,
   TUI,
 } from "@mariozechner/pi-tui";
+import { resolveAttachmentTokens, uniqueAttachmentToken, withLeadingSpace } from "./attachment-tokens.mjs";
 import { buildMarchCommands, MarchAutocompleteProvider } from "./autocomplete.mjs";
 import { createJsonUI, createPlainUI } from "./fallback-ui.mjs";
 import { createKeybindingDispatcher } from "./keybinding-dispatch.mjs";
@@ -447,25 +448,4 @@ export function createUI({ json, cwd = process.cwd(), skillPool = [], keybinding
   if (json) return createJsonUI();
   if (!stdout.isTTY) return createPlainUI();
   return createTuiUI({ cwd, skillPool, keybindings, promptTemplates, shellRuntime });
-}
-
-function resolveAttachmentTokens(text, tokens) {
-  let resolved = text;
-  for (const [token, marker] of tokens) {
-    resolved = resolved.split(token).join(marker);
-  }
-  return resolved;
-}
-
-function uniqueAttachmentToken(label, tokens) {
-  if (!tokens.has(label)) return label;
-  for (let i = 2; ; i++) {
-    const candidate = label.replace(/\]$/, ` ${i}]`);
-    if (!tokens.has(candidate)) return candidate;
-  }
-}
-
-function withLeadingSpace(currentText, text) {
-  if (!String(currentText || "").trim()) return text;
-  return ` ${text}`;
 }
