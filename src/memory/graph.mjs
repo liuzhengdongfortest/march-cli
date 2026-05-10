@@ -7,14 +7,20 @@ import {
 } from "./graph-read.mjs";
 import { getGraphDiagnostics } from "./graph-diagnostics.mjs";
 import {
+  cascadeCreatePaths,
+  cascadeDeleteNode,
+  deprecateNodeMemories,
+  deleteSubtreePaths,
+  gcEdgeIfPathless,
+  gcNodeSoft,
+} from "./graph-cascades.mjs";
+import {
   escapeLikePath,
   graphUri,
   leafName,
   pathExists,
 } from "./graph-path-utils.mjs";
 import {
-  countMemoriesForNode,
-  countPathsForEdge,
   ensureNode,
   getNextChildNumber,
   getOrCreateEdge,
@@ -81,134 +87,15 @@ export class GraphService {
     return getGraphDiagnostics(this.db, namespace, daysStale, maxChildren);
   }
 
-  // ═══════════════════════════════════════════════════════════════════
-  // Layer 1: Table-Scoped Operations
-  // ═══════════════════════════════════════════════════════════════════
-
-  #deprecateNodeMemories(nodeUuid, successorId = null) {
-    const conditions = ["node_uuid = ?", "deprecated = 0"];
-    const params = [nodeUuid];
-    if (successorId !== null) {
-      conditions.push("id != ?");
-      params.push(successorId);
-    }
-    const ids = this.db.prepare(
-      `SELECT id FROM memories WHERE ${conditions.join(" AND ")}`
-    ).all(...params).map(r => r.id);
-
-    if (ids.length > 0) {
-      const placeholders = ids.map(() => "?").join(",");
-      this.db.prepare(
-        `UPDATE memories SET deprecated = 1, migrated_to = ? WHERE id IN (${placeholders})`
-      ).run(successorId, ...ids);
-    }
-    return ids;
-  }
-
-  #cascadeCreatePaths(nodeUuid, domain, basePath, namespace = "", visited = new Set()) {
-    if (visited.has(nodeUuid)) return;
-    visited.add(nodeUuid);
-    try {
-      const childEdges = this.db.prepare(
-        "SELECT * FROM edges WHERE parent_uuid = ?"
-      ).all(nodeUuid);
-      for (const edge of childEdges) {
-        const childPath = `${basePath}/${edge.name}`;
-        insertPath(this.db, namespace, domain, childPath, edge.id, edge.child_uuid);
-        this.#cascadeCreatePaths(edge.child_uuid, domain, childPath, namespace, visited);
-      }
-    } finally {
-      visited.delete(nodeUuid);
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════════════
-  // Layer 2: Cross-Table Cascades
-  // ═══════════════════════════════════════════════════════════════════
-
-  #deleteSubtreePaths(domain, path, namespace = "") {
-    const safe = escapeLikePath(path);
-    const rows = this.db.prepare(`
-      SELECT namespace, domain, path, edge_id, node_uuid
-      FROM paths
-      WHERE namespace = ? AND domain = ? AND (path = ? OR path LIKE ? ESCAPE '\\')
-    `).all(namespace, domain, path, `${safe}/%`);
-
-    for (const row of rows) {
-      this.db.prepare(
-        "DELETE FROM paths WHERE namespace = ? AND domain = ? AND path = ?"
-      ).run(row.namespace, row.domain, row.path);
-    }
-    return rows;
-  }
-
-  #cascadeDeleteEdge(edge) {
-    const edgePaths = this.db.prepare(
-      "SELECT * FROM paths WHERE edge_id = ?"
-    ).all(edge.id);
-
-    for (const p of edgePaths) {
-      this.#deleteSubtreePaths(p.domain, p.path, p.namespace);
-    }
-    this.db.prepare("DELETE FROM edges WHERE id = ?").run(edge.id);
-  }
-
   cascadeDeleteNode(nodeUuid) {
-    if (nodeUuid === ROOT_NODE_UUID) return null;
-
-    const edges = this.db.prepare(
-      "SELECT * FROM edges WHERE parent_uuid = ? OR child_uuid = ?"
-    ).all(nodeUuid, nodeUuid);
-    for (const edge of edges) {
-      this.#cascadeDeleteEdge(edge);
-    }
-
-    this.db.prepare("DELETE FROM memories WHERE node_uuid = ?").run(nodeUuid);
-    this.db.prepare("DELETE FROM glossary_keywords WHERE node_uuid = ?").run(nodeUuid);
-    this.db.prepare("DELETE FROM nodes WHERE uuid = ?").run(nodeUuid);
-    return { deleted: nodeUuid };
+    return cascadeDeleteNode(this.db, nodeUuid);
   }
 
   #createEdgeWithPaths(parentUuid, childUuid, name, domain, path, priority = 0, disclosure = null, namespace = "") {
     const { edge, created } = getOrCreateEdge(this.db, parentUuid, childUuid, name, priority, disclosure);
     insertPath(this.db, namespace, domain, path, edge.id, childUuid);
-    this.#cascadeCreatePaths(childUuid, domain, path, namespace);
+    cascadeCreatePaths(this.db, childUuid, domain, path, namespace);
     return { edge, edge_id: edge.id, edge_created: created };
-  }
-
-  // ═══════════════════════════════════════════════════════════════════
-  // Layer 3: GC
-  // ═══════════════════════════════════════════════════════════════════
-
-  #gcEdgeIfPathless(edge) {
-    if (countPathsForEdge(this.db, edge.id) > 0) return null;
-    this.db.prepare("DELETE FROM edges WHERE id = ?").run(edge.id);
-    return { edge_id: edge.id, parent_uuid: edge.parent_uuid, child_uuid: edge.child_uuid };
-  }
-
-  #gcNodeSoft(nodeUuid) {
-    if (nodeUuid === ROOT_NODE_UUID) return;
-
-    // Count incoming paths across ALL namespaces
-    const row = this.db.prepare(
-      "SELECT COUNT(*) AS cnt FROM paths WHERE node_uuid = ?"
-    ).get(nodeUuid);
-    if (row.cnt > 0) return;
-
-    // Delete incoming edges
-    const incoming = this.db.prepare("SELECT * FROM edges WHERE child_uuid = ?").all(nodeUuid);
-    for (const edge of incoming) this.#gcEdgeIfPathless(edge);
-
-    // Delete outgoing edges
-    const outgoing = this.db.prepare("SELECT * FROM edges WHERE parent_uuid = ?").all(nodeUuid);
-    for (const edge of outgoing) this.#cascadeDeleteEdge(edge);
-
-    this.#deprecateNodeMemories(nodeUuid);
-  }
-
-  #gcNodeIfMemoryless(nodeUuid) {
-    if (countMemoriesForNode(this.db, nodeUuid) > 0) return null;
-    return this.cascadeDeleteNode(nodeUuid);
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -283,7 +170,7 @@ export class GraphService {
     if (content !== null) {
       const newMem = insertMemory(this.db, nodeUuid, content, false);
       newMemoryId = newMem.id;
-      this.#deprecateNodeMemories(nodeUuid, newMemoryId);
+      deprecateNodeMemories(this.db, nodeUuid, newMemoryId);
       this.db.prepare(
         "UPDATE memories SET deprecated = 0, migrated_to = NULL WHERE id = ?"
       ).run(newMemoryId);
@@ -314,7 +201,7 @@ export class GraphService {
       return { restored_memory_id: targetMemoryId, was_already_active: true };
     }
 
-    this.#deprecateNodeMemories(target.node_uuid, targetMemoryId);
+    deprecateNodeMemories(this.db, target.node_uuid, targetMemoryId);
     this.db.prepare(
       "UPDATE memories SET deprecated = 0, migrated_to = NULL WHERE id = ?"
     ).run(targetMemoryId);
@@ -400,11 +287,11 @@ export class GraphService {
     }
 
     // Proceed with deletion
-    this.#deleteSubtreePaths(domain, path, namespace);
+    deleteSubtreePaths(this.db, domain, path, namespace);
 
     // GC
-    this.#gcEdgeIfPathless(targetEdge);
-    this.#gcNodeSoft(targetNodeUuid);
+    gcEdgeIfPathless(this.db, targetEdge);
+    gcNodeSoft(this.db, targetNodeUuid);
 
     return { deleted: graphUri(domain, path) };
   }
