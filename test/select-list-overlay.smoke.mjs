@@ -1,5 +1,24 @@
 import { strict as assert } from "node:assert";
 
+class FakeTerminal {
+  columns = 80;
+  rows = 24;
+  onInput = null;
+
+  start(onInput) {
+    this.onInput = onInput;
+  }
+
+  stop() {}
+  write() {}
+  hideCursor() {}
+  showCursor() {}
+
+  input(data) {
+    this.onInput?.(data);
+  }
+}
+
 export async function runSelectListOverlaySmoke() {
   console.log("--- smoke: select list overlay lifecycle ---");
   const { showSelectListOverlay } = await import("../src/cli/select-list-overlay.mjs");
@@ -50,5 +69,21 @@ export async function runSelectListOverlaySmoke() {
   const cancelPromise = showSelectListOverlay({ tui, items: [{ value: "x" }], requestRender, SelectListImpl: FakeSelectList });
   latestList.onCancel();
   assert.equal(await cancelPromise, null);
+
+  const { TUI } = await import("@mariozechner/pi-tui");
+  const { TERMINAL_KEY_SEQUENCES } = await import("../src/cli/keybinding-dispatch.mjs");
+  const terminal = new FakeTerminal();
+  const realTui = new TUI(terminal);
+  realTui.start();
+  const escapePromise = showSelectListOverlay({
+    tui: realTui,
+    items: [{ value: "model-a" }, { value: "model-b" }],
+    requestRender: () => realTui.requestRender(),
+  });
+  assert.equal(realTui.hasOverlay(), true);
+  terminal.input(TERMINAL_KEY_SEQUENCES.Esc);
+  assert.equal(await escapePromise, null);
+  assert.equal(realTui.hasOverlay(), false);
+  realTui.stop();
   console.log("  PASS");
 }
