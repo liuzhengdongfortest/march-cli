@@ -1,6 +1,7 @@
 import { isAbsolute, resolve } from "node:path";
 import { readFileSync } from "node:fs";
 import { buildMemoryLayer } from "./memory-layer.mjs";
+import { buildRuntimeStatus } from "./runtime-status.mjs";
 import { buildSessionStatus } from "./session-status.mjs";
 
 export class ContextEngine {
@@ -266,23 +267,12 @@ thinking: ${this.thinkingLevel}`;
 
   // ── Layer 7: runtime_status ────────────────────────────────────────
   #buildRuntimeStatus() {
-    const now = new Date().toISOString();
-    const turnCount = this.turns.length;
-    const pressure = turnCount > 15 ? "high" : turnCount > 8 ? "moderate" : "low";
-    const parts = [
-      `time: ${now}`,
-      `turn: ${turnCount + 1}`,
-      `context_pressure: ${pressure}`,
-    ];
-    if (this.sessionName) parts.push(`session_name: ${this.sessionName}`);
-    parts.push(`open_files: ${this.openFiles.size}`);
-    if (this.pins.size > 0) {
-      parts.push(`pinned_files:`);
-      for (const p of this.pins) {
-        parts.push(`  - ${p}`);
-      }
-    }
-    return `[runtime_status]\n${parts.join("\n")}`;
+    return buildRuntimeStatus({
+      turns: this.turns,
+      sessionName: this.sessionName,
+      openFilesCount: this.openFiles.size,
+      pins: this.getPins(),
+    });
   }
 
   // ── Layer 8: shells ────────────────────────────────────────────────
