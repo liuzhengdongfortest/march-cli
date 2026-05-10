@@ -39,7 +39,7 @@ export function handleShellCommand(command, { shellRuntime = null } = {}) {
     return [
       formatShellListItem(shell),
       "Recent output:",
-      snapshot.plain || "(no output)",
+      snapshot.screen?.plain || snapshot.plain || "(no output)",
     ];
   }
   return [];

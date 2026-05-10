@@ -21,7 +21,11 @@ export async function runShellCommandSmoke() {
   };
   const shellRuntime = {
     listShells: () => [shell],
-    snapshotShell: (id) => ({ plain: `output for ${id}`, ansi: "\x1b[32moutput\x1b[0m" }),
+    snapshotShell: (id) => ({
+      plain: `output for ${id}`,
+      ansi: "\x1b[32moutput\x1b[0m",
+      screen: { plain: `screen for ${id}`, ansi: "\x1b[32mscreen\x1b[0m" },
+    }),
     spawnShell: ({ name }) => ({ ...shell, id: "sh2", name: name || "powershell.exe", lineCount: 0 }),
   };
   assert.deepEqual(handleShellCommand({ type: "spawn", name: "dev2" }, { shellRuntime }), [
@@ -36,7 +40,7 @@ export async function runShellCommandSmoke() {
   assert.deepEqual(handleShellCommand({ type: "show", idOrName: "dev" }, { shellRuntime }), [
     "sh1  dev  running  powershell.exe -NoLogo  2 lines",
     "Recent output:",
-    "output for sh1",
+    "screen for sh1",
   ]);
   assert.deepEqual(handleShellCommand({ type: "show", idOrName: "missing" }, { shellRuntime }), [
     "Error: shell not found: missing",
