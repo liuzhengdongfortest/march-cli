@@ -24,6 +24,8 @@ export async function runNodePtyAdapterSmoke() {
         onExit: (fn) => { onExitHandler = fn; },
         write: (text) => calls.push({ write: text }),
         kill: () => calls.push({ kill: true }),
+        _socket: { destroy: () => calls.push({ socketDestroy: true }) },
+        destroy: () => calls.push({ destroy: true }),
       };
     },
   };
@@ -45,10 +47,20 @@ export async function runNodePtyAdapterSmoke() {
   assert.equal(calls[0].options.env.A, "B");
   adapter.write("hello");
   adapter.kill();
+  adapter.dispose();
   onDataHandler("out");
   onExitHandler({ exitCode: 0 });
-  assert.deepEqual(calls.slice(1), [{ write: "hello" }, { kill: true }]);
+  assert.deepEqual(calls.slice(1), [{ write: "hello" }, { socketDestroy: true }]);
   assert.deepEqual(events, [["data", "out"], ["exit", { exitCode: 0 }]]);
+
+  calls.length = 0;
+  onExitHandler = null;
+  const naturalExitAdapter = createAdapter({
+    onExit: (event) => events.push(["natural-exit", event]),
+  });
+  onExitHandler({ exitCode: 0 });
+  naturalExitAdapter.dispose();
+  assert.deepEqual(calls.slice(1), [{ socketDestroy: true }]);
 
   console.log("  PASS");
 }

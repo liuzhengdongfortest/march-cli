@@ -129,7 +129,16 @@ export function createShellRuntime({
   }
 
   function dispose() {
-    return killAll();
+    const results = killAll();
+    for (const shell of shells.values()) {
+      try {
+        shell.pty?.dispose?.();
+      } catch (error) {
+        shell.error = `dispose failed: ${error?.message ?? String(error)}`;
+        touch(shell, now);
+      }
+    }
+    return results;
   }
 
   return {

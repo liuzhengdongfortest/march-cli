@@ -221,7 +221,7 @@ export async function run(argv) {
       writeFileSync(resolve(projectMarchDir, "context-snapshot.txt"), postCtx, "utf8");
     }
     if (!usePiSessionDefaults) saveSession(sessionState.sessionDir, runner.engine);
-    runner.dispose();
+    await runner.dispose();
     ui.writeln("");
     ui.close();
     return 0;
@@ -320,7 +320,7 @@ export async function run(argv) {
     }
   }
 
-  runner.dispose();
+  await runner.dispose();
   ui.close();
   return 0;
 }

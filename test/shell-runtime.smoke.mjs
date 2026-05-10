@@ -71,8 +71,12 @@ export async function runShellRuntimeSmoke() {
     createPty: ({ command, args, onExit }) => ({
       command,
       args,
+      disposed: false,
       write: () => {},
       kill: () => onExit({ signal: "SIGTERM" }),
+      dispose() {
+        this.disposed = true;
+      },
     }),
   });
   const defaultShell = defaultRuntime.spawnShell();

@@ -30,12 +30,32 @@ export function createNodePtyAdapterFactory({
       throw error;
     }
 
+    let disposed = false;
+    const disposeTerminal = () => {
+      if (disposed) return;
+      disposed = true;
+      // node-pty's Windows kill path can emit noisy AttachConsole failures after
+      // a natural exit. Closing the backing socket releases Node handles without
+      // forcing the PTY helper down the kill path.
+      if (typeof term._socket?.destroy === "function") {
+        term._socket.destroy();
+      } else if (typeof term.destroy === "function") {
+        term.destroy();
+      } else if (typeof term.kill === "function") {
+        term.kill();
+      }
+    };
+
     term.onData?.((chunk) => onData?.(chunk));
-    term.onExit?.((event) => onExit?.(event));
+    term.onExit?.((event) => {
+      onExit?.(event);
+      disposeTerminal();
+    });
 
     return {
       write: (text) => term.write(String(text ?? "")),
-      kill: () => term.kill(),
+      kill: () => disposeTerminal(),
+      dispose: () => disposeTerminal(),
     };
   };
 }
