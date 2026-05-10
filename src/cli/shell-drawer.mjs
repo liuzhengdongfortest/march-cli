@@ -34,6 +34,18 @@ export class ShellDrawer {
     return this.shellRuntime.sendShell(shell.id, data);
   }
 
+  selectNextShell() {
+    const shells = this.getShells();
+    if (!shells.length) {
+      this.selectedShellId = null;
+      return null;
+    }
+    const currentIndex = Math.max(0, shells.findIndex((shell) => shell.id === this.selectedShellId));
+    const next = shells[(currentIndex + 1) % shells.length];
+    this.selectedShellId = next.id;
+    return next;
+  }
+
   render(width) {
     if (!this.visible) return [];
     const safeWidth = Math.max(1, width);
@@ -52,8 +64,10 @@ export class ShellDrawer {
       return lines;
     }
 
+    const shells = this.getShells();
+    const position = Math.max(0, shells.findIndex((item) => item.id === shell.id)) + 1;
     const args = shell.args?.length ? ` ${shell.args.join(" ")}` : "";
-    lines.push(fit(`${HEADER_FG}${shell.name} ${MUTED}${shell.id} ${shell.status} ${shell.command}${args}${RESET}`, safeWidth));
+    lines.push(fit(`${HEADER_FG}${shell.name} ${MUTED}${position}/${shells.length} ${shell.id} ${shell.status} ${shell.command}${args}${RESET}`, safeWidth));
 
     const snapshot = this.shellRuntime.snapshotShell(shell.id);
     const outputLines = String(snapshot.plain || "")
@@ -74,7 +88,7 @@ export class ShellDrawer {
 
   getSelectedShell() {
     if (!this.shellRuntime) return null;
-    const shells = this.shellRuntime.listShells();
+    const shells = this.getShells();
     if (!shells.length) {
       this.selectedShellId = null;
       return null;
@@ -85,6 +99,10 @@ export class ShellDrawer {
     const fallback = running ?? shells.at(-1);
     this.selectedShellId = fallback.id;
     return fallback;
+  }
+
+  getShells() {
+    return this.shellRuntime?.listShells?.() ?? [];
   }
 }
 

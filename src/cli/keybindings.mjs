@@ -10,6 +10,7 @@ export const DEFAULT_KEYBINDINGS = Object.freeze({
   externalEditor: "Ctrl+G",
   toggleToolOutput: "Ctrl+O",
   toggleShellDrawer: "Alt+S",
+  nextShell: "Alt+N",
   pasteImage: "Alt+V",
 });
 
@@ -22,6 +23,7 @@ export const KEYBINDING_ACTIONS = Object.freeze({
   externalEditor: "Open external editor ($VISUAL or $EDITOR)",
   toggleToolOutput: "Toggle tool output collapsed/expanded",
   toggleShellDrawer: "Toggle shell drawer",
+  nextShell: "Select next shell in drawer",
   pasteImage: "Paste clipboard image as attachment",
 });
 
