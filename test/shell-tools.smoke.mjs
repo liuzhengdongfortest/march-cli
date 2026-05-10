@@ -57,5 +57,9 @@ export async function runShellToolsSmoke() {
   assert.equal(late.details.error, true);
   assert.ok(late.content[0].text.includes("is killed"));
 
+  const defaultSpawned = await byName.shell_spawn.execute("tc6", { name: "default" });
+  assert.equal(defaultSpawned.details.shell.name, "default");
+  assert.equal(defaultSpawned.details.shell.status, "running");
+
   console.log("  PASS");
 }

@@ -18,6 +18,7 @@ import { wireTuiHandlers } from "./cli/tui-handlers.mjs";
 import { createMarchAuthStorage } from "./auth/storage.mjs";
 import { runLoginCommand } from "./auth/login-command.mjs";
 import { createRunner } from "./agent/runner.mjs";
+import { createCliShellRuntime } from "./shell/cli-runtime.mjs";
 import { openDatabase } from "./memory/database.mjs";
 import { GraphService } from "./memory/graph.mjs";
 import { GlossaryService } from "./memory/glossary.mjs";
@@ -104,6 +105,7 @@ export async function run(argv) {
   }
   const skillState = { active: [], engine: null };
   const skillTools = createSkillTools(skillState, skillPool);
+  const shellRuntime = args.shellRuntime ? createCliShellRuntime({ cwd }) : null;
 
   // Session persistence
   const usePiSessionDefaults = args.piSessionDefaults || !args.legacySessions;
@@ -143,6 +145,7 @@ export async function run(argv) {
     glossary,
     memoryTools,
     skillTools,
+    shellRuntime,
     namespace,
     projectMarchDir,
     extensionPaths,

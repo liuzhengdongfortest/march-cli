@@ -7,10 +7,10 @@ export function createShellTools(shellRuntime = null) {
   const shellSpawn = defineTool({
     name: "shell_spawn",
     label: "Shell Spawn",
-    description: "Start a named interactive shell process. Use this for long-running or prompt-based commands, not one-shot shell commands.",
+    description: "Start a named interactive shell process. Omit command to start the platform default shell. Use this for long-running or prompt-based commands, not one-shot shell commands.",
     parameters: Type.Object({
       name: Type.Optional(Type.String({ description: "Optional user-facing shell name" })),
-      command: Type.String({ description: "Command to launch" }),
+      command: Type.Optional(Type.String({ description: "Command to launch; omitted means platform default shell" })),
       args: Type.Optional(Type.Array(Type.String(), { description: "Command arguments" })),
       cwd: Type.Optional(Type.String({ description: "Working directory" })),
     }),

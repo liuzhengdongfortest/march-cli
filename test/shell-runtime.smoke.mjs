@@ -64,5 +64,37 @@ export async function runShellRuntimeSmoke() {
   assert.equal(failed.status, "failed");
   assert.equal(failed.error, "spawn failed");
 
+  const defaultRuntime = createShellRuntime({
+    idFactory: () => "default",
+    defaultCommand: "pwsh",
+    defaultArgs: ["-NoLogo"],
+    createPty: ({ command, args, onExit }) => ({
+      command,
+      args,
+      write: () => {},
+      kill: () => onExit({ signal: "SIGTERM" }),
+    }),
+  });
+  const defaultShell = defaultRuntime.spawnShell();
+  assert.equal(defaultShell.command, "pwsh");
+  assert.deepEqual(defaultShell.args, ["-NoLogo"]);
+  assert.equal(defaultRuntime.dispose().length, 1);
+  assert.equal(defaultRuntime.getShell("default").status, "killed");
+
+  const killFailureRuntime = createShellRuntime({
+    idFactory: () => "kill-failure",
+    createPty: () => ({
+      write: () => {},
+      kill: () => {
+        throw new Error("nope");
+      },
+    }),
+  });
+  killFailureRuntime.spawnShell({ command: "pwsh" });
+  const killFailure = killFailureRuntime.killShell("kill-failure");
+  assert.equal(killFailure.ok, false);
+  assert.equal(killFailure.shell.status, "failed");
+  assert.ok(killFailure.error.includes("kill failed"));
+
   console.log("  PASS");
 }

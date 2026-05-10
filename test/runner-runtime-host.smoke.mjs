@@ -90,5 +90,36 @@ export async function runRunnerRuntimeHostSmoke() {
     }),
     /--extension requires the default pi runtime host path/,
   );
+
+  const disposeCalls = [];
+  const previousDeepseekKey = process.env.DEEPSEEK_API_KEY;
+  process.env.DEEPSEEK_API_KEY = previousDeepseekKey || "test-key";
+  const cleanupRunner = await createRunner({
+    cwd: "D:/repo",
+    stateRoot: "D:/state",
+    provider: "deepseek",
+    modelId: "deepseek-v4-pro",
+    ui: { editDiff: () => {} },
+    skills: [],
+    pins: [],
+    shellRuntime: { dispose: () => disposeCalls.push("shell") },
+    createAgentSessionImpl: async () => ({
+      session: {
+        model: { id: "deepseek-v4-pro", provider: "deepseek" },
+        thinkingLevel: "medium",
+        getActiveToolNames: () => [],
+        getToolDefinition: () => null,
+        getSessionStats: () => ({ tokens: {} }),
+        dispose: () => disposeCalls.push("session"),
+      },
+    }),
+  });
+  cleanupRunner.dispose();
+  assert.deepEqual(disposeCalls, ["shell", "session"]);
+  if (previousDeepseekKey === undefined) {
+    delete process.env.DEEPSEEK_API_KEY;
+  } else {
+    process.env.DEEPSEEK_API_KEY = previousDeepseekKey;
+  }
   console.log("  PASS");
 }

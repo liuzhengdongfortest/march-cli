@@ -299,7 +299,9 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
     },
 
     dispose() {
-      return runtimeHost?.dispose() ?? sessionBinding.get().dispose();
+      const shellCleanup = shellRuntime?.dispose?.() ?? shellRuntime?.killAll?.();
+      const sessionCleanup = runtimeHost?.dispose() ?? sessionBinding.get().dispose();
+      return sessionCleanup ?? shellCleanup;
     },
   };
 

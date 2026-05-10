@@ -53,11 +53,12 @@ function cleanup(dir) {
   assert.equal(args.piSessionDefaults, false);
   assert.equal(args.legacySessions, false);
 
-  const piSessions = parseCliArgs(["--pi-sessions", "--pi-runtime-host", "--pi-session-defaults", "--legacy-sessions"]);
+  const piSessions = parseCliArgs(["--pi-sessions", "--pi-runtime-host", "--pi-session-defaults", "--legacy-sessions", "--shell-runtime"]);
   assert.equal(piSessions.piSessions, true);
   assert.equal(piSessions.piRuntimeHost, true);
   assert.equal(piSessions.piSessionDefaults, true);
   assert.equal(piSessions.legacySessions, true);
+  assert.equal(piSessions.shellRuntime, true);
 
   const defaults = parseCliArgs([]);
   assert.equal(defaults.model, "deepseek-v4-pro");
@@ -65,6 +66,7 @@ function cleanup(dir) {
   assert.deepEqual(defaults.skills, []);
   assert.equal(defaults.prompt, "");
   assert.equal(defaults.command, null);
+  assert.equal(defaults.shellRuntime, false);
 
   const login = parseCliArgs(["login", "openai-codex"]);
   assert.deepEqual(login.command, { name: "login", args: ["openai-codex"] });

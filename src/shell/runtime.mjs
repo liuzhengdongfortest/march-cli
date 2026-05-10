@@ -7,6 +7,8 @@ export function createShellRuntime({
   now = () => new Date(),
   maxScrollbackLines = 200,
   idFactory = () => randomUUID().slice(0, 8),
+  defaultCommand = process.platform === "win32" ? "powershell.exe" : process.env.SHELL || "sh",
+  defaultArgs = process.platform === "win32" ? ["-NoLogo", "-NoProfile"] : [],
 } = {}) {
   if (typeof createPty !== "function") {
     throw new Error("createPty is required");
@@ -21,13 +23,14 @@ export function createShellRuntime({
     cwd = process.cwd(),
     env = process.env,
   } = {}) {
-    if (!command) throw new Error("command is required");
+    const resolvedCommand = command || defaultCommand;
+    const resolvedArgs = command ? args : (args.length ? args : defaultArgs);
     const id = idFactory();
     const shell = {
       id,
-      name: uniqueName(name || command, shells),
-      command,
-      args: [...args],
+      name: uniqueName(name || resolvedCommand, shells),
+      command: resolvedCommand,
+      args: [...resolvedArgs],
       cwd,
       status: "starting",
       exitCode: null,
@@ -43,7 +46,7 @@ export function createShellRuntime({
 
     try {
       shell.pty = createPty({
-        command,
+        command: resolvedCommand,
         args: shell.args,
         cwd,
         env,
@@ -77,7 +80,14 @@ export function createShellRuntime({
     }
     shell.status = "killed";
     touch(shell, now);
-    shell.pty?.kill?.();
+    try {
+      shell.pty?.kill?.();
+    } catch (error) {
+      shell.status = "failed";
+      shell.error = `kill failed: ${error?.message ?? String(error)}`;
+      touch(shell, now);
+      return { ok: false, error: shell.error, shell: publicShell(shell) };
+    }
     return { ok: true, shell: publicShell(shell) };
   }
 
@@ -118,6 +128,10 @@ export function createShellRuntime({
     return results;
   }
 
+  function dispose() {
+    return killAll();
+  }
+
   return {
     spawnShell,
     sendShell,
@@ -127,6 +141,7 @@ export function createShellRuntime({
     getShell,
     searchShell,
     snapshotShell,
+    dispose,
   };
 }
 
