@@ -16,6 +16,7 @@ import { runKeybindingsSmoke } from "./keybindings.smoke.mjs";
 import { runLoginCommandSmoke } from "./login-command.smoke.mjs";
 import { runNodePtyAdapterSmoke } from "./node-pty-adapter.smoke.mjs";
 import { runPromptTemplatesSmoke } from "./prompt-templates.smoke.mjs";
+import { runRunnerCoreSmoke } from "./runner-core.smoke.mjs";
 import { runSettingsCommandSmoke } from "./settings-command.smoke.mjs";
 import { runPiSessionManagerFactorySmoke, runPiSessionSidecarSmoke, runPiSessionSidecarSyncSmoke, runSessionPersistenceSmoke, runSessionTreeSmoke } from "./session.smoke.mjs";
 import { runSessionNameCommandSmoke } from "./session-name-command.smoke.mjs";
@@ -248,44 +249,7 @@ await runTuiShellDrawerSmoke({ setupTmp, cleanup });
   console.log("  PASS");
 }
 
-// ── 3c. March tool set ───────────────────────────────────────────────
-
-{
-  console.log("--- smoke: March tool set ---");
-  const { MARCH_BASE_TOOL_NAMES } = await import("../src/agent/runner.mjs");
-  assert.deepEqual(MARCH_BASE_TOOL_NAMES, ["read", "bash", "edit", "write", "grep", "find", "ls"]);
-  console.log("  PASS");
-}
-
-// ── 3d. Runner session manager seam ─────────────────────────────────
-
-{
-  console.log("--- smoke: runner session manager seam ---");
-  const { createDefaultSessionManager, resolveRunnerSessionManager, syncEngineSessionState } = await import("../src/agent/runner.mjs");
-  const { createSessionBinding } = await import("../src/agent/session-binding.mjs");
-  const { ContextEngine } = await import("../src/context/engine.mjs");
-  const manager = createDefaultSessionManager(process.cwd());
-  assert.equal(manager.getCwd(), process.cwd());
-  assert.equal(manager.isPersisted(), false);
-  const injected = { id: "injected" };
-  assert.equal(resolveRunnerSessionManager(process.cwd(), injected), injected);
-  const binding = createSessionBinding({ id: "s1" });
-  assert.equal(binding.get().id, "s1");
-  assert.equal(binding.set({ id: "s2" }).id, "s2");
-  assert.equal(binding.get().id, "s2");
-  const engine = new ContextEngine({ cwd: process.cwd(), modelId: "old", provider: "deepseek", thinkingLevel: "low" });
-  syncEngineSessionState(engine, {
-    model: { id: "new", provider: "test" },
-    thinkingLevel: "high",
-    getActiveToolNames: () => ["read"],
-    getToolDefinition: () => ({ description: "Read file", parameters: { properties: { path: { description: "Path" } } } }),
-  });
-  assert.equal(engine.modelId, "new");
-  assert.equal(engine.provider, "test");
-  assert.equal(engine.thinkingLevel, "high");
-  assert.ok(engine.buildContext("").includes("thinking: high"));
-  console.log("  PASS");
-}
+await runRunnerCoreSmoke();
 
 // ── 3d. Autocomplete provider ───────────────────────────────────────
 
