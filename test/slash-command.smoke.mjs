@@ -75,6 +75,17 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
         { type: "warning", message: "extension skipped" },
       ],
     }),
+    shellRuntime: {
+      listShells: () => [{
+        id: "sh1",
+        name: "dev",
+        status: "running",
+        command: "powershell.exe",
+        args: ["-NoLogo"],
+        lineCount: 1,
+      }],
+      snapshotShell: () => ({ plain: "ready", ansi: "\x1b[32mready\x1b[0m" }),
+    },
     switchPiSession: async () => ({ cancelled: false }),
     clonePiSession: async () => ({ cancelled: false, sessionId: "pi-clone", sourceSessionId: "s1" }),
     getPiForkCandidates: () => [{ entryId: "u1", text: "fork me" }],
@@ -105,6 +116,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(output.join("\n").includes("/export html"));
   assert.ok(output.join("\n").includes("/export gist <jsonl|html>"));
   assert.ok(output.join("\n").includes("/settings"));
+  assert.ok(output.join("\n").includes("/shell"));
   assert.ok(output.join("\n").includes("/copy"));
   assert.ok(output.join("\n").includes("/name"));
   assert.ok(output.join("\n").includes("/sessions and /resume <id> use default pi JSONL sessions"));
@@ -178,6 +190,14 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   const session = await handleSlashCommand("/session", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(session.handled, true);
   assert.ok(output.join("\n").includes("messages: 1u + 1a + 0t = 2 total"));
+  const shellList = await handleSlashCommand("/shell", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
+  assert.equal(shellList.handled, true);
+  assert.ok(output.join("\n").includes("Shells:"));
+  assert.ok(output.join("\n").includes("sh1  dev  running"));
+  const shellShow = await handleSlashCommand("/shell dev", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
+  assert.equal(shellShow.handled, true);
+  assert.ok(output.join("\n").includes("Recent output:"));
+  assert.ok(output.join("\n").includes("ready"));
   const piSessions = await handleSlashCommand("/sessions pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(piSessions.handled, true);
   assert.ok(output.join("\n").includes("pi-slash"));

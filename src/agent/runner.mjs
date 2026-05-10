@@ -113,6 +113,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
     get session() {
       return sessionBinding.get();
     },
+    shellRuntime,
 
     async runTurn(prompt, userMessage) {
       const activeSession = sessionBinding.get();
