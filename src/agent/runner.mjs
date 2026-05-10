@@ -299,10 +299,10 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
     },
 
     async dispose() {
-      const shellCleanup = shellRuntime?.dispose?.() ?? shellRuntime?.killAll?.();
-      const sessionCleanup = runtimeHost?.dispose() ?? sessionBinding.get().dispose();
-      await sessionCleanup;
-      await shellCleanup;
+      await runRunnerCleanup([
+        () => runtimeHost?.dispose() ?? sessionBinding.get().dispose(),
+        () => shellRuntime?.dispose?.() ?? shellRuntime?.killAll?.(),
+      ]);
     },
   };
 
@@ -314,6 +314,19 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       sessionStats: getRunnerSessionStats(sessionBinding.get(), runtimeHost),
     });
   }
+}
+
+async function runRunnerCleanup(cleanups) {
+  const errors = [];
+  for (const cleanup of cleanups) {
+    try {
+      await cleanup();
+    } catch (err) {
+      errors.push(err);
+    }
+  }
+  if (errors.length === 1) throw errors[0];
+  if (errors.length > 1) throw new AggregateError(errors, "Runner cleanup failed");
 }
 
 function getRunnerSessionStats(activeSession, runtimeHost) {

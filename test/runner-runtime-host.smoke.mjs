@@ -126,7 +126,36 @@ export async function runRunnerRuntimeHostSmoke() {
   assert.equal(shellDisposed, false);
   await disposePromise;
   assert.equal(shellDisposed, true);
-  assert.deepEqual(disposeCalls, ["shell-start", "session", "shell-done"]);
+  assert.deepEqual(disposeCalls, ["session", "shell-start", "shell-done"]);
+
+  const failureCalls = [];
+  const failingCleanupRunner = await createRunner({
+    cwd: "D:/repo",
+    stateRoot: "D:/state",
+    provider: "deepseek",
+    modelId: "deepseek-v4-pro",
+    ui: { editDiff: () => {} },
+    skills: [],
+    pins: [],
+    shellRuntime: {
+      dispose() {
+        failureCalls.push("shell");
+        throw new Error("shell cleanup failed");
+      },
+    },
+    createAgentSessionImpl: async () => ({
+      session: {
+        model: { id: "deepseek-v4-pro", provider: "deepseek" },
+        thinkingLevel: "medium",
+        getActiveToolNames: () => [],
+        getToolDefinition: () => null,
+        getSessionStats: () => ({ tokens: {} }),
+        dispose: () => failureCalls.push("session"),
+      },
+    }),
+  });
+  await assert.rejects(() => failingCleanupRunner.dispose(), /shell cleanup failed/);
+  assert.deepEqual(failureCalls, ["session", "shell"]);
   if (previousDeepseekKey === undefined) {
     delete process.env.DEEPSEEK_API_KEY;
   } else {
