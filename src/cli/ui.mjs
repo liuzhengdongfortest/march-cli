@@ -11,6 +11,7 @@ import { getExternalEditorCommand, openTextInExternalEditor } from "./external-e
 import { createJsonUI, createPlainUI } from "./fallback-ui.mjs";
 import { createKeybindingDispatcher } from "./keybinding-dispatch.mjs";
 import { OutputBuffer } from "./output-buffer.mjs";
+import { createRetryStatusController } from "./retry-status.mjs";
 import { ShellDrawer } from "./shell-drawer.mjs";
 import { StatusBar } from "./status-bar.mjs";
 import { extractToolOutput } from "./tool-output.mjs";
@@ -45,7 +46,6 @@ export function createTuiUI({
   tui.setFocus(editor);
 
   let spinnerTimer = null;
-  let retryTimer = null;
   let started = false;
   let mouseOn = false;
   let toolsExpanded = false;
@@ -74,12 +74,7 @@ export function createTuiUI({
     requestRender();
   }
 
-  function stopRetryTimer() {
-    if (retryTimer) {
-      clearInterval(retryTimer);
-      retryTimer = null;
-    }
-  }
+  const retryStatus = createRetryStatusController({ output, requestRender, stopSpinner });
 
   let onEscapeHandler = null;
   let onCtrlCHandler = null;
@@ -205,34 +200,12 @@ export function createTuiUI({
 
   function retryStart({ attempt, maxAttempts, delayMs, errorMessage }) {
     ensureStarted();
-    stopSpinner();
-    stopRetryTimer();
-    const startedAt = Date.now();
-    const message = () => {
-      const remainingMs = Math.max(0, delayMs - (Date.now() - startedAt));
-      const seconds = Math.ceil(remainingMs / 1000);
-      return `Retrying (${attempt}/${maxAttempts}) in ${seconds}s... Esc to cancel`;
-    };
-    output.writeln(`\x1b[33m● retrying after error: ${String(errorMessage || "Unknown error").slice(0, 160)}\x1b[0m`);
-    output.setSpinner(true, message());
-    retryTimer = setInterval(() => {
-      output.setSpinner(true, message());
-      output.tick();
-      requestRender();
-    }, 250);
-    requestRender();
+    retryStatus.start({ attempt, maxAttempts, delayMs, errorMessage });
   }
 
   function retryEnd({ success, attempt, finalError }) {
     ensureStarted();
-    stopRetryTimer();
-    stopSpinner();
-    if (success) {
-      output.writeln(`\x1b[90m● retry recovered after ${attempt} attempt${attempt === 1 ? "" : "s"}\x1b[0m`);
-    } else {
-      output.writeln(`\x1b[31m● retry stopped after ${attempt} attempt${attempt === 1 ? "" : "s"}${finalError ? `: ${finalError}` : ""}\x1b[0m`);
-    }
-    requestRender();
+    retryStatus.end({ success, attempt, finalError });
   }
 
   let onSubmitResolve = null;
@@ -426,7 +399,7 @@ export function createTuiUI({
 
     close: async () => {
       stopSpinner();
-      stopRetryTimer();
+      retryStatus.stop();
       if (started) {
         await terminal.drainInput?.();
         if (mouseOn) terminal.write("\x1b[?1002l\x1b[?1006l");
