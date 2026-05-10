@@ -76,6 +76,14 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
       ],
     }),
     shellRuntime: {
+      spawnShell: ({ name }) => ({
+        id: "sh2",
+        name: name || "powershell.exe",
+        status: "running",
+        command: "powershell.exe",
+        args: ["-NoLogo"],
+        lineCount: 0,
+      }),
       listShells: () => [{
         id: "sh1",
         name: "dev",
@@ -117,6 +125,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(output.join("\n").includes("/export gist <jsonl|html>"));
   assert.ok(output.join("\n").includes("/settings"));
   assert.ok(output.join("\n").includes("/shell"));
+  assert.ok(output.join("\n").includes("/shell spawn [name]"));
   assert.ok(output.join("\n").includes("/copy"));
   assert.ok(output.join("\n").includes("/name"));
   assert.ok(output.join("\n").includes("/sessions and /resume <id> use default pi JSONL sessions"));
@@ -194,6 +203,9 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.equal(shellList.handled, true);
   assert.ok(output.join("\n").includes("Shells:"));
   assert.ok(output.join("\n").includes("sh1  dev  running"));
+  const shellSpawn = await handleSlashCommand("/shell spawn qa", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
+  assert.equal(shellSpawn.handled, true);
+  assert.ok(output.join("\n").includes("Spawned shell: sh2  qa  running"));
   const shellShow = await handleSlashCommand("/shell dev", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(shellShow.handled, true);
   assert.ok(output.join("\n").includes("Recent output:"));

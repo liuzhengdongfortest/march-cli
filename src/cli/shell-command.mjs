@@ -1,5 +1,10 @@
 export function parseShellCommand(input) {
   if (input === "/shell") return { type: "list" };
+  if (input === "/shell spawn") return { type: "spawn", name: "" };
+  if (input.startsWith("/shell spawn ")) {
+    const name = input.slice("/shell spawn ".length).trim();
+    return name ? { type: "spawn", name } : { type: "spawn", name: "" };
+  }
   if (input.startsWith("/shell ")) {
     const idOrName = input.slice("/shell ".length).trim();
     return idOrName ? { type: "show", idOrName } : { type: "list" };
@@ -11,13 +16,20 @@ export function handleShellCommand(command, { shellRuntime = null } = {}) {
   if (!shellRuntime) {
     return ["Shell runtime is not enabled."];
   }
+  if (command.type === "spawn") {
+    const shell = shellRuntime.spawnShell({ name: command.name || undefined });
+    return [
+      `Spawned shell: ${shell.id}  ${shell.name}  ${shell.status}`,
+      "Open the drawer with Alt+S, then type directly to send input.",
+    ];
+  }
   if (command.type === "list") {
     const shells = shellRuntime.listShells();
     if (!shells.length) return ["No shells."];
     return [
       "Shells:",
       ...shells.map(formatShellListItem),
-      "Use /shell <id-or-name> to inspect recent output.",
+      "Use /shell <id-or-name> to inspect recent output, or /shell spawn [name] to start one.",
     ];
   }
   if (command.type === "show") {
