@@ -25,8 +25,6 @@ import { ChangesetStore } from "./memory/snapshot.mjs";
 import { SearchIndexer } from "./memory/search.mjs";
 import { createMemoryTools } from "./memory/tools.mjs";
 import { SystemViews } from "./memory/system-views.mjs";
-import { loadSkillPool, loadSkillFromFile } from "./skills/loader.mjs";
-import { createSkillTools } from "./skills/tools.mjs";
 import { loadConfig } from "./config/loader.mjs";
 import { discoverProjectExtensionPaths } from "./extensions/discovery.mjs";
 import { loadProjectLifecycleHookManifests } from "./extensions/lifecycle-manifest.mjs";
@@ -34,6 +32,7 @@ import { saveSession } from "./session/persist.mjs";
 import { resolvePiSessionManager } from "./session/pi-manager.mjs";
 import { formatMessageAttachmentsForDisplay } from "./session/attachment-display.mjs";
 import { loadOrCreateProjectId, resumeStartupSession } from "./cli/startup-session.mjs";
+import { activateStartupSkills, createStartupSkillRuntime } from "./cli/startup-skills.mjs";
 
 export async function run(argv) {
   const args = parseCliArgs(argv);
@@ -92,18 +91,11 @@ export async function run(argv) {
   const systemViews = new SystemViews(memoryDb, graph, glossary, namespace);
   const memoryTools = createMemoryTools(graph, glossary, searchIndexer, systemViews, namespace);
 
-  // Skills system: discover pool, activate only via --skill flag or tool
-  const skillPool = loadSkillPool(cwd);
-  for (const skillPath of skills) {
-    try {
-      const skill = loadSkillFromFile(skillPath);
-      if (!skillPool.find(s => s.name === skill.name)) {
-        skillPool.push(skill);
-      }
-    } catch {}
-  }
-  const skillState = { active: [], engine: null };
-  const skillTools = createSkillTools(skillState, skillPool);
+  const { skillPool, skillState, skillTools } = createStartupSkillRuntime({
+    cwd,
+    configuredSkills: config.skills,
+    cliSkills: args.skills,
+  });
   const shellRuntime = args.shellRuntime ? createCliShellRuntime({ cwd }) : null;
 
   // Session persistence
@@ -180,18 +172,7 @@ export async function run(argv) {
 
   // Wire back-reference for skill tools → engine
   skillState.engine = runner.engine;
-  // Activate skills requested via --skill flag (by name)
-  if (args.skills.length > 0) {
-    for (const name of args.skills) {
-      const skill = skillPool.find(s => s.name === name);
-      if (skill && !skillState.active.find(a => a.name === name)) {
-        skillState.active.push(skill);
-      }
-    }
-  }
-  if (skillState.active.length > 0) {
-    runner.engine.setSkills([...skillState.active]);
-  }
+  activateStartupSkills({ skillState, skillPool, skillNames: args.skills, engine: runner.engine });
 
   // Resume session
   await resumeStartupSession({
