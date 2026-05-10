@@ -168,18 +168,26 @@ March 会先加载项目根目录 `.env`，再加载 `~/.march/.env`，并把匹
 
 ## Troubleshooting
 
-### 真实 TUI 快捷键验收
+### 真实验收脚本
 
-调试 `Esc` / `Ctrl+C` 等真实终端按键时，可以运行独立 acceptance。该脚本使用真实 PTY 启动 March TUI，不会发起模型请求：
+常规 `npm test` 只跑稳定 smoke。涉及真实 PTY/TUI 的验收脚本需要手动运行，运行前建议清空 Node inspector 环境变量，避免 `Debugger listening` 挂住验收进程：
 
 ```powershell
 cd march-cli
 $env:NODE_OPTIONS=""
 $env:VSCODE_INSPECTOR_OPTIONS=""
+npm run test:shell-runtime-real
+npm run test:shell-tui-real
 npm run test:tui-key-real
 ```
 
-失败时会打印最近的验收 trace、清洗后的 PTY 输出和 raw escaped PTY 输出，方便确认终端实际返回了什么按键序列。
+| 脚本 | 覆盖 |
+|---|---|
+| `test:shell-runtime-real` | 真实 `node-pty` shell runtime 的启动、输入、快照和自然退出 |
+| `test:shell-tui-real` | 真实 March TUI shell drawer 的 `/shell spawn`、`Alt+S`、shell 输入和 `Ctrl+C` 退出 |
+| `test:tui-key-real` | 真实 March TUI 的 `Ctrl+T` selector、`Esc` 取消和空闲 `Ctrl+C` 退出 |
+
+`test:tui-key-real` 失败时会打印最近的验收 trace、清洗后的 PTY 输出和 raw escaped PTY 输出，方便确认终端实际返回了什么按键序列。
 
 ### 启动时出现 Debugger listening
 
