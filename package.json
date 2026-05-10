@@ -15,6 +15,7 @@
     "dev": "cd .. && node march-cli/bin/march.mjs",
     "test": "node test/smoke.test.mjs",
     "test:shell-runtime-real": "node test/shell-real-runtime.acceptance.mjs",
+    "test:shell-tui-real": "node test/shell-tui-real.acceptance.mjs",
     "context": "cd .. && node march-cli/bin/march.mjs --dump-context"
   },
   "dependencies": {
