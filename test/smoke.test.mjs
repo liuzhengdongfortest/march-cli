@@ -10,6 +10,7 @@ import { runDiffAndUiSmoke, runMemorySystemSmoke } from "./memory-and-diff.smoke
 import { runExtensionDiscoverySmoke } from "./extension-discovery.smoke.mjs";
 import { runExtensionLifecycleAdapterSmoke } from "./extension-lifecycle-adapter.smoke.mjs";
 import { runExtensionLifecycleManifestSmoke } from "./extension-lifecycle-manifest.smoke.mjs";
+import { runExternalEditorSmoke } from "./external-editor.smoke.mjs";
 import { runImageSmokeSuite } from "./image-smoke-suite.smoke.mjs";
 import { runKeybindingsSmoke } from "./keybindings.smoke.mjs";
 import { runLoginCommandSmoke } from "./login-command.smoke.mjs";
@@ -83,6 +84,7 @@ await runAuthStorageSmoke({ setupTmp, cleanup });
 await runLoginCommandSmoke();
 await runImageSmokeSuite({ setupTmp, cleanup });
 await runCopyCommandSmoke();
+await runExternalEditorSmoke({ setupTmp, cleanup });
 await runExtensionDiscoverySmoke({ setupTmp, cleanup });
 await runExtensionLifecycleManifestSmoke({ setupTmp, cleanup });
 await runExtensionLifecycleAdapterSmoke();

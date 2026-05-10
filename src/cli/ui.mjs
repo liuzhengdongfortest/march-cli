@@ -1,8 +1,4 @@
 import { stdout } from "node:process";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { readFileSync, unlinkSync, writeFileSync } from "node:fs";
-import { spawnSync } from "node:child_process";
 import {
   Editor,
   ProcessTerminal,
@@ -11,6 +7,7 @@ import {
 } from "@mariozechner/pi-tui";
 import { resolveAttachmentTokens, uniqueAttachmentToken, withLeadingSpace } from "./attachment-tokens.mjs";
 import { buildMarchCommands, MarchAutocompleteProvider } from "./autocomplete.mjs";
+import { getExternalEditorCommand, openTextInExternalEditor } from "./external-editor.mjs";
 import { createJsonUI, createPlainUI } from "./fallback-ui.mjs";
 import { createKeybindingDispatcher } from "./keybinding-dispatch.mjs";
 import { OutputBuffer } from "./output-buffer.mjs";
@@ -137,31 +134,19 @@ export function createTuiUI({
   }
 
   function openExternalEditor() {
-    const editorCmd = process.env.VISUAL || process.env.EDITOR;
-    if (!editorCmd) {
+    const editorCommand = getExternalEditorCommand();
+    if (!editorCommand) {
       output.writeln(`\x1b[33m● No editor configured. Set $VISUAL or $EDITOR.\x1b[0m`);
       requestRender();
       return;
     }
-    const currentText = editor.getText();
-    const tmpFile = join(tmpdir(), `march-editor-${Date.now()}.md`);
     try {
-      writeFileSync(tmpFile, currentText, "utf8");
-      // Stop TUI to release terminal for external editor
       tui.stop();
       if (mouseOn) terminal.write("\x1b[?1002l\x1b[?1006l");
-      const [bin, ...args] = editorCmd.split(" ");
-      const result = spawnSync(bin, [...args, tmpFile], {
-        stdio: "inherit",
-        shell: process.platform === "win32",
-      });
-      if (result.status === 0) {
-        const newContent = readFileSync(tmpFile, "utf8").replace(/\n$/, "");
-        editor.setText(newContent);
-      }
+      const result = openTextInExternalEditor({ text: editor.getText(), editorCommand });
+      if (result.ok) editor.setText(result.text);
+      else output.writeln(`\x1b[33m● ${result.error}\x1b[0m`);
     } finally {
-      try { unlinkSync(tmpFile); } catch {}
-      // Restart TUI
       tui.start();
       if (mouseOn) terminal.write("\x1b[?1002h\x1b[?1006h");
       tui.requestRender(true);
