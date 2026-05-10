@@ -28,7 +28,23 @@ export async function runPasteImageCommandSmoke() {
     },
   });
   assert.deepEqual(inserted, [" @.march/attachments/s1/image.png"]);
-  assert.deepEqual(lines, ["Attached image: @.march/attachments/s1/image.png"]);
+  assert.deepEqual(lines, ["Attached image: [image: image.png]"]);
+
+  const attachmentInserts = [];
+  const tokenLines = pasteClipboardImage({
+    ui: {
+      insertAttachmentAtCursor: (attachment) => attachmentInserts.push(attachment),
+    },
+    projectMarchDir: "D:/repo/.march",
+    sessionId: "s1",
+    readClipboardImageImpl: () => ({ ok: true, mimeType: "image/png", data: "AQID" }),
+    saveImageAttachmentImpl: () => ({ relativePath: "attachments/s1/clip.png" }),
+  });
+  assert.deepEqual(attachmentInserts, [{
+    marker: "@.march/attachments/s1/clip.png",
+    label: "[image: clip.png]",
+  }]);
+  assert.deepEqual(tokenLines, ["Attached image: [image: clip.png]"]);
 
   assert.deepEqual(pasteClipboardImage({
     ui: { insertTextAtCursor: () => inserted.push("bad") },

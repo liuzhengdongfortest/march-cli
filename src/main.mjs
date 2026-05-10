@@ -16,6 +16,7 @@ import { expandPromptTemplate, loadPromptTemplates } from "./cli/prompt-template
 import { createStatusLineUpdater } from "./cli/status-line-updater.mjs";
 import { wireTuiHandlers } from "./cli/tui-handlers.mjs";
 import { createMarchAuthStorage } from "./auth/storage.mjs";
+import { runLoginCommand } from "./auth/login-command.mjs";
 import { createRunner } from "./agent/runner.mjs";
 import { openDatabase } from "./memory/database.mjs";
 import { GraphService } from "./memory/graph.mjs";
@@ -32,6 +33,7 @@ import { loadProjectLifecycleHookManifests } from "./extensions/lifecycle-manife
 import { saveSession, loadSession } from "./session/persist.mjs";
 import { listPiSessionInfos, resolvePiSessionManager } from "./session/pi-manager.mjs";
 import { resumePiSessionById } from "./cli/pi-session-switch-command.mjs";
+import { formatMessageAttachmentsForDisplay } from "./session/attachment-display.mjs";
 
 export async function run(argv) {
   const args = parseCliArgs(argv);
@@ -39,6 +41,17 @@ export async function run(argv) {
   if (args.help) {
     showHelp();
     return 0;
+  }
+
+  if (args.command?.name === "login") {
+    try {
+      return await runLoginCommand({
+        providerId: args.command.args[0] ?? args.provider,
+      });
+    } catch (err) {
+      process.stderr.write(`Error: ${err.message}\n`);
+      return 1;
+    }
   }
 
   const cwd = process.cwd();
@@ -60,6 +73,11 @@ export async function run(argv) {
   const keybindingConfig = loadKeybindings(cwd);
   const promptTemplateConfig = loadPromptTemplates(cwd);
   const authConfig = createMarchAuthStorage({ provider, cwd });
+
+  if (!authConfig.hasAuth) {
+    process.stderr.write(`Error: no credentials configured for ${provider}. Set ${authConfig.apiKeyEnv} or run: march login ${provider}\n`);
+    return 1;
+  }
 
   // Memory system: global SQLite database at ~/.march/memory.db
   // Project isolation via .march/project-id namespace
@@ -106,12 +124,6 @@ export async function run(argv) {
     keybindings: keybindingConfig.keybindings,
     promptTemplates: promptTemplateConfig.templates,
   });
-
-  if (!authConfig.hasApiKey) {
-    ui.writeln(`Error: ${authConfig.apiKeyEnv} environment variable is not set.`);
-    ui.close();
-    return 1;
-  }
 
   ui.status(`Starting March session ${sessionState.sessionId} in ${cwd}`);
 
@@ -195,7 +207,7 @@ export async function run(argv) {
   if (args.prompt) {
     const context = runner.engine.buildContext(args.prompt);
     const fullPrompt = `${context}\n\n[user]\n${args.prompt}`;
-    ui.writeln(`\x1b[1m[user]\x1b[0m ${args.prompt}`);
+    ui.writeln(`\x1b[1m[user]\x1b[0m ${formatMessageAttachmentsForDisplay(args.prompt)}`);
     turnRunning = true;
     await runner.runTurn(fullPrompt, args.prompt);
     turnRunning = false;
@@ -287,7 +299,7 @@ export async function run(argv) {
     const context = runner.engine.buildContext(args.prompt || trimmed);
     const fullPrompt = `${context}\n\n[user]\n${trimmed}`;
     try {
-      ui.writeln(`\x1b[1m[user]\x1b[0m ${trimmed}`);
+      ui.writeln(`\x1b[1m[user]\x1b[0m ${formatMessageAttachmentsForDisplay(trimmed)}`);
       turnRunning = true;
       await runner.runTurn(fullPrompt, trimmed);
       turnRunning = false;

@@ -1,4 +1,4 @@
-import { statusCommand } from "./status-command.mjs";
+import { statusBarLine } from "./status-command.mjs";
 
 export function createStatusLineUpdater({
   ui,
@@ -8,7 +8,7 @@ export function createStatusLineUpdater({
 }) {
   return () => {
     if (typeof ui.setStatusBar !== "function") return null;
-    const [line] = statusCommand({
+    const line = statusBarLine({
       runner,
       sessionState,
       sessionSource,

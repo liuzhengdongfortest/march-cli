@@ -12,6 +12,7 @@ import { runExtensionLifecycleAdapterSmoke } from "./extension-lifecycle-adapter
 import { runExtensionLifecycleManifestSmoke } from "./extension-lifecycle-manifest.smoke.mjs";
 import { runImageSmokeSuite } from "./image-smoke-suite.smoke.mjs";
 import { runKeybindingsSmoke } from "./keybindings.smoke.mjs";
+import { runLoginCommandSmoke } from "./login-command.smoke.mjs";
 import { runPromptTemplatesSmoke } from "./prompt-templates.smoke.mjs";
 import { runSettingsCommandSmoke } from "./settings-command.smoke.mjs";
 import { runPiSessionManagerFactorySmoke, runPiSessionSidecarSmoke, runPiSessionSidecarSyncSmoke, runSessionPersistenceSmoke, runSessionTreeSmoke } from "./session.smoke.mjs";
@@ -42,6 +43,7 @@ function cleanup(dir) {
   assert.deepEqual(args.pins, ["foo.js"]);
   assert.deepEqual(args.extensions, ["ext.ts"]);
   assert.equal(args.prompt, "hello world");
+  assert.equal(args.command, null);
   assert.equal(args.help, false);
   assert.equal(args.piSessions, false);
   assert.equal(args.piRuntimeHost, false);
@@ -59,12 +61,18 @@ function cleanup(dir) {
   assert.equal(defaults.json, false);
   assert.deepEqual(defaults.skills, []);
   assert.equal(defaults.prompt, "");
+  assert.equal(defaults.command, null);
+
+  const login = parseCliArgs(["login", "openai-codex"]);
+  assert.deepEqual(login.command, { name: "login", args: ["openai-codex"] });
+  assert.equal(login.prompt, "");
 
   console.log("  PASS");
 }
 
 await runStartupResumeSmoke({ setupTmp, cleanup });
 await runAuthStorageSmoke({ setupTmp, cleanup });
+await runLoginCommandSmoke();
 await runImageSmokeSuite({ setupTmp, cleanup });
 await runCopyCommandSmoke();
 await runExtensionDiscoverySmoke({ setupTmp, cleanup });

@@ -17,7 +17,7 @@ export class StatusBar {
     if (width <= 0) return [""];
     const text = truncateToWidth(this.text, width);
     const padded = padToWidth(text, width);
-    return [`\x1b[7;90m${padded}\x1b[0m`];
+    return [`\x1b[48;5;236m\x1b[38;5;250m${padded}\x1b[0m`];
   }
 }
 

@@ -1,5 +1,6 @@
 import { readClipboardImage } from "./image-clipboard.mjs";
 import { saveImageAttachment } from "../session/attachments.mjs";
+import { formatAttachmentMarkerForDisplay } from "../session/attachment-display.mjs";
 
 export function pasteClipboardImage({
   ui,
@@ -27,8 +28,13 @@ export function pasteClipboardImage({
   }
 
   const marker = `@.march/${saved.relativePath}`;
-  ui?.insertTextAtCursor?.(withLeadingSpace(ui?.getInputText?.() ?? "", marker));
-  return [`Attached image: ${marker}`];
+  const displayLabel = formatAttachmentMarkerForDisplay(marker);
+  if (typeof ui?.insertAttachmentAtCursor === "function") {
+    ui.insertAttachmentAtCursor({ marker, label: displayLabel });
+  } else {
+    ui?.insertTextAtCursor?.(withLeadingSpace(ui?.getInputText?.() ?? "", marker));
+  }
+  return [`Attached image: ${displayLabel}`];
 }
 
 export function withLeadingSpace(currentText, marker) {

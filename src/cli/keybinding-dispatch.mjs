@@ -1,3 +1,4 @@
+import { matchesKey } from "@mariozechner/pi-tui";
 import { DEFAULT_KEYBINDINGS, KEYBINDING_ACTIONS } from "./keybindings.mjs";
 
 export const TERMINAL_KEY_SEQUENCES = Object.freeze({
@@ -23,11 +24,11 @@ export function createKeybindingDispatcher({
   isAutocompleteOpen = () => false,
   hasOverlay = () => false,
 } = {}) {
-  const bindingsBySequence = buildBindingsBySequence(keybindings);
+  const bindings = buildBindings(keybindings);
 
   return {
     dispatch(data) {
-      const action = bindingsBySequence.get(data);
+      const action = findMatchingAction(data, bindings);
       if (!action) return undefined;
 
       if (action === "abort" && isAutocompleteOpen()) return undefined;
@@ -41,13 +42,29 @@ export function createKeybindingDispatcher({
   };
 }
 
-function buildBindingsBySequence(keybindings) {
-  const bindings = new Map();
+function buildBindings(keybindings) {
+  const bindings = [];
+  const claimed = new Set();
   for (const action of Object.keys(KEYBINDING_ACTIONS)) {
     const key = keybindings[action] ?? DEFAULT_KEYBINDINGS[action];
+    const keyId = toPiTuiKeyId(key);
     const sequence = TERMINAL_KEY_SEQUENCES[key];
-    if (!sequence || bindings.has(sequence)) continue;
-    bindings.set(sequence, action);
+    if (!keyId || claimed.has(keyId)) continue;
+    claimed.add(keyId);
+    bindings.push({ action, keyId, sequence });
   }
   return bindings;
+}
+
+function findMatchingAction(data, bindings) {
+  for (const binding of bindings) {
+    if (binding.sequence && data === binding.sequence) return binding.action;
+    if (matchesKey(data, binding.keyId)) return binding.action;
+  }
+  return null;
+}
+
+function toPiTuiKeyId(key) {
+  if (key === "Esc") return "escape";
+  return String(key).toLowerCase();
 }

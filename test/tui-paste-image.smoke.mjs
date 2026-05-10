@@ -42,16 +42,39 @@ export async function runTuiPasteImageSmoke({ setupTmp, cleanup }) {
 
   ui.setPasteImageHandler(() => {
     pasteCalls += 1;
-    ui.insertTextAtCursor(marker);
+    ui.insertAttachmentAtCursor({ marker, label: "[image: image.png]" });
   });
   const pending = ui.readline("> ");
   terminal.input(TERMINAL_KEY_SEQUENCES["Alt+V"]);
 
   assert.equal(pasteCalls, 1);
-  assert.equal(ui.getInputText(), marker);
+  assert.equal(ui.getInputText(), "[image: image.png]");
 
   terminal.input("\r");
   assert.equal(await pending, marker);
+  ui.close();
+  cleanup(dir);
+  console.log("  PASS");
+}
+
+export async function runTuiCtrlCSmoke({ setupTmp, cleanup }) {
+  console.log("--- smoke: TUI Ctrl+C exit dispatch ---");
+  const dir = setupTmp();
+  const { createTuiUI } = await import("../src/cli/ui.mjs");
+  const { TERMINAL_KEY_SEQUENCES } = await import("../src/cli/keybinding-dispatch.mjs");
+  const terminal = new FakeTerminal();
+  const ui = createTuiUI({ cwd: dir, terminal });
+  let ctrlCCalls = 0;
+
+  ui.setCtrlCHandler(() => {
+    ctrlCCalls += 1;
+    ui.requestExit();
+  });
+  const pending = ui.readline("> ");
+  terminal.input(TERMINAL_KEY_SEQUENCES["Ctrl+C"]);
+
+  assert.equal(ctrlCCalls, 1);
+  assert.equal(await pending, null);
   ui.close();
   cleanup(dir);
   console.log("  PASS");

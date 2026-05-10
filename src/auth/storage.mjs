@@ -3,13 +3,18 @@ import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { AuthStorage } from "@mariozechner/pi-coding-agent";
 
+export function getMarchAuthPath(homeDir = homedir()) {
+  return resolve(homeDir, ".march", "auth.json");
+}
+
 export function providerApiKeyEnv(provider) {
   const envMap = {
     deepseek: "DEEPSEEK_API_KEY",
     openai: "OPENAI_API_KEY",
     anthropic: "ANTHROPIC_API_KEY",
   };
-  return envMap[provider] ?? `${String(provider).toUpperCase()}_API_KEY`;
+  const normalized = String(provider).toUpperCase().replace(/[^A-Z0-9]/g, "_");
+  return envMap[provider] ?? `${normalized}_API_KEY`;
 }
 
 export function createMarchAuthStorage({
@@ -17,9 +22,10 @@ export function createMarchAuthStorage({
   cwd = process.cwd(),
   homeDir = homedir(),
   env = process.env,
-  authStorage = AuthStorage.create(),
+  authStorage = null,
   loadEnv = true,
 } = {}) {
+  const resolvedAuthStorage = authStorage ?? AuthStorage.create(getMarchAuthPath(homeDir));
   const diagnostics = [];
   if (loadEnv) {
     diagnostics.push(...loadMarchEnvFiles({ cwd, homeDir, env }));
@@ -28,12 +34,15 @@ export function createMarchAuthStorage({
   const apiKeyEnv = providerApiKeyEnv(provider);
   const apiKey = env[apiKeyEnv];
   if (apiKey) {
-    authStorage.setRuntimeApiKey(provider, apiKey);
+    resolvedAuthStorage.setRuntimeApiKey(provider, apiKey);
   }
+  const hasStoredAuth = Boolean(resolvedAuthStorage.hasAuth?.(provider));
   return {
-    authStorage,
+    authStorage: resolvedAuthStorage,
+    authPath: getMarchAuthPath(homeDir),
     apiKeyEnv,
     hasApiKey: Boolean(apiKey),
+    hasAuth: Boolean(apiKey) || hasStoredAuth,
     diagnostics,
   };
 }

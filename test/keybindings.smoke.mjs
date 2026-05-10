@@ -50,6 +50,21 @@ export async function runKeybindingsSmoke({ setupTmp, cleanup }) {
   assert.deepEqual(defaultDispatcher.dispatch(TERMINAL_KEY_SEQUENCES["Ctrl+O"]), { consume: true });
   assert.equal(toggles, 1);
 
+  let interrupts = 0;
+  const interruptDispatcher = createKeybindingDispatcher({
+    handlers: { interrupt: () => { interrupts += 1; } },
+  });
+  assert.deepEqual(interruptDispatcher.dispatch(TERMINAL_KEY_SEQUENCES["Ctrl+C"]), { consume: true });
+  assert.deepEqual(interruptDispatcher.dispatch("\x1b[99;5u"), { consume: true });
+  assert.equal(interrupts, 2);
+
+  let escapeAborts = 0;
+  const kittyEscapeDispatcher = createKeybindingDispatcher({
+    handlers: { abort: () => { escapeAborts += 1; } },
+  });
+  assert.deepEqual(kittyEscapeDispatcher.dispatch("\x1b[27u"), { consume: true });
+  assert.equal(escapeAborts, 1);
+
   let modelSelections = 0;
   const customDispatcher = createKeybindingDispatcher({
     keybindings: { ...DEFAULT_KEYBINDINGS, modelSelector: "Ctrl+B" },

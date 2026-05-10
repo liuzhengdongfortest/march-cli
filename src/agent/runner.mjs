@@ -29,9 +29,9 @@ export function resolveRunnerSessionManager(cwd, sessionManager = null) {
 
 export async function createRunner({ cwd, modelId, provider = "deepseek", stateRoot, ui, skills, skillPool = [], pins, graph = null, glossary = null, memoryTools = [], skillTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices }) {
   const authConfig = authStorage
-    ? { authStorage, hasApiKey: true }
+    ? { authStorage, hasAuth: true }
     : createMarchAuthStorage({ provider, cwd });
-  if (!authConfig.hasApiKey) throw new Error(`${authConfig.apiKeyEnv} environment variable is not set.`);
+  if (!authConfig.hasAuth) throw new Error(`No credentials configured for ${provider}. Set ${authConfig.apiKeyEnv} or login via pi auth.`);
   const resolvedAuth = authConfig.authStorage;
 
   const modelRegistry = ModelRegistry.create(resolvedAuth);

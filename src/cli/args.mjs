@@ -21,7 +21,10 @@ export function parseCliArgs(argv) {
     allowPositionals: true,
   });
 
+  const commandName = positionals[0] === "login" ? positionals[0] : null;
+
   return {
+    command: commandName ? { name: commandName, args: positionals.slice(1) } : null,
     model: values.model ?? "deepseek-v4-pro",
     provider: values.provider,
     resume: values.resume,
@@ -35,7 +38,7 @@ export function parseCliArgs(argv) {
     piSessionDefaults: values["pi-session-defaults"] ?? false,
     legacySessions: values["legacy-sessions"] ?? false,
     help: values.help ?? false,
-    prompt: positionals.join(" "),
+    prompt: commandName ? "" : positionals.join(" "),
   };
 }
 
@@ -45,6 +48,7 @@ export function showHelp() {
 Usage:
   march [options] [prompt]
   march [options]            (starts REPL)
+  march login [provider]     Login to an OAuth provider
 
 Options:
   -m, --model <id>     Model ID (default: deepseek-v4-pro)

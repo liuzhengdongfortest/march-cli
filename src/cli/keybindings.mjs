@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 
 export const DEFAULT_KEYBINDINGS = Object.freeze({
   abort: "Esc",
+  interrupt: "Ctrl+C",
   cycleThinking: "Shift+Tab",
   thinkingSelector: "Ctrl+T",
   modelSelector: "Ctrl+L",
@@ -13,6 +14,7 @@ export const DEFAULT_KEYBINDINGS = Object.freeze({
 
 export const KEYBINDING_ACTIONS = Object.freeze({
   abort: "Abort current turn; cancel retry wait",
+  interrupt: "Abort current turn or exit when idle",
   cycleThinking: "Cycle thinking level",
   thinkingSelector: "Open thinking selector",
   modelSelector: "Open model selector",

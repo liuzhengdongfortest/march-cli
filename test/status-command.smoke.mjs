@@ -4,8 +4,10 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: status command ---");
   const {
     formatExtensionDiagnosticSummary,
+    formatStatusBarLine,
     formatStatusLine,
     getGitBranch,
+    shortSessionId,
     statusCommand,
   } = await import("../src/cli/status-command.mjs");
   const dir = setupTmp();
@@ -47,6 +49,25 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(line.includes("ext:1warning"));
   assert.ok(line.includes("open:1"));
   assert.ok(line.includes("pins:1"));
+  assert.equal(shortSessionId("019e0ff8-8f03-74d3-a8cb-39635eae5ca1"), "019e0ff8");
+  assert.equal(formatStatusBarLine({
+    engine,
+    sessionState: { sessionId: "legacy1" },
+    sessionStats,
+    sessionSource: "pi",
+    extensionDiagnostics: [{ type: "warning", message: "a" }],
+    lifecycleState: { diagnostics: [] },
+    gitBranch: "main",
+  }), "git:main  Sprint  deepseek-chat/deepseek    think:high  10in/20out  ext:1warning  open:1  pins:1  pi:pi1");
+  assert.equal(formatStatusBarLine({
+    engine: { ...engine, openFiles: new Map(), getPins: () => [] },
+    sessionState: { sessionId: "019e0ff8-8f03-74d3-a8cb-39635eae5ca1" },
+    sessionStats: { sessionId: "019e0ff8-8f03-74d3-a8cb-39635eae5ca1", tokens: { input: 0, output: 0 } },
+    sessionSource: "pi",
+    extensionDiagnostics: [],
+    lifecycleState: null,
+    gitBranch: "march-cli",
+  }), "git:march-cli  Sprint  deepseek-chat/deepseek    think:high  pi:019e0ff8");
   const branch = getGitBranch(dir);
   assert.ok(branch === null || typeof branch === "string");
   assert.deepEqual(statusCommand({

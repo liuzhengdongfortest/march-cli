@@ -90,6 +90,7 @@ export function createTuiUI({
   }
 
   let onEscapeHandler = null;
+  let onCtrlCHandler = null;
   let onShiftTabHandler = null;
   let onCtrlTHandler = null;
   let onCtrlLHandler = null;
@@ -98,6 +99,7 @@ export function createTuiUI({
     keybindings,
     handlers: {
       abort: () => onEscapeHandler?.(),
+      interrupt: () => onCtrlCHandler?.(),
       cycleThinking: () => onShiftTabHandler?.(),
       thinkingSelector: () => onCtrlTHandler?.(),
       modelSelector: () => onCtrlLHandler?.(),
@@ -223,6 +225,7 @@ export function createTuiUI({
   }
 
   let onSubmitResolve = null;
+  const attachmentTokens = new Map();
 
   return {
     readline: (_prompt) =>
@@ -231,12 +234,14 @@ export function createTuiUI({
         onSubmitResolve = resolve;
         editor.disableSubmit = false;
         editor.onSubmit = (text) => {
+          const resolvedText = resolveAttachmentTokens(text, attachmentTokens);
           editor.addToHistory(text);
           editor.disableSubmit = true;
           editor.onSubmit = undefined;
           const res = onSubmitResolve;
           onSubmitResolve = null;
-          if (res) res(text);
+          attachmentTokens.clear();
+          if (res) res(resolvedText);
         };
       }),
 
@@ -377,6 +382,7 @@ export function createTuiUI({
     },
 
     setEscapeHandler: (fn) => { onEscapeHandler = fn; },
+    setCtrlCHandler: (fn) => { onCtrlCHandler = fn; },
     setShiftTabHandler: (fn) => { onShiftTabHandler = fn; },
     setCtrlTHandler: (fn) => { onCtrlTHandler = fn; },
     setCtrlLHandler: (fn) => { onCtrlLHandler = fn; },
@@ -388,8 +394,23 @@ export function createTuiUI({
       editor.insertTextAtCursor(text);
       requestRender();
     },
+    insertAttachmentAtCursor: ({ marker, label }) => {
+      const token = uniqueAttachmentToken(label || "[image]", attachmentTokens);
+      attachmentTokens.set(token, marker);
+      editor.insertTextAtCursor(withLeadingSpace(editor.getText(), token));
+      requestRender();
+    },
     openExternalEditor: () => { openExternalEditor(); },
     toggleToolOutput,
+    requestExit: () => {
+      if (!onSubmitResolve) return;
+      const res = onSubmitResolve;
+      onSubmitResolve = null;
+      attachmentTokens.clear();
+      editor.disableSubmit = true;
+      editor.onSubmit = undefined;
+      res(null);
+    },
 
     close: () => {
       stopSpinner();
@@ -408,4 +429,25 @@ export function createUI({ json, cwd = process.cwd(), skillPool = [], keybinding
   if (json) return createJsonUI();
   if (!stdout.isTTY) return createPlainUI();
   return createTuiUI({ cwd, skillPool, keybindings, promptTemplates });
+}
+
+function resolveAttachmentTokens(text, tokens) {
+  let resolved = text;
+  for (const [token, marker] of tokens) {
+    resolved = resolved.split(token).join(marker);
+  }
+  return resolved;
+}
+
+function uniqueAttachmentToken(label, tokens) {
+  if (!tokens.has(label)) return label;
+  for (let i = 2; ; i++) {
+    const candidate = label.replace(/\]$/, ` ${i}]`);
+    if (!tokens.has(candidate)) return candidate;
+  }
+}
+
+function withLeadingSpace(currentText, text) {
+  if (!String(currentText || "").trim()) return text;
+  return ` ${text}`;
 }

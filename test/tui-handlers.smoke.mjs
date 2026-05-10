@@ -9,6 +9,7 @@ export async function runTuiHandlersSmoke() {
   const ui = {
     selectList: async () => null,
     setEscapeHandler: (fn) => { handlers.escape = fn; },
+    setCtrlCHandler: (fn) => { handlers.ctrlC = fn; },
     setShiftTabHandler: (fn) => { handlers.shiftTab = fn; },
     setCtrlTHandler: (fn) => { handlers.ctrlT = fn; },
     setCtrlLHandler: (fn) => { handlers.ctrlL = fn; },
@@ -49,6 +50,9 @@ export async function runTuiHandlersSmoke() {
   handlers.escape();
   assert.deepEqual(calls[0], ["abort"]);
   assert.ok(calls.some(([type, line]) => type === "writeln" && line.includes("aborted")));
+
+  handlers.ctrlC();
+  assert.deepEqual(calls.filter(([type]) => type === "abort").length, 2);
 
   handlers.shiftTab();
   assert.ok(calls.some(([type, line]) => type === "writeln" && line.includes("thinking: high")));

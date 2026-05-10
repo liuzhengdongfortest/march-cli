@@ -17,7 +17,7 @@ export async function runStatusBarSmoke() {
   const statusBar = new StatusBar("git:main session:abc model:deepseek");
   const [line] = statusBar.render(16);
   assert.equal(visibleWidth(line), 16);
-  assert.ok(line.includes("\x1b[7;90m"));
+  assert.ok(line.includes("\x1b[48;5;236m"));
 
   statusBar.setText("next");
   assert.equal(visibleWidth(statusBar.render(8)[0]), 8);
@@ -54,7 +54,7 @@ export async function runStatusBarSmoke() {
   const statusLine = update();
   assert.equal(seen.length, 1);
   assert.equal(seen[0], statusLine);
-  assert.ok(statusLine.includes("session:pi1"));
-  assert.ok(statusLine.includes("tokens:3in/5out"));
+  assert.ok(statusLine.includes("pi:pi1"));
+  assert.ok(statusLine.includes("3in/5out"));
   console.log("  PASS");
 }

@@ -44,6 +44,7 @@ export function createJsonUI() {
       stdout.write(JSON.stringify({ type: "edit_diff", path, diff: diffLines }) + "\n");
     },
     setEscapeHandler: () => {},
+    setCtrlCHandler: () => {},
     setShiftTabHandler: () => {},
     setCtrlTHandler: () => {},
     setCtrlLHandler: () => {},
@@ -53,6 +54,7 @@ export function createJsonUI() {
     openExternalEditor: () => {},
     toggleMouse: () => false,
     toggleToolOutput: () => false,
+    requestExit: () => {},
     close: () => {},
   };
 }
@@ -113,6 +115,7 @@ export function createPlainUI() {
       }
     },
     setEscapeHandler: () => {},
+    setCtrlCHandler: () => {},
     setShiftTabHandler: () => {},
     setCtrlTHandler: () => {},
     setCtrlLHandler: () => {},
@@ -122,6 +125,7 @@ export function createPlainUI() {
     openExternalEditor: () => {},
     toggleMouse: () => false,
     toggleToolOutput: () => false,
+    requestExit: () => {},
     close: () => {},
   };
 }

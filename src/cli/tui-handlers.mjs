@@ -17,6 +17,14 @@ export function wireTuiHandlers({
       ui.writeln(`\x1b[33m● aborted\x1b[0m`);
     }
   });
+  ui.setCtrlCHandler?.(() => {
+    if (isTurnRunning()) {
+      runner.abort();
+      ui.writeln(`\x1b[33m● aborted\x1b[0m`);
+      return;
+    }
+    ui.requestExit?.();
+  });
 
   const cycleThinkingLevel = () => {
     const level = runner.cycleThinkingLevel();
