@@ -4,7 +4,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { buildMemoryLayer } from "./memory-layer.mjs";
 
 export class ContextEngine {
-  constructor({ cwd, modelId, provider = "deepseek", thinkingLevel = "medium", skills = [], skillPool = [], pins = [], graph = null, glossary = null, namespace = "" }) {
+  constructor({ cwd, modelId, provider = "deepseek", thinkingLevel = "medium", skills = [], skillPool = [], pins = [], graph = null, glossary = null, namespace = "", shellRuntime = null }) {
     this.cwd = cwd;
     this.modelId = modelId;
     this.provider = provider;
@@ -19,6 +19,7 @@ export class ContextEngine {
     this.graph = graph;
     this.glossary = glossary;
     this.namespace = namespace;
+    this.shellRuntime = shellRuntime;
     this._compactionSummary = null;
   }
 
@@ -60,6 +61,7 @@ export class ContextEngine {
 
     layers.push(
       this.#buildRuntimeStatus(),
+      ...this.#buildShells(),
       this.#buildRecentChat(),
     );
 
@@ -332,7 +334,27 @@ ${tree}`;
     return `[runtime_status]\n${parts.join("\n")}`;
   }
 
-  // ── Layer 7: recent_chat ───────────────────────────────────────────
+  // ── Layer 8: shells ────────────────────────────────────────────────
+  #buildShells() {
+    const shells = this.shellRuntime?.listShells?.() ?? [];
+    if (!shells.length) return [];
+    const blocks = shells.map((shell) => {
+      const snapshot = this.shellRuntime.snapshotShell(shell.id);
+      const output = snapshot.plain ? this.#truncate(snapshot.plain, 2000) : "(no output)";
+      return [
+        `## ${shell.name} (${shell.id})`,
+        `status: ${shell.status}`,
+        `command: ${shell.command}${shell.args?.length ? ` ${shell.args.join(" ")}` : ""}`,
+        `cwd: ${shell.cwd}`,
+        `lines: ${shell.lineCount}`,
+        "recent_output:",
+        output,
+      ].join("\n");
+    });
+    return [`[shells]\n${blocks.join("\n\n")}`];
+  }
+
+  // ── Layer 9: recent_chat ───────────────────────────────────────────
   #buildRecentChat() {
     const entries = [];
     if (this._compactionSummary) {

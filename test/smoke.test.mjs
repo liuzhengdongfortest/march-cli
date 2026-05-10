@@ -149,6 +149,23 @@ await runShellToolsSmoke();
   assert.ok(!ctx.includes("write_file"));
   assert.ok(!ctx.includes("[memory]")); // no graph attached
 
+  const shellEngine = new ContextEngine({
+    cwd: dir,
+    modelId: "test",
+    provider: "deepseek",
+    shellRuntime: {
+      listShells: () => [{ id: "sh1", name: "dev", status: "running", command: "powershell.exe", args: ["-NoLogo"], cwd: dir, lineCount: 1 }],
+      snapshotShell: () => ({ plain: "ready", ansi: "\x1b[32mready\x1b[0m" }),
+    },
+  });
+  const shellCtx = shellEngine.buildContext("check shell");
+  assert.ok(shellCtx.includes("[runtime_status]"));
+  assert.ok(shellCtx.includes("[shells]"));
+  assert.ok(shellCtx.includes("recent_output:\nready"));
+  assert.ok(!shellCtx.includes("\x1b[32m"));
+  assert.ok(shellCtx.indexOf("[runtime_status]") < shellCtx.indexOf("[shells]"));
+  assert.ok(shellCtx.indexOf("[shells]") < shellCtx.indexOf("[recent_chat]"));
+
   engine.setRuntimeState({ modelId: "other-model", provider: "test-provider", thinkingLevel: "high" });
   const runtimeCtx = engine.buildContext("");
   assert.ok(runtimeCtx.includes("provider: test-provider"));

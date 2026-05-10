@@ -40,7 +40,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
     retry: { enabled: true, maxRetries: 3, baseDelayMs: 2000 },
   });
 
-  const engine = new ContextEngine({ cwd, modelId, provider, skills, skillPool, pins, graph, glossary, namespace });
+  const engine = new ContextEngine({ cwd, modelId, provider, skills, skillPool, pins, graph, glossary, namespace, shellRuntime });
   const resolvedSessionManager = resolveRunnerSessionManager(cwd, sessionManager);
   const sessionBinding = createSessionBinding(null);
   let runtimeHost = null;
