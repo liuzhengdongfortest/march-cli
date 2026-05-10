@@ -24,6 +24,7 @@ import { runRuntimeHostSmoke } from "./runtime-host.smoke.mjs";
 import { runSelectListOverlaySmoke } from "./select-list-overlay.smoke.mjs";
 import { runSessionOptionsSmoke } from "./session-options.smoke.mjs";
 import { runShellCommandSmoke } from "./shell-command.smoke.mjs";
+import { runShellDrawerControlsSmoke } from "./shell-drawer-controls.smoke.mjs";
 import { runSlashCommandSmoke } from "./slash-command.smoke.mjs";
 import { runTurnEventsSmoke } from "./turn-events.smoke.mjs";
 import { runDefaultStartupFlowSmoke } from "./default-startup-flow.smoke.mjs";
@@ -66,6 +67,7 @@ export async function runCliCommandSuiteSmoke({ setupTmp, cleanup }) {
   await runSlashCommandSmoke({ setupTmp, cleanup });
   await runSessionOptionsSmoke();
   await runShellCommandSmoke();
+  await runShellDrawerControlsSmoke();
   await runTurnEventsSmoke();
   await runRunnerCleanupSmoke();
   await runRunnerCompactionSmoke({ setupTmp, cleanup });

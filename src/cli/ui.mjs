@@ -11,6 +11,7 @@ import { createJsonUI, createPlainUI } from "./fallback-ui.mjs";
 import { createKeybindingDispatcher } from "./keybinding-dispatch.mjs";
 import { OutputBuffer } from "./output-buffer.mjs";
 import { createRetryStatusController } from "./retry-status.mjs";
+import { createShellDrawerControls } from "./shell-drawer-controls.mjs";
 import { ShellDrawer } from "./shell-drawer.mjs";
 import { showSelectListOverlay } from "./select-list-overlay.mjs";
 import { createSpinnerStatusController } from "./spinner-status.mjs";
@@ -55,6 +56,7 @@ export function createTuiUI({
 
   const spinnerStatus = createSpinnerStatusController({ output, requestRender });
   const retryStatus = createRetryStatusController({ output, requestRender, stopSpinner: spinnerStatus.stop });
+  const shellDrawerControls = createShellDrawerControls({ shellDrawer, output, requestRender });
 
   let onEscapeHandler = null;
   let onCtrlCHandler = null;
@@ -72,10 +74,10 @@ export function createTuiUI({
       modelSelector: () => onCtrlLHandler?.(),
       externalEditor: () => openExternalEditor(),
       toggleToolOutput: () => toggleToolOutput(),
-      toggleShellDrawer: () => toggleShellDrawer(),
-      nextShell: () => selectNextShell(),
-      shellScrollUp: () => scrollShellDrawer(-1),
-      shellScrollDown: () => scrollShellDrawer(1),
+      toggleShellDrawer: () => shellDrawerControls.toggle(),
+      nextShell: () => shellDrawerControls.selectNext(),
+      shellScrollUp: () => shellDrawerControls.scroll(-1),
+      shellScrollDown: () => shellDrawerControls.scroll(1),
       pasteImage: () => onPasteImageHandler?.(),
     },
     isAutocompleteOpen: () => editor.isShowingAutocomplete(),
@@ -123,28 +125,6 @@ export function createTuiUI({
     output.writeln(`\x1b[90m● tool output: ${toolsExpanded ? "expanded" : "collapsed"}\x1b[0m`);
     requestRender();
     return toolsExpanded;
-  }
-
-  function toggleShellDrawer() {
-    const visible = shellDrawer.toggle();
-    output.writeln(`\x1b[90m● shell drawer: ${visible ? "open" : "closed"}\x1b[0m`);
-    requestRender();
-    return visible;
-  }
-
-  function selectNextShell() {
-    if (!shellDrawer.isVisible()) return false;
-    const shell = shellDrawer.selectNextShell();
-    if (shell) output.writeln(`\x1b[90m● shell: ${shell.name} (${shell.id})\x1b[0m`);
-    requestRender();
-    return shell;
-  }
-
-  function scrollShellDrawer(delta) {
-    if (!shellDrawer.isVisible()) return false;
-    const state = shellDrawer.scroll(delta);
-    requestRender();
-    return state;
   }
 
   function selectList({ items, selectedIndex = 0, maxVisible = 8, width = 64 }) {
@@ -311,7 +291,7 @@ export function createTuiUI({
     },
     openExternalEditor: () => { openExternalEditor(); },
     toggleToolOutput,
-    toggleShellDrawer,
+    toggleShellDrawer: () => shellDrawerControls.toggle(),
     requestExit: () => {
       if (!onSubmitResolve) return;
       const res = onSubmitResolve;
