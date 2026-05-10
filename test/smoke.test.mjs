@@ -8,6 +8,7 @@ import { runContextRuntimeStatusSmoke } from "./context-runtime-status.smoke.mjs
 import { runContextSessionStatusSmoke } from "./context-session-status.smoke.mjs";
 import { runContextSkillLayersSmoke } from "./context-skill-layers.smoke.mjs";
 import { runConfigLoadingSmoke } from "./config-loading.smoke.mjs";
+import { runContextEngineSmoke } from "./context-engine.smoke.mjs";
 import { runCopyCommandSmoke } from "./copy-command.smoke.mjs";
 import { runCliCommandSuiteSmoke } from "./cli-command-suite.smoke.mjs";
 import { runDiffAndUiSmoke, runMemorySystemSmoke } from "./memory-and-diff.smoke.mjs";
@@ -109,103 +110,7 @@ await runContextSkillLayersSmoke();
 
 await runConfigLoadingSmoke({ setupTmp, cleanup });
 
-// ── 3. Context engine ────────────────────────────────────────────────
-
-{
-  console.log("--- smoke: context engine ---");
-  const { ContextEngine } = await import("../src/context/engine.mjs");
-  const dir = setupTmp();
-
-  const engine = new ContextEngine({
-    cwd: dir,
-    modelId: "test",
-    provider: "deepseek",
-    skills: [],
-    pins: [],
-  });
-
-  // Build context without memory/graph
-  const ctx = engine.buildContext("装備を確認する");
-  assert.ok(ctx.includes("[system_core]"));
-  assert.ok(ctx.includes("[injections]"));
-  assert.ok(ctx.includes("[session_status]"));
-  assert.ok(ctx.includes("[runtime_status]"));
-  assert.ok(ctx.includes("[recent_chat]"));
-  assert.ok(ctx.includes("(no prior turns)"));
-  assert.ok(ctx.includes("Use write(path, content)"));
-  assert.ok(ctx.includes("model: test"));
-  assert.ok(ctx.includes("thinking: medium"));
-  assert.ok(!ctx.includes("write_file"));
-  assert.ok(!ctx.includes("[memory]")); // no graph attached
-
-  const shellEngine = new ContextEngine({
-    cwd: dir,
-    modelId: "test",
-    provider: "deepseek",
-    shellRuntime: {
-      listShells: () => [{ id: "sh1", name: "dev", status: "running", command: "powershell.exe", args: ["-NoLogo"], cwd: dir, lineCount: 1 }],
-      snapshotShell: () => ({ plain: "ready", ansi: "\x1b[32mready\x1b[0m" }),
-    },
-  });
-  const shellCtx = shellEngine.buildContext("check shell");
-  assert.ok(shellCtx.includes("[runtime_status]"));
-  assert.ok(shellCtx.includes("[shells]"));
-  assert.ok(shellCtx.includes("recent_output:\nready"));
-  assert.ok(!shellCtx.includes("\x1b[32m"));
-  assert.ok(shellCtx.indexOf("[runtime_status]") < shellCtx.indexOf("[shells]"));
-  assert.ok(shellCtx.indexOf("[shells]") < shellCtx.indexOf("[recent_chat]"));
-
-  engine.setRuntimeState({ modelId: "other-model", provider: "test-provider", thinkingLevel: "high" });
-  const runtimeCtx = engine.buildContext("");
-  assert.ok(runtimeCtx.includes("provider: test-provider"));
-  assert.ok(runtimeCtx.includes("model: other-model"));
-  assert.ok(runtimeCtx.includes("thinking: high"));
-
-  // Record a turn
-  engine.recordTurn({ userMessage: "hello", summary: "tested the engine" });
-  assert.equal(engine.turns.length, 1);
-  assert.equal(engine.turns[0].index, 1);
-
-  const ctx2 = engine.buildContext("装備を確認する");
-  assert.ok(ctx2.includes("tested the engine"));
-
-  // Pin and open file
-  const testFile = join(dir, "test.txt");
-  writeFileSync(testFile, "line1\nline2\nline3");
-  engine.addPin(testFile);
-  const { content, lineCount, pinned } = engine.openFile(testFile);
-  assert.equal(lineCount, 3);
-  assert.equal(pinned, true);
-  assert.equal(engine.getPins().length, 1);
-
-  // Build context with open file
-  const ctx3 = engine.buildContext("装備を確認する");
-  assert.ok(ctx3.includes("[open_files]"));
-  assert.ok(ctx3.includes("line1"));
-  assert.ok(ctx3.includes("(pinned)"));
-
-  // Close non-pinned file
-  const testFile2 = join(dir, "test2.txt");
-  writeFileSync(testFile2, "data");
-  engine.openFile(testFile2);
-  assert.equal(engine.openFiles.size, 2);
-  engine.closeFile(testFile2);
-  assert.equal(engine.openFiles.size, 1); // pinned file remains
-
-  // Can't close pinned file
-  assert.equal(engine.closeFile(testFile), false);
-
-  // setToolDefs
-  engine.setToolDefs([
-    { name: "test_tool", description: "A test tool", parameters: { x: "number" } },
-  ]);
-  const ctx4 = engine.buildContext("装備を確認する");
-  assert.ok(ctx4.includes("[tools]"));
-  assert.ok(ctx4.includes("test_tool"));
-
-  cleanup(dir);
-  console.log("  PASS");
-}
+await runContextEngineSmoke({ setupTmp, cleanup });
 
 // ── 3b. Memory layer builder ────────────────────────────────────────
 
