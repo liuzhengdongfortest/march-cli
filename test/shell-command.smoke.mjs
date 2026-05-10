@@ -9,7 +9,7 @@ export async function runShellCommandSmoke() {
   assert.deepEqual(parseShellCommand("/shell spawn"), { type: "spawn", name: "" });
   assert.deepEqual(parseShellCommand("/shell spawn dev"), { type: "spawn", name: "dev" });
   assert.deepEqual(parseShellCommand("/shell dev"), { type: "show", idOrName: "dev" });
-  assert.deepEqual(handleShellCommand({ type: "list" }, {}), ["Shell runtime is not enabled."]);
+  assert.deepEqual(handleShellCommand({ type: "list" }, {}), ["Shell runtime is disabled. Restart without --no-shell-runtime to use /shell."]);
 
   const shell = {
     id: "sh1",

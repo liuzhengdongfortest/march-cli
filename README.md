@@ -31,8 +31,8 @@ node .\march-cli\bin\march.mjs
 node .\march-cli\bin\march.mjs login openai-codex
 node .\march-cli\bin\march.mjs --provider openai-codex --model gpt-5.4
 
-# 启用交互式 PTY shell
-node .\march-cli\bin\march.mjs --shell-runtime
+# 交互式 PTY shell 默认可用，进入 REPL 后可用 /shell spawn 启动 shell
+node .\march-cli\bin\march.mjs
 
 # 启动并写出完整上下文快照
 node .\march-cli\bin\march.mjs --dump-context
@@ -58,7 +58,8 @@ npm run context
 | `--pi-sessions` | 强制使用 pi JSONL SessionManager 持久化 |
 | `--pi-runtime-host` | 强制使用 pi AgentSessionRuntime host 路径 |
 | `--pi-session-defaults` | 默认 pi session 模式的兼容别名 |
-| `--shell-runtime` | 启用交互式 PTY shell tools、`/shell` 命令和 TUI shell drawer |
+| `--shell-runtime` | 启用交互式 PTY shell tools、`/shell` 命令和 TUI shell drawer（默认已启用，兼容旧用法） |
+| `--no-shell-runtime` | 禁用交互式 PTY shell tools、`/shell` 命令和 TUI shell drawer |
 | `--pin <path>` | 将文件钉入上下文（可重复） |
 | `--skill <name>` | 激活技能（可重复） |
 | `-e, --extension <path>` | 加载 pi extension 路径（可重复） |
@@ -83,7 +84,7 @@ npm run context
 | `/copy` | 复制最近一轮 assistant 输出 |
 | `/name [name]` | 查看或设置当前会话名称 |
 | `/hotkeys` | 快捷键和输入前缀面板 |
-| `/shell`、`/shell <id-or-name>`、`/shell spawn [name]` | 查看 shell、显示当前 screen 输出或启动默认 PTY shell；需要 `--shell-runtime` |
+| `/shell`、`/shell <id-or-name>`、`/shell spawn [name]` | 查看 shell、显示当前 screen 输出或启动默认 PTY shell |
 | `/save` | 显示默认 pi session 自动保存状态；legacy 模式下手动保存 |
 | `/pin <path>` | 钉文件 |
 | `/unpin <path>` | 解钉 |
@@ -104,7 +105,7 @@ npm run context
 | `Ctrl+G` | 打开外部编辑器（`$VISUAL` 或 `$EDITOR`） |
 | `Ctrl+O` | 折叠/展开工具输出 |
 | `Alt+V` | 粘贴剪贴板图片，保存到 `.march/attachments/<session-id>/` 并插入 `@.march/attachments/...` marker |
-| `Alt+S` | 打开/关闭 shell drawer（需要 `--shell-runtime`） |
+| `Alt+S` | 打开/关闭 shell drawer |
 | `Alt+N` | shell drawer 内切到下一个 shell |
 | `Alt+K` / `Alt+J` | shell drawer 上下滚动 |
 

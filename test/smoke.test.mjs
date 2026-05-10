@@ -77,7 +77,10 @@ function cleanup(dir) {
   assert.deepEqual(defaults.skills, []);
   assert.equal(defaults.prompt, "");
   assert.equal(defaults.command, null);
-  assert.equal(defaults.shellRuntime, false);
+  assert.equal(defaults.shellRuntime, true);
+
+  const noShellRuntime = parseCliArgs(["--no-shell-runtime"]);
+  assert.equal(noShellRuntime.shellRuntime, false);
 
   const login = parseCliArgs(["login", "openai-codex"]);
   assert.deepEqual(login.command, { name: "login", args: ["openai-codex"] });

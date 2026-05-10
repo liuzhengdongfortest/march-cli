@@ -71,7 +71,7 @@ export class ShellDrawer {
     ];
 
     if (!this.shellRuntime) {
-      lines.push(fit(`${MUTED}shell drawer: disabled  focus:editor  start with --shell-runtime${RESET}`, safeWidth));
+      lines.push(fit(`${MUTED}shell drawer: disabled  focus:editor  started with --no-shell-runtime${RESET}`, safeWidth));
       return lines;
     }
 

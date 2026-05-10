@@ -14,7 +14,7 @@ export function parseShellCommand(input) {
 
 export function handleShellCommand(command, { shellRuntime = null } = {}) {
   if (!shellRuntime) {
-    return ["Shell runtime is not enabled."];
+    return ["Shell runtime is disabled. Restart without --no-shell-runtime to use /shell."];
   }
   if (command.type === "spawn") {
     const shell = shellRuntime.spawnShell({ name: command.name || undefined });
