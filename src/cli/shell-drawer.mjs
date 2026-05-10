@@ -1,5 +1,6 @@
 import { truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
 
+const CONTROL_RE = /\x1b(?:\][^\x07]*(?:\x07|\x1b\\)|\[(?![0-9;]*m)[0-?]*[ -/]*[@-~]|[@-Z\\-_])/g;
 const HEADER_FG = "\x1b[38;5;250m";
 const MUTED = "\x1b[90m";
 const BORDER = "\x1b[38;5;238m";
@@ -122,10 +123,20 @@ export class ShellDrawer {
   getOutputLines(shellId = this.getSelectedShell()?.id) {
     if (!shellId || !this.shellRuntime) return [];
     const snapshot = this.shellRuntime.snapshotShell(shellId);
-    return String(snapshot.plain || "")
-      .split("\n")
-      .filter((line) => line.length > 0);
+    return formatAnsiLines(snapshot);
   }
+}
+
+export function formatAnsiLines(snapshot) {
+  const text = snapshot?.ansi || snapshot?.plain || "";
+  return sanitizeAnsiForDrawer(text)
+    .replace(/\r/g, "")
+    .split("\n")
+    .filter((line) => line.length > 0);
+}
+
+export function sanitizeAnsiForDrawer(text) {
+  return String(text ?? "").replace(CONTROL_RE, "");
 }
 
 function fit(text, width) {

@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runShellDrawerSmoke() {
   console.log("--- smoke: shell drawer ---");
-  const { ShellDrawer } = await import("../src/cli/shell-drawer.mjs");
+  const { ShellDrawer, formatAnsiLines, sanitizeAnsiForDrawer } = await import("../src/cli/shell-drawer.mjs");
 
   const disabled = new ShellDrawer();
   assert.deepEqual(disabled.render(40), []);
@@ -63,6 +63,14 @@ export async function runShellDrawerSmoke() {
   assert.ok(nextRendered.includes("test"));
   assert.ok(nextRendered.includes("2/2"));
   assert.ok(nextRendered.includes("alpha"));
+
+  const ansiLines = formatAnsiLines({
+    ansi: "\x1b[?25l\x1b[31mred\x1b[0m\n\x1b]0;title\x07done",
+    plain: "plain",
+  });
+  assert.deepEqual(ansiLines, ["\x1b[31mred\x1b[0m", "done"]);
+  assert.equal(sanitizeAnsiForDrawer("\x1b[2J\x1b[32mok\x1b[0m"), "\x1b[32mok\x1b[0m");
+  assert.deepEqual(formatAnsiLines({ plain: "fallback" }), ["fallback"]);
 
   console.log("  PASS");
 }
