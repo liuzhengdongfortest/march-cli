@@ -176,6 +176,12 @@ March 会先加载项目根目录 `.env`，再加载 `~/.march/.env`，并把匹
 cd march-cli
 $env:NODE_OPTIONS=""
 $env:VSCODE_INSPECTOR_OPTIONS=""
+npm run test:real
+```
+
+也可以按覆盖范围单独运行：
+
+```powershell
 npm run test:shell-runtime-real
 npm run test:shell-tui-real
 npm run test:tui-key-real
@@ -183,6 +189,7 @@ npm run test:tui-key-real
 
 | 脚本 | 覆盖 |
 |---|---|
+| `test:real` | 顺序运行全部真实 PTY/TUI acceptance |
 | `test:shell-runtime-real` | 真实 `node-pty` shell runtime 的启动、输入、快照和自然退出 |
 | `test:shell-tui-real` | 真实 March TUI shell drawer 的 `/shell spawn`、`Alt+S`、shell 输入和 `Ctrl+C` 退出 |
 | `test:tui-key-real` | 真实 March TUI 的 `Ctrl+T` selector、`Esc` 取消和空闲 `Ctrl+C` 退出 |
