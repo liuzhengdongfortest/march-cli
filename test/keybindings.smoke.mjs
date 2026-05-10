@@ -101,17 +101,27 @@ export async function runKeybindingsSmoke({ setupTmp, cleanup }) {
 
   let aborts = 0;
   const overlayDispatcher = createKeybindingDispatcher({
-    handlers: { abort: () => { aborts += 1; } },
+    handlers: {
+      abort: () => { aborts += 1; },
+      interrupt: () => { interrupts += 1; },
+    },
     hasOverlay: () => true,
   });
   assert.equal(overlayDispatcher.dispatch(TERMINAL_KEY_SEQUENCES.Esc), undefined);
   assert.equal(aborts, 0);
+  assert.deepEqual(overlayDispatcher.dispatch(TERMINAL_KEY_SEQUENCES["Ctrl+C"]), { consume: true });
+  assert.equal(interrupts, 3);
 
   const autocompleteDispatcher = createKeybindingDispatcher({
-    handlers: { abort: () => { aborts += 1; } },
+    handlers: {
+      abort: () => { aborts += 1; },
+      interrupt: () => { interrupts += 1; },
+    },
     isAutocompleteOpen: () => true,
   });
   assert.equal(autocompleteDispatcher.dispatch(TERMINAL_KEY_SEQUENCES.Esc), undefined);
   assert.equal(aborts, 0);
+  assert.deepEqual(autocompleteDispatcher.dispatch(TERMINAL_KEY_SEQUENCES["Ctrl+C"]), { consume: true });
+  assert.equal(interrupts, 4);
   console.log("  PASS");
 }

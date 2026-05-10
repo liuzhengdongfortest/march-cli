@@ -31,15 +31,19 @@ export function createKeybindingDispatcher({
       const action = findMatchingAction(data, bindings);
       if (!action) return undefined;
 
+      if (action === "interrupt") return runHandler(handlers[action]);
       if (action === "abort" && isAutocompleteOpen()) return undefined;
       if (hasOverlay()) return undefined;
 
-      const handler = handlers[action];
-      if (typeof handler !== "function") return undefined;
-      handler();
-      return { consume: true };
+      return runHandler(handlers[action]);
     },
   };
+}
+
+function runHandler(handler) {
+  if (typeof handler !== "function") return undefined;
+  handler();
+  return { consume: true };
 }
 
 function buildBindings(keybindings) {
