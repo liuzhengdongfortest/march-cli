@@ -58,8 +58,8 @@ npm run context
 | `--pi-sessions` | 强制使用 pi JSONL SessionManager 持久化 |
 | `--pi-runtime-host` | 强制使用 pi AgentSessionRuntime host 路径 |
 | `--pi-session-defaults` | 默认 pi session 模式的兼容别名 |
-| `--shell-runtime` | 启用交互式 PTY shell tools、`/shell` 命令和 TUI shell drawer（默认已启用，兼容旧用法） |
-| `--no-shell-runtime` | 禁用交互式 PTY shell tools、`/shell` 命令和 TUI shell drawer |
+| `--shell-runtime` | 启用交互式 PTY shell tools、`/shell` 命令和 TUI 右侧 shell pane（默认已启用，兼容旧用法） |
+| `--no-shell-runtime` | 禁用交互式 PTY shell tools、`/shell` 命令和 TUI 右侧 shell pane |
 | `--pin <path>` | 将文件钉入上下文（可重复） |
 | `--skill <name>` | 激活技能（可重复） |
 | `-e, --extension <path>` | 加载 pi extension 路径（可重复） |
@@ -105,9 +105,9 @@ npm run context
 | `Ctrl+G` | 打开外部编辑器（`$VISUAL` 或 `$EDITOR`） |
 | `Ctrl+O` | 折叠/展开工具输出 |
 | `Alt+V` | 粘贴剪贴板图片，保存到 `.march/attachments/<session-id>/` 并插入 `@.march/attachments/...` marker |
-| `Alt+S` | 打开/关闭 shell drawer |
-| `Alt+N` | shell drawer 内切到下一个 shell |
-| `Alt+K` / `Alt+J` | shell drawer 上下滚动 |
+| `Alt+S` | 打开/关闭右侧 shell pane |
+| `Alt+N` | shell pane 内切到下一个 shell |
+| `Alt+K` / `Alt+J` | shell pane 上下滚动 |
 
 ## 配置
 
@@ -192,7 +192,7 @@ npm run test:tui-key-real
 |---|---|
 | `test:real` | 顺序运行全部真实 PTY/TUI acceptance |
 | `test:shell-runtime-real` | 真实 `node-pty` shell runtime 的启动、输入、快照和自然退出 |
-| `test:shell-tui-real` | 真实 March TUI shell drawer 的 `/shell spawn`、`Alt+S`、shell 输入和 `Ctrl+C` 退出 |
+| `test:shell-tui-real` | 真实 March TUI 右侧 shell pane 的 `/shell spawn`、`Alt+S`、shell 输入和 `Ctrl+C` 退出 |
 | `test:tui-key-real` | 真实 March TUI 的 `Ctrl+T` selector、`Esc` 取消和空闲 `Ctrl+C` 退出 |
 
 `test:tui-key-real` 失败时会打印最近的验收 trace、清洗后的 PTY 输出和 raw escaped PTY 输出，方便确认终端实际返回了什么按键序列。

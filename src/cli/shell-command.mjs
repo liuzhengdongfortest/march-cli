@@ -20,7 +20,7 @@ export function handleShellCommand(command, { shellRuntime = null } = {}) {
     const shell = shellRuntime.spawnShell({ name: command.name || undefined });
     return [
       `Spawned shell: ${shell.id}  ${shell.name}  ${shell.status}`,
-      "Open the drawer with Alt+S, then type directly to send input.",
+      "Open the right-side shell pane with Alt+S, then type directly to send input.",
     ];
   }
   if (command.type === "list") {

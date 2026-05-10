@@ -30,7 +30,7 @@ export async function runShellCommandSmoke() {
   };
   assert.deepEqual(handleShellCommand({ type: "spawn", name: "dev2" }, { shellRuntime }), [
     "Spawned shell: sh2  dev2  running",
-    "Open the drawer with Alt+S, then type directly to send input.",
+    "Open the right-side shell pane with Alt+S, then type directly to send input.",
   ]);
   assert.deepEqual(handleShellCommand({ type: "list" }, { shellRuntime }), [
     "Shells:",

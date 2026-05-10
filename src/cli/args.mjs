@@ -64,7 +64,7 @@ Options:
   --pi-runtime-host    Force pi AgentSessionRuntime host path
   --pi-session-defaults Compatibility alias for the default pi session mode
   --shell-runtime      Enable interactive PTY shell tools (default)
-  --no-shell-runtime   Disable interactive PTY shell tools and drawer
+  --no-shell-runtime   Disable interactive PTY shell tools and shell pane
   --pin <path>         Pin a file in context (repeatable)
   --skill <name>       Activate a skill (repeatable)
   -e, --extension <path>

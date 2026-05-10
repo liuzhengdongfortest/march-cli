@@ -24,10 +24,10 @@ export const KEYBINDING_ACTIONS = Object.freeze({
   modelSelector: "Open model selector",
   externalEditor: "Open external editor ($VISUAL or $EDITOR)",
   toggleToolOutput: "Toggle tool output collapsed/expanded",
-  toggleShellDrawer: "Toggle shell drawer",
-  nextShell: "Select next shell in drawer",
-  shellScrollUp: "Scroll shell drawer up",
-  shellScrollDown: "Scroll shell drawer down",
+  toggleShellDrawer: "Toggle right-side shell pane",
+  nextShell: "Select next shell in pane",
+  shellScrollUp: "Scroll shell pane up",
+  shellScrollDown: "Scroll shell pane down",
   pasteImage: "Paste clipboard image as attachment",
 });
 

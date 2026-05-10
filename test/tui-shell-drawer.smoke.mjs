@@ -7,6 +7,22 @@ export async function runTuiShellDrawerSmoke({ setupTmp, cleanup }) {
   const { createTuiUI } = await import("../src/cli/ui.mjs");
   const { TERMINAL_KEY_SEQUENCES } = await import("../src/cli/keybinding-dispatch.mjs");
   const { stripAnsi } = await import("../src/shell/runtime.mjs");
+  const emptyTerminal = new FakeTerminal();
+  const emptyUi = createTuiUI({
+    cwd: dir,
+    terminal: emptyTerminal,
+    shellRuntime: { listShells: () => [] },
+  });
+  const emptyPending = emptyUi.readline("> ");
+  emptyTerminal.input(TERMINAL_KEY_SEQUENCES["Alt+S"]);
+  await waitForRender();
+  const emptyRendered = stripAnsi(emptyTerminal.writes.join(""));
+  assert.ok(emptyRendered.includes("│"));
+  assert.ok(emptyRendered.includes("shell pane: no shells"));
+  emptyUi.requestExit();
+  assert.equal(await emptyPending, null);
+  await emptyUi.close();
+
   const terminal = new FakeTerminal();
   const sent = [];
   const resizes = [];
@@ -37,11 +53,12 @@ export async function runTuiShellDrawerSmoke({ setupTmp, cleanup }) {
   terminal.input(TERMINAL_KEY_SEQUENCES["Alt+S"]);
   await waitForRender();
   const rendered = stripAnsi(terminal.writes.join(""));
+  assert.ok(rendered.includes("│"));
   assert.ok(rendered.includes("dev"));
   assert.ok(rendered.includes("focus:shell"));
   assert.ok(rendered.includes("ready"));
   assert.equal(rendered.includes("● shell drawer: open"), false);
-  assert.deepEqual(resizes.at(-1), ["sh1", { cols: 80, rows: 10 }]);
+  assert.deepEqual(resizes.at(-1), ["sh1", { cols: 34, rows: 10 }]);
 
   terminal.input("x");
   assert.deepEqual(sent, [["sh1", "x"]]);

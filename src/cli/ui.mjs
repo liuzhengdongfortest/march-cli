@@ -13,6 +13,7 @@ import { OutputBuffer } from "./output-buffer.mjs";
 import { createRetryStatusController } from "./retry-status.mjs";
 import { createShellDrawerControls } from "./shell-drawer-controls.mjs";
 import { ShellDrawer } from "./shell-drawer.mjs";
+import { ShellSplitLayout } from "./shell-split-layout.mjs";
 import { showSelectListOverlay } from "./select-list-overlay.mjs";
 import { createSpinnerStatusController } from "./spinner-status.mjs";
 import { StatusBar } from "./status-bar.mjs";
@@ -37,13 +38,14 @@ export function createTuiUI({
   const shellDrawer = new ShellDrawer({ shellRuntime });
   const statusBar = new StatusBar();
   const editor = new Editor(tui, EDITOR_THEME, { paddingX: 1 });
+  const shellSplitLayout = new ShellSplitLayout({
+    mainChildren: [output, statusBar, editor],
+    shellPane: shellDrawer,
+  });
   const autocomplete = new MarchAutocompleteProvider(buildMarchCommands(skillPool, promptTemplates), cwd);
   editor.setAutocompleteProvider(autocomplete);
 
-  tui.addChild(output);
-  tui.addChild(shellDrawer);
-  tui.addChild(statusBar);
-  tui.addChild(editor);
+  tui.addChild(shellSplitLayout);
   tui.setFocus(editor);
 
   let started = false;

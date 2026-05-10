@@ -71,12 +71,12 @@ export class ShellDrawer {
     ];
 
     if (!this.shellRuntime) {
-      lines.push(fit(`${MUTED}shell drawer: disabled  focus:editor  started with --no-shell-runtime${RESET}`, safeWidth));
+      lines.push(fit(`${MUTED}shell pane: disabled  focus:editor  started with --no-shell-runtime${RESET}`, safeWidth));
       return lines;
     }
 
     if (!shell) {
-      lines.push(fit(`${MUTED}shell drawer: no shells  focus:editor${RESET}`, safeWidth));
+      lines.push(fit(`${MUTED}shell pane: no shells  focus:editor${RESET}`, safeWidth));
       return lines;
     }
 
@@ -89,7 +89,7 @@ export class ShellDrawer {
     this.scrollOffset = clamp(this.scrollOffset, 0, maxOffset);
     const scrollLabel = this.scrollOffset === 0 ? "tail" : `-${this.scrollOffset}`;
     const focusLabel = this.isInputActive() ? `${ACTIVE}focus:shell${MUTED}` : "focus:editor";
-    lines.push(fit(`${HEADER_FG}${shell.name} ${MUTED}${position}/${shells.length} ${shell.id} ${shell.status} ${scrollLabel} ${focusLabel} ${shell.command}${args}${RESET}`, safeWidth));
+    lines.push(fit(`${HEADER_FG}${shell.name} ${MUTED}${position}/${shells.length} ${shell.id} ${focusLabel} ${shell.status} ${scrollLabel} ${shell.command}${args}${RESET}`, safeWidth));
 
     if (outputLines.length === 0) {
       lines.push(fit(`${MUTED}(empty shell output)${RESET}`, safeWidth));
