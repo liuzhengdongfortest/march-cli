@@ -13,13 +13,12 @@ import { createKeybindingDispatcher } from "./keybinding-dispatch.mjs";
 import { OutputBuffer } from "./output-buffer.mjs";
 import { createRetryStatusController } from "./retry-status.mjs";
 import { ShellDrawer } from "./shell-drawer.mjs";
+import { createSpinnerStatusController } from "./spinner-status.mjs";
 import { StatusBar } from "./status-bar.mjs";
 import { extractToolOutput } from "./tool-output.mjs";
 import { EDITOR_THEME } from "./ui-theme.mjs";
 
 export { buildMarchCommands, MarchAutocompleteProvider } from "./autocomplete.mjs";
-
-const SPINNER_INTERVAL = 80;
 
 // ── TUI-based UI ────────────────────────────────────────────────────
 
@@ -45,7 +44,6 @@ export function createTuiUI({
   tui.addChild(editor);
   tui.setFocus(editor);
 
-  let spinnerTimer = null;
   let started = false;
   let mouseOn = false;
   let toolsExpanded = false;
@@ -54,27 +52,8 @@ export function createTuiUI({
     tui.requestRender();
   }
 
-  function startSpinner(text) {
-    output.setSpinner(true, text);
-    if (!spinnerTimer) {
-      spinnerTimer = setInterval(() => {
-        output.tick();
-        requestRender();
-      }, SPINNER_INTERVAL);
-    }
-    requestRender();
-  }
-
-  function stopSpinner() {
-    if (spinnerTimer) {
-      clearInterval(spinnerTimer);
-      spinnerTimer = null;
-    }
-    output.setSpinner(false, "");
-    requestRender();
-  }
-
-  const retryStatus = createRetryStatusController({ output, requestRender, stopSpinner });
+  const spinnerStatus = createSpinnerStatusController({ output, requestRender });
+  const retryStatus = createRetryStatusController({ output, requestRender, stopSpinner: spinnerStatus.stop });
 
   let onEscapeHandler = null;
   let onCtrlCHandler = null;
@@ -265,7 +244,7 @@ export function createTuiUI({
 
     toolStart: (name, args) => {
       ensureStarted();
-      stopSpinner();
+      spinnerStatus.stop();
       const shortArgs = JSON.stringify(args).slice(0, 120);
       output.writeln(`\x1b[2m  ◆ ${name} ${shortArgs}\x1b[0m`);
       requestRender();
@@ -298,14 +277,14 @@ export function createTuiUI({
 
     textDelta: (delta) => {
       ensureStarted();
-      stopSpinner();
+      spinnerStatus.stop();
       output.write(delta);
       requestRender();
     },
 
     status: (text) => {
       ensureStarted();
-      stopSpinner();
+      spinnerStatus.stop();
       output.writeln(`\x1b[90m● ${text}\x1b[0m`);
       requestRender();
     },
@@ -317,19 +296,19 @@ export function createTuiUI({
 
     turnStart: () => {
       ensureStarted();
-      startSpinner("Thinking...");
+      spinnerStatus.start("Thinking...");
     },
 
     turnEnd: () => {
-      stopSpinner();
+      spinnerStatus.stop();
     },
 
     summaryStart: () => {
-      startSpinner("summarizing...");
+      spinnerStatus.start("summarizing...");
     },
 
     summaryDone: () => {
-      stopSpinner();
+      spinnerStatus.stop();
       output.writeln("");
       output.writeln(`\x1b[90m● summary · done\x1b[0m`);
       requestRender();
@@ -339,7 +318,7 @@ export function createTuiUI({
 
     editDiff: (path, diffLines) => {
       ensureStarted();
-      stopSpinner();
+      spinnerStatus.stop();
       output.writeln(`\x1b[2m  ± ${path}\x1b[0m`);
       for (const d of diffLines) {
         if (d.type === "del") {
@@ -398,7 +377,7 @@ export function createTuiUI({
     },
 
     close: async () => {
-      stopSpinner();
+      spinnerStatus.stop();
       retryStatus.stop();
       if (started) {
         await terminal.drainInput?.();
