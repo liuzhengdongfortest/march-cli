@@ -4,12 +4,12 @@ import {
   runSelectorListSmoke,
 } from "./command-smoke.mjs";
 import {
-  runPiSessionCloneCommandSmoke,
   runPiSessionSwitchCommandSmoke,
   runSessionCommandSmoke,
   runSessionListCommandSmoke,
   runSessionSwitchCommandSmoke,
 } from "./session-command-smoke.mjs";
+import { runPiSessionCloneCommandSmoke } from "./pi-session-clone-command.smoke.mjs";
 import { runPiSessionForkCommandSmoke } from "./pi-session-fork-command.smoke.mjs";
 import { runPiSessionForkResetSmoke } from "./pi-session-fork-reset.smoke.mjs";
 import { runRunnerCompactionSmoke } from "./runner-compaction.smoke.mjs";
