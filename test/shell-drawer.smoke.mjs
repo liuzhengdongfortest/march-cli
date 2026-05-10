@@ -8,6 +8,7 @@ export async function runShellDrawerSmoke() {
   assert.deepEqual(disabled.render(40), []);
   assert.equal(disabled.toggle(), true);
   assert.ok(disabled.render(40).join("\n").includes("disabled"));
+  assert.ok(disabled.render(80).join("\n").includes("focus:editor"));
 
   const sent = [];
   const snapshots = {
@@ -43,6 +44,7 @@ export async function runShellDrawerSmoke() {
   assert.ok(rendered.includes("dev"));
   assert.ok(rendered.includes("1/2"));
   assert.ok(rendered.includes("tail"));
+  assert.ok(rendered.includes("focus:shell"));
   assert.ok(!rendered.includes("one"));
   assert.ok(rendered.includes("two"));
   assert.ok(rendered.includes("three"));

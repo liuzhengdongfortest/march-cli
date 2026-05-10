@@ -3,6 +3,7 @@ import { truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
 const HEADER_FG = "\x1b[38;5;250m";
 const MUTED = "\x1b[90m";
 const BORDER = "\x1b[38;5;238m";
+const ACTIVE = "\x1b[36m";
 const RESET = "\x1b[0m";
 
 export class ShellDrawer {
@@ -68,12 +69,12 @@ export class ShellDrawer {
     ];
 
     if (!this.shellRuntime) {
-      lines.push(fit(`${MUTED}shell drawer: disabled (start with --shell-runtime)${RESET}`, safeWidth));
+      lines.push(fit(`${MUTED}shell drawer: disabled  focus:editor  start with --shell-runtime${RESET}`, safeWidth));
       return lines;
     }
 
     if (!shell) {
-      lines.push(fit(`${MUTED}shell drawer: no shells${RESET}`, safeWidth));
+      lines.push(fit(`${MUTED}shell drawer: no shells  focus:editor${RESET}`, safeWidth));
       return lines;
     }
 
@@ -84,7 +85,8 @@ export class ShellDrawer {
     const maxOffset = Math.max(0, outputLines.length - this.maxOutputLines);
     this.scrollOffset = clamp(this.scrollOffset, 0, maxOffset);
     const scrollLabel = this.scrollOffset === 0 ? "tail" : `-${this.scrollOffset}`;
-    lines.push(fit(`${HEADER_FG}${shell.name} ${MUTED}${position}/${shells.length} ${shell.id} ${shell.status} ${scrollLabel} ${shell.command}${args}${RESET}`, safeWidth));
+    const focusLabel = this.isInputActive() ? `${ACTIVE}focus:shell${MUTED}` : "focus:editor";
+    lines.push(fit(`${HEADER_FG}${shell.name} ${MUTED}${position}/${shells.length} ${shell.id} ${shell.status} ${scrollLabel} ${focusLabel} ${shell.command}${args}${RESET}`, safeWidth));
 
     if (outputLines.length === 0) {
       lines.push(fit(`${MUTED}(empty shell output)${RESET}`, safeWidth));
