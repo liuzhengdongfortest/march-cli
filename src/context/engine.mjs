@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { buildMemoryLayer } from "./memory-layer.mjs";
 import { buildRuntimeStatus } from "./runtime-status.mjs";
 import { buildSessionStatus } from "./session-status.mjs";
+import { buildActiveSkills, buildSkillCatalog } from "./skill-layers.mjs";
 
 export class ContextEngine {
   constructor({ cwd, modelId, provider = "deepseek", thinkingLevel = "medium", skills = [], skillPool = [], pins = [], graph = null, glossary = null, namespace = "", shellRuntime = null }) {
@@ -208,38 +209,12 @@ thinking: ${this.thinkingLevel}`;
 
   // ── Layer 5: skills catalog (Tier 1: always in context) ────────────
   #buildSkillCatalog() {
-    const lines = [
-      "The following skills provide specialized instructions for specific tasks.",
-      "When a task matches a skill's description, use activate_skill to load its full instructions.",
-      "",
-      "<available_skills>",
-    ];
-    for (const skill of this.skillPool) {
-      lines.push("  <skill>");
-      lines.push(`    <name>${skill.name}</name>`);
-      lines.push(`    <description>${skill.description || "(no description)"}</description>`);
-      lines.push("  </skill>");
-    }
-    lines.push("</available_skills>");
-    return `[available_skills]\n${lines.join("\n")}`;
+    return buildSkillCatalog(this.skillPool);
   }
 
   // ── Layer 5: active_skills (Tier 2: full bodies when activated) ─────
   #buildActiveSkills() {
-    const blocks = this.skills.map((s) => {
-      const name = typeof s === "string" ? s : s.name;
-      const body = typeof s === "string" ? null : (s.body || s.raw);
-      const baseDir = typeof s === "string" ? null : s.baseDir;
-      if (body) {
-        let header = `<skill_content name="${name}">\n`;
-        if (baseDir) {
-          header += `Skill directory: ${baseDir}\nRelative paths in this skill are relative to the skill directory.\n`;
-        }
-        return header + `\n${body}\n</skill_content>`;
-      }
-      return `- ${name}`;
-    });
-    return `[active_skills]\n${blocks.join("\n\n")}`;
+    return buildActiveSkills(this.skills);
   }
 
   // ── Layer 5: open_files ────────────────────────────────────────────

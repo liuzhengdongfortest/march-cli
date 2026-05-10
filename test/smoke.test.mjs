@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import { runAuthStorageSmoke } from "./auth-storage.smoke.mjs";
 import { runContextRuntimeStatusSmoke } from "./context-runtime-status.smoke.mjs";
 import { runContextSessionStatusSmoke } from "./context-session-status.smoke.mjs";
+import { runContextSkillLayersSmoke } from "./context-skill-layers.smoke.mjs";
 import { runCopyCommandSmoke } from "./copy-command.smoke.mjs";
 import { runCliCommandSuiteSmoke } from "./cli-command-suite.smoke.mjs";
 import { runDiffAndUiSmoke, runMemorySystemSmoke } from "./memory-and-diff.smoke.mjs";
@@ -103,6 +104,7 @@ await runNodePtyAdapterSmoke();
 await runTuiShellDrawerSmoke({ setupTmp, cleanup });
 await runContextRuntimeStatusSmoke();
 await runContextSessionStatusSmoke();
+await runContextSkillLayersSmoke();
 
 // ── 2. Config loading ────────────────────────────────────────────────
 
