@@ -7,6 +7,7 @@ import { runAuthStorageSmoke } from "./auth-storage.smoke.mjs";
 import { runContextRuntimeStatusSmoke } from "./context-runtime-status.smoke.mjs";
 import { runContextSessionStatusSmoke } from "./context-session-status.smoke.mjs";
 import { runContextSkillLayersSmoke } from "./context-skill-layers.smoke.mjs";
+import { runConfigLoadingSmoke } from "./config-loading.smoke.mjs";
 import { runCopyCommandSmoke } from "./copy-command.smoke.mjs";
 import { runCliCommandSuiteSmoke } from "./cli-command-suite.smoke.mjs";
 import { runDiffAndUiSmoke, runMemorySystemSmoke } from "./memory-and-diff.smoke.mjs";
@@ -106,38 +107,7 @@ await runContextRuntimeStatusSmoke();
 await runContextSessionStatusSmoke();
 await runContextSkillLayersSmoke();
 
-// ── 2. Config loading ────────────────────────────────────────────────
-
-{
-  console.log("--- smoke: config loading ---");
-  const { loadConfig } = await import("../src/config/loader.mjs");
-  const dir = setupTmp();
-
-  // No config files
-  const empty = loadConfig(dir);
-  assert.equal(empty.model, "deepseek-chat");
-  assert.equal(empty.provider, "deepseek");
-  assert.deepEqual(empty.skills, []);
-  assert.deepEqual(empty.pins, []);
-
-  // Project .marchrc
-  writeFileSync(join(dir, ".marchrc"), JSON.stringify({ model: "test-model", skills: ["s1"], pins: ["p1"] }));
-  const withRc = loadConfig(dir);
-  assert.equal(withRc.model, "test-model");
-  assert.deepEqual(withRc.skills, ["s1"]);
-  assert.deepEqual(withRc.pins, ["p1"]);
-
-  // .march/config overrides .marchrc
-  const marchDir = join(dir, ".march");
-  mkdirSync(marchDir, { recursive: true });
-  writeFileSync(join(marchDir, "config"), JSON.stringify({ model: "override-model", pins: ["p2"] }));
-  const withBoth = loadConfig(dir);
-  assert.equal(withBoth.model, "override-model");
-  assert.deepEqual(withBoth.pins.sort(), ["p1", "p2"].sort());
-
-  cleanup(dir);
-  console.log("  PASS");
-}
+await runConfigLoadingSmoke({ setupTmp, cleanup });
 
 // ── 3. Context engine ────────────────────────────────────────────────
 
