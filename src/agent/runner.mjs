@@ -12,12 +12,14 @@ import { syncPiSessionSidecar } from "../session/sidecar-sync.mjs";
 import { cloneCurrentPiSession } from "./pi-session-clone.mjs";
 import { forkPiSessionWithResetContext } from "./pi-session-fork-reset.mjs";
 import { createRunnerRuntimeHost } from "./runner-runtime-host.mjs";
+import { getRunnerSessionStats, syncEngineSessionState } from "./runner-session-state.mjs";
 import { resolveRunnerSessionOptions } from "./session-options.mjs";
 import { createSessionBinding } from "./session-binding.mjs";
 import { MARCH_BASE_TOOL_NAMES } from "./tool-names.mjs";
 import { createTurnEventState, handleRunnerSessionEvent } from "./turn-events.mjs";
 
 export { MARCH_BASE_TOOL_NAMES };
+export { getRunnerSessionStats, syncEngineSessionState } from "./runner-session-state.mjs";
 
 export function createDefaultSessionManager(cwd) {
   return SessionManager.inMemory(cwd);
@@ -327,45 +329,4 @@ async function runRunnerCleanup(cleanups) {
   }
   if (errors.length === 1) throw errors[0];
   if (errors.length > 1) throw new AggregateError(errors, "Runner cleanup failed");
-}
-
-function getRunnerSessionStats(activeSession, runtimeHost) {
-  const stats = activeSession.getSessionStats();
-  const manager = activeSession.sessionManager;
-  return {
-    ...stats,
-    runtimeHost: Boolean(runtimeHost),
-    piSessionSwitching: Boolean(runtimeHost),
-    persisted: manager?.isPersisted?.() ?? Boolean(activeSession.sessionFile),
-    sessionFile: manager?.getSessionFile?.() ?? activeSession.sessionFile,
-  };
-}
-
-function bindToolDefs(engine, session) {
-  engine.setToolDefs(session.getActiveToolNames().map((name) => {
-    const tool = session.getToolDefinition(name);
-    return {
-      name,
-      description: tool?.description ?? "",
-      parameters: tool?.parameters ? describeParams(tool.parameters) : null,
-    };
-  }));
-}
-
-export function syncEngineSessionState(engine, session) {
-  bindToolDefs(engine, session);
-  engine.setRuntimeState({
-    modelId: session.model?.id,
-    provider: session.model?.provider,
-    thinkingLevel: session.thinkingLevel,
-  });
-}
-
-function describeParams(schema) {
-  if (!schema || !schema.properties) return {};
-  const out = {};
-  for (const [key, prop] of Object.entries(schema.properties)) {
-    out[key] = prop.description ?? key;
-  }
-  return out;
 }
