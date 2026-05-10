@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runRunnerCoreSmoke() {
   console.log("--- smoke: March tool set ---");
-  const { MARCH_BASE_TOOL_NAMES, createDefaultSessionManager, resolveRunnerSessionManager, syncEngineSessionState } = await import("../src/agent/runner.mjs");
+  const { MARCH_BASE_TOOL_NAMES, createDefaultSessionManager, createRunner, resolveRunnerSessionManager, syncEngineSessionState } = await import("../src/agent/runner.mjs");
   const { createSessionBinding } = await import("../src/agent/session-binding.mjs");
   const { ContextEngine } = await import("../src/context/engine.mjs");
 
@@ -30,5 +30,20 @@ export async function runRunnerCoreSmoke() {
   assert.equal(engine.provider, "test");
   assert.equal(engine.thinkingLevel, "high");
   assert.ok(engine.buildContext("").includes("thinking: high"));
+  console.log("  PASS");
+
+  console.log("--- smoke: runner missing credentials message ---");
+  await assert.rejects(
+    () => createRunner({
+      cwd: process.cwd(),
+      modelId: "missing-model",
+      provider: "missing-provider-smoke",
+      stateRoot: process.cwd(),
+      ui: {},
+      skills: [],
+      pins: [],
+    }),
+    /No credentials configured for missing-provider-smoke\. Set MISSING_PROVIDER_SMOKE_API_KEY or run: march login missing-provider-smoke\./,
+  );
   console.log("  PASS");
 }

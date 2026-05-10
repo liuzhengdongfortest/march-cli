@@ -31,7 +31,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
   const authConfig = authStorage
     ? { authStorage, hasAuth: true }
     : createMarchAuthStorage({ provider, cwd });
-  if (!authConfig.hasAuth) throw new Error(`No credentials configured for ${provider}. Set ${authConfig.apiKeyEnv} or login via pi auth.`);
+  if (!authConfig.hasAuth) throw new Error(`No credentials configured for ${provider}. Set ${authConfig.apiKeyEnv} or run: march login ${provider}.`);
   const resolvedAuth = authConfig.authStorage;
 
   const modelRegistry = ModelRegistry.create(resolvedAuth);
