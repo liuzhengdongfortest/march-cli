@@ -17,6 +17,7 @@ import { formatPromptTemplateLines } from "./prompt-templates.mjs";
 import { handleSettingsCommand, parseSettingsCommand } from "../config/settings-command.mjs";
 import { handleSessionNameCommand, parseSessionNameCommand } from "./session-name-command.mjs";
 import { handleShellCommand, parseShellCommand } from "./shell-command.mjs";
+import { handlePinCommand, parsePinCommand } from "./pin-command.mjs";
 
 export async function handleSlashCommand(trimmed, {
   ui,
@@ -142,24 +143,9 @@ export async function handleSlashCommand(trimmed, {
     return { handled: true };
   }
 
-  if (trimmed.startsWith("/pin ")) {
-    const raw = trimmed.slice(5).trim();
-    const absPath = runner.engine.resolvePath(raw);
-    runner.engine.addPin(absPath);
-    if (!runner.engine.isOpen(absPath)) {
-      try {
-        runner.engine.openFile(absPath);
-      } catch {
-        // File can't be opened yet — just pin it
-      }
-    }
-    ui.writeln(`Pinned: ${absPath}`);
-    return { handled: true };
-  }
-
-  if (trimmed === "/pins") {
-    const pins = runner.engine.getPins();
-    ui.writeln(pins.length > 0 ? pins.join("\n") : "(no pinned files)");
+  const pinCommand = parsePinCommand(trimmed);
+  if (pinCommand.type !== "none") {
+    for (const line of handlePinCommand(pinCommand, { engine: runner.engine })) ui.writeln(line);
     return { handled: true };
   }
 
@@ -281,14 +267,6 @@ export async function handleSlashCommand(trimmed, {
     } else {
       for (const line of listPiForkCandidates({ runner })) ui.writeln(line);
     }
-    return { handled: true };
-  }
-
-  if (trimmed.startsWith("/unpin ")) {
-    const raw = trimmed.slice(7).trim();
-    const absPath = runner.engine.resolvePath(raw);
-    runner.engine.removePin(absPath);
-    ui.writeln(`Unpinned: ${absPath}`);
     return { handled: true };
   }
 
