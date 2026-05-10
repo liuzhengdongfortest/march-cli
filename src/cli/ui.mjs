@@ -13,6 +13,7 @@ import { buildMarchCommands, MarchAutocompleteProvider } from "./autocomplete.mj
 import { createJsonUI, createPlainUI } from "./fallback-ui.mjs";
 import { createKeybindingDispatcher } from "./keybinding-dispatch.mjs";
 import { OutputBuffer } from "./output-buffer.mjs";
+import { ShellDrawer } from "./shell-drawer.mjs";
 import { StatusBar } from "./status-bar.mjs";
 import { extractToolOutput } from "./tool-output.mjs";
 
@@ -38,16 +39,19 @@ export function createTuiUI({
   skillPool = [],
   keybindings,
   promptTemplates = [],
+  shellRuntime = null,
   terminal = new ProcessTerminal(),
 } = {}) {
   const tui = new TUI(terminal);
   const output = new OutputBuffer();
+  const shellDrawer = new ShellDrawer({ shellRuntime });
   const statusBar = new StatusBar();
   const editor = new Editor(tui, EDITOR_THEME, { paddingX: 1 });
   const autocomplete = new MarchAutocompleteProvider(buildMarchCommands(skillPool, promptTemplates), cwd);
   editor.setAutocompleteProvider(autocomplete);
 
   tui.addChild(output);
+  tui.addChild(shellDrawer);
   tui.addChild(statusBar);
   tui.addChild(editor);
   tui.setFocus(editor);
@@ -105,6 +109,7 @@ export function createTuiUI({
       modelSelector: () => onCtrlLHandler?.(),
       externalEditor: () => openExternalEditor(),
       toggleToolOutput: () => toggleToolOutput(),
+      toggleShellDrawer: () => toggleShellDrawer(),
       pasteImage: () => onPasteImageHandler?.(),
     },
     isAutocompleteOpen: () => editor.isShowingAutocomplete(),
@@ -116,6 +121,11 @@ export function createTuiUI({
       tui.addInputListener((data) => {
         const dispatched = keybindingDispatcher.dispatch(data);
         if (dispatched) return dispatched;
+        if (shellDrawer.isInputActive()) {
+          shellDrawer.sendInput(data);
+          requestRender();
+          return { consume: true };
+        }
       });
       tui.start();
       started = true;
@@ -159,6 +169,13 @@ export function createTuiUI({
     output.writeln(`\x1b[90m● tool output: ${toolsExpanded ? "expanded" : "collapsed"}\x1b[0m`);
     requestRender();
     return toolsExpanded;
+  }
+
+  function toggleShellDrawer() {
+    const visible = shellDrawer.toggle();
+    output.writeln(`\x1b[90m● shell drawer: ${visible ? "open" : "closed"}\x1b[0m`);
+    requestRender();
+    return visible;
   }
 
   function selectList({ items, selectedIndex = 0, maxVisible = 8, width = 64 }) {
@@ -402,6 +419,7 @@ export function createTuiUI({
     },
     openExternalEditor: () => { openExternalEditor(); },
     toggleToolOutput,
+    toggleShellDrawer,
     requestExit: () => {
       if (!onSubmitResolve) return;
       const res = onSubmitResolve;
@@ -425,10 +443,10 @@ export function createTuiUI({
 
 // ── Public API ──────────────────────────────────────────────────────
 
-export function createUI({ json, cwd = process.cwd(), skillPool = [], keybindings, promptTemplates = [] } = {}) {
+export function createUI({ json, cwd = process.cwd(), skillPool = [], keybindings, promptTemplates = [], shellRuntime = null } = {}) {
   if (json) return createJsonUI();
   if (!stdout.isTTY) return createPlainUI();
-  return createTuiUI({ cwd, skillPool, keybindings, promptTemplates });
+  return createTuiUI({ cwd, skillPool, keybindings, promptTemplates, shellRuntime });
 }
 
 function resolveAttachmentTokens(text, tokens) {

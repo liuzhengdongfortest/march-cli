@@ -19,6 +19,7 @@ import { runSettingsCommandSmoke } from "./settings-command.smoke.mjs";
 import { runPiSessionManagerFactorySmoke, runPiSessionSidecarSmoke, runPiSessionSidecarSyncSmoke, runSessionPersistenceSmoke, runSessionTreeSmoke } from "./session.smoke.mjs";
 import { runSessionNameCommandSmoke } from "./session-name-command.smoke.mjs";
 import { runShellRuntimeSmoke } from "./shell-runtime.smoke.mjs";
+import { runShellDrawerSmoke } from "./shell-drawer.smoke.mjs";
 import { runShellToolsSmoke } from "./shell-tools.smoke.mjs";
 import { runStartupResumeSmoke } from "./startup-resume.smoke.mjs";
 
@@ -88,6 +89,7 @@ await runPromptTemplatesSmoke({ setupTmp, cleanup });
 await runSettingsCommandSmoke({ setupTmp, cleanup });
 await runSessionNameCommandSmoke({ setupTmp, cleanup });
 await runShellRuntimeSmoke();
+await runShellDrawerSmoke();
 await runShellToolsSmoke();
 await runNodePtyAdapterSmoke();
 

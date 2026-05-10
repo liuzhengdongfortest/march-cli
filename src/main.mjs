@@ -125,6 +125,7 @@ export async function run(argv) {
     skillPool,
     keybindings: keybindingConfig.keybindings,
     promptTemplates: promptTemplateConfig.templates,
+    shellRuntime,
   });
 
   ui.status(`Starting March session ${sessionState.sessionId} in ${cwd}`);

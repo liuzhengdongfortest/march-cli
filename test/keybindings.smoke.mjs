@@ -81,6 +81,13 @@ export async function runKeybindingsSmoke({ setupTmp, cleanup }) {
   assert.deepEqual(pasteDispatcher.dispatch(TERMINAL_KEY_SEQUENCES["Alt+V"]), { consume: true });
   assert.equal(pasted, 1);
 
+  let shellDrawerToggles = 0;
+  const shellDrawerDispatcher = createKeybindingDispatcher({
+    handlers: { toggleShellDrawer: () => { shellDrawerToggles += 1; } },
+  });
+  assert.deepEqual(shellDrawerDispatcher.dispatch(TERMINAL_KEY_SEQUENCES["Alt+S"]), { consume: true });
+  assert.equal(shellDrawerToggles, 1);
+
   let aborts = 0;
   const overlayDispatcher = createKeybindingDispatcher({
     handlers: { abort: () => { aborts += 1; } },
