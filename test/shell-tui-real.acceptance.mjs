@@ -37,12 +37,13 @@ const term = pty.spawn(process.execPath, [
 const hardTimer = setTimeout(() => {
   try { term.kill(); } catch {}
   console.error("hard timeout waiting for real TUI shell drawer acceptance");
-  console.error(stripControl(output).slice(-4000));
+  printDiagnostics();
   process.exit(1);
 }, 30000);
 
 let output = "";
 let exited = false;
+const trace = [];
 
 term.onData((chunk) => {
   output += chunk;
@@ -54,18 +55,18 @@ term.onExit(() => {
 
 try {
   await waitForText("March REPL.", 10000);
-  term.write(`/shell spawn accept${newline}`);
+  writeInput("/shell spawn accept", `/shell spawn accept${newline}`);
   await waitForText("Spawned shell:", 10000);
   await waitForText("accept", 10000);
 
-  term.write(altS);
+  writeInput("Alt+S", altS);
   await waitForText("focus:shell", 10000);
   await delay(500);
 
   await writeSlow(markerCommand());
   await waitForText(marker, 10000);
 
-  term.write(ctrlC);
+  writeInput("Ctrl+C", ctrlC);
   await waitForExit(10000);
   assert.equal(exited, true);
   console.log("PASS real TUI shell drawer acceptance");
@@ -78,8 +79,7 @@ try {
     try { term.kill(); } catch {}
   }
   console.error(error?.stack ?? error?.message ?? String(error));
-  console.error("Recent PTY output:");
-  console.error(stripControl(output).slice(-4000));
+  printDiagnostics();
   process.exitCode = 1;
 } finally {
   clearTimeout(hardTimer);
@@ -93,10 +93,12 @@ function markerCommand() {
 }
 
 async function waitForText(text, timeoutMs) {
+  trace.push(`wait:text:${text}`);
   await waitFor(() => stripControl(output).includes(text), timeoutMs, `timeout waiting for text: ${text}`);
 }
 
 async function waitForExit(timeoutMs) {
+  trace.push("wait:exit");
   await waitFor(() => exited, timeoutMs, "timeout waiting for March to exit");
 }
 
@@ -110,6 +112,7 @@ async function waitFor(predicate, timeoutMs, message) {
 }
 
 async function writeSlow(text) {
+  trace.push(`input:marker-command:${JSON.stringify(text.trim())}`);
   for (const char of text) {
     term.write(char);
     await delay(5);
@@ -136,4 +139,18 @@ function stripControl(text) {
     .replace(/\x1b\][^\x07]*(?:\x07|\x1b\\)/g, "")
     .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "")
     .replace(/\x1b[@-Z\\-_]/g, "");
+}
+
+function writeInput(name, sequence) {
+  trace.push(`input:${name}`);
+  term.write(sequence);
+}
+
+function printDiagnostics() {
+  console.error("Recent acceptance trace:");
+  console.error(trace.slice(-20).join(" -> "));
+  console.error("Recent PTY output (stripped):");
+  console.error(stripControl(output).slice(-4000));
+  console.error("Recent PTY output (raw escaped):");
+  console.error(JSON.stringify(output.slice(-2000)));
 }
