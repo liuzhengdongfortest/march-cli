@@ -15,7 +15,7 @@ import { ShellDrawer } from "./shell-drawer.mjs";
 import { showSelectListOverlay } from "./select-list-overlay.mjs";
 import { createSpinnerStatusController } from "./spinner-status.mjs";
 import { StatusBar } from "./status-bar.mjs";
-import { extractToolOutput } from "./tool-output.mjs";
+import { writeToolEnd, writeToolStart } from "./tool-rendering.mjs";
 import { EDITOR_THEME } from "./ui-theme.mjs";
 
 export { buildMarchCommands, MarchAutocompleteProvider } from "./autocomplete.mjs";
@@ -219,33 +219,13 @@ export function createTuiUI({
     toolStart: (name, args) => {
       ensureStarted();
       spinnerStatus.stop();
-      const shortArgs = JSON.stringify(args).slice(0, 120);
-      output.writeln(`\x1b[2m  ◆ ${name} ${shortArgs}\x1b[0m`);
+      writeToolStart({ output, name, args });
       requestRender();
     },
 
     toolEnd: (name, isError, result) => {
-      if (isError) {
-        const errText = extractToolOutput(result);
-        output.writeln(`\x1b[31m  ◆ ${name} failed\x1b[0m`);
-        if (errText) {
-          for (const line of errText.split("\n").slice(0, 6)) {
-            output.writeln(`\x1b[31m    ${line.slice(0, 120)}\x1b[0m`);
-          }
-        }
+      if (writeToolEnd({ output, name, isError, result, toolsExpanded })) {
         requestRender();
-      } else {
-        const out = extractToolOutput(result);
-        if (out) {
-          const lines = out.split("\n");
-          const limit = toolsExpanded ? 40 : 4;
-          const show = lines.slice(0, limit);
-          for (const line of show) {
-            output.writeln(`\x1b[2m    ${line.slice(0, 120)}\x1b[0m`);
-          }
-          if (lines.length > limit) output.writeln(`\x1b[2m    … (${lines.length - limit} more lines)\x1b[0m`);
-          requestRender();
-        }
       }
     },
 

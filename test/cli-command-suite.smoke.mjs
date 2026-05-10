@@ -31,6 +31,7 @@ import { runStatusCommandSmoke } from "./status-command.smoke.mjs";
 import { runTuiHandlersSmoke } from "./tui-handlers.smoke.mjs";
 import { runRetryStatusSmoke } from "./retry-status.smoke.mjs";
 import { runSpinnerStatusSmoke } from "./spinner-status.smoke.mjs";
+import { runToolRenderingSmoke } from "./tool-rendering.smoke.mjs";
 
 export async function runCliCommandSuiteSmoke({ setupTmp, cleanup }) {
   await runThinkingCommandHandlingSmoke();
@@ -39,6 +40,7 @@ export async function runCliCommandSuiteSmoke({ setupTmp, cleanup }) {
   await runStatusBarSmoke();
   await runSpinnerStatusSmoke();
   await runRetryStatusSmoke();
+  await runToolRenderingSmoke();
   await runTuiHandlersSmoke();
   await runSelectListOverlaySmoke();
   await runSelectorListSmoke();
