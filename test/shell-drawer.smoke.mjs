@@ -11,7 +11,7 @@ export async function runShellDrawerSmoke() {
 
   const sent = [];
   const snapshots = {
-    sh1: "one\ntwo\nthree",
+    sh1: "zero\none\ntwo\nthree",
     sh2: "alpha\nbeta",
   };
   const runtime = {
@@ -42,12 +42,20 @@ export async function runShellDrawerSmoke() {
   const rendered = drawer.render(80).join("\n");
   assert.ok(rendered.includes("dev"));
   assert.ok(rendered.includes("1/2"));
+  assert.ok(rendered.includes("tail"));
   assert.ok(!rendered.includes("one"));
   assert.ok(rendered.includes("two"));
   assert.ok(rendered.includes("three"));
   assert.equal(drawer.isInputActive(), true);
   assert.deepEqual(drawer.sendInput("x"), { ok: true });
   assert.deepEqual(sent, [["sh1", "x"]]);
+  assert.deepEqual(drawer.scroll(-1), { offset: 1, maxOffset: 2, atTail: false });
+  const scrolled = drawer.render(80).join("\n");
+  assert.ok(scrolled.includes("-1"));
+  assert.ok(scrolled.includes("one"));
+  assert.ok(scrolled.includes("two"));
+  assert.ok(!scrolled.includes("three"));
+  assert.deepEqual(drawer.scroll(1), { offset: 0, maxOffset: 2, atTail: true });
   assert.equal(drawer.selectNextShell().id, "sh2");
   const nextRendered = drawer.render(80).join("\n");
   assert.ok(nextRendered.includes("test"));

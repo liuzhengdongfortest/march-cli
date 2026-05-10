@@ -112,6 +112,8 @@ export function createTuiUI({
       toggleToolOutput: () => toggleToolOutput(),
       toggleShellDrawer: () => toggleShellDrawer(),
       nextShell: () => selectNextShell(),
+      shellScrollUp: () => scrollShellDrawer(-1),
+      shellScrollDown: () => scrollShellDrawer(1),
       pasteImage: () => onPasteImageHandler?.(),
     },
     isAutocompleteOpen: () => editor.isShowingAutocomplete(),
@@ -186,6 +188,13 @@ export function createTuiUI({
     if (shell) output.writeln(`\x1b[90m● shell: ${shell.name} (${shell.id})\x1b[0m`);
     requestRender();
     return shell;
+  }
+
+  function scrollShellDrawer(delta) {
+    if (!shellDrawer.isVisible()) return false;
+    const state = shellDrawer.scroll(delta);
+    requestRender();
+    return state;
   }
 
   function selectList({ items, selectedIndex = 0, maxVisible = 8, width = 64 }) {

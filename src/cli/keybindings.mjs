@@ -11,6 +11,8 @@ export const DEFAULT_KEYBINDINGS = Object.freeze({
   toggleToolOutput: "Ctrl+O",
   toggleShellDrawer: "Alt+S",
   nextShell: "Alt+N",
+  shellScrollUp: "Alt+K",
+  shellScrollDown: "Alt+J",
   pasteImage: "Alt+V",
 });
 
@@ -24,6 +26,8 @@ export const KEYBINDING_ACTIONS = Object.freeze({
   toggleToolOutput: "Toggle tool output collapsed/expanded",
   toggleShellDrawer: "Toggle shell drawer",
   nextShell: "Select next shell in drawer",
+  shellScrollUp: "Scroll shell drawer up",
+  shellScrollDown: "Scroll shell drawer down",
   pasteImage: "Paste clipboard image as attachment",
 });
 

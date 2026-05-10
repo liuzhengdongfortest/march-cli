@@ -11,6 +11,7 @@ export class ShellDrawer {
     this.maxOutputLines = maxOutputLines;
     this.visible = false;
     this.selectedShellId = null;
+    this.scrollOffset = 0;
   }
 
   toggle() {
@@ -43,7 +44,19 @@ export class ShellDrawer {
     const currentIndex = Math.max(0, shells.findIndex((shell) => shell.id === this.selectedShellId));
     const next = shells[(currentIndex + 1) % shells.length];
     this.selectedShellId = next.id;
+    this.scrollOffset = 0;
     return next;
+  }
+
+  scroll(delta) {
+    const outputLines = this.getOutputLines();
+    const maxOffset = Math.max(0, outputLines.length - this.maxOutputLines);
+    this.scrollOffset = clamp(this.scrollOffset + (delta < 0 ? 1 : -1), 0, maxOffset);
+    return {
+      offset: this.scrollOffset,
+      maxOffset,
+      atTail: this.scrollOffset === 0,
+    };
   }
 
   render(width) {
@@ -67,18 +80,17 @@ export class ShellDrawer {
     const shells = this.getShells();
     const position = Math.max(0, shells.findIndex((item) => item.id === shell.id)) + 1;
     const args = shell.args?.length ? ` ${shell.args.join(" ")}` : "";
-    lines.push(fit(`${HEADER_FG}${shell.name} ${MUTED}${position}/${shells.length} ${shell.id} ${shell.status} ${shell.command}${args}${RESET}`, safeWidth));
+    const outputLines = this.getOutputLines(shell.id);
+    const maxOffset = Math.max(0, outputLines.length - this.maxOutputLines);
+    this.scrollOffset = clamp(this.scrollOffset, 0, maxOffset);
+    const scrollLabel = this.scrollOffset === 0 ? "tail" : `-${this.scrollOffset}`;
+    lines.push(fit(`${HEADER_FG}${shell.name} ${MUTED}${position}/${shells.length} ${shell.id} ${shell.status} ${scrollLabel} ${shell.command}${args}${RESET}`, safeWidth));
 
-    const snapshot = this.shellRuntime.snapshotShell(shell.id);
-    const outputLines = String(snapshot.plain || "")
-      .split("\n")
-      .filter((line) => line.length > 0)
-      .slice(-this.maxOutputLines);
     if (outputLines.length === 0) {
       lines.push(fit(`${MUTED}(empty shell output)${RESET}`, safeWidth));
       return lines;
     }
-    for (const line of outputLines) {
+    for (const line of visibleWindow(outputLines, this.maxOutputLines, this.scrollOffset)) {
       lines.push(fit(line, safeWidth));
     }
     return lines;
@@ -104,9 +116,27 @@ export class ShellDrawer {
   getShells() {
     return this.shellRuntime?.listShells?.() ?? [];
   }
+
+  getOutputLines(shellId = this.getSelectedShell()?.id) {
+    if (!shellId || !this.shellRuntime) return [];
+    const snapshot = this.shellRuntime.snapshotShell(shellId);
+    return String(snapshot.plain || "")
+      .split("\n")
+      .filter((line) => line.length > 0);
+  }
 }
 
 function fit(text, width) {
   if (visibleWidth(text) <= width) return text;
   return truncateToWidth(text, width);
+}
+
+function visibleWindow(lines, size, offset) {
+  const end = Math.max(0, lines.length - offset);
+  const start = Math.max(0, end - size);
+  return lines.slice(start, end);
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
 }
