@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { createTerminalScreenBuffer } from "./screen-buffer.mjs";
 
 const ANSI_RE = /\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
 
@@ -11,6 +12,7 @@ export function createShellRuntime({
   defaultArgs = process.platform === "win32" ? ["-NoLogo", "-NoProfile"] : [],
   defaultCols = 80,
   defaultRows = 24,
+  createScreenBuffer = createTerminalScreenBuffer,
 } = {}) {
   if (typeof createPty !== "function") {
     throw new Error("createPty is required");
@@ -47,6 +49,7 @@ export function createShellRuntime({
       updatedAt: now().toISOString(),
       rawChunks: [],
       plainLines: [],
+      screen: createScreenBuffer({ cols: size.cols, rows: size.rows }),
       pty: null,
     };
     shells.set(id, shell);
@@ -104,6 +107,7 @@ export function createShellRuntime({
     }
     shell.cols = size.cols;
     shell.rows = size.rows;
+    shell.screen?.resize?.(shell.cols, shell.rows);
     touch(shell, now);
     return { ok: true, changed: true, shell: publicShell(shell) };
   }
@@ -150,6 +154,7 @@ export function createShellRuntime({
       shell: publicShell(shell),
       ansi: shell.rawChunks.join(""),
       plain: shell.plainLines.join("\n"),
+      screen: shell.screen?.snapshot?.() ?? null,
     };
   }
 
@@ -168,6 +173,7 @@ export function createShellRuntime({
     for (const shell of shells.values()) {
       try {
         shell.pty?.dispose?.();
+        shell.screen?.dispose?.();
       } catch (error) {
         shell.error = `dispose failed: ${error?.message ?? String(error)}`;
         touch(shell, now);
@@ -196,6 +202,7 @@ export function stripAnsi(text) {
 
 function appendOutput(shell, chunk, maxScrollbackLines) {
   const raw = String(chunk ?? "");
+  shell.screen?.write?.(raw);
   shell.rawChunks.push(raw);
   if (shell.rawChunks.length > maxScrollbackLines * 4) {
     shell.rawChunks = shell.rawChunks.slice(-(maxScrollbackLines * 4));

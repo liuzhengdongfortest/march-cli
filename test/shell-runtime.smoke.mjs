@@ -4,11 +4,36 @@ export async function runShellRuntimeSmoke() {
   console.log("--- smoke: shell runtime ---");
   const { createShellRuntime, stripAnsi } = await import("../src/shell/runtime.mjs");
   const adapters = new Map();
+  const screens = [];
   let nextId = 1;
   const runtime = createShellRuntime({
     idFactory: () => `sh${nextId++}`,
     now: () => new Date("2026-05-10T00:00:00.000Z"),
     maxScrollbackLines: 3,
+    createScreenBuffer: ({ cols, rows }) => {
+      const screen = {
+        cols,
+        rows,
+        writes: [],
+        disposed: false,
+        write: (text) => screen.writes.push(text),
+        resize: (nextCols, nextRows) => {
+          screen.cols = nextCols;
+          screen.rows = nextRows;
+        },
+        snapshot: () => ({
+          cols: screen.cols,
+          rows: screen.rows,
+          plain: stripAnsi(screen.writes.join("")).replace(/\r/g, "").trim(),
+          ansi: screen.writes.join("").trim(),
+        }),
+        dispose: () => {
+          screen.disposed = true;
+        },
+      };
+      screens.push(screen);
+      return screen;
+    },
     createPty: ({ onData, onExit, onError }) => {
       const adapter = {
         writes: [],
@@ -41,6 +66,7 @@ export async function runShellRuntimeSmoke() {
   assert.deepEqual([...adapters.values()][0].writes, ["hello"]);
   assert.equal(runtime.snapshotShell("sh1").plain, "out:hello");
   assert.ok(runtime.snapshotShell("sh1").ansi.includes("\x1b[32m"));
+  assert.equal(runtime.snapshotShell("sh1").screen.plain, "out:hello");
   assert.deepEqual(runtime.searchShell("sh1", "hello").matches.map((match) => match.line), ["out:hello"]);
   assert.deepEqual(runtime.resizeShell("sh1", { cols: 120, rows: 30 }), { ok: true, changed: false, shell: runtime.getShell("sh1") });
   const resized = runtime.resizeShell("sh1", { cols: 100.9, rows: 12.1 });
@@ -49,6 +75,8 @@ export async function runShellRuntimeSmoke() {
   assert.deepEqual([...adapters.values()][0].resizes, [[100, 12]]);
   assert.equal(runtime.getShell("sh1").cols, 100);
   assert.equal(runtime.getShell("sh1").rows, 12);
+  assert.equal(runtime.snapshotShell("sh1").screen.cols, 100);
+  assert.equal(runtime.snapshotShell("sh1").screen.rows, 12);
 
   runtime.sendShell("sh1", "one");
   runtime.sendShell("sh1", "two");
@@ -64,6 +92,9 @@ export async function runShellRuntimeSmoke() {
 
   assert.equal(runtime.killAll().length, 1);
   assert.equal(runtime.getShell("sh2").status, "killed");
+  runtime.dispose();
+  assert.equal(screens[0].disposed, true);
+  assert.equal(screens[1].disposed, true);
 
   assert.throws(() => runtime.sendShell("missing", "x"), /shell not found/);
 

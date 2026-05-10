@@ -145,11 +145,12 @@ export class ShellDrawer {
 }
 
 export function formatAnsiLines(snapshot) {
-  const text = snapshot?.ansi || snapshot?.plain || "";
-  return sanitizeAnsiForDrawer(text)
+  const screen = snapshot?.screen;
+  const text = screen?.ansi || screen?.plain || snapshot?.ansi || snapshot?.plain || "";
+  const lines = sanitizeAnsiForDrawer(text)
     .replace(/\r/g, "")
-    .split("\n")
-    .filter((line) => line.length > 0);
+    .split("\n");
+  return screen ? trimTrailingEmptyLines(lines) : lines.filter((line) => line.length > 0);
 }
 
 export function sanitizeAnsiForDrawer(text) {
@@ -169,4 +170,10 @@ function visibleWindow(lines, size, offset) {
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
+}
+
+function trimTrailingEmptyLines(lines) {
+  let end = lines.length;
+  while (end > 0 && lines[end - 1] === "") end -= 1;
+  return lines.slice(0, end);
 }

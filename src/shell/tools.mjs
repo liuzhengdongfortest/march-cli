@@ -89,13 +89,13 @@ export function createShellTools(shellRuntime = null) {
   const shellSnapshot = defineTool({
     name: "shell_snapshot",
     label: "Shell Snapshot",
-    description: "Return the current shell scrollback as plain text and ANSI text for visual debugging.",
+    description: "Return the current shell screen and scrollback as plain text and ANSI text for visual debugging.",
     parameters: Type.Object({
       shell_id: Type.String({ description: "Shell id returned by shell_spawn or shell_list" }),
     }),
     execute: async (_toolCallId, params) => {
       const snapshot = shellRuntime.snapshotShell(params.shell_id);
-      const text = snapshot.plain || "(empty shell output)";
+      const text = snapshot.screen?.plain || snapshot.plain || "(empty shell output)";
       return toolText(text, snapshot);
     },
   });

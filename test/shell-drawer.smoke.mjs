@@ -83,6 +83,10 @@ export async function runShellDrawerSmoke() {
   assert.deepEqual(ansiLines, ["\x1b[31mred\x1b[0m", "done"]);
   assert.equal(sanitizeAnsiForDrawer("\x1b[2J\x1b[32mok\x1b[0m"), "\x1b[32mok\x1b[0m");
   assert.deepEqual(formatAnsiLines({ plain: "fallback" }), ["fallback"]);
+  assert.deepEqual(formatAnsiLines({
+    screen: { plain: "screen", ansi: "\x1b[36mscreen\x1b[0m\n" },
+    plain: "fallback",
+  }), ["\x1b[36mscreen\x1b[0m"]);
 
   console.log("  PASS");
 }

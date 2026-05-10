@@ -48,6 +48,7 @@ export async function runShellToolsSmoke() {
   const snapshot = await byName.shell_snapshot.execute("tc-snapshot", { shell_id: "sh1" });
   assert.equal(snapshot.content[0].text, "seen:hello");
   assert.equal(snapshot.details.plain, "seen:hello");
+  assert.ok(snapshot.details.screen);
 
   const listed = await byName.shell_list.execute("tc3", {});
   assert.ok(listed.content[0].text.includes("dev"));
