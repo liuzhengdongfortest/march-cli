@@ -1,5 +1,12 @@
 import { spawnSync } from "node:child_process";
-import { DEFAULT_KEYBINDINGS, formatKeybindingLines } from "./keybindings.mjs";
+import { DEFAULT_KEYBINDINGS, KEYBINDING_ACTIONS } from "./keybindings.mjs";
+
+const HOTKEY_GROUPS = Object.freeze([
+  ["Turn control", ["abort", "interrupt"]],
+  ["Model and thinking", ["cycleThinking", "thinkingSelector", "modelSelector"]],
+  ["Editor and output", ["externalEditor", "toggleToolOutput", "pasteImage"]],
+  ["Shell drawer", ["toggleShellDrawer", "nextShell", "shellScrollUp", "shellScrollDown"]],
+]);
 
 export function parseInlineShellInput(input, lastCommand = "") {
   if (input === "!!") {
@@ -54,7 +61,7 @@ export function runInlineShellCommand(command, { cwd = process.cwd(), ui } = {})
 export function formatHotkeysPanel(keybindings = DEFAULT_KEYBINDINGS, diagnostics = []) {
   return [
     "Keyboard shortcuts:",
-    ...formatKeybindingLines(keybindings),
+    ...formatGroupedKeybindingLines(keybindings),
     ...formatKeybindingDiagnostics(diagnostics),
     "Input prefixes:",
     "  /          Slash command autocomplete",
@@ -63,6 +70,18 @@ export function formatHotkeysPanel(keybindings = DEFAULT_KEYBINDINGS, diagnostic
     "  ! cmd      Run local shell command without sending to the model",
     "  !!         Repeat previous local shell command",
   ];
+}
+
+export function formatGroupedKeybindingLines(keybindings = DEFAULT_KEYBINDINGS) {
+  return HOTKEY_GROUPS.flatMap(([label, actions]) => [
+    `  ${label}:`,
+    ...actions.map((action) => formatKeybindingLine(action, keybindings)),
+  ]);
+}
+
+function formatKeybindingLine(action, keybindings) {
+  const key = keybindings[action] ?? DEFAULT_KEYBINDINGS[action];
+  return `    ${key.padEnd(10, " ")} ${KEYBINDING_ACTIONS[action]}`;
 }
 
 function formatKeybindingDiagnostics(diagnostics) {
