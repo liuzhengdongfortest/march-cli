@@ -15,6 +15,7 @@ import { ShellDrawer } from "./shell-drawer.mjs";
 import { showSelectListOverlay } from "./select-list-overlay.mjs";
 import { createSpinnerStatusController } from "./spinner-status.mjs";
 import { StatusBar } from "./status-bar.mjs";
+import { writeEditDiff } from "./tui-diff-rendering.mjs";
 import { writeToolEnd, writeToolStart } from "./tool-rendering.mjs";
 import { EDITOR_THEME } from "./ui-theme.mjs";
 
@@ -273,16 +274,7 @@ export function createTuiUI({
     editDiff: (path, diffLines) => {
       ensureStarted();
       spinnerStatus.stop();
-      output.writeln(`\x1b[2m  ± ${path}\x1b[0m`);
-      for (const d of diffLines) {
-        if (d.type === "del") {
-          output.writeln(`\x1b[31m    - ${d.text}\x1b[0m`);
-        } else if (d.type === "add") {
-          output.writeln(`\x1b[32m    + ${d.text}\x1b[0m`);
-        } else {
-          output.writeln(`\x1b[2m      ${d.text}\x1b[0m`);
-        }
-      }
+      writeEditDiff({ output, path, diffLines });
       requestRender();
     },
 
