@@ -23,6 +23,7 @@ export async function runNodePtyAdapterSmoke() {
         onData: (fn) => { onDataHandler = fn; },
         onExit: (fn) => { onExitHandler = fn; },
         write: (text) => calls.push({ write: text }),
+        resize: (cols, rows) => calls.push({ resize: [cols, rows] }),
         kill: () => calls.push({ kill: true }),
         _socket: { destroy: () => calls.push({ socketDestroy: true }) },
         destroy: () => calls.push({ destroy: true }),
@@ -37,6 +38,8 @@ export async function runNodePtyAdapterSmoke() {
   });
   const events = [];
   const adapter = createAdapter({
+    cols: 100,
+    rows: 40,
     onData: (chunk) => events.push(["data", chunk]),
     onExit: (event) => events.push(["exit", event]),
   });
@@ -45,12 +48,15 @@ export async function runNodePtyAdapterSmoke() {
   assert.deepEqual(calls[0].args, ["-NoLogo", "-NoProfile"]);
   assert.equal(calls[0].options.cwd, "D:/repo");
   assert.equal(calls[0].options.env.A, "B");
+  assert.equal(calls[0].options.cols, 100);
+  assert.equal(calls[0].options.rows, 40);
   adapter.write("hello");
+  adapter.resize(120, 50);
   adapter.kill();
   adapter.dispose();
   onDataHandler("out");
   onExitHandler({ exitCode: 0 });
-  assert.deepEqual(calls.slice(1), [{ write: "hello" }, { socketDestroy: true }]);
+  assert.deepEqual(calls.slice(1), [{ write: "hello" }, { resize: [120, 50] }, { socketDestroy: true }]);
   assert.deepEqual(events, [["data", "out"], ["exit", { exitCode: 0 }]]);
 
   calls.length = 0;

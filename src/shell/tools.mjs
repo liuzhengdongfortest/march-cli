@@ -13,6 +13,8 @@ export function createShellTools(shellRuntime = null) {
       command: Type.Optional(Type.String({ description: "Command to launch; omitted means platform default shell" })),
       args: Type.Optional(Type.Array(Type.String(), { description: "Command arguments" })),
       cwd: Type.Optional(Type.String({ description: "Working directory" })),
+      cols: Type.Optional(Type.Number({ description: "Initial PTY columns" })),
+      rows: Type.Optional(Type.Number({ description: "Initial PTY rows" })),
     }),
     execute: async (_toolCallId, params) => {
       const shell = shellRuntime.spawnShell({
@@ -20,6 +22,8 @@ export function createShellTools(shellRuntime = null) {
         command: params.command,
         args: params.args ?? [],
         cwd: params.cwd,
+        cols: params.cols,
+        rows: params.rows,
       });
       return toolText(formatShell(shell), { shell });
     },

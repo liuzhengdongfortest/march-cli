@@ -12,10 +12,12 @@ export async function runShellRuntimeSmoke() {
     createPty: ({ onData, onExit, onError }) => {
       const adapter = {
         writes: [],
+        resizes: [],
         write: (text) => {
           adapter.writes.push(text);
           onData(`\x1b[32mout:${text}\x1b[0m\n`);
         },
+        resize: (cols, rows) => adapter.resizes.push([cols, rows]),
         kill: () => onExit({ exitCode: null, signal: "SIGTERM" }),
         fail: () => onError(new Error("boom")),
       };
@@ -26,10 +28,12 @@ export async function runShellRuntimeSmoke() {
 
   assert.equal(stripAnsi("\x1b[31mred\x1b[0m"), "red");
 
-  const first = runtime.spawnShell({ name: "dev", command: "powershell.exe", args: ["-NoLogo"], cwd: "D:/repo" });
+  const first = runtime.spawnShell({ name: "dev", command: "powershell.exe", args: ["-NoLogo"], cwd: "D:/repo", cols: 120, rows: 30 });
   const second = runtime.spawnShell({ name: "dev", command: "powershell.exe" });
   assert.equal(first.id, "sh1");
   assert.equal(first.status, "running");
+  assert.equal(first.cols, 120);
+  assert.equal(first.rows, 30);
   assert.equal(second.name, "dev-2");
 
   const send = runtime.sendShell("sh1", "hello");
@@ -38,6 +42,13 @@ export async function runShellRuntimeSmoke() {
   assert.equal(runtime.snapshotShell("sh1").plain, "out:hello");
   assert.ok(runtime.snapshotShell("sh1").ansi.includes("\x1b[32m"));
   assert.deepEqual(runtime.searchShell("sh1", "hello").matches.map((match) => match.line), ["out:hello"]);
+  assert.deepEqual(runtime.resizeShell("sh1", { cols: 120, rows: 30 }), { ok: true, changed: false, shell: runtime.getShell("sh1") });
+  const resized = runtime.resizeShell("sh1", { cols: 100.9, rows: 12.1 });
+  assert.equal(resized.ok, true);
+  assert.equal(resized.changed, true);
+  assert.deepEqual([...adapters.values()][0].resizes, [[100, 12]]);
+  assert.equal(runtime.getShell("sh1").cols, 100);
+  assert.equal(runtime.getShell("sh1").rows, 12);
 
   runtime.sendShell("sh1", "one");
   runtime.sendShell("sh1", "two");
@@ -48,6 +59,8 @@ export async function runShellRuntimeSmoke() {
   assert.equal(killed.ok, true);
   assert.equal(runtime.getShell("sh1").status, "killed");
   assert.equal(runtime.sendShell("sh1", "late").ok, false);
+  assert.equal(runtime.resizeShell("sh1", { cols: 90, rows: 20 }).ok, false);
+  assert.equal(runtime.getShell("sh1").cols, 100);
 
   assert.equal(runtime.killAll().length, 1);
   assert.equal(runtime.getShell("sh2").status, "killed");
@@ -99,6 +112,18 @@ export async function runShellRuntimeSmoke() {
   assert.equal(killFailure.ok, false);
   assert.equal(killFailure.shell.status, "failed");
   assert.ok(killFailure.error.includes("kill failed"));
+
+  const resizeUnsupportedRuntime = createShellRuntime({
+    idFactory: () => "no-resize",
+    createPty: () => ({
+      write: () => {},
+      kill: () => {},
+    }),
+  });
+  resizeUnsupportedRuntime.spawnShell({ command: "pwsh", cols: 80, rows: 24 });
+  const unsupportedResize = resizeUnsupportedRuntime.resizeShell("no-resize", { cols: 90, rows: 30 });
+  assert.equal(unsupportedResize.ok, false);
+  assert.equal(resizeUnsupportedRuntime.getShell("no-resize").cols, 80);
 
   console.log("  PASS");
 }

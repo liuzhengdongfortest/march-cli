@@ -9,6 +9,8 @@ export function createShellRuntime({
   idFactory = () => randomUUID().slice(0, 8),
   defaultCommand = process.platform === "win32" ? "powershell.exe" : process.env.SHELL || "sh",
   defaultArgs = process.platform === "win32" ? ["-NoLogo", "-NoProfile"] : [],
+  defaultCols = 80,
+  defaultRows = 24,
 } = {}) {
   if (typeof createPty !== "function") {
     throw new Error("createPty is required");
@@ -22,9 +24,12 @@ export function createShellRuntime({
     args = [],
     cwd = process.cwd(),
     env = process.env,
+    cols = defaultCols,
+    rows = defaultRows,
   } = {}) {
     const resolvedCommand = command || defaultCommand;
     const resolvedArgs = command ? args : (args.length ? args : defaultArgs);
+    const size = normalizeSize({ cols, rows, fallbackCols: defaultCols, fallbackRows: defaultRows });
     const id = idFactory();
     const shell = {
       id,
@@ -36,6 +41,8 @@ export function createShellRuntime({
       exitCode: null,
       signal: null,
       error: null,
+      cols: size.cols,
+      rows: size.rows,
       createdAt: now().toISOString(),
       updatedAt: now().toISOString(),
       rawChunks: [],
@@ -50,6 +57,8 @@ export function createShellRuntime({
         args: shell.args,
         cwd,
         env,
+        cols: shell.cols,
+        rows: shell.rows,
         onData: (chunk) => appendOutput(shell, chunk, maxScrollbackLines),
         onExit: (event = {}) => markExited(shell, event),
         onError: (error) => markFailed(shell, error),
@@ -71,6 +80,32 @@ export function createShellRuntime({
     shell.pty.write(String(text ?? ""));
     touch(shell, now);
     return { ok: true, shell: publicShell(shell) };
+  }
+
+  function resizeShell(id, { cols, rows } = {}) {
+    const shell = requireShell(shells, id);
+    const size = normalizeSize({ cols, rows, fallbackCols: shell.cols, fallbackRows: shell.rows });
+    if (shell.cols === size.cols && shell.rows === size.rows) {
+      return { ok: true, changed: false, shell: publicShell(shell) };
+    }
+    if (shell.status !== "running" && shell.status !== "starting") {
+      return { ok: false, changed: false, error: `shell ${id} is ${shell.status}`, shell: publicShell(shell) };
+    }
+    if (typeof shell.pty?.resize !== "function") {
+      return { ok: false, changed: false, error: `shell ${id} does not support resize`, shell: publicShell(shell) };
+    }
+    try {
+      shell.pty.resize(size.cols, size.rows);
+    } catch (error) {
+      shell.status = "failed";
+      shell.error = `resize failed: ${error?.message ?? String(error)}`;
+      touch(shell, now);
+      return { ok: false, changed: true, error: shell.error, shell: publicShell(shell) };
+    }
+    shell.cols = size.cols;
+    shell.rows = size.rows;
+    touch(shell, now);
+    return { ok: true, changed: true, shell: publicShell(shell) };
   }
 
   function killShell(id) {
@@ -144,6 +179,7 @@ export function createShellRuntime({
   return {
     spawnShell,
     sendShell,
+    resizeShell,
     killShell,
     killAll,
     listShells,
@@ -210,10 +246,25 @@ function publicShell(shell) {
     exitCode: shell.exitCode,
     signal: shell.signal,
     error: shell.error,
+    cols: shell.cols,
+    rows: shell.rows,
     createdAt: shell.createdAt,
     updatedAt: shell.updatedAt,
     lineCount: shell.plainLines.length,
   };
+}
+
+function normalizeSize({ cols, rows, fallbackCols, fallbackRows }) {
+  return {
+    cols: normalizePositiveInt(cols, fallbackCols),
+    rows: normalizePositiveInt(rows, fallbackRows),
+  };
+}
+
+function normalizePositiveInt(value, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) return Math.max(1, Math.trunc(Number(fallback) || 1));
+  return Math.max(1, Math.trunc(number));
 }
 
 function uniqueName(baseName, shells) {

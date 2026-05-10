@@ -11,6 +11,8 @@ export function createNodePtyAdapterFactory({
     args = [],
     cwd = defaultCwd,
     env = defaultEnv,
+    cols = 80,
+    rows = 24,
     onData,
     onExit,
     onError,
@@ -20,8 +22,8 @@ export function createNodePtyAdapterFactory({
     try {
       term = ptyModule.spawn(resolved.command, resolved.args, {
         name: "xterm-color",
-        cols: 80,
-        rows: 24,
+        cols,
+        rows,
         cwd,
         env,
       });
@@ -54,6 +56,7 @@ export function createNodePtyAdapterFactory({
 
     return {
       write: (text) => term.write(String(text ?? "")),
+      resize: (nextCols, nextRows) => term.resize?.(nextCols, nextRows),
       kill: () => disposeTerminal(),
       dispose: () => disposeTerminal(),
     };

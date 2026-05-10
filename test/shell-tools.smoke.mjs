@@ -29,9 +29,13 @@ export async function runShellToolsSmoke() {
     command: "powershell.exe",
     args: ["-NoLogo"],
     cwd: "D:/repo",
+    cols: 132,
+    rows: 35,
   });
   assert.ok(spawned.content[0].text.includes("sh1"));
   assert.equal(spawned.details.shell.status, "running");
+  assert.equal(spawned.details.shell.cols, 132);
+  assert.equal(spawned.details.shell.rows, 35);
 
   const sent = await byName.shell_send.execute("tc2", { shell_id: "sh1", text: "hello" });
   assert.ok(sent.content[0].text.includes("Sent 5 chars"));

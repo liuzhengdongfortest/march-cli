@@ -14,6 +14,7 @@ export class ShellDrawer {
     this.visible = false;
     this.selectedShellId = null;
     this.scrollOffset = 0;
+    this.shellSizes = new Map();
   }
 
   toggle() {
@@ -82,6 +83,7 @@ export class ShellDrawer {
     const shells = this.getShells();
     const position = Math.max(0, shells.findIndex((item) => item.id === shell.id)) + 1;
     const args = shell.args?.length ? ` ${shell.args.join(" ")}` : "";
+    this.syncShellSize(shell.id, safeWidth, this.maxOutputLines);
     const outputLines = this.getOutputLines(shell.id);
     const maxOffset = Math.max(0, outputLines.length - this.maxOutputLines);
     this.scrollOffset = clamp(this.scrollOffset, 0, maxOffset);
@@ -124,6 +126,21 @@ export class ShellDrawer {
     if (!shellId || !this.shellRuntime) return [];
     const snapshot = this.shellRuntime.snapshotShell(shellId);
     return formatAnsiLines(snapshot);
+  }
+
+  syncShellSize(shellId, cols, rows) {
+    if (!shellId || !this.shellRuntime?.resizeShell) return null;
+    const size = {
+      cols: Math.max(1, Math.trunc(cols)),
+      rows: Math.max(1, Math.trunc(rows)),
+    };
+    const previous = this.shellSizes.get(shellId);
+    if (previous?.cols === size.cols && previous?.rows === size.rows) return null;
+    this.shellSizes.set(shellId, size);
+    return this.shellRuntime.resizeShell(shellId, {
+      cols: size.cols,
+      rows: size.rows,
+    });
   }
 }
 
