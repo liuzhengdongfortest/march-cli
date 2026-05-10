@@ -1,7 +1,7 @@
-import { homedir } from "node:os";
-import { isAbsolute, resolve, sep } from "node:path";
-import { readdirSync, readFileSync } from "node:fs";
+import { isAbsolute, resolve } from "node:path";
+import { readFileSync } from "node:fs";
 import { buildMemoryLayer } from "./memory-layer.mjs";
+import { buildSessionStatus } from "./session-status.mjs";
 
 export class ContextEngine {
   constructor({ cwd, modelId, provider = "deepseek", thinkingLevel = "medium", skills = [], skillPool = [], pins = [], graph = null, glossary = null, namespace = "", shellRuntime = null }) {
@@ -202,56 +202,7 @@ thinking: ${this.thinkingLevel}`;
 
   // ── Layer 3: session_status ────────────────────────────────────────
   #buildSessionStatus() {
-    const home = homedir();
-    const displayPath = this.cwd.startsWith(home)
-      ? `~${this.cwd.slice(home.length)}`
-      : this.cwd;
-    const tree = this.#buildDirTree(3);
-    const shellInfo = process.platform === "win32"
-      ? "shells: powershell (recommended), bash (Git Bash)"
-      : "shell: bash";
-
-    return `[session_status]
-cwd: ${this.cwd}
-platform: ${process.platform}
-${shellInfo}
-project: ${displayPath}
-
-Directory tree (top 3 levels):
-${tree}`;
-  }
-
-  #buildDirTree(maxDepth) {
-    const lines = [];
-    const walk = (dir, prefix, depth) => {
-      if (depth > maxDepth) return;
-      let entries;
-      try {
-        entries = readdirSync(dir, { withFileTypes: true });
-      } catch {
-        return;
-      }
-      const skip = new Set(["node_modules", ".git", "playgroundnocturne_memory"]);
-      entries = entries.filter(
-        (e) => !e.name.startsWith(".") || e.name === ".march",
-      );
-      entries = entries.filter((e) => !skip.has(e.name));
-      entries = entries.slice(0, 60);
-      for (let i = 0; i < entries.length; i++) {
-        const entry = entries[i];
-        const isLast = i === entries.length - 1;
-        const connector = isLast ? "└── " : "├── ";
-        const nextPrefix = prefix + (isLast ? "    " : "│   ");
-        if (entry.isDirectory()) {
-          lines.push(`${prefix}${connector}${entry.name}/`);
-          walk(`${dir}${sep}${entry.name}`, nextPrefix, depth + 1);
-        } else {
-          lines.push(`${prefix}${connector}${entry.name}`);
-        }
-      }
-    };
-    walk(this.cwd, "", 1);
-    return lines.join("\n") || "(empty)";
+    return buildSessionStatus({ cwd: this.cwd });
   }
 
   // ── Layer 5: skills catalog (Tier 1: always in context) ────────────

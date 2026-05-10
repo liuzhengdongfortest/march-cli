@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { runAuthStorageSmoke } from "./auth-storage.smoke.mjs";
+import { runContextSessionStatusSmoke } from "./context-session-status.smoke.mjs";
 import { runCopyCommandSmoke } from "./copy-command.smoke.mjs";
 import { runCliCommandSuiteSmoke } from "./cli-command-suite.smoke.mjs";
 import { runDiffAndUiSmoke, runMemorySystemSmoke } from "./memory-and-diff.smoke.mjs";
@@ -99,6 +100,7 @@ await runShellDrawerSmoke();
 await runShellToolsSmoke();
 await runNodePtyAdapterSmoke();
 await runTuiShellDrawerSmoke({ setupTmp, cleanup });
+await runContextSessionStatusSmoke();
 
 // ── 2. Config loading ────────────────────────────────────────────────
 
