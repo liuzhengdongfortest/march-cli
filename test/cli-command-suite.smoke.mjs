@@ -16,6 +16,7 @@ import { runPinCommandSmoke } from "./pin-command.smoke.mjs";
 import { runHelpCommandSmoke } from "./help-command.smoke.mjs";
 import { runSessionSourceCommandSmoke } from "./session-source-command.smoke.mjs";
 import { runRunnerCompactionSmoke } from "./runner-compaction.smoke.mjs";
+import { runRunnerCleanupSmoke } from "./runner-cleanup.smoke.mjs";
 import { runRunnerRuntimeHostSmoke } from "./runner-runtime-host.smoke.mjs";
 import { runRunnerTurnFlowSmoke } from "./runner-turn-flow.smoke.mjs";
 import { runRuntimeFactorySmoke } from "./runtime-factory.smoke.mjs";
@@ -64,6 +65,7 @@ export async function runCliCommandSuiteSmoke({ setupTmp, cleanup }) {
   await runSessionOptionsSmoke();
   await runShellCommandSmoke();
   await runTurnEventsSmoke();
+  await runRunnerCleanupSmoke();
   await runRunnerCompactionSmoke({ setupTmp, cleanup });
   await runRunnerTurnFlowSmoke({ setupTmp, cleanup });
   await runRuntimeFactorySmoke();

@@ -11,6 +11,7 @@ import { resolveImageAttachmentReferences } from "../session/attachment-referenc
 import { syncPiSessionSidecar } from "../session/sidecar-sync.mjs";
 import { cloneCurrentPiSession } from "./pi-session-clone.mjs";
 import { forkPiSessionWithResetContext } from "./pi-session-fork-reset.mjs";
+import { runRunnerCleanup } from "./runner-cleanup.mjs";
 import { createRunnerRuntimeHost } from "./runner-runtime-host.mjs";
 import { getRunnerSessionStats, syncEngineSessionState } from "./runner-session-state.mjs";
 import { resolveRunnerSessionOptions } from "./session-options.mjs";
@@ -316,17 +317,4 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       sessionStats: getRunnerSessionStats(sessionBinding.get(), runtimeHost),
     });
   }
-}
-
-async function runRunnerCleanup(cleanups) {
-  const errors = [];
-  for (const cleanup of cleanups) {
-    try {
-      await cleanup();
-    } catch (err) {
-      errors.push(err);
-    }
-  }
-  if (errors.length === 1) throw errors[0];
-  if (errors.length > 1) throw new AggregateError(errors, "Runner cleanup failed");
 }
