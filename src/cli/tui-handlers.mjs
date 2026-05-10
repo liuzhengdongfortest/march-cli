@@ -1,6 +1,7 @@
 import { buildModelSelectItems } from "./model-command.mjs";
 import { pasteClipboardImage } from "./paste-image-command.mjs";
 import { buildThinkingSelectItems } from "./thinking-command.mjs";
+import { yellow, brightBlack } from "./ui-theme.mjs";
 
 export function wireTuiHandlers({
   ui,
@@ -14,13 +15,13 @@ export function wireTuiHandlers({
   ui.setEscapeHandler(() => {
     if (isTurnRunning()) {
       runner.abort();
-      ui.writeln(`\x1b[33m● aborted\x1b[0m`);
+      ui.writeln(yellow(`● aborted`));
     }
   });
   ui.setCtrlCHandler?.(() => {
     if (isTurnRunning()) {
       runner.abort();
-      ui.writeln(`\x1b[33m● aborted\x1b[0m`);
+      ui.writeln(yellow(`● aborted`));
       return;
     }
     ui.requestExit?.();
@@ -29,7 +30,7 @@ export function wireTuiHandlers({
   const cycleThinkingLevel = () => {
     const level = runner.cycleThinkingLevel();
     if (level) {
-      ui.writeln(`\x1b[90m● thinking: ${level}\x1b[0m`);
+      ui.writeln(brightBlack(`● thinking: ${level}`));
       refreshStatusBar();
     }
   };
@@ -47,10 +48,10 @@ export function wireTuiHandlers({
           width: 48,
         });
         if (!item) {
-          ui.writeln(`\x1b[90m● thinking: unchanged\x1b[0m`);
+          ui.writeln(brightBlack(`● thinking: unchanged`));
           return;
         }
-        ui.writeln(`\x1b[90m● thinking: ${runner.setThinkingLevel(item.level)}\x1b[0m`);
+        ui.writeln(brightBlack(`● thinking: ${runner.setThinkingLevel(item.level)}`));
         refreshStatusBar();
         return;
       }
@@ -74,22 +75,22 @@ export function wireTuiHandlers({
           width: 72,
         });
         if (!item) {
-          ui.writeln(`\x1b[90m● model: unchanged\x1b[0m`);
+          ui.writeln(brightBlack(`● model: unchanged`));
           return;
         }
         const model = await runner.setModel(item.model);
         const name = model.name || model.id;
-        ui.writeln(`\x1b[90m● model: ${name} (${model.provider})\x1b[0m`);
+        ui.writeln(brightBlack(`● model: ${name} (${model.provider})`));
         refreshStatusBar();
         return;
       }
       const result = await runner.cycleModel();
       if (result) {
         const name = result.model.name || result.model.id;
-        ui.writeln(`\x1b[90m● model: ${name} (${result.model.provider})  thinking: ${result.thinkingLevel}\x1b[0m`);
+        ui.writeln(brightBlack(`● model: ${name} (${result.model.provider})  thinking: ${result.thinkingLevel}`));
         refreshStatusBar();
       } else {
-        ui.writeln(`\x1b[90m● model: only one available\x1b[0m`);
+        ui.writeln(brightBlack(`● model: only one available`));
       }
     } catch (err) {
       ui.writeln(`Error: ${err.message}`);

@@ -1,8 +1,8 @@
 import { truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
+import { PREFIX, R } from "./ui-theme.mjs";
 
-const BORDER = "\x1b[38;5;238m";
-const RESET = "\x1b[0m";
-const SEPARATOR = `${BORDER}│${RESET}`;
+const BORDER_PREFIX = PREFIX.fg238;
+const SEPARATOR = `${BORDER_PREFIX}│${R}`;
 const SEPARATOR_WIDTH = 1;
 const MIN_LEFT_WIDTH = 34;
 const MIN_SHELL_WIDTH = 34;

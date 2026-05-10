@@ -52,6 +52,7 @@ export async function runShellRuntimeSmoke() {
   });
 
   assert.equal(stripAnsi("\x1b[31mred\x1b[0m"), "red");
+  assert.equal(stripAnsi("x\x1b]0;title\x07y"), "xy");
 
   const first = runtime.spawnShell({ name: "dev", command: "powershell.exe", args: ["-NoLogo"], cwd: "D:/repo", cols: 120, rows: 30 });
   const second = runtime.spawnShell({ name: "dev", command: "powershell.exe" });
@@ -77,6 +78,11 @@ export async function runShellRuntimeSmoke() {
   assert.equal(runtime.getShell("sh1").rows, 12);
   assert.equal(runtime.snapshotShell("sh1").screen.cols, 100);
   assert.equal(runtime.snapshotShell("sh1").screen.rows, 12);
+
+  const cleared = runtime.clearShell("sh1");
+  assert.equal(cleared.ok, true);
+  assert.equal(runtime.snapshotShell("sh1").plain, "");
+  assert.equal(runtime.getShell("sh1").lineCount, 0);
 
   runtime.sendShell("sh1", "one");
   runtime.sendShell("sh1", "two");
@@ -107,6 +113,24 @@ export async function runShellRuntimeSmoke() {
   const failed = failedRuntime.spawnShell({ command: "missing.exe" });
   assert.equal(failed.status, "failed");
   assert.equal(failed.error, "spawn failed");
+
+  const conflictRuntime = createShellRuntime({
+    idFactory: (() => {
+      let id = 1;
+      return () => `conflict${id++}`;
+    })(),
+    createPty: () => ({
+      write: () => {},
+      kill: () => {},
+      dispose: () => {},
+    }),
+  });
+  const original = conflictRuntime.spawnShell({ name: "same" });
+  const reused = conflictRuntime.spawnShell({ name: "same", nameConflict: "reuse" });
+  assert.equal(reused.id, original.id);
+  const replaced = conflictRuntime.spawnShell({ name: "same", nameConflict: "replace" });
+  assert.notEqual(replaced.id, original.id);
+  assert.equal(replaced.name, "same");
 
   const defaultRuntime = createShellRuntime({
     idFactory: () => "default",

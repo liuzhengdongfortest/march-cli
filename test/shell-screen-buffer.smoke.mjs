@@ -12,6 +12,10 @@ export async function runShellScreenBufferSmoke() {
   await waitFor(() => buffer.snapshot().plain === "ok");
   assert.ok(buffer.snapshot().ansi.includes("\x1b[31m"));
 
+  buffer.write("\x1b]0;ignored-title\x07");
+  await waitFor(() => buffer.snapshot().plain === "ok");
+  assert.equal(buffer.snapshot().plain.includes("ignored-title"), false);
+
   buffer.write("\x1b[3;5Hhi");
   await waitFor(() => buffer.snapshot().plain.includes("    hi"));
   assert.ok(buffer.snapshot().ansi.includes("    hi"));

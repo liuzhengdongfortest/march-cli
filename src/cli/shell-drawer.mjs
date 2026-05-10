@@ -1,11 +1,12 @@
 import { truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
+import { PREFIX, R } from "./ui-theme.mjs";
 
 const CONTROL_RE = /\x1b(?:\][^\x07]*(?:\x07|\x1b\\)|\[(?![0-9;]*m)[0-?]*[ -/]*[@-~]|[@-Z\\-_])/g;
-const HEADER_FG = "\x1b[38;5;250m";
-const MUTED = "\x1b[90m";
-const BORDER = "\x1b[38;5;238m";
-const ACTIVE = "\x1b[36m";
-const RESET = "\x1b[0m";
+const HEADER = PREFIX.fg250;
+const MUTED = PREFIX.brightBlack;
+const BORDER = PREFIX.fg238;
+const ACTIVE = PREFIX.cyan;
+const RESET = R;
 
 export class ShellDrawer {
   constructor({ shellRuntime = null, maxOutputLines = 10 } = {}) {
@@ -81,15 +82,26 @@ export class ShellDrawer {
     }
 
     const shells = this.getShells();
-    const position = Math.max(0, shells.findIndex((item) => item.id === shell.id)) + 1;
+
+    // Tab bar: all shells with active highlighted
+    if (shells.length > 1) {
+      const tabs = shells.map((s) => {
+        const label = `${s.status === "running" ? "●" : "○"} ${s.name}`;
+        if (s.id === shell.id) return `${ACTIVE}${label}${MUTED}`;
+        return `${MUTED}${label}`;
+      }).join(` ${BORDER}│${MUTED} `);
+      lines.push(fit(`${MUTED}shells: ${tabs}${RESET}`, safeWidth));
+    }
+
     const args = shell.args?.length ? ` ${shell.args.join(" ")}` : "";
     this.syncShellSize(shell.id, safeWidth, this.maxOutputLines);
     const outputLines = this.getOutputLines(shell.id);
     const maxOffset = Math.max(0, outputLines.length - this.maxOutputLines);
     this.scrollOffset = clamp(this.scrollOffset, 0, maxOffset);
     const scrollLabel = this.scrollOffset === 0 ? "tail" : `-${this.scrollOffset}`;
-    const focusLabel = this.isInputActive() ? `${ACTIVE}focus:shell${MUTED}` : "focus:editor";
-    lines.push(fit(`${HEADER_FG}${shell.name} ${MUTED}${position}/${shells.length} ${shell.id} ${focusLabel} ${shell.status} ${scrollLabel} ${shell.command}${args}${RESET}`, safeWidth));
+    const focusLabel = this.isInputActive() ? `${ACTIVE}Alt+S:editor` : `${MUTED}Alt+S:shell`;
+    const statusIcon = shell.status === "running" ? "●" : shell.status === "starting" ? "○" : "×";
+    lines.push(fit(`${HEADER}${statusIcon} ${shell.command}${args} ${MUTED}${scrollLabel}  ${focusLabel}${RESET}`, safeWidth));
 
     if (outputLines.length === 0) {
       lines.push(fit(`${MUTED}(empty shell output)${RESET}`, safeWidth));

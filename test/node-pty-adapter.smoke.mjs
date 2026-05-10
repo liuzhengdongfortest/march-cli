@@ -12,6 +12,14 @@ export async function runNodePtyAdapterSmoke() {
     command: "pwsh.exe",
     args: ["-NoLogo"],
   });
+  assert.deepEqual(resolveShellCommand({ command: "powershell", args: ["-NoLogo"], platform: "win32" }), {
+    command: "powershell.exe",
+    args: ["-NoLogo"],
+  });
+  assert.deepEqual(resolveShellCommand({ command: "cmd", platform: "win32" }), {
+    command: "cmd.exe",
+    args: [],
+  });
 
   const calls = [];
   let onDataHandler = null;

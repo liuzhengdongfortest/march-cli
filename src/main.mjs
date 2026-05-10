@@ -1,9 +1,11 @@
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { join, resolve, dirname } from "node:path";
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseCliArgs, showHelp } from "./cli/args.mjs";
 import { createUI } from "./cli/ui.mjs";
+import { createPermissionController, MODE } from "./cli/permissions.mjs";
+import { bold, brightBlack } from "./cli/ui-theme.mjs";
 import { handleSlashCommand } from "./cli/slash-commands.mjs";
 import {
   parseInlineShellInput,
@@ -33,8 +35,29 @@ import { resolvePiSessionManager } from "./session/pi-manager.mjs";
 import { formatMessageAttachmentsForDisplay } from "./session/attachment-display.mjs";
 import { loadOrCreateProjectId, resumeStartupSession } from "./cli/startup-session.mjs";
 import { activateStartupSkills, createStartupSkillRuntime } from "./cli/startup-skills.mjs";
+import { initializeMcp } from "./mcp/index.mjs";
+import { createWebTools } from "./web/tools.mjs";
+
+function loadDotEnv(cwd) {
+  for (const dir of [cwd, dirname(fileURLToPath(import.meta.url))]) {
+    const path = join(dir, ".env");
+    if (!existsSync(path)) continue;
+    for (const line of readFileSync(path, "utf-8").split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const eq = trimmed.indexOf("=");
+      if (eq < 1) continue;
+      const key = trimmed.slice(0, eq).trim();
+      const val = trimmed.slice(eq + 1).trim();
+      if (!process.env[key]) process.env[key] = val;
+    }
+  }
+}
 
 export async function run(argv) {
+  const cwd = process.cwd();
+  loadDotEnv(cwd);
+
   const args = parseCliArgs(argv);
 
   if (args.help) {
@@ -52,8 +75,6 @@ export async function run(argv) {
       return 1;
     }
   }
-
-  const cwd = process.cwd();
 
   const stateRoot = join(homedir(), ".march");
   if (!existsSync(stateRoot)) mkdirSync(stateRoot, { recursive: true });
@@ -98,6 +119,25 @@ export async function run(argv) {
   });
   const shellRuntime = args.shellRuntime ? createCliShellRuntime({ cwd }) : null;
 
+  // MCP: connect to configured MCP servers
+  const mcpInit = await initializeMcp({ projectDir: cwd });
+  const { clientManager: mcpClientManager, mcpTools } = mcpInit;
+  for (const { server, error } of mcpInit.errors) {
+    if (args.json) {
+      // errors will be surfaced in diagnostics via runner status
+    } else {
+      process.stderr.write(`[mcp] ${server}: ${error}\n`);
+    }
+  }
+
+  // Web tools: search + fetch
+  const tavilyKey = process.env.TAVILY_API_KEY ?? "";
+  const webTools = createWebTools({ tavilyKey });
+
+  // Permission controller
+  const permissionMode = args.permissionMode ?? MODE.DEFAULT;
+  const permissionController = createPermissionController({ mode: permissionMode });
+
   // Session persistence
   const usePiSessionDefaults = args.piSessionDefaults || !args.legacySessions;
   const usePiSessions = args.piSessions || usePiSessionDefaults;
@@ -138,6 +178,9 @@ export async function run(argv) {
     memoryTools,
     skillTools,
     shellRuntime,
+    mcpTools,
+    mcpClientManager,
+    webTools,
     namespace,
     projectMarchDir,
     extensionPaths,
@@ -151,6 +194,7 @@ export async function run(argv) {
     lifecycleHooks: lifecycleManifests.hooks,
     lifecycleDiagnostics: lifecycleManifests.diagnostics,
     authStorage: authConfig.authStorage,
+    permissionController,
   });
 
   const refreshStatusBar = createStatusLineUpdater({
@@ -190,7 +234,7 @@ export async function run(argv) {
   if (args.prompt) {
     const context = runner.engine.buildContext(args.prompt);
     const fullPrompt = `${context}\n\n[user]\n${args.prompt}`;
-    ui.writeln(`\x1b[1m[user]\x1b[0m ${formatMessageAttachmentsForDisplay(args.prompt)}`);
+    ui.writeln(`${bold("[user]")} ${formatMessageAttachmentsForDisplay(args.prompt)}`);
     turnRunning = true;
     await runner.runTurn(fullPrompt, args.prompt);
     turnRunning = false;
@@ -275,14 +319,14 @@ export async function run(argv) {
 
     const templateResult = expandPromptTemplate(trimmed, promptTemplateConfig.templates);
     if (templateResult.type === "template") {
-      ui.writeln(`\x1b[90m● template: ${templateResult.name}\x1b[0m`);
+      ui.writeln(brightBlack(`● template: ${templateResult.name}`));
       trimmed = templateResult.prompt;
     }
 
     const context = runner.engine.buildContext(args.prompt || trimmed);
     const fullPrompt = `${context}\n\n[user]\n${trimmed}`;
     try {
-      ui.writeln(`\x1b[1m[user]\x1b[0m ${formatMessageAttachmentsForDisplay(trimmed)}`);
+      ui.writeln(`${bold("[user]")} ${formatMessageAttachmentsForDisplay(trimmed)}`);
       turnRunning = true;
       await runner.runTurn(fullPrompt, trimmed);
       turnRunning = false;

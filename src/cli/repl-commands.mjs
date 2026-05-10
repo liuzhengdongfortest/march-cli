@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { DEFAULT_KEYBINDINGS, KEYBINDING_ACTIONS } from "./keybindings.mjs";
+import { dim, red } from "./ui-theme.mjs";
 
 const HOTKEY_GROUPS = Object.freeze([
   ["Turn control", ["abort", "interrupt"]],
@@ -33,7 +34,7 @@ export function runInlineShellCommand(command, { cwd = process.cwd(), ui } = {})
   const shell = process.platform === "win32"
     ? { bin: "powershell.exe", args: ["-NoProfile", "-Command", command] }
     : { bin: "bash", args: ["-lc", command] };
-  ui?.writeln(`\x1b[2m$ ${command}\x1b[0m`);
+  ui?.writeln(dim(`$ ${command}`));
   const result = spawnSync(shell.bin, shell.args, {
     cwd,
     encoding: "utf8",
@@ -47,13 +48,13 @@ export function runInlineShellCommand(command, { cwd = process.cwd(), ui } = {})
   }
   if (result.stderr) {
     for (const line of result.stderr.replace(/\s+$/, "").split("\n")) {
-      if (line) ui?.writeln(`\x1b[31m${line}\x1b[0m`);
+      if (line) ui?.writeln(red(line));
     }
   }
   if (result.error) {
-    ui?.writeln(`\x1b[31mError: ${result.error.message}\x1b[0m`);
+    ui?.writeln(red(`Error: ${result.error.message}`));
   } else if (result.status !== 0) {
-    ui?.writeln(`\x1b[31mexit ${result.status}\x1b[0m`);
+    ui?.writeln(red(`exit ${result.status}`));
   }
   return result;
 }

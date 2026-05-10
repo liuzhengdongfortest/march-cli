@@ -64,9 +64,18 @@ export function createNodePtyAdapterFactory({
 }
 
 export function resolveShellCommand({ command, args = [], platform = process.platform }) {
-  if (command) return { command, args: [...args] };
+  if (command) return { command: normalizeWindowsShellCommand(command, platform), args: [...args] };
   if (platform === "win32") {
     return { command: "powershell.exe", args: ["-NoLogo", "-NoProfile"] };
   }
   return { command: process.env.SHELL || "sh", args: [] };
+}
+
+function normalizeWindowsShellCommand(command, platform) {
+  if (platform !== "win32") return command;
+  const normalized = String(command).trim().toLowerCase();
+  if (normalized === "powershell") return "powershell.exe";
+  if (normalized === "pwsh") return "pwsh.exe";
+  if (normalized === "cmd") return "cmd.exe";
+  return command;
 }

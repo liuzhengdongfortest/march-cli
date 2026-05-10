@@ -1,8 +1,9 @@
 import { extractToolOutput } from "./tool-output.mjs";
+import { dim, red } from "./ui-theme.mjs";
 
 export function writeToolStart({ output, name, args }) {
   const shortArgs = JSON.stringify(args).slice(0, 120);
-  output.writeln(`\x1b[2m  ◆ ${name} ${shortArgs}\x1b[0m`);
+  output.writeln(dim(`  ◆ ${name} ${shortArgs}`));
 }
 
 export function writeToolEnd({
@@ -15,10 +16,10 @@ export function writeToolEnd({
 }) {
   if (isError) {
     const errText = extractToolOutputImpl(result);
-    output.writeln(`\x1b[31m  ◆ ${name} failed\x1b[0m`);
+    output.writeln(red(`  ◆ ${name} failed`));
     if (errText) {
       for (const line of errText.split("\n").slice(0, 6)) {
-        output.writeln(`\x1b[31m    ${line.slice(0, 120)}\x1b[0m`);
+        output.writeln(red(`    ${line.slice(0, 120)}`));
       }
     }
     return true;
@@ -30,8 +31,8 @@ export function writeToolEnd({
   const limit = toolsExpanded ? 40 : 4;
   const show = lines.slice(0, limit);
   for (const line of show) {
-    output.writeln(`\x1b[2m    ${line.slice(0, 120)}\x1b[0m`);
+    output.writeln(dim(`    ${line.slice(0, 120)}`));
   }
-  if (lines.length > limit) output.writeln(`\x1b[2m    … (${lines.length - limit} more lines)\x1b[0m`);
+  if (lines.length > limit) output.writeln(dim(`    … (${lines.length - limit} more lines)`));
   return true;
 }

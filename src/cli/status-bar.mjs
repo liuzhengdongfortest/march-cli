@@ -1,5 +1,7 @@
 import { visibleWidth } from "@mariozechner/pi-tui";
+import { statusBar, R } from "./ui-theme.mjs";
 
+const ANSI_RE = /\x1b\[[0-?]*[ -/]*[@-~]/g;
 const DEFAULT_STATUS_TEXT = "March";
 
 export class StatusBar {
@@ -17,8 +19,16 @@ export class StatusBar {
     if (width <= 0) return [""];
     const text = fitStatusText(this.text, width);
     const padded = padToWidth(text, width);
-    return [`\x1b[48;5;236m\x1b[38;5;250m${padded}\x1b[0m`];
+    // If text already has ANSI coloring, only apply background
+    if (hasAnsi(padded)) {
+      return [statusBar.background(`${padded}${R}`)];
+    }
+    return [statusBar.background(statusBar.text(padded))];
   }
+}
+
+function hasAnsi(text) {
+  return ANSI_RE.test(text);
 }
 
 export function normalizeStatusText(text) {
@@ -27,20 +37,21 @@ export function normalizeStatusText(text) {
 }
 
 export function padToWidth(text, width) {
-  const padding = Math.max(0, width - visibleWidth(text));
+  const plainWidth = visibleWidth(stripAnsi(text));
+  const padding = Math.max(0, width - plainWidth);
   return text + " ".repeat(padding);
 }
 
 export function fitStatusText(text, width) {
   const normalized = normalizeStatusText(text);
-  if (visibleWidth(normalized) <= width) return normalized;
+  if (visibleWidth(stripAnsi(normalized)) <= width) return normalized;
 
   const segments = normalized.split(" | ");
   if (segments.length < 2) return clipToWidth(normalized, width);
 
   const tail = segments.at(-1);
   const separator = " | ";
-  const tailWidth = visibleWidth(tail);
+  const tailWidth = visibleWidth(stripAnsi(tail));
   const separatorWidth = visibleWidth(separator);
   if (tailWidth + separatorWidth >= width) return clipToWidth(tail, width);
 
@@ -50,11 +61,25 @@ export function fitStatusText(text, width) {
 }
 
 export function clipToWidth(text, width) {
+  // For ANSI-containing text, build output character by character and measure plain width
   let output = "";
-  for (const char of Array.from(String(text || ""))) {
-    const next = `${output}${char}`;
-    if (visibleWidth(next) > width) break;
-    output = next;
+  let plainWidth = 0;
+  let inAnsi = false;
+  for (const ch of Array.from(String(text || ""))) {
+    if (ch === "\x1b") inAnsi = true;
+    if (inAnsi) {
+      output += ch;
+      if (/[@-~]/.test(ch)) inAnsi = false;
+      continue;
+    }
+    const charWidth = visibleWidth(ch);
+    if (plainWidth + charWidth > width) break;
+    output += ch;
+    plainWidth += charWidth;
   }
   return output;
+}
+
+function stripAnsi(text) {
+  return String(text ?? "").replace(ANSI_RE, "");
 }

@@ -1,5 +1,6 @@
 import { stdout } from "node:process";
 import { extractToolOutput } from "./tool-output.mjs";
+import { brightBlack, dim, red, green, yellow } from "./ui-theme.mjs";
 
 export function createJsonUI() {
   let thinkingBuf = "";
@@ -43,6 +44,7 @@ export function createJsonUI() {
     editDiff: (path, diffLines) => {
       stdout.write(JSON.stringify({ type: "edit_diff", path, diff: diffLines }) + "\n");
     },
+    requestPermission: async () => true,
     setEscapeHandler: () => {},
     setCtrlCHandler: () => {},
     setShiftTabHandler: () => {},
@@ -68,52 +70,53 @@ export function createPlainUI() {
     thinkingStart: () => { thinkingBuf = ""; },
     thinkingDelta: (delta) => { thinkingBuf += delta; },
     thinkingEnd: (tokens) => {
-      stdout.write(`\n\x1b[90m--- thinking (${tokens} tokens) ---\x1b[0m\n`);
-      stdout.write(`\x1b[90m${thinkingBuf}\x1b[0m\n`);
-      stdout.write(`\x1b[90m--- end thinking ---\x1b[0m\n\n`);
+      stdout.write(`\n${brightBlack(`--- thinking (${tokens} tokens) ---`)}\n`);
+      stdout.write(`${brightBlack(thinkingBuf)}\n`);
+      stdout.write(`${brightBlack("--- end thinking ---")}\n\n`);
       thinkingBuf = "";
     },
     thinkingBlock: (tokens, content) => {
-      stdout.write(`\n\x1b[90m--- thinking (${tokens} tokens) ---\x1b[0m\n`);
-      stdout.write(`\x1b[90m${content}\x1b[0m\n`);
-      stdout.write(`\x1b[90m--- end thinking ---\x1b[0m\n\n`);
+      stdout.write(`\n${brightBlack(`--- thinking (${tokens} tokens) ---`)}\n`);
+      stdout.write(`${brightBlack(content)}\n`);
+      stdout.write(`${brightBlack("--- end thinking ---")}\n\n`);
     },
     toggleLastThinking: () => {},
     toolStart: (name, args) => {
       const shortArgs = JSON.stringify(args).slice(0, 120);
-      stdout.write(`\n\x1b[2m  ◆ ${name} ${shortArgs}\x1b[0m\n`);
+      stdout.write(`\n${dim(`  ◆ ${name} ${shortArgs}`)}\n`);
     },
     toolEnd: (name, isError, result) => {
       const out = extractToolOutput(result);
       if (isError) {
-        stdout.write(`\x1b[31m  ◆ ${name} failed\x1b[0m\n`);
-        if (out) stdout.write(`\x1b[31m    ${out.slice(0, 200)}\x1b[0m\n`);
+        stdout.write(`${red(`  ◆ ${name} failed`)}\n`);
+        if (out) stdout.write(`${red(`    ${out.slice(0, 200)}`)}\n`);
       } else if (out) {
-        stdout.write(`\x1b[2m    ${out.split("\n")[0].slice(0, 200)}\x1b[0m\n`);
+        stdout.write(`${dim(`    ${out.split("\n")[0].slice(0, 200)}`)}\n`);
       }
     },
     textDelta: (delta) => { stdout.write(delta); },
-    status: (text) => { stdout.write(`\x1b[90m● ${text}\x1b[0m\n`); },
+    status: (text) => { stdout.write(`${brightBlack(`● ${text}`)}\n`); },
     setStatusBar: () => {},
     turnStart: () => {},
     turnEnd: () => {},
     summaryStart: () => {},
-    summaryDone: () => { stdout.write(`\n\x1b[90m● summary · done\x1b[0m\n`); },
+    summaryDone: () => { stdout.write(`\n${brightBlack("● summary · done")}\n`); },
     retryStart: ({ attempt, maxAttempts, delayMs, errorMessage }) => {
-      stdout.write(`\x1b[33m● retrying (${attempt}/${maxAttempts}) in ${Math.ceil(delayMs / 1000)}s: ${errorMessage || "Unknown error"}\x1b[0m\n`);
+      stdout.write(`${yellow(`● retrying (${attempt}/${maxAttempts}) in ${Math.ceil(delayMs / 1000)}s: ${errorMessage || "Unknown error"}`)}\n`);
     },
     retryEnd: ({ success, attempt, finalError }) => {
       const status = success ? "recovered" : "stopped";
-      stdout.write(`\x1b[90m● retry ${status} after ${attempt} attempt${attempt === 1 ? "" : "s"}${finalError ? `: ${finalError}` : ""}\x1b[0m\n`);
+      stdout.write(`${brightBlack(`● retry ${status} after ${attempt} attempt${attempt === 1 ? "" : "s"}${finalError ? `: ${finalError}` : ""}`)}\n`);
     },
     editDiff: (path, diffLines) => {
-      stdout.write(`\n\x1b[2m  ± ${path}\x1b[0m\n`);
+      stdout.write(`\n${dim(`  ± ${path}`)}\n`);
       for (const d of diffLines) {
-        if (d.type === "del") stdout.write(`\x1b[31m    - ${d.text}\x1b[0m\n`);
-        else if (d.type === "add") stdout.write(`\x1b[32m    + ${d.text}\x1b[0m\n`);
-        else stdout.write(`\x1b[2m      ${d.text}\x1b[0m\n`);
+        if (d.type === "del") stdout.write(`${red(`    - ${d.text}`)}\n`);
+        else if (d.type === "add") stdout.write(`${green(`    + ${d.text}`)}\n`);
+        else stdout.write(`${dim(`      ${d.text}`)}\n`);
       }
     },
+    requestPermission: async () => true,
     setEscapeHandler: () => {},
     setCtrlCHandler: () => {},
     setShiftTabHandler: () => {},

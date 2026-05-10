@@ -18,6 +18,9 @@ export async function createRunnerRuntimeHost({
   memoryTools = [],
   skillTools = [],
   shellRuntime = null,
+  mcpTools = [],
+  webTools = [],
+  permissionController = null,
   extensionPaths = [],
   onRebind = null,
   createAgentSessionRuntimeImpl = createAgentSessionRuntime,
@@ -44,6 +47,9 @@ export async function createRunnerRuntimeHost({
       memoryTools,
       skillTools,
       shellRuntime,
+      mcpTools,
+      webTools,
+      permissionController,
     }),
   });
 

@@ -30,7 +30,7 @@ export function resolveRunnerSessionManager(cwd, sessionManager = null) {
   return sessionManager ?? createDefaultSessionManager(cwd);
 }
 
-export async function createRunner({ cwd, modelId, provider = "deepseek", stateRoot, ui, skills, skillPool = [], pins, graph = null, glossary = null, memoryTools = [], skillTools = [], shellRuntime = null, namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices }) {
+export async function createRunner({ cwd, modelId, provider = "deepseek", stateRoot, ui, skills, skillPool = [], pins, graph = null, glossary = null, memoryTools = [], skillTools = [], shellRuntime = null, mcpTools = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices }) {
   const authConfig = authStorage
     ? { authStorage, hasAuth: true }
     : createMarchAuthStorage({ provider, cwd });
@@ -65,6 +65,9 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       memoryTools,
       skillTools,
       shellRuntime,
+      mcpTools,
+      webTools,
+      permissionController,
       extensionPaths,
       onRebind: (session) => syncEngineSessionState(engine, session),
       createAgentSessionRuntimeImpl,
@@ -85,6 +88,9 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       memoryTools,
       skillTools,
       shellRuntime,
+      mcpTools,
+      webTools,
+      permissionController,
     });
     const { session } = await createAgentSessionImpl({
       cwd,
@@ -305,6 +311,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       await runRunnerCleanup([
         () => runtimeHost?.dispose() ?? sessionBinding.get().dispose(),
         () => shellRuntime?.dispose?.() ?? shellRuntime?.killAll?.(),
+        () => mcpClientManager?.disconnectAll?.(),
       ]);
     },
   };

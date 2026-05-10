@@ -6,10 +6,15 @@ export async function runShellToolsSmoke() {
   const { createShellTools } = await import("../src/shell/tools.mjs");
 
   let nextId = 1;
+  const writes = [];
   const runtime = createShellRuntime({
     idFactory: () => `sh${nextId++}`,
     createPty: ({ onData, onExit }) => ({
-      write: (text) => onData(`seen:${text}\n`),
+      write: (text) => {
+        writes.push(text);
+        onData(`seen:${text}\n`);
+      },
+      resize: () => {},
       kill: () => onExit({ signal: "SIGTERM" }),
     }),
   });
@@ -19,8 +24,11 @@ export async function runShellToolsSmoke() {
   assert.deepEqual(createShellTools(null), []);
   assert.ok(byName.shell_spawn);
   assert.ok(byName.shell_send);
+  assert.ok(byName.shell_exec);
   assert.ok(byName.shell_list);
   assert.ok(byName.shell_kill);
+  assert.ok(byName.shell_resize);
+  assert.ok(byName.shell_clear);
   assert.ok(byName.shell_search);
   assert.ok(byName.shell_snapshot);
 
@@ -37,6 +45,9 @@ export async function runShellToolsSmoke() {
   assert.equal(spawned.details.shell.cols, 132);
   assert.equal(spawned.details.shell.rows, 35);
 
+  const reusedSpawn = await byName.shell_spawn.execute("tc-reuse", { name: "dev" });
+  assert.equal(reusedSpawn.details.shell.id, "sh1");
+
   const sent = await byName.shell_send.execute("tc2", { shell_id: "sh1", text: "hello" });
   assert.ok(sent.content[0].text.includes("Sent 5 chars"));
   assert.equal(runtime.snapshotShell("sh1").plain, "seen:hello");
@@ -50,9 +61,31 @@ export async function runShellToolsSmoke() {
   assert.equal(snapshot.details.plain, "seen:hello");
   assert.ok(snapshot.details.screen);
 
+  const sentEnter = await byName.shell_send.execute("tc-enter", { shell_id: "sh1", text: "Get-ChildItem\n" });
+  assert.ok(sentEnter.content[0].text.includes("Sent 14 chars"));
+  assert.equal(writes.at(-1), "Get-ChildItem\r");
+  assert.ok(runtime.snapshotShell("sh1").plain.includes("seen:Get-ChildItem"));
+
+  const sentCtrlC = await byName.shell_send.execute("tc-ctrl-c", { shell_id: "sh1", key: "ctrl_c" });
+  assert.ok(sentCtrlC.content[0].text.includes("Sent 1 chars"));
+  assert.equal(writes.at(-1), "\x03");
+
+  const exec = await byName.shell_exec.execute("tc-exec", { shell_id: "sh1", command: "echo ok", timeout_ms: 1000, idle_ms: 20 });
+  assert.ok(exec.content[0].text.includes("seen:echo ok"));
+  assert.equal(writes.at(-1), "echo ok\r");
+
+  const resize = await byName.shell_resize.execute("tc-resize", { shell_id: "sh1", cols: 100, rows: 20 });
+  assert.ok(resize.content[0].text.includes("100x20"));
+  assert.equal(resize.details.shell.cols, 100);
+  assert.equal(resize.details.shell.rows, 20);
+
   const listed = await byName.shell_list.execute("tc3", {});
   assert.ok(listed.content[0].text.includes("dev"));
   assert.equal(listed.details.shells.length, 1);
+
+  const cleared = await byName.shell_clear.execute("tc-clear", { shell_id: "sh1" });
+  assert.ok(cleared.content[0].text.includes("Cleared dev"));
+  assert.equal(runtime.snapshotShell("sh1").plain, "");
 
   const killed = await byName.shell_kill.execute("tc4", { shell_id: "sh1" });
   assert.ok(killed.content[0].text.includes("Killed dev"));

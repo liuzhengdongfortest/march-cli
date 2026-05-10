@@ -1,4 +1,5 @@
 import { visibleWidth, truncateToWidth } from "@mariozechner/pi-tui";
+import { brightBlack, dim, cyan } from "./ui-theme.mjs";
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
@@ -108,12 +109,12 @@ export class OutputBuffer {
           lines.push(visibleWidth(line) > width ? truncateToWidth(line, width) : line);
         }
       } else if (seg.type === "thinking") {
-        lines.push(`\x1b[3;90m· thinking (${seg.tokens} tokens)\x1b[0m`);
+        lines.push(dim(`· thinking (${seg.tokens} tokens)`));
         const indent = width > 40 ? width - 40 : width - 2;
         const maxContentWidth = Math.max(20, indent);
         for (const line of seg.content) {
           for (const w of wrapLine(line, maxContentWidth)) {
-            lines.push(`\x1b[3;90m  ${w}\x1b[0m`);
+            lines.push(dim(`  ${w}`));
           }
         }
       }
@@ -123,7 +124,7 @@ export class OutputBuffer {
     }
     if (this.spinning) {
       const frame = SPINNER_FRAMES[this.spinnerIdx];
-      lines.push(`\x1b[90m${frame} ${this.spinnerText}\x1b[0m`);
+      lines.push(brightBlack(`${frame} ${this.spinnerText}`));
     }
     return lines;
   }

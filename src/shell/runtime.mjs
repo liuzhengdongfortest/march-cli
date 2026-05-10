@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { createTerminalScreenBuffer } from "./screen-buffer.mjs";
 
-const ANSI_RE = /\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
+const OSC_RE = /\x1b\][^\x07]*(?:\x07|\x1b\\)/g;
+const ANSI_RE = /\x1b(?:\][^\x07]*(?:\x07|\x1b\\)|[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
 
 export function createShellRuntime({
   createPty,
@@ -28,14 +29,23 @@ export function createShellRuntime({
     env = process.env,
     cols = defaultCols,
     rows = defaultRows,
+    nameConflict = "suffix",
   } = {}) {
     const resolvedCommand = command || defaultCommand;
     const resolvedArgs = command ? args : (args.length ? args : defaultArgs);
+    const baseName = String(name || resolvedCommand || "shell").trim() || "shell";
+    const existing = shells.get(findShellIdByName(shells, baseName));
+    if (existing && nameConflict === "reuse") {
+      return publicShell(existing);
+    }
+    if (existing && nameConflict === "replace") {
+      closeShellForReplacement(shells, existing);
+    }
     const size = normalizeSize({ cols, rows, fallbackCols: defaultCols, fallbackRows: defaultRows });
     const id = idFactory();
     const shell = {
       id,
-      name: uniqueName(name || resolvedCommand, shells),
+      name: uniqueName(baseName, shells),
       command: resolvedCommand,
       args: [...resolvedArgs],
       cwd,
@@ -139,13 +149,26 @@ export function createShellRuntime({
     return shell ? publicShell(shell) : null;
   }
 
-  function searchShell(id, pattern) {
+  function searchShell(id, pattern, { source = "auto", includePrompts = false } = {}) {
     const shell = requireShell(shells, id);
     const needle = String(pattern ?? "");
-    const matches = shell.plainLines
+    const screenLines = shell.screen?.snapshot?.().plain?.split("\n") ?? [];
+    const scrollbackLines = shell.plainLines;
+    const lines = source === "screen" ? screenLines : source === "scrollback" ? scrollbackLines : screenLines;
+    let matches = findLineMatches(lines, needle, shell, includePrompts);
+    let resolvedSource = source === "auto" ? "screen" : source;
+    if (source === "auto" && matches.length === 0) {
+      matches = findLineMatches(scrollbackLines, needle, shell, includePrompts);
+      resolvedSource = "scrollback";
+    }
+    return { shell: publicShell(shell), matches, source: resolvedSource };
+  }
+
+  function findLineMatches(lines, needle, shell, includePrompts) {
+    return lines
       .map((line, index) => ({ index, line }))
+      .filter(({ line }) => includePrompts || !isPromptNoise(line, shell))
       .filter(({ line }) => line.includes(needle));
-    return { shell: publicShell(shell), matches };
   }
 
   function snapshotShell(id) {
@@ -156,6 +179,16 @@ export function createShellRuntime({
       plain: shell.plainLines.join("\n"),
       screen: shell.screen?.snapshot?.() ?? null,
     };
+  }
+
+  function clearShell(id) {
+    const shell = requireShell(shells, id);
+    shell.rawChunks = [];
+    shell.plainLines = [];
+    shell.screen?.dispose?.();
+    shell.screen = createScreenBuffer({ cols: shell.cols, rows: shell.rows });
+    touch(shell, now);
+    return { ok: true, shell: publicShell(shell) };
   }
 
   function killAll() {
@@ -192,8 +225,25 @@ export function createShellRuntime({
     getShell,
     searchShell,
     snapshotShell,
+    clearShell,
     dispose,
   };
+}
+
+function findShellIdByName(shells, name) {
+  for (const shell of shells.values()) {
+    if (shell.name === name) return shell.id;
+  }
+  return null;
+}
+
+function closeShellForReplacement(shells, shell) {
+  try {
+    shell.pty?.kill?.();
+    shell.screen?.dispose?.();
+  } finally {
+    shells.delete(shell.id);
+  }
 }
 
 export function stripAnsi(text) {
@@ -201,7 +251,7 @@ export function stripAnsi(text) {
 }
 
 function appendOutput(shell, chunk, maxScrollbackLines) {
-  const raw = String(chunk ?? "");
+  const raw = stripControlPayloads(String(chunk ?? ""));
   shell.screen?.write?.(raw);
   shell.rawChunks.push(raw);
   if (shell.rawChunks.length > maxScrollbackLines * 4) {
@@ -216,6 +266,20 @@ function appendOutput(shell, chunk, maxScrollbackLines) {
   if (shell.plainLines.length > maxScrollbackLines) {
     shell.plainLines = shell.plainLines.slice(-maxScrollbackLines);
   }
+}
+
+function stripControlPayloads(text) {
+  return String(text ?? "").replace(OSC_RE, "");
+}
+
+function isPromptNoise(line, shell) {
+  const text = String(line ?? "").trim();
+  if (!text) return false;
+  if (process.platform === "win32" || /powershell|pwsh|cmd/i.test(shell.command)) {
+    if (/^(PS [A-Za-z]:\\.*>|[A-Za-z]:\\.*>)\s*$/.test(text)) return true;
+    if (/^(PS [A-Za-z]:\\.*>|[A-Za-z]:\\.*>)\s+/.test(text)) return true;
+  }
+  return /^[^#$>\n]{0,80}[$#>]\s*$/.test(text);
 }
 
 function markExited(shell, event) {
@@ -243,6 +307,10 @@ function requireShell(shells, id) {
 }
 
 function publicShell(shell) {
+  const screenSnapshot = shell.screen?.snapshot?.() ?? null;
+  const visibleLineCount = screenSnapshot?.plain
+    ? screenSnapshot.plain.split("\n").filter((line) => line.length > 0).length
+    : 0;
   return {
     id: shell.id,
     name: shell.name,
@@ -258,6 +326,8 @@ function publicShell(shell) {
     createdAt: shell.createdAt,
     updatedAt: shell.updatedAt,
     lineCount: shell.plainLines.length,
+    scrollbackLineCount: shell.plainLines.length,
+    visibleLineCount,
   };
 }
 

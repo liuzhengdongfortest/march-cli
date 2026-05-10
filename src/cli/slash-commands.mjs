@@ -12,6 +12,7 @@ import { handleSettingsCommand, parseSettingsCommand } from "../config/settings-
 import { handleSessionNameCommand, parseSessionNameCommand } from "./session-name-command.mjs";
 import { handleShellCommand, parseShellCommand } from "./shell-command.mjs";
 import { handlePinCommand, parsePinCommand } from "./pin-command.mjs";
+import { handleProviderCommand, listProviders, parseProviderCommand, formatProvidersList } from "./provider-command.mjs";
 import { formatHelpLines } from "./help-command.mjs";
 
 export async function handleSlashCommand(trimmed, {
@@ -129,6 +130,25 @@ export async function handleSlashCommand(trimmed, {
     sessionSource,
   });
   if (sessionSourceCommand.handled) return sessionSourceCommand;
+
+  const providerCommand = parseProviderCommand(trimmed);
+  if (providerCommand.type !== "none") {
+    try {
+      if (providerCommand.type === "list") {
+        const current = runner.getCurrentModel?.();
+        const providers = listProviders({ runner });
+        for (const line of formatProvidersList({ currentProvider: current?.provider, providers })) {
+          ui.writeln(line);
+        }
+        if (providers.length > 0) ui.writeln("Use /providers <name> to switch.");
+      } else {
+        ui.writeln(await handleProviderCommand(providerCommand, { ui, runner }));
+      }
+    } catch (err) {
+      ui.writeln(`Error: ${err.message}`);
+    }
+    return { handled: true };
+  }
 
   const modelCommand = parseModelCommand(trimmed);
   if (modelCommand.type !== "none") {

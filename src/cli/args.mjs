@@ -18,6 +18,7 @@ export function parseCliArgs(argv) {
       "legacy-sessions": { type: "boolean" },
       "shell-runtime": { type: "boolean" },
       "no-shell-runtime": { type: "boolean" },
+      "permission-mode": { type: "string" },
       help: { type: "boolean", short: "h" },
     },
     allowPositionals: true,
@@ -40,6 +41,7 @@ export function parseCliArgs(argv) {
     piSessionDefaults: values["pi-session-defaults"] ?? false,
     legacySessions: values["legacy-sessions"] ?? false,
     shellRuntime: values["no-shell-runtime"] ? false : true,
+    permissionMode: values["permission-mode"] ?? "default",
     help: values.help ?? false,
     prompt: commandName ? "" : positionals.join(" "),
   };
@@ -65,6 +67,7 @@ Options:
   --pi-session-defaults Compatibility alias for the default pi session mode
   --shell-runtime      Enable interactive PTY shell tools (default)
   --no-shell-runtime   Disable interactive PTY shell tools and shell pane
+  --permission-mode <mode>  Permission mode: default, bypassPermissions, dontAsk (default: default)
   --pin <path>         Pin a file in context (repeatable)
   --skill <name>       Activate a skill (repeatable)
   -e, --extension <path>

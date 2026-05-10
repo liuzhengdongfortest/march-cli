@@ -7,10 +7,11 @@ import {
 } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
 import { createShellTools } from "../shell/tools.mjs";
+import { createWebTools } from "../web/tools.mjs";
 
 const LINE_RANGE_RE = /^(\d+)(?:\s*-\s*(\d+))?$/;
 
-export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], skillTools = [], shellRuntime = null }) {
+export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], skillTools = [], shellRuntime = null, mcpTools = [], webTools = [], permissionController = null }) {
   const openFileTool = defineTool({
     name: "open_file",
     label: "Open File",
@@ -142,7 +143,7 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], skil
     }
   }
 
-  return [
+  const tools = [
     openFileTool,
     closeFileTool,
     editFileTool,
@@ -150,7 +151,30 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], skil
     ...createShellTools(shellRuntime),
     ...memoryTools,
     ...skillTools,
+    ...mcpTools,
+    ...webTools,
   ];
+
+  if (!permissionController) return tools;
+
+  return tools.map((tool) => {
+    const execute = tool.execute;
+    if (!execute) return tool;
+    const wrapped = async (toolCallId, params) => {
+      const decision = await permissionController.requestApproval(
+        tool.name,
+        params,
+        ui.requestPermission
+          ? (ctx) => ui.requestPermission(ctx)
+          : null,
+      );
+      if (decision.behavior === "deny") {
+        return toolText(`Permission denied: ${decision.message}`, { error: true, permissionDenied: true });
+      }
+      return execute(toolCallId, params);
+    };
+    return { ...tool, execute: wrapped };
+  });
 }
 
 function findPowerShell() {
@@ -193,23 +217,23 @@ export function formatDiff(oldText, newText) {
 
   const ctxStart = Math.max(0, prefix - ctx);
   for (let i = ctxStart; i < prefix; i++) {
-    result.push({ type: "ctx", text: oldLines[i] });
+    result.push({ type: "ctx", text: oldLines[i], lineNum: i + 1 });
   }
 
   const oldEnd = oldLines.length - suffix;
   for (let i = prefix; i < oldEnd; i++) {
-    result.push({ type: "del", text: oldLines[i] });
+    result.push({ type: "del", text: oldLines[i], lineNum: i + 1 });
   }
 
   const newEnd = newLines.length - suffix;
   for (let i = prefix; i < newEnd; i++) {
-    result.push({ type: "add", text: newLines[i] });
+    result.push({ type: "add", text: newLines[i], lineNum: i + 1 });
   }
 
   const postStart = oldLines.length - suffix;
   const postEnd = Math.min(oldLines.length, postStart + ctx);
   for (let i = postStart; i < postEnd; i++) {
-    result.push({ type: "ctx", text: oldLines[i] });
+    result.push({ type: "ctx", text: oldLines[i], lineNum: i + 1 });
   }
 
   return result;

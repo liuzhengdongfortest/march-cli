@@ -17,9 +17,10 @@ import { ShellSplitLayout } from "./shell-split-layout.mjs";
 import { showSelectListOverlay } from "./select-list-overlay.mjs";
 import { createSpinnerStatusController } from "./spinner-status.mjs";
 import { StatusBar } from "./status-bar.mjs";
+import { permissionLabel } from "./permissions.mjs";
 import { writeEditDiff } from "./tui-diff-rendering.mjs";
 import { writeToolEnd, writeToolStart } from "./tool-rendering.mjs";
-import { EDITOR_THEME } from "./ui-theme.mjs";
+import { EDITOR_THEME, yellow, brightBlack } from "./ui-theme.mjs";
 
 export { buildMarchCommands, MarchAutocompleteProvider } from "./autocomplete.mjs";
 
@@ -105,7 +106,7 @@ export function createTuiUI({
   function openExternalEditor() {
     const editorCommand = getExternalEditorCommand();
     if (!editorCommand) {
-      output.writeln(`\x1b[33m● No editor configured. Set $VISUAL or $EDITOR.\x1b[0m`);
+      output.writeln(yellow(`● No editor configured. Set $VISUAL or $EDITOR.`));
       requestRender();
       return;
     }
@@ -114,7 +115,7 @@ export function createTuiUI({
       if (mouseOn) terminal.write("\x1b[?1002l\x1b[?1006l");
       const result = openTextInExternalEditor({ text: editor.getText(), editorCommand });
       if (result.ok) editor.setText(result.text);
-      else output.writeln(`\x1b[33m● ${result.error}\x1b[0m`);
+      else output.writeln(yellow(`● ${result.error}`));
     } finally {
       tui.start();
       if (mouseOn) terminal.write("\x1b[?1002h\x1b[?1006h");
@@ -124,7 +125,7 @@ export function createTuiUI({
 
   function toggleToolOutput() {
     toolsExpanded = !toolsExpanded;
-    output.writeln(`\x1b[90m● tool output: ${toolsExpanded ? "expanded" : "collapsed"}\x1b[0m`);
+    output.writeln(brightBlack(`● tool output: ${toolsExpanded ? "expanded" : "collapsed"}`));
     requestRender();
     return toolsExpanded;
   }
@@ -222,7 +223,7 @@ export function createTuiUI({
     status: (text) => {
       ensureStarted();
       spinnerStatus.stop();
-      output.writeln(`\x1b[90m● ${text}\x1b[0m`);
+      output.writeln(brightBlack(`● ${text}`));
       requestRender();
     },
 
@@ -247,7 +248,7 @@ export function createTuiUI({
     summaryDone: () => {
       spinnerStatus.stop();
       output.writeln("");
-      output.writeln(`\x1b[90m● summary · done\x1b[0m`);
+      output.writeln(brightBlack(`● summary · done`));
       requestRender();
     },
     retryStart,
@@ -270,6 +271,24 @@ export function createTuiUI({
         mouseOn = true;
         return true;
       }
+    },
+
+    requestPermission: async ({ toolName, params, category }) => {
+      ensureStarted();
+      spinnerStatus.stop();
+      const label = permissionLabel(category);
+      output.writeln(yellow(`● ${toolName} needs ${label} permission`));
+      const shortArgs = JSON.stringify(params).slice(0, 100);
+      output.writeln(dim(`  ${shortArgs}`));
+      requestRender();
+      const choice = await selectList({
+        items: [
+          { label: "Approve once", description: `Allow ${toolName} this time (${label})` },
+          { label: "Deny", description: "Block this tool call" },
+        ],
+        width: 58,
+      });
+      return choice?.label === "Approve once";
     },
 
     setEscapeHandler: (fn) => { onEscapeHandler = fn; },

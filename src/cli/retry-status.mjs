@@ -1,16 +1,18 @@
+import { yellow, brightBlack, red } from "./ui-theme.mjs";
+
 export function formatRetryWaitMessage({ attempt, maxAttempts, remainingMs }) {
   const seconds = Math.ceil(Math.max(0, remainingMs) / 1000);
   return `Retrying (${attempt}/${maxAttempts}) in ${seconds}s... Esc to cancel`;
 }
 
 export function formatRetryStartLine(errorMessage) {
-  return `\x1b[33m● retrying after error: ${String(errorMessage || "Unknown error").slice(0, 160)}\x1b[0m`;
+  return yellow(`● retrying after error: ${String(errorMessage || "Unknown error").slice(0, 160)}`);
 }
 
 export function formatRetryEndLine({ success, attempt, finalError }) {
   const attempts = `after ${attempt} attempt${attempt === 1 ? "" : "s"}`;
-  if (success) return `\x1b[90m● retry recovered ${attempts}\x1b[0m`;
-  return `\x1b[31m● retry stopped ${attempts}${finalError ? `: ${finalError}` : ""}\x1b[0m`;
+  if (success) return brightBlack(`● retry recovered ${attempts}`);
+  return red(`● retry stopped ${attempts}${finalError ? `: ${finalError}` : ""}`);
 }
 
 export function createRetryStatusController({

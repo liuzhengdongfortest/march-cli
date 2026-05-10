@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { accent, text, PREFIX, R } from "./ui-theme.mjs";
 
 export function statusCommand({
   runner,
@@ -87,27 +88,37 @@ export function formatStatusBarLine({
   const ext = formatExtensionDiagnosticSummary(extensionDiagnostics, lifecycleState);
   const open = engine.openFiles?.size ?? 0;
   const pins = engine.getPins?.().length ?? engine.pins?.size ?? 0;
+  const skills = engine.getSkills?.()?.length ?? 0;
+
+  const C = PREFIX; // foreground-only color prefixes (no reset)
+  const DIM = C.brightBlack;
+  const ACC = C.cyan;
+  const OK = "\x1b[32m";  // green, no reset
+  const WARN = "\x1b[33m"; // yellow, no reset
 
   const project = [
-    gitBranch ? `git ${gitBranch}` : "git none",
-    engine.sessionName ? `name ${engine.sessionName}` : null,
-  ].filter(Boolean).join("  ");
+    gitBranch ? `${DIM}git ${gitBranch}` : null,
+    engine.sessionName ? `${DIM}${engine.sessionName}` : null,
+  ].filter(Boolean).join(" ");
 
   const runtime = [
-    `${model}/${provider}`,
-    thinking,
-  ].filter(Boolean).join("  ");
+    `${ACC}${model}${DIM}/${provider}`,
+    thinking ? `${DIM}${thinking}` : null,
+  ].filter(Boolean).join(" ");
 
+  const extColor = ext === "ok" ? OK : WARN;
   const context = [
-    tokenText,
-    ext === "ok" ? null : `ext:${ext}`,
-    open > 0 ? `open:${open}` : null,
-    pins > 0 ? `pins:${pins}` : null,
+    tokenText ? `${DIM}${tokenText}` : null,
+    `${extColor}ext:${ext}`,
+    open > 0 ? `${DIM}open:${open}` : null,
+    pins > 0 ? `${DIM}pins:${pins}` : null,
+    skills > 0 ? `${ACC}skills:${skills}` : null,
   ].filter(Boolean).join("  ");
 
-  const sessionSegment = `${sessionSource}:${session}`;
+  const sessionSegment = `${DIM}${sessionSource}:${session}`;
 
-  return [project, runtime, context, sessionSegment].filter(Boolean).join(" | ");
+  const inner = [project, runtime, context, sessionSegment].filter(Boolean).join(` ${DIM}|${C.fg250} `);
+  return `${inner}${R}`;
 }
 
 export function formatExtensionDiagnosticSummary(extensionDiagnostics = [], lifecycleState = null) {
