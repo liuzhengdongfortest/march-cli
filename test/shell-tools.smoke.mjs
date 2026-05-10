@@ -21,6 +21,8 @@ export async function runShellToolsSmoke() {
   assert.ok(byName.shell_send);
   assert.ok(byName.shell_list);
   assert.ok(byName.shell_kill);
+  assert.ok(byName.shell_search);
+  assert.ok(byName.shell_snapshot);
 
   const spawned = await byName.shell_spawn.execute("tc1", {
     name: "dev",
@@ -34,6 +36,14 @@ export async function runShellToolsSmoke() {
   const sent = await byName.shell_send.execute("tc2", { shell_id: "sh1", text: "hello" });
   assert.ok(sent.content[0].text.includes("Sent 5 chars"));
   assert.equal(runtime.snapshotShell("sh1").plain, "seen:hello");
+
+  const search = await byName.shell_search.execute("tc-search", { shell_id: "sh1", pattern: "hello" });
+  assert.ok(search.content[0].text.includes("seen:hello"));
+  assert.equal(search.details.matches.length, 1);
+
+  const snapshot = await byName.shell_snapshot.execute("tc-snapshot", { shell_id: "sh1" });
+  assert.equal(snapshot.content[0].text, "seen:hello");
+  assert.equal(snapshot.details.plain, "seen:hello");
 
   const listed = await byName.shell_list.execute("tc3", {});
   assert.ok(listed.content[0].text.includes("dev"));

@@ -66,7 +66,37 @@ export function createShellTools(shellRuntime = null) {
     },
   });
 
-  return [shellSpawn, shellSend, shellList, shellKill];
+  const shellSearch = defineTool({
+    name: "shell_search",
+    label: "Shell Search",
+    description: "Search a shell's plain-text scrollback.",
+    parameters: Type.Object({
+      shell_id: Type.String({ description: "Shell id returned by shell_spawn or shell_list" }),
+      pattern: Type.String({ description: "Plain text to search for" }),
+    }),
+    execute: async (_toolCallId, params) => {
+      const result = shellRuntime.searchShell(params.shell_id, params.pattern);
+      if (!result.matches.length) return toolText(`No matches in ${result.shell.name} (${result.shell.id}).`, result);
+      const lines = result.matches.map((match) => `${match.index + 1}: ${match.line}`);
+      return toolText(lines.join("\n"), result);
+    },
+  });
+
+  const shellSnapshot = defineTool({
+    name: "shell_snapshot",
+    label: "Shell Snapshot",
+    description: "Return the current shell scrollback as plain text and ANSI text for visual debugging.",
+    parameters: Type.Object({
+      shell_id: Type.String({ description: "Shell id returned by shell_spawn or shell_list" }),
+    }),
+    execute: async (_toolCallId, params) => {
+      const snapshot = shellRuntime.snapshotShell(params.shell_id);
+      const text = snapshot.plain || "(empty shell output)";
+      return toolText(text, snapshot);
+    },
+  });
+
+  return [shellSpawn, shellSend, shellList, shellKill, shellSearch, shellSnapshot];
 }
 
 function formatShell(shell) {

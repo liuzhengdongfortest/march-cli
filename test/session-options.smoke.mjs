@@ -25,6 +25,7 @@ export async function runSessionOptionsSmoke() {
   assert.deepEqual(options.tools.slice(0, 7), ["read", "bash", "edit", "write", "grep", "find", "ls"]);
   assert.ok(options.tools.includes("open_file"));
   assert.ok(options.tools.includes("shell_spawn"));
+  assert.ok(options.tools.includes("shell_snapshot"));
   assert.ok(options.tools.includes("remember"));
   assert.ok(options.tools.includes("skill_lookup"));
 
