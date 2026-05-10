@@ -3,11 +3,13 @@ import { join } from "node:path";
 
 export async function runStartupResumeSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: startup resume source routing ---");
-  const { resumeStartupSession } = await import("../src/main.mjs");
+  const { loadOrCreateProjectId, resumeStartupSession } = await import("../src/cli/startup-session.mjs");
   const { ContextEngine } = await import("../src/context/engine.mjs");
   const { savePiSessionSidecar } = await import("../src/session/sidecar.mjs");
   const dir = setupTmp();
   const projectMarchDir = join(dir, ".march");
+  const projectId = loadOrCreateProjectId(projectMarchDir);
+  assert.equal(loadOrCreateProjectId(projectMarchDir), projectId);
   const statuses = [];
   const ui = { status: (line) => statuses.push(line) };
   const engine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: [], pins: [] });
@@ -33,7 +35,6 @@ export async function runStartupResumeSmoke({ setupTmp, cleanup }) {
     usePiSessionDefaults: true,
     runner,
     sessionState: { sessionId: "legacy", sessionDir: "unused" },
-    sessionsRoot: "unused",
     projectMarchDir,
     ui,
     listPiSessions: async () => [{ id: "pi-start", path: "pi.jsonl" }],
@@ -53,7 +54,6 @@ export async function runStartupResumeSmoke({ setupTmp, cleanup }) {
     usePiSessionDefaults: false,
     runner: { engine: legacyEngine },
     sessionState: { sessionId: "old", sessionDir: "legacy-dir" },
-    sessionsRoot: "unused",
     projectMarchDir,
     ui,
     loadLegacySession: () => ({ turns: [1, 2] }),
