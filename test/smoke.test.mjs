@@ -22,6 +22,7 @@ import { runShellRuntimeSmoke } from "./shell-runtime.smoke.mjs";
 import { runShellDrawerSmoke } from "./shell-drawer.smoke.mjs";
 import { runShellToolsSmoke } from "./shell-tools.smoke.mjs";
 import { runStartupResumeSmoke } from "./startup-resume.smoke.mjs";
+import { runTuiShellDrawerSmoke } from "./tui-shell-drawer.smoke.mjs";
 
 // Minimal mocks for smoke testing without DEEPSEEK_API_KEY
 
@@ -92,6 +93,7 @@ await runShellRuntimeSmoke();
 await runShellDrawerSmoke();
 await runShellToolsSmoke();
 await runNodePtyAdapterSmoke();
+await runTuiShellDrawerSmoke({ setupTmp, cleanup });
 
 // ── 2. Config loading ────────────────────────────────────────────────
 
