@@ -168,6 +168,19 @@ March 会先加载项目根目录 `.env`，再加载 `~/.march/.env`，并把匹
 
 ## Troubleshooting
 
+### 真实 TUI 快捷键验收
+
+调试 `Esc` / `Ctrl+C` 等真实终端按键时，可以运行独立 acceptance。该脚本使用真实 PTY 启动 March TUI，不会发起模型请求：
+
+```powershell
+cd march-cli
+$env:NODE_OPTIONS=""
+$env:VSCODE_INSPECTOR_OPTIONS=""
+npm run test:tui-key-real
+```
+
+失败时会打印最近的验收 trace、清洗后的 PTY 输出和 raw escaped PTY 输出，方便确认终端实际返回了什么按键序列。
+
 ### 启动时出现 Debugger listening
 
 如果运行 `node .\march-cli\bin\march.mjs ...` 时先打印 `Debugger listening` / `Debugger attached`，通常是当前 shell 或编辑器注入了 Node inspector 环境变量。March 不需要 inspector 才能运行，可以先清空：
