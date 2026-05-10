@@ -13,6 +13,7 @@ import { runExtensionLifecycleManifestSmoke } from "./extension-lifecycle-manife
 import { runImageSmokeSuite } from "./image-smoke-suite.smoke.mjs";
 import { runKeybindingsSmoke } from "./keybindings.smoke.mjs";
 import { runLoginCommandSmoke } from "./login-command.smoke.mjs";
+import { runNodePtyAdapterSmoke } from "./node-pty-adapter.smoke.mjs";
 import { runPromptTemplatesSmoke } from "./prompt-templates.smoke.mjs";
 import { runSettingsCommandSmoke } from "./settings-command.smoke.mjs";
 import { runPiSessionManagerFactorySmoke, runPiSessionSidecarSmoke, runPiSessionSidecarSyncSmoke, runSessionPersistenceSmoke, runSessionTreeSmoke } from "./session.smoke.mjs";
@@ -86,6 +87,7 @@ await runSettingsCommandSmoke({ setupTmp, cleanup });
 await runSessionNameCommandSmoke({ setupTmp, cleanup });
 await runShellRuntimeSmoke();
 await runShellToolsSmoke();
+await runNodePtyAdapterSmoke();
 
 // ── 2. Config loading ────────────────────────────────────────────────
 
