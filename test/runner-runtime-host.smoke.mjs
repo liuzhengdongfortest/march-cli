@@ -92,6 +92,7 @@ export async function runRunnerRuntimeHostSmoke() {
   );
 
   const disposeCalls = [];
+  let shellDisposed = false;
   const previousDeepseekKey = process.env.DEEPSEEK_API_KEY;
   process.env.DEEPSEEK_API_KEY = previousDeepseekKey || "test-key";
   const cleanupRunner = await createRunner({
@@ -102,7 +103,14 @@ export async function runRunnerRuntimeHostSmoke() {
     ui: { editDiff: () => {} },
     skills: [],
     pins: [],
-    shellRuntime: { dispose: () => disposeCalls.push("shell") },
+    shellRuntime: {
+      async dispose() {
+        disposeCalls.push("shell-start");
+        await Promise.resolve();
+        shellDisposed = true;
+        disposeCalls.push("shell-done");
+      },
+    },
     createAgentSessionImpl: async () => ({
       session: {
         model: { id: "deepseek-v4-pro", provider: "deepseek" },
@@ -114,8 +122,11 @@ export async function runRunnerRuntimeHostSmoke() {
       },
     }),
   });
-  cleanupRunner.dispose();
-  assert.deepEqual(disposeCalls, ["shell", "session"]);
+  const disposePromise = cleanupRunner.dispose();
+  assert.equal(shellDisposed, false);
+  await disposePromise;
+  assert.equal(shellDisposed, true);
+  assert.deepEqual(disposeCalls, ["shell-start", "session", "shell-done"]);
   if (previousDeepseekKey === undefined) {
     delete process.env.DEEPSEEK_API_KEY;
   } else {

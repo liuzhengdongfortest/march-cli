@@ -298,10 +298,11 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       return sessionBinding.get().getAvailableThinkingLevels();
     },
 
-    dispose() {
+    async dispose() {
       const shellCleanup = shellRuntime?.dispose?.() ?? shellRuntime?.killAll?.();
       const sessionCleanup = runtimeHost?.dispose() ?? sessionBinding.get().dispose();
-      return sessionCleanup ?? shellCleanup;
+      await sessionCleanup;
+      await shellCleanup;
     },
   };
 
