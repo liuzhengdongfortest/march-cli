@@ -18,6 +18,7 @@ import { runSettingsCommandSmoke } from "./settings-command.smoke.mjs";
 import { runPiSessionManagerFactorySmoke, runPiSessionSidecarSmoke, runPiSessionSidecarSyncSmoke, runSessionPersistenceSmoke, runSessionTreeSmoke } from "./session.smoke.mjs";
 import { runSessionNameCommandSmoke } from "./session-name-command.smoke.mjs";
 import { runShellRuntimeSmoke } from "./shell-runtime.smoke.mjs";
+import { runShellToolsSmoke } from "./shell-tools.smoke.mjs";
 import { runStartupResumeSmoke } from "./startup-resume.smoke.mjs";
 
 // Minimal mocks for smoke testing without DEEPSEEK_API_KEY
@@ -84,6 +85,7 @@ await runPromptTemplatesSmoke({ setupTmp, cleanup });
 await runSettingsCommandSmoke({ setupTmp, cleanup });
 await runSessionNameCommandSmoke({ setupTmp, cleanup });
 await runShellRuntimeSmoke();
+await runShellToolsSmoke();
 
 // ── 2. Config loading ────────────────────────────────────────────────
 

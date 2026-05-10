@@ -6,10 +6,11 @@ import {
   defineTool,
 } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
+import { createShellTools } from "../shell/tools.mjs";
 
 const LINE_RANGE_RE = /^(\d+)(?:\s*-\s*(\d+))?$/;
 
-export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], skillTools = [] }) {
+export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], skillTools = [], shellRuntime = null }) {
   const openFileTool = defineTool({
     name: "open_file",
     label: "Open File",
@@ -141,7 +142,15 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], skil
     }
   }
 
-  return [openFileTool, closeFileTool, editFileTool, ...platformTools, ...memoryTools, ...skillTools];
+  return [
+    openFileTool,
+    closeFileTool,
+    editFileTool,
+    ...platformTools,
+    ...createShellTools(shellRuntime),
+    ...memoryTools,
+    ...skillTools,
+  ];
 }
 
 function findPowerShell() {

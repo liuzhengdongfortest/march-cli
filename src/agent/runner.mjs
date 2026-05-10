@@ -27,7 +27,7 @@ export function resolveRunnerSessionManager(cwd, sessionManager = null) {
   return sessionManager ?? createDefaultSessionManager(cwd);
 }
 
-export async function createRunner({ cwd, modelId, provider = "deepseek", stateRoot, ui, skills, skillPool = [], pins, graph = null, glossary = null, memoryTools = [], skillTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices }) {
+export async function createRunner({ cwd, modelId, provider = "deepseek", stateRoot, ui, skills, skillPool = [], pins, graph = null, glossary = null, memoryTools = [], skillTools = [], shellRuntime = null, namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices }) {
   const authConfig = authStorage
     ? { authStorage, hasAuth: true }
     : createMarchAuthStorage({ provider, cwd });
@@ -61,6 +61,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       ui,
       memoryTools,
       skillTools,
+      shellRuntime,
       extensionPaths,
       onRebind: (session) => syncEngineSessionState(engine, session),
       createAgentSessionRuntimeImpl,
@@ -80,6 +81,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       ui,
       memoryTools,
       skillTools,
+      shellRuntime,
     });
     const { session } = await createAgentSessionImpl({
       cwd,

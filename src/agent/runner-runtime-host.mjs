@@ -17,6 +17,7 @@ export async function createRunnerRuntimeHost({
   ui,
   memoryTools = [],
   skillTools = [],
+  shellRuntime = null,
   extensionPaths = [],
   onRebind = null,
   createAgentSessionRuntimeImpl = createAgentSessionRuntime,
@@ -42,6 +43,7 @@ export async function createRunnerRuntimeHost({
       ui,
       memoryTools,
       skillTools,
+      shellRuntime,
     }),
   });
 

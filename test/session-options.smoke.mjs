@@ -14,14 +14,17 @@ export async function runSessionOptionsSmoke() {
     ui: { editDiff: () => {} },
     memoryTools: [{ name: "remember" }],
     skillTools: [{ name: "skill_lookup" }],
+    shellRuntime: { listShells: () => [] },
   });
 
   assert.equal(options.model, model);
   assert.equal(options.thinkingLevel, "medium");
   assert.ok(options.customTools.some((tool) => tool.name === "open_file"));
+  assert.ok(options.customTools.some((tool) => tool.name === "shell_list"));
   assert.ok(options.customTools.some((tool) => tool.name === "remember"));
   assert.deepEqual(options.tools.slice(0, 7), ["read", "bash", "edit", "write", "grep", "find", "ls"]);
   assert.ok(options.tools.includes("open_file"));
+  assert.ok(options.tools.includes("shell_spawn"));
   assert.ok(options.tools.includes("remember"));
   assert.ok(options.tools.includes("skill_lookup"));
 
