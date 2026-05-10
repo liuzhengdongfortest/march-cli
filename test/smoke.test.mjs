@@ -30,6 +30,7 @@ import { runShellScreenBufferSmoke } from "./shell-screen-buffer.smoke.mjs";
 import { runShellDrawerSmoke } from "./shell-drawer.smoke.mjs";
 import { runShellToolsSmoke } from "./shell-tools.smoke.mjs";
 import { runStartupResumeSmoke } from "./startup-resume.smoke.mjs";
+import { runTuiAutocompleteEscSmoke } from "./tui-autocomplete-esc.smoke.mjs";
 import { runTuiShellDrawerSmoke } from "./tui-shell-drawer.smoke.mjs";
 
 // Minimal mocks for smoke testing without DEEPSEEK_API_KEY
@@ -168,6 +169,8 @@ await runRunnerCoreSmoke();
   cleanup(dir);
   console.log("  PASS");
 }
+
+await runTuiAutocompleteEscSmoke({ setupTmp, cleanup });
 
 // ── 3e. Output buffer rendering ─────────────────────────────────────
 
