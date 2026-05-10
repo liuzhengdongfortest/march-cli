@@ -7,6 +7,7 @@ class FakeTerminal {
   onInput = null;
   onResize = null;
   stopped = false;
+  events = [];
 
   start(onInput, onResize) {
     this.onInput = onInput;
@@ -15,6 +16,11 @@ class FakeTerminal {
 
   stop() {
     this.stopped = true;
+    this.events.push("stop");
+  }
+
+  async drainInput() {
+    this.events.push("drain");
   }
 
   write(data) {
@@ -78,7 +84,8 @@ export async function runTuiShellDrawerSmoke({ setupTmp, cleanup }) {
 
   ui.requestExit();
   assert.equal(await pending, null);
-  ui.close();
+  await ui.close();
+  assert.deepEqual(terminal.events, ["drain", "stop"]);
   cleanup(dir);
   console.log("  PASS");
 }

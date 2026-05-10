@@ -224,7 +224,7 @@ export async function run(argv) {
     if (!usePiSessionDefaults) saveSession(sessionState.sessionDir, runner.engine);
     await runner.dispose();
     ui.writeln("");
-    ui.close();
+    await ui.close();
     return 0;
   }
 
@@ -322,7 +322,7 @@ export async function run(argv) {
   }
 
   await runner.dispose();
-  ui.close();
+  await ui.close();
   return 0;
 }
 

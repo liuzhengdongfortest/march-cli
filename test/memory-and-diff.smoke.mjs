@@ -66,6 +66,6 @@ export async function runDiffAndUiSmoke() {
   assert.equal(typeof ui.setCtrlTHandler, "function");
   assert.equal(typeof ui.setCtrlLHandler, "function");
   assert.equal(typeof ui.close, "function");
-  ui.close();
+  await ui.close();
   console.log("  PASS");
 }

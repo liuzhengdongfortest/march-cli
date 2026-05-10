@@ -424,10 +424,11 @@ export function createTuiUI({
       res(null);
     },
 
-    close: () => {
+    close: async () => {
       stopSpinner();
       stopRetryTimer();
       if (started) {
+        await terminal.drainInput?.();
         if (mouseOn) terminal.write("\x1b[?1002l\x1b[?1006l");
         tui.stop();
       }
