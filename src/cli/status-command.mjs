@@ -88,22 +88,26 @@ export function formatStatusBarLine({
   const open = engine.openFiles?.size ?? 0;
   const pins = engine.getPins?.().length ?? engine.pins?.size ?? 0;
 
-  const left = [
-    gitBranch ? `git:${gitBranch}` : null,
-    engine.sessionName ? engine.sessionName : null,
-    `${model}/${provider}`,
-  ].filter(Boolean);
+  const project = [
+    gitBranch ? `git ${gitBranch}` : "git none",
+    engine.sessionName ? `name ${engine.sessionName}` : null,
+  ].filter(Boolean).join("  ");
 
-  const right = [
+  const runtime = [
+    `${model}/${provider}`,
     thinking,
+  ].filter(Boolean).join("  ");
+
+  const context = [
     tokenText,
     ext === "ok" ? null : `ext:${ext}`,
     open > 0 ? `open:${open}` : null,
     pins > 0 ? `pins:${pins}` : null,
-    `${sessionSource}:${session}`,
-  ].filter(Boolean);
+  ].filter(Boolean).join("  ");
 
-  return `${left.join("  ")}${right.length ? `    ${right.join("  ")}` : ""}`;
+  const sessionSegment = `${sessionSource}:${session}`;
+
+  return [project, runtime, context, sessionSegment].filter(Boolean).join(" | ");
 }
 
 export function formatExtensionDiagnosticSummary(extensionDiagnostics = [], lifecycleState = null) {

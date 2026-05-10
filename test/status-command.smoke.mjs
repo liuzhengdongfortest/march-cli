@@ -58,7 +58,7 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
     extensionDiagnostics: [{ type: "warning", message: "a" }],
     lifecycleState: { diagnostics: [] },
     gitBranch: "main",
-  }), "git:main  Sprint  deepseek-chat/deepseek    think:high  10in/20out  ext:1warning  open:1  pins:1  pi:pi1");
+  }), "git main  name Sprint | deepseek-chat/deepseek  think:high | 10in/20out  ext:1warning  open:1  pins:1 | pi:pi1");
   assert.equal(formatStatusBarLine({
     engine: { ...engine, openFiles: new Map(), getPins: () => [] },
     sessionState: { sessionId: "019e0ff8-8f03-74d3-a8cb-39635eae5ca1" },
@@ -67,7 +67,7 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
     extensionDiagnostics: [],
     lifecycleState: null,
     gitBranch: "march-cli",
-  }), "git:march-cli  Sprint  deepseek-chat/deepseek    think:high  pi:019e0ff8");
+  }), "git march-cli  name Sprint | deepseek-chat/deepseek  think:high | pi:019e0ff8");
   const branch = getGitBranch(dir);
   assert.ok(branch === null || typeof branch === "string");
   assert.deepEqual(statusCommand({

@@ -56,5 +56,7 @@ export async function runStatusBarSmoke() {
   assert.equal(seen[0], statusLine);
   assert.ok(statusLine.includes("pi:pi1"));
   assert.ok(statusLine.includes("3in/5out"));
+  assert.ok(statusLine.includes(" | "));
+  assert.ok(statusLine.includes("git "));
   console.log("  PASS");
 }
