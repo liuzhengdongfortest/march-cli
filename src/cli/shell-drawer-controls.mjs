@@ -1,8 +1,14 @@
-export function createShellDrawerControls({ shellDrawer, output, requestRender }) {
+export function createShellDrawerControls({ shellDrawer, output, requestRender, now = () => Date.now(), toggleDebounceMs = 150 }) {
+  let lastToggleAt = 0;
+
   return {
     toggle() {
+      const current = now();
+      if (current - lastToggleAt < toggleDebounceMs) {
+        return shellDrawer.isVisible();
+      }
+      lastToggleAt = current;
       const visible = shellDrawer.toggle();
-      output.writeln(`\x1b[90m● shell drawer: ${visible ? "open" : "closed"}\x1b[0m`);
       requestRender();
       return visible;
     },

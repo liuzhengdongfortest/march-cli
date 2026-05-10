@@ -37,10 +37,10 @@ export async function runTuiShellDrawerSmoke({ setupTmp, cleanup }) {
   terminal.input(TERMINAL_KEY_SEQUENCES["Alt+S"]);
   await waitForRender();
   const rendered = stripAnsi(terminal.writes.join(""));
-  assert.ok(rendered.includes("shell drawer: open"));
   assert.ok(rendered.includes("dev"));
   assert.ok(rendered.includes("focus:shell"));
   assert.ok(rendered.includes("ready"));
+  assert.equal(rendered.includes("● shell drawer: open"), false);
   assert.deepEqual(resizes.at(-1), ["sh1", { cols: 80, rows: 10 }]);
 
   terminal.input("x");

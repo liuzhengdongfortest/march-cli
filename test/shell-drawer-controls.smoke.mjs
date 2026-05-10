@@ -7,6 +7,7 @@ export async function runShellDrawerControlsSmoke() {
   const lines = [];
   let renderCount = 0;
   let visible = false;
+  let currentTime = 1000;
   const drawer = {
     toggle: () => {
       visible = !visible;
@@ -20,6 +21,7 @@ export async function runShellDrawerControlsSmoke() {
     shellDrawer: drawer,
     output: { writeln: (line) => lines.push(line) },
     requestRender: () => { renderCount += 1; },
+    now: () => currentTime,
   });
 
   assert.equal(controls.selectNext(), false);
@@ -27,7 +29,12 @@ export async function runShellDrawerControlsSmoke() {
   assert.equal(renderCount, 0);
 
   assert.equal(controls.toggle(), true);
-  assert.ok(lines.at(-1).includes("shell drawer: open"));
+  assert.equal(lines.length, 0);
+  assert.equal(renderCount, 1);
+
+  currentTime += 10;
+  assert.equal(controls.toggle(), true);
+  assert.equal(visible, true);
   assert.equal(renderCount, 1);
 
   assert.deepEqual(controls.selectNext(), { id: "sh2", name: "test" });
@@ -37,7 +44,9 @@ export async function runShellDrawerControlsSmoke() {
   assert.deepEqual(controls.scroll(-1), { offset: -1, maxOffset: 4, atTail: false });
   assert.equal(renderCount, 3);
 
+  currentTime += 200;
   assert.equal(controls.toggle(), false);
-  assert.ok(lines.at(-1).includes("shell drawer: closed"));
+  assert.equal(lines.length, 1);
+  assert.equal(renderCount, 4);
   console.log("  PASS");
 }

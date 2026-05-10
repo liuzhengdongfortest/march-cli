@@ -150,6 +150,8 @@ await runRunnerCoreSmoke();
   assert.ok(commands.some((command) => command.name === "fork"));
   assert.ok(commands.some((command) => command.name === "resume"));
   assert.ok(commands.some((command) => command.name === "thinking list"));
+  assert.ok(commands.some((command) => command.name === "shell"));
+  assert.ok(commands.some((command) => command.name === "shell spawn"));
   assert.ok(commands.some((command) => command.name === "skill:review"));
   assert.equal(commands.find((command) => command.name === "sessions").description, "List default pi JSONL sessions");
   assert.equal(commands.find((command) => command.name === "resume").description, "Resume a pi session by id");
@@ -165,6 +167,12 @@ await runRunnerCoreSmoke();
     signal: new AbortController().signal,
   });
   assert.ok(skillSuggestions.items.some((item) => item.value === "skill:review"));
+
+  const shellSuggestions = await provider.getSuggestions(["/sh"], 0, 3, {
+    signal: new AbortController().signal,
+  });
+  assert.ok(shellSuggestions.items.some((item) => item.value === "shell"));
+  assert.ok(shellSuggestions.items.some((item) => item.value === "shell spawn"));
 
   cleanup(dir);
   console.log("  PASS");

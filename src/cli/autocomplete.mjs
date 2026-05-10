@@ -34,6 +34,8 @@ const MARCH_COMMANDS = [
   { name: "export gist html", description: "Share current session HTML as a private GitHub Gist" },
   { name: "export gist jsonl", description: "Share current session JSONL as a private GitHub Gist" },
   { name: "settings", description: "Show or edit global/project settings" },
+  { name: "shell", description: "List shells or inspect shell output" },
+  { name: "shell spawn", description: "Start a default PTY shell" },
 ];
 
 export function buildMarchCommands(skillPool = [], promptTemplates = []) {
