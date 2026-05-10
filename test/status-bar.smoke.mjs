@@ -5,6 +5,8 @@ export async function runStatusBarSmoke() {
   console.log("--- smoke: status bar ---");
   const {
     StatusBar,
+    clipToWidth,
+    fitStatusText,
     normalizeStatusText,
     padToWidth,
   } = await import("../src/cli/status-bar.mjs");
@@ -13,11 +15,21 @@ export async function runStatusBarSmoke() {
   assert.equal(normalizeStatusText("  git:main   session:abc  "), "git:main session:abc");
   assert.equal(normalizeStatusText(""), "March");
   assert.equal(visibleWidth(padToWidth("abc", 8)), 8);
+  assert.equal(clipToWidth("abcdef", 3), "abc");
+  const fitted = fitStatusText("git march-cli | gpt-5.4/openai-codex  think:medium | 10in/20out | pi:019e0ff8", 40);
+  assert.equal(visibleWidth(fitted), 40);
+  assert.ok(fitted.includes("pi:019e0ff8"));
+  assert.ok(!fitted.includes("\x1b"));
 
   const statusBar = new StatusBar("git:main session:abc model:deepseek");
   const [line] = statusBar.render(16);
   assert.equal(visibleWidth(line), 16);
   assert.ok(line.includes("\x1b[48;5;236m"));
+
+  statusBar.setText("git march-cli | gpt-5.4/openai-codex  think:medium | 10in/20out | pi:019e0ff8");
+  const [narrow] = statusBar.render(40);
+  assert.equal(visibleWidth(narrow), 40);
+  assert.ok(narrow.includes("pi:019e0ff8"));
 
   statusBar.setText("next");
   assert.equal(visibleWidth(statusBar.render(8)[0]), 8);
