@@ -1,24 +1,6 @@
 import { strict as assert } from "node:assert";
 import { Editor, TUI } from "@mariozechner/pi-tui";
-
-class FakeTerminal {
-  columns = 80;
-  rows = 24;
-  onInput = null;
-
-  start(onInput) {
-    this.onInput = onInput;
-  }
-
-  stop() {}
-  write() {}
-  hideCursor() {}
-  showCursor() {}
-
-  input(data) {
-    this.onInput?.(data);
-  }
-}
+import { FakeTerminal } from "./helpers/fake-terminal.mjs";
 
 export async function runTuiAutocompleteEscSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: TUI autocomplete Esc cancel ---");

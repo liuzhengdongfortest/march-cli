@@ -1,40 +1,5 @@
 import { strict as assert } from "node:assert";
-
-class FakeTerminal {
-  columns = 80;
-  rows = 24;
-  writes = [];
-  onInput = null;
-  onResize = null;
-  stopped = false;
-  events = [];
-
-  start(onInput, onResize) {
-    this.onInput = onInput;
-    this.onResize = onResize;
-  }
-
-  stop() {
-    this.stopped = true;
-    this.events.push("stop");
-  }
-
-  async drainInput() {
-    this.events.push("drain");
-  }
-
-  write(data) {
-    this.writes.push(data);
-  }
-
-  hideCursor() {}
-
-  showCursor() {}
-
-  input(data) {
-    this.onInput?.(data);
-  }
-}
+import { FakeTerminal } from "./helpers/fake-terminal.mjs";
 
 export async function runTuiPasteImageSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: TUI Alt+V image paste dispatch ---");

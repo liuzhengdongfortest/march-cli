@@ -1,23 +1,5 @@
 import { strict as assert } from "node:assert";
-
-class FakeTerminal {
-  columns = 80;
-  rows = 24;
-  onInput = null;
-
-  start(onInput) {
-    this.onInput = onInput;
-  }
-
-  stop() {}
-  write() {}
-  hideCursor() {}
-  showCursor() {}
-
-  input(data) {
-    this.onInput?.(data);
-  }
-}
+import { FakeTerminal } from "./helpers/fake-terminal.mjs";
 
 export async function runSelectListOverlaySmoke() {
   console.log("--- smoke: select list overlay lifecycle ---");
