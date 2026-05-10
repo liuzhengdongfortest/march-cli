@@ -30,6 +30,7 @@ import { runDefaultStartupFlowSmoke } from "./default-startup-flow.smoke.mjs";
 import { runExportCommandSmoke } from "./export-command.smoke.mjs";
 import { runStatusBarSmoke } from "./status-bar.smoke.mjs";
 import { runStatusCommandSmoke } from "./status-command.smoke.mjs";
+import { runContextShellLayersSmoke } from "./context-shell-layers.smoke.mjs";
 import { runTuiHandlersSmoke } from "./tui-handlers.smoke.mjs";
 import { runRetryStatusSmoke } from "./retry-status.smoke.mjs";
 import { runSpinnerStatusSmoke } from "./spinner-status.smoke.mjs";
@@ -40,6 +41,7 @@ import { runStartupSkillsSmoke } from "./startup-skills.smoke.mjs";
 export async function runCliCommandSuiteSmoke({ setupTmp, cleanup }) {
   await runThinkingCommandHandlingSmoke();
   await runStartupSkillsSmoke({ setupTmp, cleanup });
+  await runContextShellLayersSmoke();
   await runExportCommandSmoke({ setupTmp, cleanup });
   await runStatusCommandSmoke({ setupTmp, cleanup });
   await runStatusBarSmoke();

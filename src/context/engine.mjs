@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { buildMemoryLayer } from "./memory-layer.mjs";
 import { buildRuntimeStatus } from "./runtime-status.mjs";
 import { buildSessionStatus } from "./session-status.mjs";
+import { buildShellLayers } from "./shell-layers.mjs";
 import { buildActiveSkills, buildSkillCatalog } from "./skill-layers.mjs";
 
 export class ContextEngine {
@@ -63,7 +64,7 @@ export class ContextEngine {
 
     layers.push(
       this.#buildRuntimeStatus(),
-      ...this.#buildShells(),
+      ...this.#buildShellLayers(),
       this.#buildRecentChat(),
     );
 
@@ -251,23 +252,11 @@ thinking: ${this.thinkingLevel}`;
   }
 
   // ── Layer 8: shells ────────────────────────────────────────────────
-  #buildShells() {
-    const shells = this.shellRuntime?.listShells?.() ?? [];
-    if (!shells.length) return [];
-    const blocks = shells.map((shell) => {
-      const snapshot = this.shellRuntime.snapshotShell(shell.id);
-      const output = snapshot.plain ? this.#truncate(snapshot.plain, 2000) : "(no output)";
-      return [
-        `## ${shell.name} (${shell.id})`,
-        `status: ${shell.status}`,
-        `command: ${shell.command}${shell.args?.length ? ` ${shell.args.join(" ")}` : ""}`,
-        `cwd: ${shell.cwd}`,
-        `lines: ${shell.lineCount}`,
-        "recent_output:",
-        output,
-      ].join("\n");
+  #buildShellLayers() {
+    return buildShellLayers({
+      shellRuntime: this.shellRuntime,
+      truncateText: (text, maxLen) => this.#truncate(text, maxLen),
     });
-    return [`[shells]\n${blocks.join("\n\n")}`];
   }
 
   // ── Layer 9: recent_chat ───────────────────────────────────────────
