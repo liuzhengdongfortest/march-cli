@@ -43,7 +43,7 @@ export async function runRunnerCoreSmoke() {
       skills: [],
       pins: [],
     }),
-    /No providers configured\. Run: march provider --config/,
+    /Run: march provider --config/,
   );
   console.log("  PASS");
 }

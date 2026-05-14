@@ -255,7 +255,9 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     },
 
     getConfiguredProviders() {
-      return Object.values(providers ?? {}).map((profile) => profile?.type).filter(Boolean);
+      const configured = Object.values(providers ?? {}).map((profile) => profile?.type).filter(Boolean);
+      const available = (modelRegistry.getAvailable?.() ?? []).map((model) => model.provider);
+      return [...new Set([...configured, ...available])];
     },
 
     async compact() {

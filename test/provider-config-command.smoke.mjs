@@ -6,12 +6,15 @@ import { PassThrough } from "node:stream";
 export async function runProviderConfigCommandSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: provider config command ---");
   const { runProviderConfigCommand } = await import("../src/provider/config-command.mjs");
+  const { PROVIDER_PRESETS } = await import("../src/provider/presets.mjs");
+  assert.ok(PROVIDER_PRESETS.some((provider) => provider.id === "openrouter"));
+  assert.ok(PROVIDER_PRESETS.some((provider) => provider.authMethods.includes("oauth")));
   const dir = setupTmp();
   const output = [];
   const code = await runProviderConfigCommand({
     homeDir: dir,
     output: { write: (text) => output.push(text) },
-    select: async ({ items }) => items[0].value,
+    select: async ({ items }) => items.find((item) => item.value.id === "deepseek")?.value ?? items[0].value,
     readSecret: async () => "sk-test",
   });
   assert.equal(code, 0);
@@ -24,6 +27,21 @@ export async function runProviderConfigCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(!("provider" in config));
   assert.ok(!("model" in config));
   assert.ok(output.join("").includes("Saved provider: DeepSeek"));
+
+  const oauthDir = setupTmp();
+  const oauthOutput = [];
+  const oauthCode = await runProviderConfigCommand({
+    homeDir: oauthDir,
+    output: { write: (text) => oauthOutput.push(text) },
+    select: async ({ items, message }) => {
+      if (message.includes("provider")) return items.find((item) => item.value.authMethods.includes("oauth")).value;
+      return items.find((item) => item.value === "oauth").value;
+    },
+    authStorage: { login: async (provider) => oauthOutput.push(`oauth:${provider}\n`) },
+  });
+  assert.equal(oauthCode, 0);
+  assert.ok(oauthOutput.join("").includes("oauth:"));
+  cleanup(oauthDir);
 
   const { formatSelectionList } = await import("../src/provider/config-command.mjs");
   const lines = formatSelectionList({

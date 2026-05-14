@@ -1,5 +1,7 @@
 import { createInterface } from "node:readline";
+import { AuthStorage } from "@mariozechner/pi-coding-agent";
 import { globalConfigJsonPath, upsertProviderProfile } from "../config/config-json.mjs";
+import { getMarchAuthPath } from "../auth/storage.mjs";
 import { PROVIDER_PRESETS } from "./presets.mjs";
 
 export async function runProviderConfigCommand({
@@ -8,6 +10,7 @@ export async function runProviderConfigCommand({
   output = process.stdout,
   select = selectWithKeyboard,
   readSecret = readLine,
+  authStorage = AuthStorage.create(getMarchAuthPath(homeDir)),
 } = {}) {
   const preset = await select({
     input,
@@ -31,6 +34,10 @@ export async function runProviderConfigCommand({
   if (!authMethod) {
     output.write("Provider configuration cancelled.\n");
     return 1;
+  }
+
+  if (authMethod === "oauth") {
+    return runOAuthConfig({ preset, authStorage, input, output, homeDir });
   }
 
   if (authMethod !== "apiKey") {
@@ -58,7 +65,56 @@ export async function runProviderConfigCommand({
 
 function formatAuthMethod(method) {
   if (method === "apiKey") return "API key";
+  if (method === "oauth") return "OAuth / subscription";
   return method;
+}
+
+async function runOAuthConfig({ preset, authStorage, input, output, homeDir }) {
+  const rl = createInterface({ input, output });
+  try {
+    output.write(`Logging in to ${preset.label}...\n`);
+    await authStorage.login(preset.type, {
+      onAuth: (info) => {
+        output.write(`\nOpen this URL in your browser:\n${info.url}\n`);
+        if (info.instructions) output.write(`${info.instructions}\n`);
+        output.write("\n");
+      },
+      onPrompt: (prompt) => ask(rl, `${prompt.message}${prompt.placeholder ? ` (${prompt.placeholder})` : ""}: `),
+      onManualCodeInput: () => ask(rl, "Paste redirect URL or code: "),
+      onProgress: (message) => output.write(`${message}\n`),
+      onSelect: async (prompt) => selectOAuthOption({ prompt, rl, output }),
+    });
+    output.write(`\nCredentials saved to ${getMarchAuthPath(homeDir)}\n`);
+    return 0;
+  } catch (error) {
+    output.write(`OAuth login failed: ${error instanceof Error ? error.message : String(error)}\n`);
+    return 1;
+  } finally {
+    rl.close();
+  }
+}
+
+async function selectOAuthOption({ prompt, rl, output }) {
+  output.write(`${prompt.message}\n`);
+  for (let i = 0; i < prompt.options.length; i++) {
+    const option = prompt.options[i];
+    output.write(`  ${i + 1}. ${option.label} (${option.id})\n`);
+  }
+  const answer = await ask(rl, `Enter option id or number (1-${prompt.options.length}): `);
+  return resolveSelection(answer, prompt.options);
+}
+
+function resolveSelection(answer, options) {
+  const trimmed = answer.trim();
+  const index = Number.parseInt(trimmed, 10);
+  if (Number.isInteger(index) && String(index) === trimmed && index >= 1 && index <= options.length) {
+    return options[index - 1].id;
+  }
+  return options.some((option) => option.id === trimmed) ? trimmed : undefined;
+}
+
+function ask(rl, question) {
+  return new Promise((resolve) => rl.question(question, resolve));
 }
 
 export async function selectWithKeyboard({ input = process.stdin, output = process.stdout, message, items }) {
