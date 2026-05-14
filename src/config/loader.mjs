@@ -40,12 +40,14 @@ function mergeLayers(layers) {
     provider: "deepseek",
     skills: [],
     pins: [],
+    memoryRoot: null,
   };
 
   for (const layer of layers) {
     if (!layer) continue;
     if (layer.model != null) result.model = layer.model;
     if (layer.provider) result.provider = layer.provider;
+    if (layer.memoryRoot) result.memoryRoot = layer.memoryRoot;
     if (Array.isArray(layer.skills)) {
       for (const s of layer.skills) {
         if (!result.skills.includes(s)) result.skills.push(s);

@@ -13,7 +13,8 @@ import { homedir } from "node:os";
  *     "server-name": {
  *       "command": "npx",          // stdio transport
  *       "args": ["-y", "server"],
- *       "env": { "KEY": "value" }  // optional
+ *       "env": { "KEY": "value" }, // optional
+ *       "instructions": "..."       // optional prompt injection
  *     }
  *   }
  * }

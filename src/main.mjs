@@ -1,5 +1,5 @@
 import { homedir } from "node:os";
-import { join, resolve, dirname } from "node:path";
+import { join, resolve, dirname, basename } from "node:path";
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseCliArgs, showHelp } from "./cli/args.mjs";
@@ -20,13 +20,8 @@ import { createMarchAuthStorage } from "./auth/storage.mjs";
 import { runLoginCommand } from "./auth/login-command.mjs";
 import { createRunner } from "./agent/runner.mjs";
 import { createCliShellRuntime } from "./shell/cli-runtime.mjs";
-import { openDatabase } from "./memory/database.mjs";
-import { GraphService } from "./memory/graph.mjs";
-import { GlossaryService } from "./memory/glossary.mjs";
-import { ChangesetStore } from "./memory/snapshot.mjs";
-import { SearchIndexer } from "./memory/search.mjs";
-import { createMemoryTools } from "./memory/tools.mjs";
-import { SystemViews } from "./memory/system-views.mjs";
+import { MarkdownMemoryStore, formatRecallHints } from "./memory/markdown-store.mjs";
+import { createMarkdownMemoryTools } from "./memory/markdown-tools.mjs";
 import { loadConfig } from "./config/loader.mjs";
 import { discoverProjectExtensionPaths } from "./extensions/discovery.mjs";
 import { loadProjectLifecycleHookManifests } from "./extensions/lifecycle-manifest.mjs";
@@ -99,18 +94,13 @@ export async function run(argv) {
     return 1;
   }
 
-  // Memory system: global SQLite database at ~/.march/memory.db
-  // Project isolation via .march/project-id namespace
   const projectMarchDir = resolve(cwd, ".march");
   if (!existsSync(projectMarchDir)) mkdirSync(projectMarchDir, { recursive: true });
   const namespace = loadOrCreateProjectId(projectMarchDir);
-  const memoryDb = openDatabase(resolve(stateRoot, "memory.db"));
-  const changesetStore = new ChangesetStore(memoryDb);
-  const searchIndexer = new SearchIndexer(memoryDb);
-  const graph = new GraphService(memoryDb, { changesetStore, searchIndexer, namespace });
-  const glossary = new GlossaryService(memoryDb, namespace);
-  const systemViews = new SystemViews(memoryDb, graph, glossary, namespace);
-  const memoryTools = createMemoryTools(graph, glossary, searchIndexer, systemViews, namespace);
+  const memoryRoot = resolveMemoryRoot(config.memoryRoot, stateRoot);
+  const memoryStore = new MarkdownMemoryStore({ root: memoryRoot });
+  const memoryTools = createMarkdownMemoryTools(memoryStore);
+  const currentProject = basename(cwd);
 
   const { skillPool, skillState, skillTools } = createStartupSkillRuntime({
     cwd,
@@ -121,7 +111,7 @@ export async function run(argv) {
 
   // MCP: connect to configured MCP servers
   const mcpInit = await initializeMcp({ projectDir: cwd });
-  const { clientManager: mcpClientManager, mcpTools } = mcpInit;
+  const { clientManager: mcpClientManager, mcpTools, mcpInjections } = mcpInit;
   for (const { server, error } of mcpInit.errors) {
     if (args.json) {
       // errors will be surfaced in diagnostics via runner status
@@ -173,12 +163,12 @@ export async function run(argv) {
     skills: skills,
     skillPool,
     pins: pins,
-    graph,
-    glossary,
+    memoryStore,
     memoryTools,
     skillTools,
     shellRuntime,
     mcpTools,
+    mcpInjections,
     mcpClientManager,
     webTools,
     namespace,
@@ -232,12 +222,19 @@ export async function run(argv) {
 
   // Single-shot mode
   if (args.prompt) {
+    memoryStore.beginTurn();
+    const userRecallHints = memoryStore.recallForUser(args.prompt, { currentProject });
     const context = runner.engine.buildContext(args.prompt);
-    const fullPrompt = `${context}\n\n[user]\n${args.prompt}`;
+    const recallBlock = formatRecallHints("user", userRecallHints);
+    const fullPrompt = `${context}\n\n[user]\n${args.prompt}${recallBlock ? `\n\n${recallBlock}` : ""}`;
     ui.writeln(`${bold("[user]")} ${formatMessageAttachmentsForDisplay(args.prompt)}`);
     turnRunning = true;
-    await runner.runTurn(fullPrompt, args.prompt);
-    turnRunning = false;
+    try {
+      await runner.runTurn(fullPrompt, args.prompt, { userRecallHints, currentProject });
+    } finally {
+      memoryStore.endTurn();
+      turnRunning = false;
+    }
     refreshStatusBar();
     // Post-turn dump: context with this turn in recent_chat
     if (args.dumpContext) {
@@ -323,13 +320,17 @@ export async function run(argv) {
       trimmed = templateResult.prompt;
     }
 
+    memoryStore.beginTurn();
+    const userRecallHints = memoryStore.recallForUser(trimmed, { currentProject });
     const context = runner.engine.buildContext(args.prompt || trimmed);
-    const fullPrompt = `${context}\n\n[user]\n${trimmed}`;
+    const recallBlock = formatRecallHints("user", userRecallHints);
+    const fullPrompt = `${context}\n\n[user]\n${trimmed}${recallBlock ? `\n\n${recallBlock}` : ""}`;
     try {
       ui.writeln(`${bold("[user]")} ${formatMessageAttachmentsForDisplay(trimmed)}`);
       turnRunning = true;
-      await runner.runTurn(fullPrompt, trimmed);
+      await runner.runTurn(fullPrompt, trimmed, { userRecallHints, currentProject });
       turnRunning = false;
+      memoryStore.endTurn();
       refreshStatusBar();
       // Post-turn dump: includes this turn in recent_chat
       if (args.dumpContext) {
@@ -339,6 +340,7 @@ export async function run(argv) {
       ui.writeln("");
     } catch (err) {
       turnRunning = false;
+      memoryStore.endTurn();
       refreshStatusBar();
       ui.writeln(`Error: ${err.message}`);
     }
@@ -347,6 +349,12 @@ export async function run(argv) {
   await runner.dispose();
   await ui.close();
   return 0;
+}
+
+function resolveMemoryRoot(configured, stateRoot) {
+  if (configured) return resolve(String(configured));
+  if (process.env.MARCH_MEMORY_ROOT) return resolve(process.env.MARCH_MEMORY_ROOT);
+  return resolve(stateRoot, "March Memories");
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

@@ -30,7 +30,7 @@ export function resolveRunnerSessionManager(cwd, sessionManager = null) {
   return sessionManager ?? createDefaultSessionManager(cwd);
 }
 
-export async function createRunner({ cwd, modelId, provider = "deepseek", stateRoot, ui, skills, skillPool = [], pins, graph = null, glossary = null, memoryTools = [], skillTools = [], shellRuntime = null, mcpTools = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices }) {
+export async function createRunner({ cwd, modelId, provider = "deepseek", stateRoot, ui, skills, skillPool = [], pins, memoryStore = null, memoryTools = [], skillTools = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices }) {
   const authConfig = authStorage
     ? { authStorage, hasAuth: true }
     : createMarchAuthStorage({ provider, cwd });
@@ -43,7 +43,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
     retry: { enabled: true, maxRetries: 3, baseDelayMs: 2000 },
   });
 
-  const engine = new ContextEngine({ cwd, modelId, provider, skills, skillPool, pins, graph, glossary, namespace, shellRuntime });
+  const engine = new ContextEngine({ cwd, modelId, provider, skills, skillPool, pins, namespace, shellRuntime, injections: mcpInjections });
   const resolvedSessionManager = resolveRunnerSessionManager(cwd, sessionManager);
   const sessionBinding = createSessionBinding(null);
   let runtimeHost = null;
@@ -63,6 +63,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       engine,
       ui,
       memoryTools,
+      memoryStore,
       skillTools,
       shellRuntime,
       mcpTools,
@@ -124,7 +125,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
     },
     shellRuntime,
 
-    async runTurn(prompt, userMessage) {
+    async runTurn(prompt, userMessage, { userRecallHints = [], currentProject = "" } = {}) {
       const activeSession = sessionBinding.get();
       const turnState = createTurnEventState();
       ui.turnStart();
@@ -170,11 +171,16 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
         ui.summaryDone();
 
         const summary = (turnState.summaryDraft || "(no summary)").slice(0, 4000);
+        const assistantRecallHints = memoryStore
+          ? memoryStore.recallForAssistant(turnState.draft, { currentProject })
+          : [];
 
         engine.recordTurn({
           userMessage: userMessage ?? prompt.slice(0, 300),
           summary,
           assistantMessage: turnState.draft,
+          userRecallHints,
+          assistantRecallHints,
         });
 
         syncCurrentPiSidecar();

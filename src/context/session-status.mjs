@@ -39,9 +39,24 @@ export function buildDirTree({
   return lines.join("\n") || "(empty)";
 }
 
-export function buildSessionStatus({
+export function buildSessionIdentity({
   cwd,
+  workspaceRoot = cwd,
   platform = process.platform,
+} = {}) {
+  const shellInfo = platform === "win32"
+    ? "shells: powershell (recommended), bash (Git Bash)"
+    : "shell: bash";
+
+  return `[session_identity]
+cwd: ${cwd}
+workspace_root: ${workspaceRoot}
+platform: ${platform}
+${shellInfo}`;
+}
+
+export function buildWorkspaceStatus({
+  cwd,
   home = homedir(),
   maxDepth = 3,
   readdir = readdirSync,
@@ -50,14 +65,7 @@ export function buildSessionStatus({
     ? `~${cwd.slice(home.length)}`
     : cwd;
   const tree = buildDirTree({ cwd, maxDepth, readdir });
-  const shellInfo = platform === "win32"
-    ? "shells: powershell (recommended), bash (Git Bash)"
-    : "shell: bash";
-
-  return `[session_status]
-cwd: ${cwd}
-platform: ${platform}
-${shellInfo}
+  return `[workspace_status]
 project: ${displayPath}
 
 Directory tree (top ${maxDepth} levels):

@@ -9,7 +9,7 @@ function dirent(name, directory = false) {
 
 export async function runContextSessionStatusSmoke() {
   console.log("--- smoke: context session status ---");
-  const { buildDirTree, buildSessionStatus } = await import("../src/context/session-status.mjs");
+  const { buildDirTree, buildSessionIdentity, buildWorkspaceStatus } = await import("../src/context/session-status.mjs");
   const entries = new Map([
     ["/repo", [
       dirent(".git", true),
@@ -33,15 +33,25 @@ export async function runContextSessionStatusSmoke() {
   assert.ok(!tree.includes(".hidden"));
   assert.ok(!tree.includes("node_modules"));
 
-  const status = buildSessionStatus({
+  const identity = buildSessionIdentity({
+    cwd: "/home/me/repo",
+    workspaceRoot: "/home/me/repo",
+    platform: "linux",
+  });
+  assert.ok(identity.includes("[session_identity]"));
+  assert.ok(identity.includes("cwd: /home/me/repo"));
+  assert.ok(identity.includes("workspace_root: /home/me/repo"));
+  assert.ok(identity.includes("shell: bash"));
+
+  const status = buildWorkspaceStatus({
     cwd: "/home/me/repo",
     home: "/home/me",
-    platform: "linux",
     readdir: () => [],
   });
+  assert.ok(status.includes("[workspace_status]"));
   assert.ok(status.includes("project: ~/repo"));
-  assert.ok(status.includes("shell: bash"));
   assert.ok(status.includes("Directory tree (top 3 levels):"));
+  assert.ok(!status.includes("[session_status]"));
   console.log("  PASS");
 }
 

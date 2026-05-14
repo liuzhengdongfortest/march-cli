@@ -10,12 +10,14 @@ export async function runConfigLoadingSmoke({ setupTmp, cleanup }) {
   const empty = loadConfig(dir);
   assert.equal(empty.model, "deepseek-chat");
   assert.equal(empty.provider, "deepseek");
+  assert.equal(empty.memoryRoot, null);
   assert.deepEqual(empty.skills, []);
   assert.deepEqual(empty.pins, []);
 
-  writeFileSync(join(dir, ".marchrc"), JSON.stringify({ model: "test-model", skills: ["s1"], pins: ["p1"] }));
+  writeFileSync(join(dir, ".marchrc"), JSON.stringify({ model: "test-model", memoryRoot: "D:/vault/March Memories", skills: ["s1"], pins: ["p1"] }));
   const withRc = loadConfig(dir);
   assert.equal(withRc.model, "test-model");
+  assert.equal(withRc.memoryRoot, "D:/vault/March Memories");
   assert.deepEqual(withRc.skills, ["s1"]);
   assert.deepEqual(withRc.pins, ["p1"]);
 

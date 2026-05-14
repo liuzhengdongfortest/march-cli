@@ -19,6 +19,8 @@ import { runExternalEditorSmoke } from "./external-editor.smoke.mjs";
 import { runImageSmokeSuite } from "./image-smoke-suite.smoke.mjs";
 import { runKeybindingsSmoke } from "./keybindings.smoke.mjs";
 import { runLoginCommandSmoke } from "./login-command.smoke.mjs";
+import { runMcpInjectionsSmoke } from "./mcp-injections.smoke.mjs";
+import { runMarkdownMemorySmoke } from "./markdown-memory.smoke.mjs";
 import { runNodePtyAdapterSmoke } from "./node-pty-adapter.smoke.mjs";
 import { runPromptTemplatesSmoke } from "./prompt-templates.smoke.mjs";
 import { runRunnerCoreSmoke } from "./runner-core.smoke.mjs";
@@ -115,26 +117,10 @@ await runContextSessionStatusSmoke();
 await runContextSkillLayersSmoke();
 
 await runConfigLoadingSmoke({ setupTmp, cleanup });
+await runMcpInjectionsSmoke();
+await runMarkdownMemorySmoke({ setupTmp, cleanup });
 
 await runContextEngineSmoke({ setupTmp, cleanup });
-
-// ── 3b. Memory layer builder ────────────────────────────────────────
-
-{
-  console.log("--- smoke: memory layer builder ---");
-  const { buildMemoryLayer } = await import("../src/context/memory-layer.mjs");
-  const touched = [];
-  const graph = {
-    getChildren: () => [{ child_uuid: "u1", path: "boot-note", domain: "project", name: "boot-note" }],
-    getMemoryByPath: () => ({ content: "boot content" }),
-    touchNode: (uuid) => touched.push(uuid),
-  };
-  const layer = buildMemoryLayer({ graph, glossary: null, turns: [], namespace: "ns", userMessage: "" });
-  assert.ok(layer.includes("[memory]"));
-  assert.ok(layer.includes("boot content"));
-  assert.deepEqual(touched, ["u1"]);
-  console.log("  PASS");
-}
 
 await runRunnerCoreSmoke();
 
