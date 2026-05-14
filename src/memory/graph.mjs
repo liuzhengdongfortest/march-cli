@@ -10,12 +10,9 @@ import {
   cascadeCreatePaths,
   cascadeDeleteNode,
   deprecateNodeMemories,
-  deleteSubtreePaths,
-  gcEdgeIfPathless,
-  gcNodeSoft,
 } from "./graph-cascades.mjs";
+import { removeGraphPath } from "./graph-path-removal.mjs";
 import {
-  escapeLikePath,
   graphUri,
   leafName,
   pathExists,
@@ -240,60 +237,7 @@ export class GraphService {
   }
 
   removePath(path, domain = "core", namespace = "") {
-    if (path === "") throw new Error("Cannot remove root path.");
-
-    const target = resolveGraphPath(this.db, path, domain, namespace);
-    if (!target) throw new Error(`Path '${graphUri(domain, path)}' not found`);
-
-    const targetNodeUuid = target.node_uuid;
-    const targetEdge = target.edge;
-
-    if (!targetEdge) throw new Error(`Path '${domain}://${path}' has no edge.`);
-
-    // Orphan prevention check
-    const childEdges = this.db.prepare(
-      "SELECT * FROM edges WHERE parent_uuid = ?"
-    ).all(targetNodeUuid);
-
-    const wouldOrphan = [];
-    const safe = escapeLikePath(path);
-
-    for (const childEdge of childEdges) {
-      // Count surviving paths for child (excluding paths being deleted)
-      const survivingStmt = this.db.prepare(`
-        SELECT COUNT(*) AS cnt FROM paths
-        WHERE node_uuid = ?
-        AND NOT (domain = ? AND (path = ? OR path LIKE ? ESCAPE '\\'))
-      `);
-      const surviving = survivingStmt.get(childEdge.child_uuid, domain, path, `${safe}/%`);
-      if (surviving.cnt === 0) {
-        // Check if there's a surviving path for the target node
-        const targetSurviving = this.db.prepare(`
-          SELECT * FROM paths
-          WHERE node_uuid = ? AND namespace = ?
-          AND NOT (domain = ? AND (path = ? OR path LIKE ? ESCAPE '\\'))
-          ORDER BY CASE WHEN domain = ? THEN 0 ELSE 1 END, path
-          LIMIT 1
-        `).get(targetNodeUuid, namespace, domain, path, `${safe}/%`, domain);
-        if (!targetSurviving) {
-          wouldOrphan.push(childEdge);
-        }
-      }
-    }
-
-    if (wouldOrphan.length > 0) {
-      const details = wouldOrphan.map(e => `'${e.name}' (${e.child_uuid.slice(0, 8)}...)`).join(", ");
-      throw new Error(`Cannot remove '${graphUri(domain, path)}': children would become unreachable: ${details}`);
-    }
-
-    // Proceed with deletion
-    deleteSubtreePaths(this.db, domain, path, namespace);
-
-    // GC
-    gcEdgeIfPathless(this.db, targetEdge);
-    gcNodeSoft(this.db, targetNodeUuid);
-
-    return { deleted: graphUri(domain, path) };
+    return removeGraphPath(this.db, path, domain, namespace);
   }
 
   restorePath(path, domain, nodeUuid, { parentUuid = null, priority = 0, disclosure = null, namespace = "" } = {}) {

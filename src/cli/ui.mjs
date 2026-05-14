@@ -1,15 +1,11 @@
 import { stdout } from "node:process";
-import {
-  Editor,
-  ProcessTerminal,
-  TUI,
-} from "@mariozechner/pi-tui";
-import { resolveAttachmentTokens, uniqueAttachmentToken, withLeadingSpace } from "./attachment-tokens.mjs";
+import { Editor, ProcessTerminal, TUI } from "@mariozechner/pi-tui";
 import { buildMarchCommands, MarchAutocompleteProvider } from "./autocomplete.mjs";
 import { getExternalEditorCommand, openTextInExternalEditor } from "./external-editor.mjs";
 import { createJsonUI, createPlainUI } from "./fallback-ui.mjs";
 import { createKeybindingDispatcher } from "./keybinding-dispatch.mjs";
 import { OutputBuffer } from "./output-buffer.mjs";
+import { requestToolPermission } from "./permission-request-ui.mjs";
 import { createRetryStatusController } from "./retry-status.mjs";
 import { createShellDrawerControls } from "./shell-drawer-controls.mjs";
 import { ShellDrawer } from "./shell-drawer.mjs";
@@ -17,14 +13,12 @@ import { ShellSplitLayout } from "./shell-split-layout.mjs";
 import { showSelectListOverlay } from "./select-list-overlay.mjs";
 import { createSpinnerStatusController } from "./spinner-status.mjs";
 import { StatusBar } from "./status-bar.mjs";
-import { permissionLabel } from "./permissions.mjs";
 import { writeEditDiff } from "./tui-diff-rendering.mjs";
+import { createTuiInputController } from "./tui-input-controller.mjs";
 import { writeToolEnd, writeToolStart } from "./tool-rendering.mjs";
 import { EDITOR_THEME, yellow, brightBlack } from "./ui-theme.mjs";
 
 export { buildMarchCommands, MarchAutocompleteProvider } from "./autocomplete.mjs";
-
-// ── TUI-based UI ────────────────────────────────────────────────────
 
 export function createTuiUI({
   cwd = process.cwd(),
@@ -145,26 +139,13 @@ export function createTuiUI({
     retryStatus.end({ success, attempt, finalError });
   }
 
-  let onSubmitResolve = null;
-  const attachmentTokens = new Map();
+  const inputController = createTuiInputController({ editor, requestRender });
 
   return {
-    readline: (_prompt) =>
-      new Promise((resolve) => {
-        ensureStarted();
-        onSubmitResolve = resolve;
-        editor.disableSubmit = false;
-        editor.onSubmit = (text) => {
-          const resolvedText = resolveAttachmentTokens(text, attachmentTokens);
-          editor.addToHistory(text);
-          editor.disableSubmit = true;
-          editor.onSubmit = undefined;
-          const res = onSubmitResolve;
-          onSubmitResolve = null;
-          attachmentTokens.clear();
-          if (res) res(resolvedText);
-        };
-      }),
+    readline: (_prompt) => {
+      ensureStarted();
+      return inputController.readline();
+    },
 
     write: (text) => {
       ensureStarted();
@@ -276,19 +257,7 @@ export function createTuiUI({
     requestPermission: async ({ toolName, params, category }) => {
       ensureStarted();
       spinnerStatus.stop();
-      const label = permissionLabel(category);
-      output.writeln(yellow(`● ${toolName} needs ${label} permission`));
-      const shortArgs = JSON.stringify(params).slice(0, 100);
-      output.writeln(dim(`  ${shortArgs}`));
-      requestRender();
-      const choice = await selectList({
-        items: [
-          { label: "Approve once", description: `Allow ${toolName} this time (${label})` },
-          { label: "Deny", description: "Block this tool call" },
-        ],
-        width: 58,
-      });
-      return choice?.label === "Approve once";
+      return requestToolPermission({ toolName, params, category, output, selectList, requestRender });
     },
 
     setEscapeHandler: (fn) => { onEscapeHandler = fn; },
@@ -299,29 +268,13 @@ export function createTuiUI({
     setPasteImageHandler: (fn) => { onPasteImageHandler = fn; },
 
     selectList,
-    getInputText: () => editor.getText(),
-    insertTextAtCursor: (text) => {
-      editor.insertTextAtCursor(text);
-      requestRender();
-    },
-    insertAttachmentAtCursor: ({ marker, label }) => {
-      const token = uniqueAttachmentToken(label || "[image]", attachmentTokens);
-      attachmentTokens.set(token, marker);
-      editor.insertTextAtCursor(withLeadingSpace(editor.getText(), token));
-      requestRender();
-    },
+    getInputText: () => inputController.getInputText(),
+    insertTextAtCursor: (text) => inputController.insertTextAtCursor(text),
+    insertAttachmentAtCursor: (attachment) => inputController.insertAttachmentAtCursor(attachment),
     openExternalEditor: () => { openExternalEditor(); },
     toggleToolOutput,
     toggleShellDrawer: () => shellDrawerControls.toggle(),
-    requestExit: () => {
-      if (!onSubmitResolve) return;
-      const res = onSubmitResolve;
-      onSubmitResolve = null;
-      attachmentTokens.clear();
-      editor.disableSubmit = true;
-      editor.onSubmit = undefined;
-      res(null);
-    },
+    requestExit: () => inputController.requestExit(),
 
     close: async () => {
       spinnerStatus.stop();
@@ -334,8 +287,6 @@ export function createTuiUI({
     },
   };
 }
-
-// ── Public API ──────────────────────────────────────────────────────
 
 export function createUI({ json, cwd = process.cwd(), skillPool = [], keybindings, promptTemplates = [], shellRuntime = null } = {}) {
   if (json) return createJsonUI();

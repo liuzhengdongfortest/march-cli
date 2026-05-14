@@ -1,37 +1,29 @@
 import {
   createAgentSession,
   ModelRegistry,
-  SessionManager,
   SettingsManager,
 } from "@mariozechner/pi-coding-agent";
 import { createMarchAuthStorage } from "../auth/storage.mjs";
 import { ContextEngine } from "../context/engine.mjs";
 import { createMarchLifecycleAdapter } from "../extensions/lifecycle-adapter.mjs";
-import { resolveImageAttachmentReferences } from "../session/attachment-references.mjs";
 import { syncPiSessionSidecar } from "../session/sidecar-sync.mjs";
+import { LspService } from "../lsp/service.mjs";
+import { installModelPayloadDumper } from "./model-payload-dumper.mjs";
 import { cloneCurrentPiSession } from "./pi-session-clone.mjs";
 import { forkPiSessionWithResetContext } from "./pi-session-fork-reset.mjs";
+import { resolveInitialModel, resolveRunnerSessionManager } from "./runner-init.mjs";
 import { runRunnerCleanup } from "./runner-cleanup.mjs";
 import { createRunnerRuntimeHost } from "./runner-runtime-host.mjs";
 import { getRunnerSessionStats, syncEngineSessionState } from "./runner-session-state.mjs";
 import { resolveRunnerSessionOptions } from "./session-options.mjs";
 import { createSessionBinding } from "./session-binding.mjs";
 import { MARCH_BASE_TOOL_NAMES } from "./tool-names.mjs";
-import { createTurnEventState, handleRunnerSessionEvent } from "./turn-events.mjs";
-import { LspService } from "../lsp/service.mjs";
-
-const MODEL_PAYLOAD_DUMPER_INSTALLED = Symbol("march.modelPayloadDumperInstalled");
+import { runRunnerTurn } from "./turn-runner.mjs";
 
 export { MARCH_BASE_TOOL_NAMES };
+export { installModelPayloadDumper } from "./model-payload-dumper.mjs";
+export { createDefaultSessionManager, resolveRunnerSessionManager } from "./runner-init.mjs";
 export { getRunnerSessionStats, syncEngineSessionState } from "./runner-session-state.mjs";
-
-export function createDefaultSessionManager(cwd) {
-  return SessionManager.inMemory(cwd);
-}
-
-export function resolveRunnerSessionManager(cwd, sessionManager = null) {
-  return sessionManager ?? createDefaultSessionManager(cwd);
-}
 
 export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, skills, skillPool = [], pins, memoryStore = null, memoryTools = [], skillTools = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, modelContextDumper = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices }) {
   const authConfig = authStorage
@@ -141,79 +133,18 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     shellRuntime,
 
     async runTurn(prompt, userMessage, { userRecallHints = [], currentProject = "" } = {}) {
-      const activeSession = sessionBinding.get();
-      const turnState = createTurnEventState();
-      ui.turnStart();
-
-      const unsubscribe = activeSession.subscribe((event) => {
-        handleRunnerSessionEvent(event, { ui, engine, state: turnState });
+      return runRunnerTurn({
+        prompt,
+        userMessage,
+        options: { userRecallHints, currentProject },
+        sessionBinding,
+        engine,
+        ui,
+        projectMarchDir,
+        memoryStore,
+        setModelCallKind: (kind) => { currentModelCallKind = kind; },
+        syncCurrentPiSidecar,
       });
-
-      try {
-        const attachmentReferences = resolveImageAttachmentReferences({
-          text: userMessage ?? prompt,
-          projectMarchDir,
-        });
-        currentModelCallKind = "user";
-        try {
-          await activeSession.prompt(
-            prompt,
-            attachmentReferences.images.length > 0 ? { images: attachmentReferences.images } : undefined,
-          );
-        } finally {
-          currentModelCallKind = "model";
-        }
-
-        // Post-turn: inject summary prompt with tools + thinking stripped
-        turnState.summarizing = true;
-        ui.summaryStart();
-
-        const originalTools = activeSession.getActiveToolNames();
-        const originalThinking = activeSession.thinkingLevel;
-        activeSession.setActiveToolsByName([]);
-        activeSession.setThinkingLevel("off");
-
-        try {
-          const summaryPrompt = "[system]\nSummarize the work you just completed in 1-2 paragraphs for the next turn's context. " +
-            "Focus on: what was accomplished, what decisions were made, and what's left to do. " +
-            "Output ONLY the summary — no tools, no code, just the summary text.\n\n" +
-            "Keep it under 1k tokens.";
-          currentModelCallKind = "summary";
-          try {
-            await activeSession.prompt(summaryPrompt);
-          } finally {
-            currentModelCallKind = "model";
-          }
-        } catch {
-          if (!turnState.summaryDraft) {
-            turnState.summaryDraft = turnState.draft.slice(0, 300) || "(no output)";
-          }
-        }
-
-        activeSession.setActiveToolsByName(originalTools);
-        activeSession.setThinkingLevel(originalThinking);
-        ui.summaryDone();
-
-        const summary = (turnState.summaryDraft || "(no summary)").slice(0, 4000);
-        const assistantRecallHints = memoryStore
-          ? memoryStore.recallForAssistant(turnState.draft, { currentProject })
-          : [];
-
-        engine.recordTurn({
-          userMessage: userMessage ?? prompt.slice(0, 300),
-          summary,
-          assistantMessage: turnState.draft,
-          userRecallHints,
-          assistantRecallHints,
-        });
-
-        syncCurrentPiSidecar();
-
-        return { draft: turnState.draft, summary };
-      } finally {
-        ui.turnEnd();
-        unsubscribe();
-      }
     },
 
     abort() {
@@ -361,37 +292,4 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       sessionStats: getRunnerSessionStats(sessionBinding.get(), runtimeHost),
     });
   }
-}
-
-function resolveInitialModel({ modelRegistry, provider, modelId }) {
-  const available = modelRegistry.getAvailable?.() ?? [];
-  if (provider && modelId) return available.find((model) => model.provider === provider && model.id === modelId) ?? null;
-  return available[0] ?? null;
-}
-
-export function installModelPayloadDumper(session, modelContextDumper, getKind = () => "model") {
-  if (!modelContextDumper?.enabled || !session?.agent) return;
-  const agent = session.agent;
-  if (agent[MODEL_PAYLOAD_DUMPER_INSTALLED]) return;
-  const originalOnPayload = agent.onPayload;
-  agent.onPayload = async (payload, model) => {
-    const replacement = originalOnPayload ? await originalOnPayload(payload, model) : undefined;
-    const effectivePayload = replacement === undefined ? payload : replacement;
-    modelContextDumper.dump({
-      kind: getKind(),
-      prompt: formatModelPayload(effectivePayload),
-      metadata: {
-        provider: model?.provider,
-        model: model?.id,
-        payload: "provider_request",
-      },
-    });
-    return replacement;
-  };
-  agent[MODEL_PAYLOAD_DUMPER_INSTALLED] = true;
-}
-
-function formatModelPayload(payload) {
-  if (typeof payload === "string") return payload;
-  return JSON.stringify(payload, null, 2);
 }

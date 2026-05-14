@@ -5,15 +5,9 @@ import { fileURLToPath } from "node:url";
 import { parseCliArgs, showHelp } from "./cli/args.mjs";
 import { createUI } from "./cli/ui.mjs";
 import { createPermissionController, MODE } from "./cli/permissions.mjs";
-import { bold, brightBlack } from "./cli/ui-theme.mjs";
-import { handleSlashCommand } from "./cli/slash-commands.mjs";
-import {
-  parseInlineShellInput,
-  parseSkillInvocation,
-  runInlineShellCommand,
-} from "./cli/repl-commands.mjs";
 import { loadKeybindings } from "./cli/keybindings.mjs";
-import { expandPromptTemplate, loadPromptTemplates } from "./cli/prompt-templates.mjs";
+import { loadPromptTemplates } from "./cli/prompt-templates.mjs";
+import { runInteractiveRepl, runSingleShotPrompt } from "./cli/repl-loop.mjs";
 import { createStatusLineUpdater } from "./cli/status-line-updater.mjs";
 import { wireTuiHandlers } from "./cli/tui-handlers.mjs";
 import { createMarchAuthStorage } from "./auth/storage.mjs";
@@ -25,9 +19,7 @@ import { createMarkdownMemoryTools } from "./memory/markdown-tools.mjs";
 import { loadConfig } from "./config/loader.mjs";
 import { discoverProjectExtensionPaths } from "./extensions/discovery.mjs";
 import { loadProjectLifecycleHookManifests } from "./extensions/lifecycle-manifest.mjs";
-import { saveSession } from "./session/persist.mjs";
 import { resolvePiSessionManager } from "./session/pi-manager.mjs";
-import { formatMessageAttachmentsForDisplay } from "./session/attachment-display.mjs";
 import { loadOrCreateProjectId, resumeStartupSession } from "./cli/startup-session.mjs";
 import { activateStartupSkills, createStartupSkillRuntime } from "./cli/startup-skills.mjs";
 import { initializeMcp } from "./mcp/index.mjs";
@@ -237,21 +229,21 @@ export async function run(argv) {
 
   // Single-shot mode
   if (args.prompt) {
-    memoryStore.beginTurn();
-    const userRecallHints = memoryStore.recallForUser(args.prompt, { currentProject });
-    const context = runner.engine.buildContext(args.prompt);
-    const recallBlock = formatRecallHints("user", userRecallHints);
-    const fullPrompt = `${context}\n\n[user]\n${args.prompt}${recallBlock ? `\n\n${recallBlock}` : ""}`;
-    ui.writeln(`${bold("[user]")} ${formatMessageAttachmentsForDisplay(args.prompt)}`);
     turnRunning = true;
     try {
-      await runner.runTurn(fullPrompt, args.prompt, { userRecallHints, currentProject });
+      await runSingleShotPrompt({
+        prompt: args.prompt,
+        runner,
+        memoryStore,
+        currentProject,
+        ui,
+        sessionState,
+        usePiSessionDefaults,
+        refreshStatusBar,
+      });
     } finally {
-      memoryStore.endTurn();
       turnRunning = false;
     }
-    refreshStatusBar();
-    if (!usePiSessionDefaults) saveSession(sessionState.sessionDir, runner.engine);
     await runner.dispose();
     ui.writeln("");
     await ui.close();
@@ -262,88 +254,26 @@ export async function run(argv) {
 
   ui.writeln("March REPL. Type /help for commands, Esc to abort, /exit to quit.");
   ui.writeln("");
-  let lastInlineShellCommand = "";
-
-  for (;;) {
-    const line = await ui.readline("> ");
-    if (line === null) {
-      if (!usePiSessionDefaults) saveSession(sessionState.sessionDir, runner.engine);
-      break;
-    }
-    let trimmed = line.trim();
-    if (!trimmed) continue;
-    const inlineShell = parseInlineShellInput(trimmed, lastInlineShellCommand);
-    if (inlineShell.type === "error") {
-      ui.writeln(`Error: ${inlineShell.message}`);
-      continue;
-    }
-    if (inlineShell.type === "command") {
-      lastInlineShellCommand = inlineShell.command;
-      runInlineShellCommand(inlineShell.command, { cwd, ui });
-      continue;
-    }
-    const skillInvocation = parseSkillInvocation(trimmed);
-    if (skillInvocation.type === "skill") {
-      const skill = skillPool.find(s => s.name === skillInvocation.name);
-      if (!skill) {
-        ui.writeln(`Error: skill not found: ${skillInvocation.name}`);
-        continue;
-      }
-      if (!skillState.active.find(s => s.name === skill.name)) {
-        skillState.active.push(skill);
-        runner.engine.setSkills([...skillState.active]);
-      }
-      ui.writeln(`Activated skill: ${skill.name}`);
-      if (!skillInvocation.prompt) continue;
-      trimmed = skillInvocation.prompt;
-    }
-
-    const slashResult = await handleSlashCommand(trimmed, {
-      ui,
-      runner,
-      sessionState,
-      sessionsRoot,
-      projectMarchDir,
-      skillPool,
-      sessionSource,
-      extensionPaths,
-      keybindings: keybindingConfig.keybindings,
-      keybindingDiagnostics: keybindingConfig.diagnostics,
-      promptTemplates: promptTemplateConfig.templates,
-      promptTemplateDiagnostics: promptTemplateConfig.diagnostics,
-    });
-    if (slashResult.exit) break;
-    if (slashResult.handled) {
-      refreshStatusBar();
-      continue;
-    }
-
-    const templateResult = expandPromptTemplate(trimmed, promptTemplateConfig.templates);
-    if (templateResult.type === "template") {
-      ui.writeln(brightBlack(`● template: ${templateResult.name}`));
-      trimmed = templateResult.prompt;
-    }
-
-    memoryStore.beginTurn();
-    const userRecallHints = memoryStore.recallForUser(trimmed, { currentProject });
-    const context = runner.engine.buildContext(args.prompt || trimmed);
-    const recallBlock = formatRecallHints("user", userRecallHints);
-    const fullPrompt = `${context}\n\n[user]\n${trimmed}${recallBlock ? `\n\n${recallBlock}` : ""}`;
-    try {
-      ui.writeln(`${bold("[user]")} ${formatMessageAttachmentsForDisplay(trimmed)}`);
-      turnRunning = true;
-      await runner.runTurn(fullPrompt, trimmed, { userRecallHints, currentProject });
-      turnRunning = false;
-      memoryStore.endTurn();
-      refreshStatusBar();
-      ui.writeln("");
-    } catch (err) {
-      turnRunning = false;
-      memoryStore.endTurn();
-      refreshStatusBar();
-      ui.writeln(`Error: ${err.message}`);
-    }
-  }
+  await runInteractiveRepl({
+    cwd,
+    args,
+    ui,
+    runner,
+    memoryStore,
+    currentProject,
+    sessionState,
+    sessionsRoot,
+    projectMarchDir,
+    skillPool,
+    skillState,
+    sessionSource,
+    extensionPaths,
+    keybindingConfig,
+    promptTemplateConfig,
+    usePiSessionDefaults,
+    refreshStatusBar,
+    setTurnRunning: (value) => { turnRunning = value; },
+  });
 
   await runner.dispose();
   await ui.close();
