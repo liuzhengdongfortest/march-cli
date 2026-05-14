@@ -16,8 +16,9 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   });
 
   const ctx = engine.buildContext("装備を確認する");
-  assert.ok(ctx.includes("[system_core version="));
-  assert.ok(ctx.includes('model_prompt="default"'));
+  assert.ok(ctx.includes("[system_core]"));
+  assert.ok(!ctx.includes("model_prompt="));
+  assert.ok(!ctx.includes("version="));
   assert.ok(ctx.includes("[session_identity]"));
   assert.ok(ctx.includes("[workspace_status]"));
   assert.ok(ctx.includes("[diagnostics]"));
@@ -39,7 +40,7 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
     skills: [],
     pins: [],
   });
-  assert.ok(modelPromptEngine.buildContext("").includes('model_prompt="deepseek-v4-pro"'));
+  assert.ok(modelPromptEngine.buildContext("").includes("Build context from current project facts before editing."));
 
   const injectionEngine = new ContextEngine({
     cwd: dir,
