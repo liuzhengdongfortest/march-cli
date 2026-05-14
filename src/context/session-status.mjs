@@ -4,7 +4,7 @@ import { readdirSync } from "node:fs";
 
 export function buildDirTree({
   cwd,
-  maxDepth = 3,
+  maxDepth = 1,
   readdir = readdirSync,
 } = {}) {
   const lines = [];
@@ -58,7 +58,7 @@ ${shellInfo}`;
 export function buildWorkspaceStatus({
   cwd,
   home = homedir(),
-  maxDepth = 3,
+  maxDepth = 1,
   readdir = readdirSync,
 } = {}) {
   const displayPath = cwd.startsWith(home)
