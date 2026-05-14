@@ -20,6 +20,8 @@ import { MARCH_BASE_TOOL_NAMES } from "./tool-names.mjs";
 import { createTurnEventState, handleRunnerSessionEvent } from "./turn-events.mjs";
 import { LspService } from "../lsp/service.mjs";
 
+const MODEL_PAYLOAD_DUMPER_INSTALLED = Symbol("march.modelPayloadDumperInstalled");
+
 export { MARCH_BASE_TOOL_NAMES };
 export { getRunnerSessionStats, syncEngineSessionState } from "./runner-session-state.mjs";
 
@@ -52,6 +54,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   const engine = new ContextEngine({ cwd, modelId, provider, skills, skillPool, pins, namespace, shellRuntime, lspService, injections: mcpInjections });
   const resolvedSessionManager = resolveRunnerSessionManager(cwd, sessionManager);
   const sessionBinding = createSessionBinding(null);
+  let currentModelCallKind = "model";
   let runtimeHost = null;
   let lifecycleAdapter = null;
 
@@ -77,7 +80,10 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       webTools,
       permissionController,
       extensionPaths,
-      onRebind: (session) => syncEngineSessionState(engine, session),
+      onRebind: (session) => {
+        installModelPayloadDumper(session, modelContextDumper, () => currentModelCallKind);
+        syncEngineSessionState(engine, session);
+      },
       createAgentSessionRuntimeImpl,
       createServices: createRuntimeServices,
       createFromServices: createRuntimeSessionFromServices,
@@ -111,6 +117,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       settingsManager,
     });
     sessionBinding.set(session);
+    installModelPayloadDumper(session, modelContextDumper, () => currentModelCallKind);
   }
 
   syncEngineSessionState(engine, sessionBinding.get());
@@ -147,19 +154,15 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
           text: userMessage ?? prompt,
           projectMarchDir,
         });
-        modelContextDumper?.dump?.({
-          kind: "user",
-          prompt,
-          metadata: {
-            provider: activeSession.model?.provider ?? provider,
-            model: activeSession.model?.id ?? modelId,
-            attachments: attachmentReferences.images.length,
-          },
-        });
-        await activeSession.prompt(
-          prompt,
-          attachmentReferences.images.length > 0 ? { images: attachmentReferences.images } : undefined,
-        );
+        currentModelCallKind = "user";
+        try {
+          await activeSession.prompt(
+            prompt,
+            attachmentReferences.images.length > 0 ? { images: attachmentReferences.images } : undefined,
+          );
+        } finally {
+          currentModelCallKind = "model";
+        }
 
         // Post-turn: inject summary prompt with tools + thinking stripped
         turnState.summarizing = true;
@@ -175,16 +178,12 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
             "Focus on: what was accomplished, what decisions were made, and what's left to do. " +
             "Output ONLY the summary — no tools, no code, just the summary text.\n\n" +
             "Keep it under 1k tokens.";
-          modelContextDumper?.dump?.({
-            kind: "summary",
-            prompt: summaryPrompt,
-            metadata: {
-              provider: activeSession.model?.provider ?? provider,
-              model: activeSession.model?.id ?? modelId,
-              attachments: 0,
-            },
-          });
-          await activeSession.prompt(summaryPrompt);
+          currentModelCallKind = "summary";
+          try {
+            await activeSession.prompt(summaryPrompt);
+          } finally {
+            currentModelCallKind = "model";
+          }
         } catch {
           if (!turnState.summaryDraft) {
             turnState.summaryDraft = turnState.draft.slice(0, 300) || "(no output)";
@@ -368,4 +367,31 @@ function resolveInitialModel({ modelRegistry, provider, modelId }) {
   const available = modelRegistry.getAvailable?.() ?? [];
   if (provider && modelId) return available.find((model) => model.provider === provider && model.id === modelId) ?? null;
   return available[0] ?? null;
+}
+
+export function installModelPayloadDumper(session, modelContextDumper, getKind = () => "model") {
+  if (!modelContextDumper?.enabled || !session?.agent) return;
+  const agent = session.agent;
+  if (agent[MODEL_PAYLOAD_DUMPER_INSTALLED]) return;
+  const originalOnPayload = agent.onPayload;
+  agent.onPayload = async (payload, model) => {
+    const replacement = originalOnPayload ? await originalOnPayload(payload, model) : undefined;
+    const effectivePayload = replacement === undefined ? payload : replacement;
+    modelContextDumper.dump({
+      kind: getKind(),
+      prompt: formatModelPayload(effectivePayload),
+      metadata: {
+        provider: model?.provider,
+        model: model?.id,
+        payload: "provider_request",
+      },
+    });
+    return replacement;
+  };
+  agent[MODEL_PAYLOAD_DUMPER_INSTALLED] = true;
+}
+
+function formatModelPayload(payload) {
+  if (typeof payload === "string") return payload;
+  return JSON.stringify(payload, null, 2);
 }
