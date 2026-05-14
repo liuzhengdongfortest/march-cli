@@ -1,5 +1,5 @@
-import { visibleWidth, truncateToWidth } from "@mariozechner/pi-tui";
-import { brightBlack, dim, cyan } from "./ui-theme.mjs";
+import { visibleWidth } from "@mariozechner/pi-tui";
+import { R, brightBlack, dim } from "./ui-theme.mjs";
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
@@ -23,10 +23,75 @@ function wrapLine(text, maxWidth) {
   return result.length > 0 ? result : [""];
 }
 
+function appendText(lines, text, width) {
+  for (const wrapped of wrapLine(text, width)) lines.push(wrapped);
+}
+
+function appendMarkdownLine(lines, line, width) {
+  for (const wrapped of wrapMarkdownTokens(parseMarkdownLine(line), width)) {
+    lines.push(renderMarkdownTokens(wrapped));
+  }
+}
+
+function parseMarkdownLine(line) {
+  const heading = line.match(/^#{1,6}\s+(.+)$/);
+  if (heading) return [{ text: heading[1], color: "orange" }];
+  const strongLine = line.match(/^\*\*(.+)\*\*$/);
+  if (strongLine) return [{ text: strongLine[1], color: "orange" }];
+
+  const tokens = [];
+  let index = 0;
+  const codeRe = /`([^`]+)`/g;
+  for (let match = codeRe.exec(line); match; match = codeRe.exec(line)) {
+    if (match.index > index) tokens.push({ text: line.slice(index, match.index), color: null });
+    tokens.push({ text: match[1], color: "green" });
+    index = match.index + match[0].length;
+  }
+  if (index < line.length) tokens.push({ text: line.slice(index), color: null });
+  return tokens.length > 0 ? tokens : [{ text: line, color: null }];
+}
+
+function wrapMarkdownTokens(tokens, width) {
+  if (width <= 0) return [[{ text: "", color: null }]];
+  const lines = [];
+  let current = [];
+  let currentWidth = 0;
+  for (const token of tokens) {
+    for (const ch of token.text) {
+      const charWidth = visibleWidth(ch);
+      if (currentWidth + charWidth > width && current.length > 0) {
+        lines.push(current);
+        current = [];
+        currentWidth = 0;
+      }
+      current.push({ text: ch, color: token.color });
+      currentWidth += charWidth;
+    }
+  }
+  lines.push(current);
+  return lines;
+}
+
+function renderMarkdownTokens(tokens) {
+  let out = "";
+  let color = null;
+  for (const token of tokens) {
+    if (token.color !== color) {
+      if (color) out += R;
+      color = token.color;
+      if (color === "orange") out += "\x1b[38;2;245;167;66m";
+      else if (color === "green") out += "\x1b[38;2;127;216;143m";
+    }
+    out += token.text;
+  }
+  if (color) out += R;
+  return out;
+}
+
 export class OutputBuffer {
   constructor() {
     this.segments = [];
-    this.currentText = [""];
+    this.currentText = [{ text: "", markdown: false }];
     this.spinning = false;
     this.spinnerText = "";
     this.spinnerIdx = 0;
@@ -34,16 +99,30 @@ export class OutputBuffer {
   }
 
   write(text) {
+    this._writeText(text, false);
+  }
+
+  writeMarkdown(text) {
+    this._writeText(text, true);
+  }
+
+  _writeText(text, markdown) {
+    const current = this.currentText.at(-1);
+    if (current.markdown !== markdown && current.text !== "") {
+      this.currentText.push({ text: "", markdown });
+    } else {
+      current.markdown = markdown;
+    }
     const parts = text.split("\n");
-    this.currentText[this.currentText.length - 1] += parts[0];
+    this.currentText[this.currentText.length - 1].text += parts[0];
     for (let i = 1; i < parts.length; i++) {
-      this.currentText.push(parts[i]);
+      this.currentText.push({ text: parts[i], markdown });
     }
   }
 
   writeln(text) {
-    this.currentText[this.currentText.length - 1] += text;
-    this.currentText.push("");
+    this.currentText[this.currentText.length - 1].text += text;
+    this.currentText.push({ text: "", markdown: false });
   }
 
   startThinking() {
@@ -84,9 +163,9 @@ export class OutputBuffer {
   }
 
   _flushText() {
-    if (this.currentText.length > 1 || this.currentText[0] !== "") {
+    if (this.currentText.length > 1 || this.currentText[0].text !== "") {
       this.segments.push({ type: "text", lines: [...this.currentText] });
-      this.currentText = [""];
+      this.currentText = [{ text: "", markdown: false }];
     }
   }
 
@@ -106,7 +185,8 @@ export class OutputBuffer {
     for (const seg of this.segments) {
       if (seg.type === "text") {
         for (const line of seg.lines) {
-          lines.push(visibleWidth(line) > width ? truncateToWidth(line, width) : line);
+          if (line.markdown) appendMarkdownLine(lines, line.text, width);
+          else appendText(lines, line.text, width);
         }
       } else if (seg.type === "thinking") {
         lines.push(dim(`· thinking (${seg.tokens} tokens)`));
@@ -120,7 +200,8 @@ export class OutputBuffer {
       }
     }
     for (const line of this.currentText) {
-      lines.push(visibleWidth(line) > width ? truncateToWidth(line, width) : line);
+      if (line.markdown) appendMarkdownLine(lines, line.text, width);
+      else appendText(lines, line.text, width);
     }
     if (this.spinning) {
       const frame = SPINNER_FRAMES[this.spinnerIdx];

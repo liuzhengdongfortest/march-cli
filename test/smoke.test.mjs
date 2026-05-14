@@ -204,7 +204,28 @@ await runTuiAutocompleteEscSmoke({ setupTmp, cleanup });
   assert.ok(rendered.includes("thinking (12 tokens)"));
   assert.ok(rendered.includes("reasoning line"));
   assert.ok(rendered.includes("Thinking..."));
+
+  const markdown = new OutputBuffer();
+  markdown.writeMarkdown("### 标题\n**1. Context 浪费严重 — 最大痛点**\n这里有 `edit` 和一段很长很长很长的正文");
+  const markdownLines = markdown.render(20);
+  const markdownRendered = markdownLines.join("\n");
+  const plainMarkdown = stripAnsi(markdownRendered);
+  assert.ok(markdownRendered.includes("\x1b[38;2;245;167;66m标题\x1b[0m"));
+  assert.ok(markdownRendered.includes("\x1b[38;2;245;167;66m1. Context"));
+  assert.ok(markdownRendered.includes("\x1b[38;2;127;216;143medit\x1b[0m"));
+  assert.ok(!plainMarkdown.includes("###"));
+  assert.ok(!plainMarkdown.includes("**"));
+  assert.ok(!plainMarkdown.includes("`"));
+  assert.ok(markdownLines.length > 3);
+
+  const plain = new OutputBuffer();
+  plain.write("### plain `code`");
+  assert.equal(plain.render(80).join("\n"), "### plain `code`");
   console.log("  PASS");
+}
+
+function stripAnsi(text) {
+  return String(text).replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "");
 }
 
 // ── 3f. Tool output extraction ──────────────────────────────────────

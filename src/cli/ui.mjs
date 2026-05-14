@@ -197,7 +197,7 @@ export function createTuiUI({
     textDelta: (delta) => {
       ensureStarted();
       spinnerStatus.stop();
-      output.write(delta);
+      output.writeMarkdown(delta);
       requestRender();
     },
 
