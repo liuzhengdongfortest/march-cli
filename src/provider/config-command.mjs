@@ -72,23 +72,33 @@ export async function selectWithKeyboard({ input = process.stdin, output = proce
   }
 
   let selected = 0;
+  let renderedLines = 0;
   const render = () => {
-    output.write("\x1b[2K\r");
-    output.write(`${message}: ${items[selected].label}  (↑/↓, Enter)`);
+    if (renderedLines > 0) output.write(`\x1b[${renderedLines}F`);
+    const lines = formatSelectionList({ message, items, selected });
+    for (const line of lines) output.write(`\x1b[2K\r${line}\n`);
+    renderedLines = lines.length;
   };
   return new Promise((resolve) => {
+    let finished = false;
     const onData = (chunk) => {
-      const key = chunk.toString("utf8");
-      if (key === "\u0003" || key === "\u001b") finish(null);
-      else if (key === "\r" || key === "\n") finish(items[selected].value);
-      else if (key === "\u001b[A") { selected = (selected - 1 + items.length) % items.length; render(); }
-      else if (key === "\u001b[B") { selected = (selected + 1) % items.length; render(); }
+      const keys = chunk.toString("utf8").match(/\u001b\[[AB]|\r|\n|\u0003|\u001b/g) ?? [];
+      for (const key of keys) {
+        if (finished) return;
+        if (key === "\u0003" || key === "\u001b") finish(null);
+        else if (key === "\r" || key === "\n") finish(items[selected].value);
+        else if (key === "\u001b[A") { selected = (selected - 1 + items.length) % items.length; render(); }
+        else if (key === "\u001b[B") { selected = (selected + 1) % items.length; render(); }
+      }
     };
     const finish = (value) => {
+      finished = true;
       input.off("data", onData);
       input.setRawMode(false);
       input.pause();
-      output.write("\n");
+      if (renderedLines > 0) output.write(`\x1b[${renderedLines}F`);
+      const lines = formatSelectionList({ message, items, selected, done: value != null });
+      for (const line of lines) output.write(`\x1b[2K\r${line}\n`);
       resolve(value);
     };
     input.setRawMode(true);
@@ -96,6 +106,17 @@ export async function selectWithKeyboard({ input = process.stdin, output = proce
     input.on("data", onData);
     render();
   });
+}
+
+export function formatSelectionList({ message, items, selected, done = false }) {
+  const hint = done ? "selected" : "↑/↓, Enter";
+  const lines = [`${message} (${hint})`];
+  for (let i = 0; i < items.length; i++) {
+    const marker = i === selected ? "›" : " ";
+    const label = `${marker} ${items[i].label}`;
+    lines.push(i === selected ? `\x1b[7m${label}\x1b[0m` : label);
+  }
+  return lines;
 }
 
 function readLine({ input = process.stdin, output = process.stdout, prompt }) {
