@@ -16,17 +16,27 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   });
 
   const ctx = engine.buildContext("装備を確認する");
-  assert.ok(ctx.includes("[system_core]"));
-  assert.ok(ctx.includes("[injections]"));
+  assert.ok(ctx.includes("[system_core version="));
+  assert.ok(ctx.includes('model_prompt="default"'));
   assert.ok(ctx.includes("[session_status]"));
   assert.ok(ctx.includes("[runtime_status]"));
   assert.ok(ctx.includes("[recent_chat]"));
   assert.ok(ctx.includes("(no prior turns)"));
   assert.ok(ctx.includes("Use write(path, content)"));
-  assert.ok(ctx.includes("model: test"));
-  assert.ok(ctx.includes("thinking: medium"));
+  assert.ok(!ctx.includes("[injections]"));
+  assert.ok(!ctx.includes("model: test"));
+  assert.ok(!ctx.includes("thinking: medium"));
   assert.ok(!ctx.includes("write_file"));
   assert.ok(!ctx.includes("[memory]"));
+
+  const modelPromptEngine = new ContextEngine({
+    cwd: dir,
+    modelId: "deepseek-v4-pro",
+    provider: "other-provider",
+    skills: [],
+    pins: [],
+  });
+  assert.ok(modelPromptEngine.buildContext("").includes('model_prompt="deepseek-v4-pro"'));
 
   const shellEngine = new ContextEngine({
     cwd: dir,
@@ -47,9 +57,9 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
 
   engine.setRuntimeState({ modelId: "other-model", provider: "test-provider", thinkingLevel: "high" });
   const runtimeCtx = engine.buildContext("");
-  assert.ok(runtimeCtx.includes("provider: test-provider"));
-  assert.ok(runtimeCtx.includes("model: other-model"));
-  assert.ok(runtimeCtx.includes("thinking: high"));
+  assert.ok(!runtimeCtx.includes("provider: test-provider"));
+  assert.ok(!runtimeCtx.includes("model: other-model"));
+  assert.ok(!runtimeCtx.includes("thinking: high"));
 
   engine.recordTurn({ userMessage: "hello", summary: "tested the engine" });
   assert.equal(engine.turns.length, 1);

@@ -5,6 +5,7 @@ import { buildRuntimeStatus } from "./runtime-status.mjs";
 import { buildSessionStatus } from "./session-status.mjs";
 import { buildShellLayers } from "./shell-layers.mjs";
 import { buildActiveSkills, buildSkillCatalog } from "./skill-layers.mjs";
+import { buildSystemCore, resolveSystemCorePromptKey } from "./system-core.mjs";
 
 export class ContextEngine {
   constructor({ cwd, modelId, provider = "deepseek", thinkingLevel = "medium", skills = [], skillPool = [], pins = [], graph = null, glossary = null, namespace = "", shellRuntime = null }) {
@@ -24,6 +25,8 @@ export class ContextEngine {
     this.namespace = namespace;
     this.shellRuntime = shellRuntime;
     this._compactionSummary = null;
+    this.systemCorePromptKey = resolveSystemCorePromptKey({ modelId });
+    this.systemCore = buildSystemCore({ modelId });
   }
 
   // ── Public API ──────────────────────────────────────────────────────
@@ -31,8 +34,7 @@ export class ContextEngine {
   buildContext(userMessage = "") {
     this.#refreshOpenFiles();
     const layers = [
-      this.#buildSystemCore(),
-      this.#buildInjections(),
+      this.systemCore,
       this.#buildSessionStatus(),
     ];
 
@@ -136,6 +138,11 @@ export class ContextEngine {
     if (modelId) this.modelId = modelId;
     if (provider) this.provider = provider;
     if (thinkingLevel) this.thinkingLevel = thinkingLevel;
+    const nextPromptKey = resolveSystemCorePromptKey({ modelId: this.modelId });
+    if (nextPromptKey !== this.systemCorePromptKey) {
+      this.systemCorePromptKey = nextPromptKey;
+      this.systemCore = buildSystemCore({ modelId: this.modelId });
+    }
   }
   setSessionName(name) { this.sessionName = String(name || "").trim(); }
 
@@ -170,37 +177,6 @@ export class ContextEngine {
       }
       if (found.length > 0) this.skills = found;
     }
-  }
-
-  // ── Layer 1: system_core ───────────────────────────────────────────
-  #buildSystemCore() {
-    return `[system_core]
-You are March, a terminal-native coding agent. You operate in the user's project directory with direct file access.
-
-## Rules
-- Be concise. Default to editing existing files over creating new ones.
-- Don't add features, refactors, or abstractions beyond what's asked.
-- Three similar lines beats a premature abstraction. No half-finished implementations.
-- Don't add error handling, fallbacks, or validation for scenarios that can't happen.
-- Default to writing no comments. Only add one when the WHY is non-obvious.
-- Avoid backwards-compatibility hacks.
-
-## File editing
-- Use read(path) for quick file inspection, and open_file(path) when a file should stay in [open_files].
-- Use grep(pattern), find(pattern), and ls(path) to explore the project before editing.
-- Use edit_file(path, oldString, newString) for working-set edits. oldString can be a line range ("55-64" or "55") — you do NOT need to reproduce the original text.
-- edit_file only works on files in [open_files]. Use write(path, content) for new files or full overwrites.
-
-## Turn discipline
-After each turn, March automatically summarizes your work for context continuity. Focus on the task — March handles the bookkeeping.`;
-  }
-
-  // ── Layer 2: injections ────────────────────────────────────────────
-  #buildInjections() {
-    return `[injections]
-provider: ${this.provider}
-model: ${this.modelId}
-thinking: ${this.thinkingLevel}`;
   }
 
   // ── Layer 3: session_status ────────────────────────────────────────

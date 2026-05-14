@@ -29,7 +29,7 @@ export async function runRunnerCoreSmoke() {
   assert.equal(engine.modelId, "new");
   assert.equal(engine.provider, "test");
   assert.equal(engine.thinkingLevel, "high");
-  assert.ok(engine.buildContext("").includes("thinking: high"));
+  assert.ok(!engine.buildContext("").includes("thinking: high"));
   console.log("  PASS");
 
   console.log("--- smoke: runner missing credentials message ---");
