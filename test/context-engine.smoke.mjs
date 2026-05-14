@@ -172,23 +172,17 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
     { name: "test_tool", description: "A test tool", parameters: { x: "number" } },
   ]);
   const ctx4 = engine.buildContext("装備を確認する");
-  assert.ok(ctx4.includes("[tools]"));
-  assert.ok(ctx4.includes("test_tool"));
-  const toolsLayerIndex = ctx4.indexOf("\n\n[tools]\n");
-  assert.notEqual(toolsLayerIndex, -1);
-  assert.ok(toolsLayerIndex < ctx4.indexOf("\n\n[session_identity]\n"));
-  assert.ok(toolsLayerIndex < ctx4.indexOf("\n\n[open_files]\n"));
+  assert.ok(!ctx4.includes("[tools]"));
+  assert.ok(!ctx4.includes("test_tool"));
 
   injectionEngine.setToolDefs([
     { name: "mcp__filesystem__read", description: "Read through MCP", parameters: { path: "Path" } },
   ]);
   const injectionToolsCtx = injectionEngine.buildContext("");
   const injectionLayerIndex = injectionToolsCtx.indexOf("\n\n[injections]\n");
-  const injectionToolsLayerIndex = injectionToolsCtx.indexOf("\n\n[tools]\n");
   assert.notEqual(injectionLayerIndex, -1);
-  assert.notEqual(injectionToolsLayerIndex, -1);
-  assert.ok(injectionLayerIndex < injectionToolsLayerIndex);
-  assert.ok(injectionToolsLayerIndex < injectionToolsCtx.indexOf("\n\n[session_identity]\n"));
+  assert.ok(!injectionToolsCtx.includes("[tools]"));
+  assert.ok(injectionLayerIndex < injectionToolsCtx.indexOf("\n\n[session_identity]\n"));
 
   cleanup(dir);
   console.log("  PASS");

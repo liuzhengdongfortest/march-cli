@@ -43,10 +43,6 @@ export class ContextEngine {
     const injectionsLayer = buildInjectionsLayer(this.injections);
     if (injectionsLayer) layers.push(injectionsLayer);
 
-    if (this.toolDefs.length > 0) {
-      layers.push(this.#buildTools());
-    }
-
     layers.push(this.#buildSessionIdentity());
 
     if (this.skillPool.length > 0) {
@@ -211,17 +207,6 @@ export class ContextEngine {
   // ── Layer 5: open_files ────────────────────────────────────────────
   #buildOpenFiles() {
     return buildOpenFilesLayer(this.openFiles);
-  }
-
-  // ── Layer 6: tools ──────────────────────────────────────────────────
-  #buildTools() {
-    const lines = this.toolDefs.map((t) => {
-      const params = t.parameters
-        ? Object.entries(t.parameters).map(([k, v]) => `  ${k}: ${v}`).join("\n")
-        : "  (none)";
-      return `${t.name}\n  ${t.description}\n${params}`;
-    });
-    return `[tools]\n${lines.join("\n\n")}`;
   }
 
   // ── Layer 7: runtime_status ────────────────────────────────────────

@@ -1,5 +1,5 @@
 import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, extname, join } from "node:path";
 
 export function createModelContextDumper({ enabled = false, rootDir = "", now = () => new Date() } = {}) {
   let sequence = 0;
@@ -14,6 +14,15 @@ export function createModelContextDumper({ enabled = false, rootDir = "", now = 
       const filename = `${sanitizeTimestamp(timestamp)}-${String(sequence).padStart(4, "0")}-${sanitizeKind(kind)}.md`;
       const path = join(rootDir, filename);
       writeFileSync(path, `${formatHeader({ kind, timestamp, ...metadata })}\n\n${prompt}`, "utf8");
+      return path;
+    },
+    dumpSidecar({ sourcePath, suffix, value } = {}) {
+      if (!enabled || !sourcePath || !suffix) return null;
+      const ext = extname(sourcePath);
+      const stem = basename(sourcePath, ext);
+      const path = join(rootDir, `${stem}-${sanitizeKind(suffix)}.json`);
+      mkdirSync(rootDir, { recursive: true });
+      writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
       return path;
     },
   };

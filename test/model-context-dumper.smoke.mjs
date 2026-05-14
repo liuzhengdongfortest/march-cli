@@ -23,10 +23,13 @@ export async function runModelContextDumperSmoke({ setupTmp, cleanup }) {
     metadata: { provider: "deepseek", model: "test-model", attachments: 0 },
   });
   const second = dumper.dump({ kind: "summary", prompt: "[system]\nsummary" });
+  const sidecar = dumper.dumpSidecar({ sourcePath: first, suffix: "tools", value: { tools: [{ name: "read" }] } });
 
   assert.ok(existsSync(first));
   assert.ok(existsSync(second));
+  assert.ok(existsSync(sidecar));
   assert.deepEqual(readdirSync(dumpDir), [
+    "2026-05-14T10-23-45-123Z-0001-user-tools.json",
     "2026-05-14T10-23-45-123Z-0001-user.md",
     "2026-05-14T10-23-46-456Z-0002-summary.md",
   ]);
@@ -34,6 +37,7 @@ export async function runModelContextDumperSmoke({ setupTmp, cleanup }) {
   assert.ok(content.includes('kind: "user"'));
   assert.ok(content.includes('provider: "deepseek"'));
   assert.ok(content.endsWith("[system]\nA\n\n[user]\nhello"));
+  assert.deepEqual(JSON.parse(readFileSync(sidecar, "utf8")), { tools: [{ name: "read" }] });
 
   const disabled = createModelContextDumper({ enabled: false, rootDir: join(dir, "disabled") });
   assert.equal(disabled.dump({ kind: "user", prompt: "x" }), null);

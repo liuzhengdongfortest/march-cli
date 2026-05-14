@@ -41,12 +41,25 @@ export async function runRunnerCoreSmoke() {
     enabled: true,
     dump: (entry) => dumps.push(entry),
   }, () => "summary");
-  const replacement = await agent.onPayload({ sent: "original" }, { provider: "deepseek", id: "deepseek-v4-pro" });
+  const sidecars = [];
+  const replacement = await agent.onPayload({ sent: "original", tools: [{ name: "edit_file" }] }, { provider: "deepseek", id: "deepseek-v4-pro" });
   assert.deepEqual(replacement, { sent: "replacement" });
   assert.equal(dumps.length, 1);
   assert.equal(dumps[0].kind, "summary");
   assert.equal(dumps[0].metadata.payload, "provider_request");
   assert.ok(dumps[0].prompt.includes('"sent": "replacement"'));
+  const toolsAgent = {
+    onPayload: async () => ({ tools: [{ name: "read" }] }),
+  };
+  installModelPayloadDumper({ agent: toolsAgent }, {
+    enabled: true,
+    dump: () => "request.md",
+    dumpSidecar: (entry) => sidecars.push(entry),
+  }, () => "user");
+  await toolsAgent.onPayload({ ignored: true }, { provider: "test", id: "model" });
+  assert.equal(sidecars.length, 1);
+  assert.deepEqual(sidecars[0].value.tools, [{ name: "read" }]);
+  assert.equal(sidecars[0].value.metadata.payload, "provider_tools");
   console.log("  PASS");
 
   console.log("--- smoke: runner missing credentials message ---");
