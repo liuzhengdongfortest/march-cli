@@ -19,6 +19,7 @@ import { runExternalEditorSmoke } from "./external-editor.smoke.mjs";
 import { runImageSmokeSuite } from "./image-smoke-suite.smoke.mjs";
 import { runKeybindingsSmoke } from "./keybindings.smoke.mjs";
 import { runLoginCommandSmoke } from "./login-command.smoke.mjs";
+import { runModelContextDumperSmoke } from "./model-context-dumper.smoke.mjs";
 import { runMcpInjectionsSmoke } from "./mcp-injections.smoke.mjs";
 import { runMarkdownMemorySmoke } from "./markdown-memory.smoke.mjs";
 import { runNodePtyAdapterSmoke } from "./node-pty-adapter.smoke.mjs";
@@ -85,6 +86,9 @@ function cleanup(dir) {
   const noShellRuntime = parseCliArgs(["--no-shell-runtime"]);
   assert.equal(noShellRuntime.shellRuntime, false);
 
+  const dumpContext = parseCliArgs(["--dump-context"]);
+  assert.equal(dumpContext.dumpContext, true);
+
   const login = parseCliArgs(["login", "openai-codex"]);
   assert.deepEqual(login.command, { name: "login", args: ["openai-codex"] });
   assert.equal(login.prompt, "");
@@ -104,6 +108,7 @@ await runExtensionLifecycleAdapterSmoke();
 await runKeybindingsSmoke({ setupTmp, cleanup });
 await runPromptTemplatesSmoke({ setupTmp, cleanup });
 await runSettingsCommandSmoke({ setupTmp, cleanup });
+await runModelContextDumperSmoke({ setupTmp, cleanup });
 await runSessionNameCommandSmoke({ setupTmp, cleanup });
 await runShellScreenBufferSmoke();
 await runShellRuntimeSmoke();

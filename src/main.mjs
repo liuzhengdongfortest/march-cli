@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 import { join, resolve, dirname, basename } from "node:path";
-import { existsSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseCliArgs, showHelp } from "./cli/args.mjs";
 import { createUI } from "./cli/ui.mjs";
@@ -32,6 +32,7 @@ import { loadOrCreateProjectId, resumeStartupSession } from "./cli/startup-sessi
 import { activateStartupSkills, createStartupSkillRuntime } from "./cli/startup-skills.mjs";
 import { initializeMcp } from "./mcp/index.mjs";
 import { createWebTools } from "./web/tools.mjs";
+import { createModelContextDumper } from "./debug/model-context-dumper.mjs";
 
 function loadDotEnv(cwd) {
   for (const dir of [cwd, dirname(fileURLToPath(import.meta.url))]) {
@@ -139,6 +140,11 @@ export async function run(argv) {
     sessionDir: null,
   };
   sessionState.sessionDir = join(sessionsRoot, sessionState.sessionId);
+  const contextDumpRoot = resolve(projectMarchDir, "context-dumps", sessionState.sessionId);
+  const modelContextDumper = createModelContextDumper({
+    enabled: args.dumpContext,
+    rootDir: contextDumpRoot,
+  });
 
   const ui = createUI({
     json: args.json,
@@ -185,6 +191,7 @@ export async function run(argv) {
     lifecycleDiagnostics: lifecycleManifests.diagnostics,
     authStorage: authConfig.authStorage,
     permissionController,
+    modelContextDumper,
   });
 
   const refreshStatusBar = createStatusLineUpdater({
@@ -236,11 +243,6 @@ export async function run(argv) {
       turnRunning = false;
     }
     refreshStatusBar();
-    // Post-turn dump: context with this turn in recent_chat
-    if (args.dumpContext) {
-      const postCtx = runner.engine.buildContext("");
-      writeFileSync(resolve(projectMarchDir, "context-snapshot.txt"), postCtx, "utf8");
-    }
     if (!usePiSessionDefaults) saveSession(sessionState.sessionDir, runner.engine);
     await runner.dispose();
     ui.writeln("");
@@ -248,13 +250,7 @@ export async function run(argv) {
     return 0;
   }
 
-  // REPL mode
-  if (args.dumpContext) {
-    const bootCtx = runner.engine.buildContext("");
-    writeFileSync(resolve(projectMarchDir, "context-snapshot.txt"), bootCtx, "utf8");
-    const snapshotPath = resolve(projectMarchDir, "context-snapshot.txt");
-    ui.writeln(`Context snapshot: ${snapshotPath} (${bootCtx.split("\n\n").length} layers, ${bootCtx.length} chars)`);
-  }
+  if (args.dumpContext) ui.writeln(`Context dumps: ${contextDumpRoot}`);
 
   ui.writeln("March REPL. Type /help for commands, Esc to abort, /exit to quit.");
   ui.writeln("");
@@ -332,11 +328,6 @@ export async function run(argv) {
       turnRunning = false;
       memoryStore.endTurn();
       refreshStatusBar();
-      // Post-turn dump: includes this turn in recent_chat
-      if (args.dumpContext) {
-        const postCtx = runner.engine.buildContext("");
-        writeFileSync(resolve(projectMarchDir, "context-snapshot.txt"), postCtx, "utf8");
-      }
       ui.writeln("");
     } catch (err) {
       turnRunning = false;

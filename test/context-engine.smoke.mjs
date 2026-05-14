@@ -20,6 +20,7 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   assert.ok(ctx.includes('model_prompt="default"'));
   assert.ok(ctx.includes("[session_identity]"));
   assert.ok(ctx.includes("[workspace_status]"));
+  assert.ok(ctx.includes("[diagnostics]"));
   assert.ok(ctx.includes("[runtime_status]"));
   assert.ok(ctx.includes("[recent_chat]"));
   assert.ok(ctx.includes("(no prior turns)"));
@@ -114,6 +115,34 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   assert.ok(ctx3.includes("2 | line2"));
   assert.ok(ctx3.includes("(pinned)"));
   assert.ok(ctx3.indexOf("[open_files]") < ctx3.indexOf("[workspace_status]"));
+  assert.ok(ctx3.indexOf("[open_files]") < ctx3.indexOf("[diagnostics]"));
+  assert.ok(ctx3.indexOf("[diagnostics]") < ctx3.indexOf("[workspace_status]"));
+
+  const diagnosticEngine = new ContextEngine({
+    cwd: dir,
+    modelId: "test",
+    provider: "deepseek",
+    lspService: {
+      snapshot: () => ({
+        status: "idle",
+        diagnostics: [{
+          serverId: "vue",
+          source: "vue",
+          severity: 1,
+          path: testFile,
+          range: { start: { line: 1, character: 4 }, end: { line: 1, character: 8 } },
+          code: "TS2322",
+          message: "Type 'string' is not assignable to type 'number'.",
+        }],
+      }),
+    },
+  });
+  diagnosticEngine.openFile(testFile);
+  const diagnosticCtx = diagnosticEngine.buildContext("");
+  assert.ok(diagnosticCtx.includes("source: lsp"));
+  assert.ok(diagnosticCtx.includes("status: idle"));
+  assert.ok(diagnosticCtx.includes(`- error vue ${testFile}:2:5 TS2322`));
+  assert.ok(diagnosticCtx.includes("Type 'string' is not assignable to type 'number'."));
 
   writeFileSync(testFile, "new1\nnew2");
   const refreshedCtx = engine.buildContext("装備を確認する");

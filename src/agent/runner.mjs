@@ -18,6 +18,7 @@ import { resolveRunnerSessionOptions } from "./session-options.mjs";
 import { createSessionBinding } from "./session-binding.mjs";
 import { MARCH_BASE_TOOL_NAMES } from "./tool-names.mjs";
 import { createTurnEventState, handleRunnerSessionEvent } from "./turn-events.mjs";
+import { LspService } from "../lsp/service.mjs";
 
 export { MARCH_BASE_TOOL_NAMES };
 export { getRunnerSessionStats, syncEngineSessionState } from "./runner-session-state.mjs";
@@ -30,7 +31,7 @@ export function resolveRunnerSessionManager(cwd, sessionManager = null) {
   return sessionManager ?? createDefaultSessionManager(cwd);
 }
 
-export async function createRunner({ cwd, modelId, provider = "deepseek", stateRoot, ui, skills, skillPool = [], pins, memoryStore = null, memoryTools = [], skillTools = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices }) {
+export async function createRunner({ cwd, modelId, provider = "deepseek", stateRoot, ui, skills, skillPool = [], pins, memoryStore = null, memoryTools = [], skillTools = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, modelContextDumper = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices }) {
   const authConfig = authStorage
     ? { authStorage, hasAuth: true }
     : createMarchAuthStorage({ provider, cwd });
@@ -43,7 +44,8 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
     retry: { enabled: true, maxRetries: 3, baseDelayMs: 2000 },
   });
 
-  const engine = new ContextEngine({ cwd, modelId, provider, skills, skillPool, pins, namespace, shellRuntime, injections: mcpInjections });
+  const lspService = new LspService({ cwd });
+  const engine = new ContextEngine({ cwd, modelId, provider, skills, skillPool, pins, namespace, shellRuntime, lspService, injections: mcpInjections });
   const resolvedSessionManager = resolveRunnerSessionManager(cwd, sessionManager);
   const sessionBinding = createSessionBinding(null);
   let runtimeHost = null;
@@ -66,6 +68,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       memoryStore,
       skillTools,
       shellRuntime,
+      lspService,
       mcpTools,
       webTools,
       permissionController,
@@ -89,6 +92,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       memoryTools,
       skillTools,
       shellRuntime,
+      lspService,
       mcpTools,
       webTools,
       permissionController,
@@ -139,6 +143,15 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
           text: userMessage ?? prompt,
           projectMarchDir,
         });
+        modelContextDumper?.dump?.({
+          kind: "user",
+          prompt,
+          metadata: {
+            provider: activeSession.model?.provider ?? provider,
+            model: activeSession.model?.id ?? modelId,
+            attachments: attachmentReferences.images.length,
+          },
+        });
         await activeSession.prompt(
           prompt,
           attachmentReferences.images.length > 0 ? { images: attachmentReferences.images } : undefined,
@@ -154,12 +167,20 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
         activeSession.setThinkingLevel("off");
 
         try {
-          await activeSession.prompt(
-            "[system]\nSummarize the work you just completed in 1-2 paragraphs for the next turn's context. " +
+          const summaryPrompt = "[system]\nSummarize the work you just completed in 1-2 paragraphs for the next turn's context. " +
             "Focus on: what was accomplished, what decisions were made, and what's left to do. " +
             "Output ONLY the summary — no tools, no code, just the summary text.\n\n" +
-            "Keep it under 1k tokens.",
-          );
+            "Keep it under 1k tokens.";
+          modelContextDumper?.dump?.({
+            kind: "summary",
+            prompt: summaryPrompt,
+            metadata: {
+              provider: activeSession.model?.provider ?? provider,
+              model: activeSession.model?.id ?? modelId,
+              attachments: 0,
+            },
+          });
+          await activeSession.prompt(summaryPrompt);
         } catch {
           if (!turnState.summaryDraft) {
             turnState.summaryDraft = turnState.draft.slice(0, 300) || "(no output)";
@@ -317,6 +338,7 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       await runRunnerCleanup([
         () => runtimeHost?.dispose() ?? sessionBinding.get().dispose(),
         () => shellRuntime?.dispose?.() ?? shellRuntime?.killAll?.(),
+        () => lspService.dispose(),
         () => mcpClientManager?.disconnectAll?.(),
       ]);
     },

@@ -60,7 +60,7 @@ Options:
   --provider <name>    AI provider: deepseek, openai, anthropic (default: deepseek)
   --resume <id>        Resume a pi session by default
   --json               JSON output mode (no TUI)
-  --dump-context       Write context snapshot to .march/context-snapshot.txt each turn
+  --dump-context       Write every prompt sent to the model under .march/context-dumps/
   --legacy-sessions    Use old .march/sessions startup and command semantics
   --pi-sessions        Force pi JSONL SessionManager persistence
   --pi-runtime-host    Force pi AgentSessionRuntime host path

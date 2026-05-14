@@ -6,10 +6,11 @@ import { buildShellLayers } from "./shell-layers.mjs";
 import { buildActiveSkills, buildSkillCatalog } from "./skill-layers.mjs";
 import { buildSystemCore, resolveSystemCorePromptKey } from "./system-core.mjs";
 import { buildInjectionsLayer } from "./injections.mjs";
+import { buildDiagnosticsLayer } from "./diagnostics.mjs";
 import { formatRecallHints } from "../memory/markdown-store.mjs";
 
 export class ContextEngine {
-  constructor({ cwd, modelId, provider = "deepseek", thinkingLevel = "medium", skills = [], skillPool = [], pins = [], namespace = "", shellRuntime = null, injections = [] }) {
+  constructor({ cwd, modelId, provider = "deepseek", thinkingLevel = "medium", skills = [], skillPool = [], pins = [], namespace = "", shellRuntime = null, lspService = null, injections = [] }) {
     this.cwd = cwd;
     this.modelId = modelId;
     this.provider = provider;
@@ -23,6 +24,7 @@ export class ContextEngine {
     this.toolDefs = [];
     this.namespace = namespace;
     this.shellRuntime = shellRuntime;
+    this.lspService = lspService;
     this.injections = [...injections];
     this._compactionSummary = null;
     this.systemCorePromptKey = resolveSystemCorePromptKey({ modelId });
@@ -59,6 +61,7 @@ export class ContextEngine {
     }
 
     layers.push(
+      this.#buildDiagnostics(),
       this.#buildWorkspaceStatus(),
       this.#buildRuntimeStatus(),
       ...this.#buildShellLayers(),
@@ -185,6 +188,13 @@ export class ContextEngine {
   // ── Layer 7: workspace_status ──────────────────────────────────────
   #buildWorkspaceStatus() {
     return buildWorkspaceStatus({ cwd: this.cwd });
+  }
+
+  #buildDiagnostics() {
+    return buildDiagnosticsLayer({
+      snapshot: this.lspService?.snapshot?.() ?? { diagnostics: [] },
+      openFiles: [...this.openFiles.keys()],
+    });
   }
 
   // ── Layer 5: skills catalog (Tier 1: always in context) ────────────

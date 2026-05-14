@@ -11,7 +11,7 @@ import { createWebTools } from "../web/tools.mjs";
 
 const LINE_RANGE_RE = /^(\d+)(?:\s*-\s*(\d+))?$/;
 
-export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], skillTools = [], shellRuntime = null, mcpTools = [], webTools = [], permissionController = null }) {
+export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], skillTools = [], shellRuntime = null, lspService = null, mcpTools = [], webTools = [], permissionController = null }) {
   const openFileTool = defineTool({
     name: "open_file",
     label: "Open File",
@@ -30,6 +30,7 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], skil
       }
       try {
         const { content, lineCount } = engine.openFile(absPath);
+        lspService?.touchFile?.(absPath);
         return toolText(
           `Opened ${absPath} (${lineCount} lines)\n\n--- ${absPath} (1-${lineCount}) ---\n${content.slice(0, 3000)}${content.length > 3000 ? "\n...(truncated, full file in context)" : ""}`,
           { path: absPath, lineCount },
@@ -113,6 +114,7 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], skil
         mkdirSync(dirname(absPath), { recursive: true });
         writeFileSync(absPath, newContent, "utf8");
         engine.openFile(absPath);
+        lspService?.touchFile?.(absPath);
         ui.editDiff(absPath, formatDiff(oldText, params.newString));
         return toolText(`Edited ${absPath}`, { path: absPath });
       } catch (err) {
