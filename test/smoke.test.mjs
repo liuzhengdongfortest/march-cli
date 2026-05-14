@@ -34,6 +34,7 @@ import { runShellScreenBufferSmoke } from "./shell-screen-buffer.smoke.mjs";
 import { runShellDrawerSmoke } from "./shell-drawer.smoke.mjs";
 import { runShellSplitLayoutSmoke } from "./shell-split-layout.smoke.mjs";
 import { runShellToolsSmoke } from "./shell-tools.smoke.mjs";
+import { runSourceLineLimitSmoke } from "./source-line-limit.smoke.mjs";
 import { runStartupResumeSmoke } from "./startup-resume.smoke.mjs";
 import { runTuiAutocompleteEscSmoke } from "./tui-autocomplete-esc.smoke.mjs";
 import { runTuiShellDrawerSmoke } from "./tui-shell-drawer.smoke.mjs";
@@ -101,6 +102,7 @@ function cleanup(dir) {
   console.log("  PASS");
 }
 
+await runSourceLineLimitSmoke();
 await runStartupResumeSmoke({ setupTmp, cleanup });
 await runAuthStorageSmoke({ setupTmp, cleanup });
 await runLoginCommandSmoke();
