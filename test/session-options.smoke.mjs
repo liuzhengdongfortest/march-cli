@@ -21,15 +21,18 @@ export async function runSessionOptionsSmoke() {
   assert.deepEqual(options.scopedModels, [{ model }]);
   assert.equal(options.thinkingLevel, "medium");
   assert.ok(options.customTools.some((tool) => tool.name === "open_file"));
-  assert.ok(options.customTools.some((tool) => tool.name === "shell_list"));
+  assert.ok(options.customTools.some((tool) => tool.name === "terminal_list"));
   assert.ok(options.customTools.some((tool) => tool.name === "remember"));
-  assert.deepEqual(options.tools.slice(0, 5), ["read", "bash", "grep", "find", "ls"]);
+  assert.deepEqual(options.tools.slice(0, 4), ["read", "grep", "find", "ls"]);
+  assert.ok(!options.tools.includes("bash"));
+  assert.ok(!options.tools.includes("powershell"));
   assert.ok(!options.tools.includes("edit"));
   assert.ok(!options.tools.includes("write"));
   assert.ok(options.tools.includes("open_file"));
+  assert.ok(options.tools.includes("command_exec"));
   assert.ok(options.tools.includes("edit_file"));
-  assert.ok(options.tools.includes("shell_spawn"));
-  assert.ok(options.tools.includes("shell_snapshot"));
+  assert.ok(options.tools.includes("terminal_spawn"));
+  assert.ok(options.tools.includes("terminal_snapshot"));
   assert.ok(options.tools.includes("remember"));
   assert.ok(options.tools.includes("skill_lookup"));
 

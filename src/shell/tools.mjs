@@ -4,13 +4,13 @@ import { Type } from "typebox";
 export function createShellTools(shellRuntime = null) {
   if (!shellRuntime) return [];
 
-  const shellSpawn = defineTool({
-    name: "shell_spawn",
-    label: "Shell Spawn",
-    description: "Start a named interactive shell process. Omit command to start the platform default shell. Use this for long-running or prompt-based commands, not one-shot shell commands.",
+  const terminalSpawn = defineTool({
+    name: "terminal_spawn",
+    label: "Terminal Spawn",
+    description: "Start a named interactive terminal process. Omit command to start the platform default terminal. Use this for long-running or prompt-based commands, not one-shot commands.",
     parameters: Type.Object({
       name: Type.Optional(Type.String({ description: "Optional user-facing shell name" })),
-      command: Type.Optional(Type.String({ description: "Command to launch; omitted means platform default shell" })),
+      command: Type.Optional(Type.String({ description: "Command to launch; omitted means platform default terminal" })),
       args: Type.Optional(Type.Array(Type.String(), { description: "Command arguments" })),
       cwd: Type.Optional(Type.String({ description: "Working directory" })),
       cols: Type.Optional(Type.Number({ description: "Initial PTY columns" })),
@@ -31,13 +31,13 @@ export function createShellTools(shellRuntime = null) {
     },
   });
 
-  const shellSend = defineTool({
-    name: "shell_send",
-    label: "Shell Send",
-    description: "Send text or control sequences to a running interactive shell. To execute a command, end the text with \\r or \\n; line feeds are normalized to terminal Enter.",
+  const terminalSend = defineTool({
+    name: "terminal_send",
+    label: "Terminal Send",
+    description: "Send text or control sequences to a running interactive terminal. To execute a command, end the text with \\r or \\n; line feeds are normalized to terminal Enter.",
     parameters: Type.Object({
-      shell_id: Type.String({ description: "Shell id returned by shell_spawn or shell_list" }),
-      text: Type.Optional(Type.String({ description: "Text to send to the shell. Use \\r or \\n for Enter." })),
+      shell_id: Type.String({ description: "Shell id returned by terminal_spawn or terminal_list" }),
+      text: Type.Optional(Type.String({ description: "Text to send to the terminal. Use \\r or \\n for Enter." })),
       key: Type.Optional(Type.String({ description: "Named control key to send: enter, ctrl_c, ctrl_d, ctrl_z, tab, escape, backspace" })),
     }),
     execute: async (_toolCallId, params) => {
@@ -48,14 +48,14 @@ export function createShellTools(shellRuntime = null) {
     },
   });
 
-  const shellExec = defineTool({
-    name: "shell_exec",
-    label: "Shell Exec",
-    description: "Execute one command in an interactive shell and wait until output becomes idle. If shell_id is omitted, starts the default shell first.",
+  const terminalRun = defineTool({
+    name: "terminal_run",
+    label: "Terminal Run",
+    description: "Run one command inside an interactive terminal and wait until output becomes idle. If shell_id is omitted, starts the default terminal first.",
     parameters: Type.Object({
-      shell_id: Type.Optional(Type.String({ description: "Existing shell id; omitted starts the default shell" })),
+      shell_id: Type.Optional(Type.String({ description: "Existing terminal id; omitted starts the default terminal" })),
       command: Type.String({ description: "Command to execute" }),
-      name: Type.Optional(Type.String({ description: "Name for a newly spawned shell when shell_id is omitted" })),
+      name: Type.Optional(Type.String({ description: "Name for a newly spawned terminal when shell_id is omitted" })),
       timeout_ms: Type.Optional(Type.Number({ description: "Maximum wait time, default 10000" })),
       idle_ms: Type.Optional(Type.Number({ description: "Output idle time before returning, default 300" })),
     }),
@@ -81,10 +81,10 @@ export function createShellTools(shellRuntime = null) {
     },
   });
 
-  const shellList = defineTool({
-    name: "shell_list",
-    label: "Shell List",
-    description: "List active and recently exited interactive shells.",
+  const terminalList = defineTool({
+    name: "terminal_list",
+    label: "Terminal List",
+    description: "List active and recently exited interactive terminals.",
     parameters: Type.Object({}),
     execute: async () => {
       const shells = shellRuntime.listShells();
@@ -93,12 +93,12 @@ export function createShellTools(shellRuntime = null) {
     },
   });
 
-  const shellKill = defineTool({
-    name: "shell_kill",
-    label: "Shell Kill",
-    description: "Terminate a running interactive shell.",
+  const terminalKill = defineTool({
+    name: "terminal_kill",
+    label: "Terminal Kill",
+    description: "Terminate a running interactive terminal.",
     parameters: Type.Object({
-      shell_id: Type.String({ description: "Shell id returned by shell_spawn or shell_list" }),
+      shell_id: Type.String({ description: "Shell id returned by terminal_spawn or terminal_list" }),
     }),
     execute: async (_toolCallId, params) => {
       const result = shellRuntime.killShell(params.shell_id);
@@ -107,12 +107,12 @@ export function createShellTools(shellRuntime = null) {
     },
   });
 
-  const shellResize = defineTool({
-    name: "shell_resize",
-    label: "Shell Resize",
-    description: "Resize an interactive shell PTY.",
+  const terminalResize = defineTool({
+    name: "terminal_resize",
+    label: "Terminal Resize",
+    description: "Resize an interactive terminal PTY.",
     parameters: Type.Object({
-      shell_id: Type.String({ description: "Shell id returned by shell_spawn or shell_list" }),
+      shell_id: Type.String({ description: "Shell id returned by terminal_spawn or terminal_list" }),
       cols: Type.Number({ description: "Columns" }),
       rows: Type.Number({ description: "Rows" }),
     }),
@@ -123,12 +123,12 @@ export function createShellTools(shellRuntime = null) {
     },
   });
 
-  const shellClear = defineTool({
-    name: "shell_clear",
-    label: "Shell Clear",
-    description: "Clear March's captured scrollback and screen snapshot for a shell without terminating the process.",
+  const terminalClear = defineTool({
+    name: "terminal_clear",
+    label: "Terminal Clear",
+    description: "Clear March's captured scrollback and screen snapshot for a terminal without terminating the process.",
     parameters: Type.Object({
-      shell_id: Type.String({ description: "Shell id returned by shell_spawn or shell_list" }),
+      shell_id: Type.String({ description: "Shell id returned by terminal_spawn or terminal_list" }),
     }),
     execute: async (_toolCallId, params) => {
       const result = shellRuntime.clearShell(params.shell_id);
@@ -136,12 +136,12 @@ export function createShellTools(shellRuntime = null) {
     },
   });
 
-  const shellSearch = defineTool({
-    name: "shell_search",
-    label: "Shell Search",
-    description: "Search a shell's plain-text output. Defaults to visible screen first, then captured scrollback, while filtering prompt-only noise.",
+  const terminalSearch = defineTool({
+    name: "terminal_search",
+    label: "Terminal Search",
+    description: "Search a terminal's plain-text output. Defaults to visible screen first, then captured scrollback, while filtering prompt-only noise.",
     parameters: Type.Object({
-      shell_id: Type.String({ description: "Shell id returned by shell_spawn or shell_list" }),
+      shell_id: Type.String({ description: "Shell id returned by terminal_spawn or terminal_list" }),
       pattern: Type.String({ description: "Plain text to search for" }),
       source: Type.Optional(Type.String({ description: "auto (default), screen, or scrollback" })),
       include_prompts: Type.Optional(Type.Boolean({ description: "Include shell prompt/echo lines in results; default false" })),
@@ -157,12 +157,12 @@ export function createShellTools(shellRuntime = null) {
     },
   });
 
-  const shellSnapshot = defineTool({
-    name: "shell_snapshot",
-    label: "Shell Snapshot",
-    description: "Return the current shell screen and scrollback as plain text and ANSI text for visual debugging.",
+  const terminalSnapshot = defineTool({
+    name: "terminal_snapshot",
+    label: "Terminal Snapshot",
+    description: "Return the current terminal screen and scrollback as plain text and ANSI text for visual debugging.",
     parameters: Type.Object({
-      shell_id: Type.String({ description: "Shell id returned by shell_spawn or shell_list" }),
+      shell_id: Type.String({ description: "Shell id returned by terminal_spawn or terminal_list" }),
     }),
     execute: async (_toolCallId, params) => {
       const snapshot = shellRuntime.snapshotShell(params.shell_id);
@@ -171,7 +171,7 @@ export function createShellTools(shellRuntime = null) {
     },
   });
 
-  return [shellSpawn, shellSend, shellExec, shellList, shellKill, shellResize, shellClear, shellSearch, shellSnapshot];
+  return [terminalSpawn, terminalSend, terminalRun, terminalList, terminalKill, terminalResize, terminalClear, terminalSearch, terminalSnapshot];
 }
 
 function formatShell(shell) {

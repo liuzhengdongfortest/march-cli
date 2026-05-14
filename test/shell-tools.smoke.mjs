@@ -22,17 +22,17 @@ export async function runShellToolsSmoke() {
   const byName = Object.fromEntries(tools.map((tool) => [tool.name, tool]));
 
   assert.deepEqual(createShellTools(null), []);
-  assert.ok(byName.shell_spawn);
-  assert.ok(byName.shell_send);
-  assert.ok(byName.shell_exec);
-  assert.ok(byName.shell_list);
-  assert.ok(byName.shell_kill);
-  assert.ok(byName.shell_resize);
-  assert.ok(byName.shell_clear);
-  assert.ok(byName.shell_search);
-  assert.ok(byName.shell_snapshot);
+  assert.ok(byName.terminal_spawn);
+  assert.ok(byName.terminal_send);
+  assert.ok(byName.terminal_run);
+  assert.ok(byName.terminal_list);
+  assert.ok(byName.terminal_kill);
+  assert.ok(byName.terminal_resize);
+  assert.ok(byName.terminal_clear);
+  assert.ok(byName.terminal_search);
+  assert.ok(byName.terminal_snapshot);
 
-  const spawned = await byName.shell_spawn.execute("tc1", {
+  const spawned = await byName.terminal_spawn.execute("tc1", {
     name: "dev",
     command: "powershell.exe",
     args: ["-NoLogo"],
@@ -45,57 +45,57 @@ export async function runShellToolsSmoke() {
   assert.equal(spawned.details.shell.cols, 132);
   assert.equal(spawned.details.shell.rows, 35);
 
-  const reusedSpawn = await byName.shell_spawn.execute("tc-reuse", { name: "dev" });
+  const reusedSpawn = await byName.terminal_spawn.execute("tc-reuse", { name: "dev" });
   assert.equal(reusedSpawn.details.shell.id, "sh1");
 
-  const sent = await byName.shell_send.execute("tc2", { shell_id: "sh1", text: "hello" });
+  const sent = await byName.terminal_send.execute("tc2", { shell_id: "sh1", text: "hello" });
   assert.ok(sent.content[0].text.includes("Sent 5 chars"));
   assert.equal(runtime.snapshotShell("sh1").plain, "seen:hello");
 
-  const search = await byName.shell_search.execute("tc-search", { shell_id: "sh1", pattern: "hello" });
+  const search = await byName.terminal_search.execute("tc-search", { shell_id: "sh1", pattern: "hello" });
   assert.ok(search.content[0].text.includes("seen:hello"));
   assert.equal(search.details.matches.length, 1);
 
-  const snapshot = await byName.shell_snapshot.execute("tc-snapshot", { shell_id: "sh1" });
+  const snapshot = await byName.terminal_snapshot.execute("tc-snapshot", { shell_id: "sh1" });
   assert.equal(snapshot.content[0].text, "seen:hello");
   assert.equal(snapshot.details.plain, "seen:hello");
   assert.ok(snapshot.details.screen);
 
-  const sentEnter = await byName.shell_send.execute("tc-enter", { shell_id: "sh1", text: "Get-ChildItem\n" });
+  const sentEnter = await byName.terminal_send.execute("tc-enter", { shell_id: "sh1", text: "Get-ChildItem\n" });
   assert.ok(sentEnter.content[0].text.includes("Sent 14 chars"));
   assert.equal(writes.at(-1), "Get-ChildItem\r");
   assert.ok(runtime.snapshotShell("sh1").plain.includes("seen:Get-ChildItem"));
 
-  const sentCtrlC = await byName.shell_send.execute("tc-ctrl-c", { shell_id: "sh1", key: "ctrl_c" });
+  const sentCtrlC = await byName.terminal_send.execute("tc-ctrl-c", { shell_id: "sh1", key: "ctrl_c" });
   assert.ok(sentCtrlC.content[0].text.includes("Sent 1 chars"));
   assert.equal(writes.at(-1), "\x03");
 
-  const exec = await byName.shell_exec.execute("tc-exec", { shell_id: "sh1", command: "echo ok", timeout_ms: 1000, idle_ms: 20 });
+  const exec = await byName.terminal_run.execute("tc-exec", { shell_id: "sh1", command: "echo ok", timeout_ms: 1000, idle_ms: 20 });
   assert.ok(exec.content[0].text.includes("seen:echo ok"));
   assert.equal(writes.at(-1), "echo ok\r");
 
-  const resize = await byName.shell_resize.execute("tc-resize", { shell_id: "sh1", cols: 100, rows: 20 });
+  const resize = await byName.terminal_resize.execute("tc-resize", { shell_id: "sh1", cols: 100, rows: 20 });
   assert.ok(resize.content[0].text.includes("100x20"));
   assert.equal(resize.details.shell.cols, 100);
   assert.equal(resize.details.shell.rows, 20);
 
-  const listed = await byName.shell_list.execute("tc3", {});
+  const listed = await byName.terminal_list.execute("tc3", {});
   assert.ok(listed.content[0].text.includes("dev"));
   assert.equal(listed.details.shells.length, 1);
 
-  const cleared = await byName.shell_clear.execute("tc-clear", { shell_id: "sh1" });
+  const cleared = await byName.terminal_clear.execute("tc-clear", { shell_id: "sh1" });
   assert.ok(cleared.content[0].text.includes("Cleared dev"));
   assert.equal(runtime.snapshotShell("sh1").plain, "");
 
-  const killed = await byName.shell_kill.execute("tc4", { shell_id: "sh1" });
+  const killed = await byName.terminal_kill.execute("tc4", { shell_id: "sh1" });
   assert.ok(killed.content[0].text.includes("Killed dev"));
   assert.equal(killed.details.shell.status, "killed");
 
-  const late = await byName.shell_send.execute("tc5", { shell_id: "sh1", text: "late" });
+  const late = await byName.terminal_send.execute("tc5", { shell_id: "sh1", text: "late" });
   assert.equal(late.details.error, true);
   assert.ok(late.content[0].text.includes("is killed"));
 
-  const defaultSpawned = await byName.shell_spawn.execute("tc6", { name: "default" });
+  const defaultSpawned = await byName.terminal_spawn.execute("tc6", { name: "default" });
   assert.equal(defaultSpawned.details.shell.name, "default");
   assert.equal(defaultSpawned.details.shell.status, "running");
 

@@ -1,10 +1,7 @@
 import { existsSync } from "node:fs";
-import { spawnSync } from "node:child_process";
-import {
-  createBashToolDefinition,
-  defineTool,
-} from "@mariozechner/pi-coding-agent";
+import { defineTool } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
+import { createCommandExecTool } from "./command-exec-tool.mjs";
 import { createEditFileTool } from "./file-edit-tool.mjs";
 import { createShellTools } from "../shell/tools.mjs";
 import { createWebTools } from "../web/tools.mjs";
@@ -61,35 +58,14 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], skil
     },
   });
 
+  const commandExecTool = createCommandExecTool({ cwd });
   const editFileTool = createEditFileTool({ engine, ui, lspService });
-
-  const platformTools = [];
-  if (process.platform === "win32") {
-    const psPath = findPowerShell();
-    if (psPath) {
-      const psDef = createBashToolDefinition(cwd, { shellPath: psPath });
-      platformTools.push({
-        ...psDef,
-        name: "powershell",
-        label: "PowerShell",
-        description:
-          "Execute a PowerShell command in the current working directory. This is the recommended shell on Windows. " +
-          "Returns stdout and stderr. Output is truncated to last 200 lines or 64KB. " +
-          "Optionally provide a timeout in seconds.",
-        parameters: Type.Object({
-          command: Type.String({ description: "PowerShell command to execute" }),
-          timeout: Type.Optional(Type.Number({ description: "Timeout in seconds (optional, no default timeout)" })),
-        }),
-        promptSnippet: "Execute PowerShell commands (Get-ChildItem, Select-String, Get-Content, etc.)",
-      });
-    }
-  }
 
   const tools = [
     openFileTool,
     closeFileTool,
+    commandExecTool,
     editFileTool,
-    ...platformTools,
     ...createShellTools(shellRuntime),
     ...memoryTools,
     ...skillTools,
@@ -117,19 +93,6 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], skil
     };
     return { ...tool, execute: wrapped };
   });
-}
-
-function findPowerShell() {
-  for (const name of ["pwsh.exe", "powershell.exe"]) {
-    try {
-      const result = spawnSync("where", [name], { encoding: "utf-8", timeout: 5000 });
-      if (result.status === 0 && result.stdout) {
-        const first = result.stdout.trim().split(/\r?\n/)[0];
-        if (first && existsSync(first)) return first;
-      }
-    } catch {}
-  }
-  return null;
 }
 
 function toolText(text, details = {}) {
