@@ -1,24 +1,24 @@
 import { stdout } from "node:process";
 import { Editor, ProcessTerminal, TUI } from "@mariozechner/pi-tui";
-import { buildMarchCommands, MarchAutocompleteProvider } from "./autocomplete.mjs";
-import { getExternalEditorCommand, openTextInExternalEditor } from "./external-editor.mjs";
+import { buildMarchCommands, MarchAutocompleteProvider } from "./input/autocomplete.mjs";
+import { getExternalEditorCommand, openTextInExternalEditor } from "./input/external-editor.mjs";
 import { createJsonUI, createPlainUI } from "./fallback-ui.mjs";
-import { createKeybindingDispatcher } from "./keybinding-dispatch.mjs";
-import { OutputBuffer } from "./output-buffer.mjs";
-import { requestToolPermission } from "./permission-request-ui.mjs";
-import { createRetryStatusController } from "./retry-status.mjs";
-import { createShellDrawerControls } from "./shell-drawer-controls.mjs";
-import { ShellDrawer } from "./shell-drawer.mjs";
-import { ShellSplitLayout } from "./shell-split-layout.mjs";
-import { showSelectListOverlay } from "./select-list-overlay.mjs";
-import { createSpinnerStatusController } from "./spinner-status.mjs";
-import { StatusBar } from "./status-bar.mjs";
-import { writeEditDiff } from "./tui-diff-rendering.mjs";
-import { createTuiInputController } from "./tui-input-controller.mjs";
-import { writeToolEnd, writeToolStart } from "./tool-rendering.mjs";
-import { EDITOR_THEME, yellow, brightBlack } from "./ui-theme.mjs";
+import { createKeybindingDispatcher } from "./input/keybinding-dispatch.mjs";
+import { OutputBuffer } from "./tui/output-buffer.mjs";
+import { requestToolPermission } from "./tui/permission-request-ui.mjs";
+import { createRetryStatusController } from "./tui/status/retry-status.mjs";
+import { createShellDrawerControls } from "./shell/shell-drawer-controls.mjs";
+import { ShellDrawer } from "./shell/shell-drawer.mjs";
+import { ShellSplitLayout } from "./shell/shell-split-layout.mjs";
+import { showSelectListOverlay } from "./tui/select-list-overlay.mjs";
+import { createSpinnerStatusController } from "./tui/status/spinner-status.mjs";
+import { StatusBar } from "./tui/status/status-bar.mjs";
+import { writeEditDiff } from "./tui/tui-diff-rendering.mjs";
+import { createTuiInputController } from "./tui/tui-input-controller.mjs";
+import { writeToolEnd, writeToolStart } from "./tui/tool-rendering.mjs";
+import { EDITOR_THEME, yellow, brightBlack } from "./tui/ui-theme.mjs";
 
-export { buildMarchCommands, MarchAutocompleteProvider } from "./autocomplete.mjs";
+export { buildMarchCommands, MarchAutocompleteProvider } from "./input/autocomplete.mjs";
 
 export function createTuiUI({
   cwd = process.cwd(),

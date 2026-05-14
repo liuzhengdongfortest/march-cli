@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 export async function runExternalEditorSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: external editor ---");
-  const { getExternalEditorCommand, openTextInExternalEditor } = await import("../src/cli/external-editor.mjs");
+  const { getExternalEditorCommand, openTextInExternalEditor } = await import("../src/cli/input/external-editor.mjs");
   const dir = setupTmp();
 
   assert.equal(getExternalEditorCommand({}), "");

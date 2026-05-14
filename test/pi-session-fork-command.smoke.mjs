@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runPiSessionForkCommandSmoke() {
   console.log("--- smoke: pi session fork command handling ---");
-  const { forkPiSessionResetContext, listPiForkCandidates, listPiSessionEntryCandidates, parseForkPiCommand } = await import("../src/cli/pi-session-fork-command.mjs");
+  const { forkPiSessionResetContext, listPiForkCandidates, listPiSessionEntryCandidates, parseForkPiCommand } = await import("../src/cli/session/pi-session-fork-command.mjs");
 
   assert.deepEqual(parseForkPiCommand("hello"), { type: "none" });
   assert.deepEqual(parseForkPiCommand("/fork-piabc"), { type: "none" });

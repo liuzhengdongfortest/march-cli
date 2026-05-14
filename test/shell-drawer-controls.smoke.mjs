@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runShellDrawerControlsSmoke() {
   console.log("--- smoke: shell drawer controls ---");
-  const { createShellDrawerControls } = await import("../src/cli/shell-drawer-controls.mjs");
+  const { createShellDrawerControls } = await import("../src/cli/shell/shell-drawer-controls.mjs");
 
   const lines = [];
   let renderCount = 0;

@@ -3,7 +3,7 @@ import { FakeTerminal } from "./helpers/fake-terminal.mjs";
 
 export async function runSelectListOverlaySmoke() {
   console.log("--- smoke: select list overlay lifecycle ---");
-  const { showSelectListOverlay } = await import("../src/cli/select-list-overlay.mjs");
+  const { showSelectListOverlay } = await import("../src/cli/tui/select-list-overlay.mjs");
 
   const calls = [];
   let latestList = null;
@@ -53,7 +53,7 @@ export async function runSelectListOverlaySmoke() {
   assert.equal(await cancelPromise, null);
 
   const { TUI } = await import("@mariozechner/pi-tui");
-  const { TERMINAL_KEY_SEQUENCES } = await import("../src/cli/keybinding-dispatch.mjs");
+  const { TERMINAL_KEY_SEQUENCES } = await import("../src/cli/input/keybinding-dispatch.mjs");
   const terminal = new FakeTerminal();
   const realTui = new TUI(terminal);
   realTui.start();

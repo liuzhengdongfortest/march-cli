@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runShellCommandSmoke() {
   console.log("--- smoke: shell command ---");
-  const { handleShellCommand, parseShellCommand } = await import("../src/cli/shell-command.mjs");
+  const { handleShellCommand, parseShellCommand } = await import("../src/cli/shell/shell-command.mjs");
 
   assert.deepEqual(parseShellCommand("hello"), { type: "none" });
   assert.deepEqual(parseShellCommand("/shell"), { type: "list" });

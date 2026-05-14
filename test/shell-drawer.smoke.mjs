@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runShellDrawerSmoke() {
   console.log("--- smoke: shell drawer ---");
-  const { ShellDrawer, formatAnsiLines, sanitizeAnsiForDrawer } = await import("../src/cli/shell-drawer.mjs");
+  const { ShellDrawer, formatAnsiLines, sanitizeAnsiForDrawer } = await import("../src/cli/shell/shell-drawer.mjs");
 
   const disabled = new ShellDrawer();
   assert.deepEqual(disabled.render(40), []);

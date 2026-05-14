@@ -6,7 +6,7 @@ export async function runCopyCommandSmoke() {
     copyLastAssistantMessage,
     findLastAssistantMessage,
     writeSystemClipboard,
-  } = await import("../src/cli/copy-command.mjs");
+  } = await import("../src/cli/commands/copy-command.mjs");
 
   const engine = {
     turns: [

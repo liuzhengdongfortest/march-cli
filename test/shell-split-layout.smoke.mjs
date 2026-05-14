@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runShellSplitLayoutSmoke() {
   console.log("--- smoke: shell split layout ---");
-  const { ShellSplitLayout, computeShellWidth } = await import("../src/cli/shell-split-layout.mjs");
+  const { ShellSplitLayout, computeShellWidth } = await import("../src/cli/shell/shell-split-layout.mjs");
   const main = { render: (width) => [`main-${width}`, "editor"] };
   const shellPane = {
     visible: false,

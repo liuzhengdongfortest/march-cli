@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runSessionOptionsSmoke() {
   console.log("--- smoke: runner session options ---");
-  const { resolveRunnerSessionOptions } = await import("../src/agent/session-options.mjs");
+  const { resolveRunnerSessionOptions } = await import("../src/agent/session/session-options.mjs");
 
   const model = { id: "fake-model" };
   const options = resolveRunnerSessionOptions({

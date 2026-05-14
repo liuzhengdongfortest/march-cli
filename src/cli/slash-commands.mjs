@@ -1,19 +1,19 @@
-import { listExtensionPathsCommand } from "./extensions-command.mjs";
-import { handleExportCommand, parseExportCommand } from "./export-command.mjs";
-import { handleModelCommand, listModels, parseModelCommand } from "./model-command.mjs";
+import { listExtensionPathsCommand } from "./commands/extensions-command.mjs";
+import { handleExportCommand, parseExportCommand } from "./commands/export-command.mjs";
+import { handleModelCommand, listModels, parseModelCommand } from "./commands/model-command.mjs";
 import { formatHotkeysPanel } from "./repl-commands.mjs";
-import { compactSession, listSessionStats } from "./session-command.mjs";
-import { copyLastAssistantMessage } from "./copy-command.mjs";
-import { handleSessionSourceCommand } from "./session-source-command.mjs";
-import { statusCommand } from "./status-command.mjs";
-import { handleThinkingCommand, parseThinkingCommand } from "./thinking-command.mjs";
-import { formatPromptTemplateLines } from "./prompt-templates.mjs";
+import { compactSession, listSessionStats } from "./session/session-command.mjs";
+import { copyLastAssistantMessage } from "./commands/copy-command.mjs";
+import { handleSessionSourceCommand } from "./session/session-source-command.mjs";
+import { statusCommand } from "./commands/status-command.mjs";
+import { handleThinkingCommand, parseThinkingCommand } from "./commands/thinking-command.mjs";
+import { formatPromptTemplateLines } from "./input/prompt-templates.mjs";
 import { handleSettingsCommand, parseSettingsCommand } from "../config/settings-command.mjs";
-import { handleSessionNameCommand, parseSessionNameCommand } from "./session-name-command.mjs";
-import { handleShellCommand, parseShellCommand } from "./shell-command.mjs";
-import { handlePinCommand, parsePinCommand } from "./pin-command.mjs";
-import { handleProviderCommand, parseProviderCommand } from "./provider-command.mjs";
-import { formatHelpLines } from "./help-command.mjs";
+import { handleSessionNameCommand, parseSessionNameCommand } from "./session/session-name-command.mjs";
+import { handleShellCommand, parseShellCommand } from "./shell/shell-command.mjs";
+import { handlePinCommand, parsePinCommand } from "./commands/pin-command.mjs";
+import { handleProviderCommand, parseProviderCommand } from "./commands/provider-command.mjs";
+import { formatHelpLines } from "./commands/help-command.mjs";
 
 export async function handleSlashCommand(trimmed, {
   ui,

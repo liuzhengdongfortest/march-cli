@@ -4,7 +4,7 @@ import { join } from "node:path";
 export async function runDefaultStartupFlowSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: default pi startup flow candidate ---");
   const { createRunner } = await import("../src/agent/runner.mjs");
-  const { resumePiSessionById } = await import("../src/cli/pi-session-switch-command.mjs");
+  const { resumePiSessionById } = await import("../src/cli/session/pi-session-switch-command.mjs");
   const { loadPiSessionSidecar } = await import("../src/session/sidecar.mjs");
 
   const dir = setupTmp();

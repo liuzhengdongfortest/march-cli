@@ -9,7 +9,7 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
     getGitBranch,
     shortSessionId,
     statusCommand,
-  } = await import("../src/cli/status-command.mjs");
+  } = await import("../src/cli/commands/status-command.mjs");
   const dir = setupTmp();
   const engine = {
     cwd: dir,

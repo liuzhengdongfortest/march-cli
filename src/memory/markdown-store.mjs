@@ -12,11 +12,11 @@ import {
   quoteFtsTerm,
   slugify,
   walkMarkdownFiles,
-} from "./markdown-format.mjs";
-import { formatRecallHints, scoreEntry, toHint } from "./markdown-recall.mjs";
+} from "./markdown/markdown-format.mjs";
+import { formatRecallHints, scoreEntry, toHint } from "./markdown/markdown-recall.mjs";
 
-export { formatRecallHints } from "./markdown-recall.mjs";
-export { normalizeTags } from "./markdown-format.mjs";
+export { formatRecallHints } from "./markdown/markdown-recall.mjs";
+export { normalizeTags } from "./markdown/markdown-format.mjs";
 
 const DEFAULT_SCAN_INTERVAL_MS = 5000;
 

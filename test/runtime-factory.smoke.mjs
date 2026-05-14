@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runRuntimeFactorySmoke() {
   console.log("--- smoke: runtime factory builder ---");
-  const { createMarchRuntimeFactory } = await import("../src/agent/runtime-factory.mjs");
+  const { createMarchRuntimeFactory } = await import("../src/agent/runtime/runtime-factory.mjs");
   assert.throws(() => createMarchRuntimeFactory({}), /resolveSessionOptions/);
 
   const calls = [];

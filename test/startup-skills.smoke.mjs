@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 export async function runStartupSkillsSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: startup skills ---");
-  const { activateStartupSkills, createStartupSkillRuntime } = await import("../src/cli/startup-skills.mjs");
+  const { activateStartupSkills, createStartupSkillRuntime } = await import("../src/cli/startup/startup-skills.mjs");
 
   const dir = setupTmp();
   const skillPath = join(dir, "review.md");

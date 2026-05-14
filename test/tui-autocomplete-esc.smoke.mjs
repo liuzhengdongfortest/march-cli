@@ -5,9 +5,9 @@ import { FakeTerminal } from "./helpers/fake-terminal.mjs";
 export async function runTuiAutocompleteEscSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: TUI autocomplete Esc cancel ---");
   const dir = setupTmp();
-  const { buildMarchCommands, MarchAutocompleteProvider } = await import("../src/cli/autocomplete.mjs");
-  const { createKeybindingDispatcher, TERMINAL_KEY_SEQUENCES } = await import("../src/cli/keybinding-dispatch.mjs");
-  const { EDITOR_THEME } = await import("../src/cli/ui-theme.mjs");
+  const { buildMarchCommands, MarchAutocompleteProvider } = await import("../src/cli/input/autocomplete.mjs");
+  const { createKeybindingDispatcher, TERMINAL_KEY_SEQUENCES } = await import("../src/cli/input/keybinding-dispatch.mjs");
+  const { EDITOR_THEME } = await import("../src/cli/tui/ui-theme.mjs");
 
   const terminal = new FakeTerminal();
   const tui = new TUI(terminal);

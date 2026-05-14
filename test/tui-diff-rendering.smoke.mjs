@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runTuiDiffRenderingSmoke() {
   console.log("--- smoke: TUI diff rendering ---");
-  const { writeEditDiff } = await import("../src/cli/tui-diff-rendering.mjs");
+  const { writeEditDiff } = await import("../src/cli/tui/tui-diff-rendering.mjs");
 
   const lines = [];
   writeEditDiff({

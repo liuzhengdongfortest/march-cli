@@ -5,7 +5,7 @@ export async function runImageClipboardSmoke() {
   const {
     getWindowsClipboardImageScript,
     readClipboardImage,
-  } = await import("../src/cli/image-clipboard.mjs");
+  } = await import("../src/cli/input/image-clipboard.mjs");
 
   assert.ok(getWindowsClipboardImageScript().includes("Clipboard]::ContainsImage"));
   assert.deepEqual(readClipboardImage({ platform: "linux" }), {

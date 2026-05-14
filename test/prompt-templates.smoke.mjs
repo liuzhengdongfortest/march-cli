@@ -9,7 +9,7 @@ export async function runPromptTemplatesSmoke({ setupTmp, cleanup }) {
     formatPromptTemplateLines,
     loadPromptTemplates,
     renderPromptTemplate,
-  } = await import("../src/cli/prompt-templates.mjs");
+  } = await import("../src/cli/input/prompt-templates.mjs");
 
   const emptyDir = setupTmp();
   assert.deepEqual(loadPromptTemplates(emptyDir), { templates: [], diagnostics: [] });

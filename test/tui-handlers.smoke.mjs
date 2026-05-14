@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runTuiHandlersSmoke() {
   console.log("--- smoke: TUI handler wiring ---");
-  const { wireTuiHandlers } = await import("../src/cli/tui-handlers.mjs");
+  const { wireTuiHandlers } = await import("../src/cli/tui/tui-handlers.mjs");
 
   const calls = [];
   const handlers = {};

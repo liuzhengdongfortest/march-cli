@@ -1,6 +1,6 @@
 import { stdout } from "node:process";
 import { extractToolOutput } from "./tool-output.mjs";
-import { brightBlack, dim, red, green, yellow } from "./ui-theme.mjs";
+import { brightBlack, dim, red, green, yellow } from "./tui/ui-theme.mjs";
 
 export function createJsonUI() {
   let thinkingBuf = "";

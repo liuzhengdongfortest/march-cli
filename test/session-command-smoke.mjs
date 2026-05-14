@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runSessionCommandSmoke() {
   console.log("--- smoke: session command handling ---");
-  const { compactSession, formatSessionStats, listSessionStats } = await import("../src/cli/session-command.mjs");
+  const { compactSession, formatSessionStats, listSessionStats } = await import("../src/cli/session/session-command.mjs");
   const stats = {
     sessionId: "s1",
     userMessages: 2,
@@ -48,7 +48,7 @@ export async function runSessionCommandSmoke() {
 
 export async function runSessionListCommandSmoke() {
   console.log("--- smoke: session list command handling ---");
-  const { formatPiSessionList, formatPiSessionTree, formatSessionList, listSessionCommand } = await import("../src/cli/session-list-command.mjs");
+  const { formatPiSessionList, formatPiSessionTree, formatSessionList, listSessionCommand } = await import("../src/cli/session/session-list-command.mjs");
   const sessions = [
     {
       id: "root",
@@ -123,7 +123,7 @@ export async function runSessionSwitchCommandSmoke({ setupTmp, cleanup }) {
   const { mkdirSync } = await import("node:fs");
   const { join } = await import("node:path");
   const { ContextEngine } = await import("../src/context/engine.mjs");
-  const { parseResumeCommand, resumeSessionById } = await import("../src/cli/session-switch-command.mjs");
+  const { parseResumeCommand, resumeSessionById } = await import("../src/cli/session/session-switch-command.mjs");
   const { saveSession } = await import("../src/session/persist.mjs");
 
   assert.deepEqual(parseResumeCommand("hello"), { type: "none" });
@@ -160,7 +160,7 @@ export async function runPiSessionSwitchCommandSmoke() {
   const { mkdirSync, mkdtempSync, rmSync, writeFileSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
   const { join } = await import("node:path");
-  const { parseResumePiCommand, resumePiSessionById } = await import("../src/cli/pi-session-switch-command.mjs");
+  const { parseResumePiCommand, resumePiSessionById } = await import("../src/cli/session/pi-session-switch-command.mjs");
   const { ContextEngine } = await import("../src/context/engine.mjs");
   const { savePiSessionSidecar } = await import("../src/session/sidecar.mjs");
 

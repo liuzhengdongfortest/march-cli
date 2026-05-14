@@ -9,7 +9,7 @@ export async function runKeybindingsSmoke({ setupTmp, cleanup }) {
     formatKeybindingLines,
     loadKeybindings,
     normalizeKeybindings,
-  } = await import("../src/cli/keybindings.mjs");
+  } = await import("../src/cli/input/keybindings.mjs");
 
   const emptyDir = setupTmp();
   assert.deepEqual(loadKeybindings(emptyDir), {
@@ -41,7 +41,7 @@ export async function runKeybindingsSmoke({ setupTmp, cleanup }) {
   const {
     createKeybindingDispatcher,
     TERMINAL_KEY_SEQUENCES,
-  } = await import("../src/cli/keybinding-dispatch.mjs");
+  } = await import("../src/cli/input/keybinding-dispatch.mjs");
 
   let toggles = 0;
   const defaultDispatcher = createKeybindingDispatcher({

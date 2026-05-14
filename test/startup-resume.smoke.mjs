@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 export async function runStartupResumeSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: startup resume source routing ---");
-  const { loadOrCreateProjectId, resumeStartupSession } = await import("../src/cli/startup-session.mjs");
+  const { loadOrCreateProjectId, resumeStartupSession } = await import("../src/cli/startup/startup-session.mjs");
   const { ContextEngine } = await import("../src/context/engine.mjs");
   const { savePiSessionSidecar } = await import("../src/session/sidecar.mjs");
   const dir = setupTmp();

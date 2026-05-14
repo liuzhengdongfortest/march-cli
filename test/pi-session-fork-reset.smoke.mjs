@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runPiSessionForkResetSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: pi session fork reset ---");
-  const { forkPiSessionWithResetContext } = await import("../src/agent/pi-session-fork-reset.mjs");
+  const { forkPiSessionWithResetContext } = await import("../src/agent/pi-session/pi-session-fork-reset.mjs");
   const { createSessionBinding } = await import("../src/agent/session-binding.mjs");
   const { ContextEngine } = await import("../src/context/engine.mjs");
   const { loadPiSessionSidecar } = await import("../src/session/sidecar.mjs");

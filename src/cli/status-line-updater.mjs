@@ -1,4 +1,4 @@
-import { statusBarLine } from "./status-command.mjs";
+import { statusBarLine } from "./commands/status-command.mjs";
 
 export function createStatusLineUpdater({
   ui,

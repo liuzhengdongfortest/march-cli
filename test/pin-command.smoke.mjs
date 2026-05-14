@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runPinCommandSmoke() {
   console.log("--- smoke: pin command handling ---");
-  const { handlePinCommand, parsePinCommand } = await import("../src/cli/pin-command.mjs");
+  const { handlePinCommand, parsePinCommand } = await import("../src/cli/commands/pin-command.mjs");
 
   assert.deepEqual(parsePinCommand("hello"), { type: "none" });
   assert.deepEqual(parsePinCommand("/pins"), { type: "list" });

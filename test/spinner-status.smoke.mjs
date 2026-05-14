@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runSpinnerStatusSmoke() {
   console.log("--- smoke: spinner status lifecycle ---");
-  const { createSpinnerStatusController } = await import("../src/cli/spinner-status.mjs");
+  const { createSpinnerStatusController } = await import("../src/cli/tui/status/spinner-status.mjs");
 
   const calls = [];
   const intervals = [];

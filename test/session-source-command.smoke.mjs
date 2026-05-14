@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 export async function runSessionSourceCommandSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: session source slash command handling ---");
-  const { handleSessionSourceCommand } = await import("../src/cli/session-source-command.mjs");
+  const { handleSessionSourceCommand } = await import("../src/cli/session/session-source-command.mjs");
   const { savePiSessionSidecar } = await import("../src/session/sidecar.mjs");
 
   const dir = setupTmp();

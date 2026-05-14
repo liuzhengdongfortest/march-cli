@@ -86,7 +86,7 @@ async function runThinkingCommandHandlingSmoke() {
     handleThinkingCommand,
     parseThinkingCommand,
     selectThinkingByIndex,
-  } = await import("../src/cli/thinking-command.mjs");
+  } = await import("../src/cli/commands/thinking-command.mjs");
 
   assert.deepEqual(parseThinkingCommand("hello"), { type: "none" });
   assert.deepEqual(parseThinkingCommand("/thinking"), { type: "cycle" });

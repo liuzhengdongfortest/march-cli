@@ -5,7 +5,7 @@ export async function runTuiShellDrawerSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: TUI shell drawer dispatch ---");
   const dir = setupTmp();
   const { createTuiUI } = await import("../src/cli/ui.mjs");
-  const { TERMINAL_KEY_SEQUENCES } = await import("../src/cli/keybinding-dispatch.mjs");
+  const { TERMINAL_KEY_SEQUENCES } = await import("../src/cli/input/keybinding-dispatch.mjs");
   const { stripAnsi } = await import("../src/shell/runtime.mjs");
   const emptyTerminal = new FakeTerminal();
   const emptyUi = createTuiUI({

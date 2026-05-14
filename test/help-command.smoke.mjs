@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runHelpCommandSmoke() {
   console.log("--- smoke: help command formatting ---");
-  const { formatHelpLines } = await import("../src/cli/help-command.mjs");
+  const { formatHelpLines } = await import("../src/cli/commands/help-command.mjs");
   const lines = formatHelpLines();
   const text = lines.join("\n");
 

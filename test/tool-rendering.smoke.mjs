@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runToolRenderingSmoke() {
   console.log("--- smoke: tool rendering ---");
-  const { writeToolEnd, writeToolStart } = await import("../src/cli/tool-rendering.mjs");
+  const { writeToolEnd, writeToolStart } = await import("../src/cli/tui/tool-rendering.mjs");
 
   const lines = [];
   const output = { writeln: (line) => lines.push(line) };

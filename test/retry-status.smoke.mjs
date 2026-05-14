@@ -7,7 +7,7 @@ export async function runRetryStatusSmoke() {
     formatRetryEndLine,
     formatRetryStartLine,
     formatRetryWaitMessage,
-  } = await import("../src/cli/retry-status.mjs");
+  } = await import("../src/cli/tui/status/retry-status.mjs");
 
   assert.equal(
     formatRetryWaitMessage({ attempt: 2, maxAttempts: 5, remainingMs: 2100 }),

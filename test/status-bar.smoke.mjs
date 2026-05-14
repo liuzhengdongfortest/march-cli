@@ -9,7 +9,7 @@ export async function runStatusBarSmoke() {
     fitStatusText,
     normalizeStatusText,
     padToWidth,
-  } = await import("../src/cli/status-bar.mjs");
+  } = await import("../src/cli/tui/status/status-bar.mjs");
   const { createStatusLineUpdater } = await import("../src/cli/status-line-updater.mjs");
 
   assert.equal(normalizeStatusText("  git:main   session:abc  "), "git:main session:abc");

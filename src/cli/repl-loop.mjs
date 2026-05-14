@@ -1,6 +1,6 @@
-import { bold, brightBlack } from "./ui-theme.mjs";
+import { bold, brightBlack } from "./tui/ui-theme.mjs";
 import { handleSlashCommand } from "./slash-commands.mjs";
-import { expandPromptTemplate } from "./prompt-templates.mjs";
+import { expandPromptTemplate } from "./input/prompt-templates.mjs";
 import { parseInlineShellInput, parseSkillInvocation, runInlineShellCommand } from "./repl-commands.mjs";
 import { formatRecallHints } from "../memory/markdown-store.mjs";
 import { formatMessageAttachmentsForDisplay } from "../session/attachment-display.mjs";

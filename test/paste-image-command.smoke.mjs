@@ -5,7 +5,7 @@ export async function runPasteImageCommandSmoke() {
   const {
     pasteClipboardImage,
     withLeadingSpace,
-  } = await import("../src/cli/paste-image-command.mjs");
+  } = await import("../src/cli/commands/paste-image-command.mjs");
 
   assert.equal(withLeadingSpace("", "@.march/a.png"), "@.march/a.png");
   assert.equal(withLeadingSpace("describe", "@.march/a.png"), " @.march/a.png");

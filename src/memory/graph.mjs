@@ -4,19 +4,19 @@ import {
   getChildren,
   getMemoryByPath,
   getRecentMemories,
-} from "./graph-read.mjs";
-import { getGraphDiagnostics } from "./graph-diagnostics.mjs";
+} from "./graph/graph-read.mjs";
+import { getGraphDiagnostics } from "./graph/graph-diagnostics.mjs";
 import {
   cascadeCreatePaths,
   cascadeDeleteNode,
   deprecateNodeMemories,
-} from "./graph-cascades.mjs";
-import { removeGraphPath } from "./graph-path-removal.mjs";
+} from "./graph/graph-cascades.mjs";
+import { removeGraphPath } from "./graph/graph-path-removal.mjs";
 import {
   graphUri,
   leafName,
   pathExists,
-} from "./graph-path-utils.mjs";
+} from "./graph/graph-path-utils.mjs";
 import {
   ensureNode,
   getNextChildNumber,
@@ -25,7 +25,7 @@ import {
   insertPath,
   resolveGraphPath,
   wouldCreateCycle,
-} from "./graph-primitives.mjs";
+} from "./graph/graph-primitives.mjs";
 
 export class GraphService {
   constructor(db, { changesetStore = null, searchIndexer = null, namespace = "" } = {}) {

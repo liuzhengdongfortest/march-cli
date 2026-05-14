@@ -12,7 +12,7 @@ export async function runExportCommandSmoke({ setupTmp, cleanup }) {
     exportSessionJsonl,
     handleExportCommand,
     parseExportCommand,
-  } = await import("../src/cli/export-command.mjs");
+  } = await import("../src/cli/commands/export-command.mjs");
   const dir = setupTmp();
   const projectMarchDir = join(dir, ".march");
   const now = new Date("2026-05-10T01:02:03.004Z");

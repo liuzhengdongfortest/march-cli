@@ -34,6 +34,7 @@ import { runShellScreenBufferSmoke } from "./shell-screen-buffer.smoke.mjs";
 import { runShellDrawerSmoke } from "./shell-drawer.smoke.mjs";
 import { runShellSplitLayoutSmoke } from "./shell-split-layout.smoke.mjs";
 import { runShellToolsSmoke } from "./shell-tools.smoke.mjs";
+import { runSourceDirectoryLimitSmoke } from "./source-directory-limit.smoke.mjs";
 import { runSourceLineLimitSmoke } from "./source-line-limit.smoke.mjs";
 import { runStartupResumeSmoke } from "./startup-resume.smoke.mjs";
 import { runTuiAutocompleteEscSmoke } from "./tui-autocomplete-esc.smoke.mjs";
@@ -103,6 +104,7 @@ function cleanup(dir) {
 }
 
 await runSourceLineLimitSmoke();
+await runSourceDirectoryLimitSmoke();
 await runStartupResumeSmoke({ setupTmp, cleanup });
 await runAuthStorageSmoke({ setupTmp, cleanup });
 await runLoginCommandSmoke();
@@ -141,7 +143,7 @@ await runRunnerCoreSmoke();
 
 {
   console.log("--- smoke: autocomplete provider ---");
-  const { buildMarchCommands, MarchAutocompleteProvider } = await import("../src/cli/autocomplete.mjs");
+  const { buildMarchCommands, MarchAutocompleteProvider } = await import("../src/cli/input/autocomplete.mjs");
   const dir = setupTmp();
   writeFileSync(join(dir, "sample-file.txt"), "data");
 
@@ -188,7 +190,7 @@ await runTuiAutocompleteEscSmoke({ setupTmp, cleanup });
 
 {
   console.log("--- smoke: output buffer rendering ---");
-  const { OutputBuffer } = await import("../src/cli/output-buffer.mjs");
+  const { OutputBuffer } = await import("../src/cli/tui/output-buffer.mjs");
   const buffer = new OutputBuffer();
   buffer.write("hello");
   buffer.startThinking();

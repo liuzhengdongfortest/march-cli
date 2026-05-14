@@ -29,7 +29,7 @@ export async function runModelCommandSmoke() {
     listModels,
     parseModelCommand,
     selectModelByIndex,
-  } = await import("../src/cli/model-command.mjs");
+  } = await import("../src/cli/commands/model-command.mjs");
   const models = [
     { model: { id: "a", name: "Model A", provider: "test" } },
     { model: { id: "b", provider: "other" } },

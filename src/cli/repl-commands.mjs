@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
-import { DEFAULT_KEYBINDINGS, KEYBINDING_ACTIONS } from "./keybindings.mjs";
-import { dim, red } from "./ui-theme.mjs";
+import { DEFAULT_KEYBINDINGS, KEYBINDING_ACTIONS } from "./input/keybindings.mjs";
+import { dim, red } from "./tui/ui-theme.mjs";
 
 const HOTKEY_GROUPS = Object.freeze([
   ["Turn control", ["abort", "interrupt"]],

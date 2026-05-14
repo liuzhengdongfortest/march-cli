@@ -9,21 +9,21 @@ import { createMarchLifecycleAdapter } from "../extensions/lifecycle-adapter.mjs
 import { syncPiSessionSidecar } from "../session/sidecar-sync.mjs";
 import { LspService } from "../lsp/service.mjs";
 import { installModelPayloadDumper } from "./model-payload-dumper.mjs";
-import { cloneCurrentPiSession } from "./pi-session-clone.mjs";
-import { forkPiSessionWithResetContext } from "./pi-session-fork-reset.mjs";
-import { resolveInitialModel, resolveRunnerSessionManager } from "./runner-init.mjs";
-import { runRunnerCleanup } from "./runner-cleanup.mjs";
-import { createRunnerRuntimeHost } from "./runner-runtime-host.mjs";
-import { getRunnerSessionStats, syncEngineSessionState } from "./runner-session-state.mjs";
-import { resolveRunnerSessionOptions } from "./session-options.mjs";
-import { createSessionBinding } from "./session-binding.mjs";
+import { cloneCurrentPiSession } from "./pi-session/pi-session-clone.mjs";
+import { forkPiSessionWithResetContext } from "./pi-session/pi-session-fork-reset.mjs";
+import { resolveInitialModel, resolveRunnerSessionManager } from "./runner/runner-init.mjs";
+import { runRunnerCleanup } from "./runner/runner-cleanup.mjs";
+import { createRunnerRuntimeHost } from "./runtime/runner-runtime-host.mjs";
+import { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
+import { resolveRunnerSessionOptions } from "./session/session-options.mjs";
+import { createSessionBinding } from "./session/session-binding.mjs";
 import { MARCH_BASE_TOOL_NAMES } from "./tool-names.mjs";
-import { runRunnerTurn } from "./turn-runner.mjs";
+import { runRunnerTurn } from "./turn/turn-runner.mjs";
 
 export { MARCH_BASE_TOOL_NAMES };
 export { installModelPayloadDumper } from "./model-payload-dumper.mjs";
-export { createDefaultSessionManager, resolveRunnerSessionManager } from "./runner-init.mjs";
-export { getRunnerSessionStats, syncEngineSessionState } from "./runner-session-state.mjs";
+export { createDefaultSessionManager, resolveRunnerSessionManager } from "./runner/runner-init.mjs";
+export { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
 
 export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, skills, skillPool = [], pins, memoryStore = null, memoryTools = [], skillTools = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, modelContextDumper = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices }) {
   const authConfig = authStorage

@@ -7,7 +7,7 @@ export async function runSessionNameCommandSmoke({ setupTmp, cleanup }) {
   const {
     handleSessionNameCommand,
     parseSessionNameCommand,
-  } = await import("../src/cli/session-name-command.mjs");
+  } = await import("../src/cli/session/session-name-command.mjs");
 
   assert.deepEqual(parseSessionNameCommand("hello"), { type: "none" });
   assert.deepEqual(parseSessionNameCommand("/name"), { type: "show" });
