@@ -8,8 +8,9 @@ export async function runConfigLoadingSmoke({ setupTmp, cleanup }) {
   const dir = setupTmp();
 
   const empty = loadConfig(dir);
-  assert.equal(empty.model, "deepseek-chat");
-  assert.equal(empty.provider, "deepseek");
+  assert.equal(empty.model, null);
+  assert.equal(empty.provider, null);
+  assert.deepEqual(empty.providers, {});
   assert.equal(empty.memoryRoot, null);
   assert.deepEqual(empty.skills, []);
   assert.deepEqual(empty.pins, []);
@@ -24,8 +25,10 @@ export async function runConfigLoadingSmoke({ setupTmp, cleanup }) {
   const marchDir = join(dir, ".march");
   mkdirSync(marchDir, { recursive: true });
   writeFileSync(join(marchDir, "config"), JSON.stringify({ model: "override-model", pins: ["p2"] }));
+  writeFileSync(join(marchDir, "config.json"), JSON.stringify({ providers: { deepseek: { type: "deepseek", auth: { method: "apiKey", apiKey: "sk" } } } }));
   const withBoth = loadConfig(dir);
   assert.equal(withBoth.model, "override-model");
+  assert.equal(withBoth.providers.deepseek.type, "deepseek");
   assert.deepEqual(withBoth.pins.sort(), ["p1", "p2"].sort());
 
   cleanup(dir);

@@ -32,24 +32,26 @@ export async function runModelCommandSmoke() {
   } = await import("../src/cli/model-command.mjs");
   const models = [
     { model: { id: "a", name: "Model A", provider: "test" } },
-    { model: { id: "b", provider: "test" } },
+    { model: { id: "b", provider: "other" } },
   ];
   assert.deepEqual(formatModelsList({ current: models[0].model, scopedModels: models }), [
     "Current: Model A (test)",
-    " * 1. Model A (test)",
-    "   2. b (test)",
-    "Use /model <index> to select.",
+    "── other ──",
+    "    b",
+    "── test ──",
+    "  ● Model A",
+    "Use Ctrl+L or /model to choose a model.",
   ]);
   assert.deepEqual(buildModelSelectItems({ current: models[0].model, scopedModels: models }), [
-    { value: "0", label: "Model A", description: "test  current", model: models[0].model },
-    { value: "1", label: "b", description: "test", model: models[1].model },
+    { value: "0", label: "test / Model A", description: "current", model: models[0].model },
+    { value: "1", label: "other / b", description: "other", model: models[1].model },
   ]);
   assert.deepEqual(formatModelsList({ current: null, scopedModels: [] }), [
-    "(no scoped models - use --model flag or /model to cycle)",
+    "(no available models - run `march provider --config`)",
   ]);
   assert.deepEqual(parseModelCommand("hello"), { type: "none" });
-  assert.deepEqual(parseModelCommand("/model"), { type: "cycle" });
-  assert.deepEqual(parseModelCommand("/model 2"), { type: "select", index: 2 });
+  assert.deepEqual(parseModelCommand("/model"), { type: "select-interactive" });
+  assert.equal(parseModelCommand("/model 2").type, "error");
   assert.equal(parseModelCommand("/model nope").type, "error");
 
   let selectedModel = null;
@@ -62,11 +64,12 @@ export async function runModelCommandSmoke() {
       return model;
     },
   };
-  assert.equal(await cycleModel({ runner }), "Model: b (test)  thinking: high");
-  assert.equal(await selectModelByIndex(2, { runner }), "Model: b (test)");
+  assert.equal(await cycleModel({ runner }), "Model: b (other)  thinking: high");
+  assert.equal(await selectModelByIndex(2, { runner }), "Model: b (other)");
   assert.equal(selectedModel.id, "b");
   assert.equal(await selectModelByIndex(3, { runner }), "Error: model index out of range: 3");
-  assert.equal(await handleModelCommand({ type: "select", index: 1 }, { runner }), "Model: Model A (test)");
+  assert.equal(await handleModelCommand({ type: "select-interactive" }, { runner }), "Use Ctrl+L to choose a model.");
+  assert.equal(await handleModelCommand({ type: "select-interactive" }, { runner, ui: { selectList: async ({ items }) => items[1] } }), "Model: b (other)");
   assert.ok(listModels({ runner }).join("\n").includes("Model A"));
   console.log("  PASS");
 }

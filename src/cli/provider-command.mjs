@@ -1,10 +1,12 @@
+import { getProviderLabel } from "../provider/presets.mjs";
+
 export function parseProviderCommand(input) {
   if (input !== "/providers" && !input.startsWith("/providers ")) {
     return { type: "none" };
   }
   const arg = input.slice("/providers".length).trim();
   if (!arg) return { type: "list" };
-  return { type: "select", provider: arg };
+  return { type: "error", message: "Provider switching is done by choosing a model with Ctrl+L or /model." };
 }
 
 export function listProviders({ runner }) {
@@ -34,19 +36,20 @@ export function formatProvidersList({ currentProvider, providers = [] }) {
 
 export async function handleProviderCommand(parsed, { ui, runner }) {
   if (parsed.type === "list") {
-    const current = runner.getCurrentModel?.();
-    const providers = listProviders({ runner });
-    return formatProvidersList({
-      currentProvider: current?.provider,
-      providers,
-    });
+    const configured = runner.getConfiguredProviders?.() ?? [];
+    if (configured.length === 0) {
+      return [
+        "Configured providers: (none)",
+        "Run `march provider --config` outside REPL to add credentials.",
+      ].join("\n");
+    }
+    return [
+      "Configured providers:",
+      ...configured.map((provider) => `  ${getProviderLabel(provider)}`),
+      "Use Ctrl+L or /model to choose a model.",
+      "Run `march provider --config` outside REPL to add/update credentials.",
+    ].join("\n");
   }
-  if (parsed.type === "select") {
-    const scopedModels = runner.getScopedModels?.() || [];
-    const match = scopedModels.find(({ model }) => model.provider === parsed.provider);
-    if (!match) return `Error: provider not found: ${parsed.provider}`;
-    await runner.setModel(match.model);
-    return `Provider: ${match.model.provider}  Model: ${match.model.name || match.model.id}`;
-  }
+  if (parsed.type === "error") return `Error: ${parsed.message}`;
   return "";
 }

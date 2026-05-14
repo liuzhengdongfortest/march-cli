@@ -19,6 +19,7 @@ export function providerApiKeyEnv(provider) {
 
 export function createMarchAuthStorage({
   provider = "deepseek",
+  providers = {},
   cwd = process.cwd(),
   homeDir = homedir(),
   env = process.env,
@@ -36,13 +37,24 @@ export function createMarchAuthStorage({
   if (apiKey) {
     resolvedAuthStorage.setRuntimeApiKey(provider, apiKey);
   }
+  for (const profile of Object.values(providers ?? {})) {
+    if (!profile || typeof profile !== "object") continue;
+    const type = profile.type ?? profile.provider;
+    const profileKey = profile.auth?.method === "apiKey" ? profile.auth?.apiKey : null;
+    if (type && profileKey) resolvedAuthStorage.setRuntimeApiKey(type, profileKey);
+  }
   const hasStoredAuth = Boolean(resolvedAuthStorage.hasAuth?.(provider));
+  const hasConfiguredProvider = Object.values(providers ?? {}).some((profile) => {
+    if (!profile || typeof profile !== "object") return false;
+    const type = profile.type ?? profile.provider;
+    return Boolean(profile.auth?.apiKey) || Boolean(type && resolvedAuthStorage.hasAuth?.(type));
+  });
   return {
     authStorage: resolvedAuthStorage,
     authPath: getMarchAuthPath(homeDir),
     apiKeyEnv,
     hasApiKey: Boolean(apiKey),
-    hasAuth: Boolean(apiKey) || hasStoredAuth,
+    hasAuth: Boolean(apiKey) || hasStoredAuth || hasConfiguredProvider,
     diagnostics,
   };
 }

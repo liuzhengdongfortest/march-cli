@@ -50,6 +50,22 @@ export async function runAuthStorageSmoke({ setupTmp, cleanup }) {
   assert.equal(resolved.apiKeyEnv, "DEEPSEEK_API_KEY");
   assert.deepEqual(calls, [["deepseek", "project-key"]]);
 
+  const providerCalls = [];
+  const multi = createMarchAuthStorage({
+    provider: "deepseek",
+    providers: {
+      openai: { type: "openai", auth: { method: "apiKey", apiKey: "openai-config-key" } },
+      anthropic: { type: "anthropic", auth: { method: "apiKey", apiKey: "anthropic-config-key" } },
+    },
+    cwd: dir,
+    homeDir: dir,
+    env: {},
+    authStorage: { setRuntimeApiKey: (provider, key) => providerCalls.push([provider, key]), hasAuth: () => false },
+    loadEnv: false,
+  });
+  assert.equal(multi.hasAuth, true);
+  assert.deepEqual(providerCalls, [["openai", "openai-config-key"], ["anthropic", "anthropic-config-key"]]);
+
   const missing = createMarchAuthStorage({
     provider: "anthropic",
     cwd: dir,

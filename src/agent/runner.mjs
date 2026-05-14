@@ -31,14 +31,18 @@ export function resolveRunnerSessionManager(cwd, sessionManager = null) {
   return sessionManager ?? createDefaultSessionManager(cwd);
 }
 
-export async function createRunner({ cwd, modelId, provider = "deepseek", stateRoot, ui, skills, skillPool = [], pins, memoryStore = null, memoryTools = [], skillTools = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, modelContextDumper = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices }) {
+export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, skills, skillPool = [], pins, memoryStore = null, memoryTools = [], skillTools = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, modelContextDumper = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices }) {
   const authConfig = authStorage
     ? { authStorage, hasAuth: true }
-    : createMarchAuthStorage({ provider, cwd });
-  if (!authConfig.hasAuth) throw new Error(`No credentials configured for ${provider}. Set ${authConfig.apiKeyEnv} or run: march login ${provider}.`);
+    : createMarchAuthStorage({ provider: provider ?? "deepseek", providers, cwd });
+  if (!authConfig.hasAuth) throw new Error("No providers configured. Run: march provider --config");
   const resolvedAuth = authConfig.authStorage;
 
   const modelRegistry = ModelRegistry.create(resolvedAuth);
+  const selectedModel = resolveInitialModel({ modelRegistry, provider, modelId });
+  if (!selectedModel) throw new Error("No authenticated models available. Run: march provider --config");
+  provider = selectedModel.provider;
+  modelId = selectedModel.id;
   const settingsManager = SettingsManager.inMemory({
     compaction: { enabled: true, reserveTokens: 262144, keepRecentTokens: 32768 },
     retry: { enabled: true, maxRetries: 3, baseDelayMs: 2000 },
@@ -250,6 +254,10 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       return sessionBinding.get().scopedModels;
     },
 
+    getConfiguredProviders() {
+      return Object.values(providers ?? {}).map((profile) => profile?.type).filter(Boolean);
+    },
+
     async compact() {
       const result = await sessionBinding.get().compact();
       if (result?.summary) {
@@ -352,4 +360,10 @@ export async function createRunner({ cwd, modelId, provider = "deepseek", stateR
       sessionStats: getRunnerSessionStats(sessionBinding.get(), runtimeHost),
     });
   }
+}
+
+function resolveInitialModel({ modelRegistry, provider, modelId }) {
+  const available = modelRegistry.getAvailable?.() ?? [];
+  if (provider && modelId) return available.find((model) => model.provider === provider && model.id === modelId) ?? null;
+  return available[0] ?? null;
 }

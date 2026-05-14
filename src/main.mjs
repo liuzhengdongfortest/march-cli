@@ -33,6 +33,7 @@ import { activateStartupSkills, createStartupSkillRuntime } from "./cli/startup-
 import { initializeMcp } from "./mcp/index.mjs";
 import { createWebTools } from "./web/tools.mjs";
 import { createModelContextDumper } from "./debug/model-context-dumper.mjs";
+import { runProviderConfigCommand } from "./provider/config-command.mjs";
 
 function loadDotEnv(cwd) {
   for (const dir of [cwd, dirname(fileURLToPath(import.meta.url))]) {
@@ -72,13 +73,19 @@ export async function run(argv) {
     }
   }
 
+  if (args.command?.name === "provider") {
+    if (args.providerConfig) return await runProviderConfigCommand({ homeDir: homedir() });
+    process.stderr.write("Usage: march provider --config\n");
+    return 1;
+  }
+
   const stateRoot = join(homedir(), ".march");
   if (!existsSync(stateRoot)) mkdirSync(stateRoot, { recursive: true });
 
   // Load config (CLI args override config file values)
   const config = loadConfig(cwd);
-  const provider = args.provider ?? config.provider ?? "deepseek";
-  const model = args.model ?? config.model ?? "deepseek-v4-pro";
+  const provider = args.provider ?? config.provider ?? null;
+  const model = args.model ?? config.model ?? null;
   const skills = [...config.skills, ...args.skills];
   const pins = [...config.pins, ...args.pins];
   const extensionPaths = [
@@ -88,10 +95,10 @@ export async function run(argv) {
   const lifecycleManifests = loadProjectLifecycleHookManifests(cwd);
   const keybindingConfig = loadKeybindings(cwd);
   const promptTemplateConfig = loadPromptTemplates(cwd);
-  const authConfig = createMarchAuthStorage({ provider, cwd });
+  const authConfig = createMarchAuthStorage({ provider: provider ?? "deepseek", providers: config.providers, cwd });
 
   if (!authConfig.hasAuth) {
-    process.stderr.write(`Error: no credentials configured for ${provider}. Set ${authConfig.apiKeyEnv} or run: march login ${provider}\n`);
+    process.stderr.write("Error: no providers configured. Run: march provider --config\n");
     return 1;
   }
 
@@ -164,6 +171,7 @@ export async function run(argv) {
     cwd,
     modelId: model,
     provider,
+    providers: config.providers,
     stateRoot,
     ui,
     skills: skills,

@@ -24,6 +24,7 @@ import { runMcpInjectionsSmoke } from "./mcp-injections.smoke.mjs";
 import { runMarkdownMemorySmoke } from "./markdown-memory.smoke.mjs";
 import { runNodePtyAdapterSmoke } from "./node-pty-adapter.smoke.mjs";
 import { runPromptTemplatesSmoke } from "./prompt-templates.smoke.mjs";
+import { runProviderConfigCommandSmoke } from "./provider-config-command.smoke.mjs";
 import { runRunnerCoreSmoke } from "./runner-core.smoke.mjs";
 import { runSettingsCommandSmoke } from "./settings-command.smoke.mjs";
 import { runPiSessionManagerFactorySmoke, runPiSessionSidecarSmoke, runPiSessionSidecarSyncSmoke, runSessionPersistenceSmoke, runSessionTreeSmoke } from "./session.smoke.mjs";
@@ -76,7 +77,7 @@ function cleanup(dir) {
   assert.equal(piSessions.shellRuntime, true);
 
   const defaults = parseCliArgs([]);
-  assert.equal(defaults.model, "deepseek-v4-pro");
+  assert.equal(defaults.model, null);
   assert.equal(defaults.json, false);
   assert.deepEqual(defaults.skills, []);
   assert.equal(defaults.prompt, "");
@@ -88,6 +89,10 @@ function cleanup(dir) {
 
   const dumpContext = parseCliArgs(["--dump-context"]);
   assert.equal(dumpContext.dumpContext, true);
+
+  const providerConfig = parseCliArgs(["provider", "--config"]);
+  assert.deepEqual(providerConfig.command, { name: "provider", args: [] });
+  assert.equal(providerConfig.providerConfig, true);
 
   const login = parseCliArgs(["login", "openai-codex"]);
   assert.deepEqual(login.command, { name: "login", args: ["openai-codex"] });
@@ -108,6 +113,7 @@ await runExtensionLifecycleAdapterSmoke();
 await runKeybindingsSmoke({ setupTmp, cleanup });
 await runPromptTemplatesSmoke({ setupTmp, cleanup });
 await runSettingsCommandSmoke({ setupTmp, cleanup });
+await runProviderConfigCommandSmoke({ setupTmp, cleanup });
 await runModelContextDumperSmoke({ setupTmp, cleanup });
 await runSessionNameCommandSmoke({ setupTmp, cleanup });
 await runShellScreenBufferSmoke();

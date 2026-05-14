@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { loadConfig } from "./loader.mjs";
 
-const WRITABLE_KEYS = new Set(["model", "provider"]);
+const WRITABLE_KEYS = new Set(["memoryRoot"]);
 const SCOPES = new Set(["global", "project"]);
 
 export function parseSettingsCommand(input) {
@@ -11,17 +11,17 @@ export function parseSettingsCommand(input) {
   const arg = input.slice("/settings".length).trim();
   if (!arg) return { type: "view" };
 
-  const setMatch = arg.match(/^set\s+(global|project)\s+(model|provider)\s+(.+)$/);
+  const setMatch = arg.match(/^set\s+(global|project)\s+(memoryRoot)\s+(.+)$/);
   if (setMatch) {
     return { type: "set", scope: setMatch[1], key: setMatch[2], value: setMatch[3].trim() };
   }
 
-  const unsetMatch = arg.match(/^unset\s+(global|project)\s+(model|provider)$/);
+  const unsetMatch = arg.match(/^unset\s+(global|project)\s+(memoryRoot)$/);
   if (unsetMatch) {
     return { type: "unset", scope: unsetMatch[1], key: unsetMatch[2] };
   }
 
-  return { type: "error", message: "Usage: /settings [set <global|project> <model|provider> <value> | unset <global|project> <model|provider>]" };
+  return { type: "error", message: "Usage: /settings [set <global|project> memoryRoot <value> | unset <global|project> memoryRoot]" };
 }
 
 export function handleSettingsCommand(command, { cwd = process.cwd(), homeDir = homedir() } = {}) {
@@ -54,17 +54,14 @@ export function formatSettingsView({ cwd = process.cwd(), homeDir = homedir() } 
   const merged = loadConfig(cwd, { homeDir });
   return [
     "Settings:",
-    `  merged.provider: ${merged.provider}`,
-    `  merged.model: ${merged.model}`,
+    `  configured.providers: ${Object.keys(merged.providers ?? {}).join(", ") || "(none)"}`,
     `  global: ${globalPath}`,
     ...formatScopeLines(globalSettings),
     `  project: ${projectPath}`,
     ...formatScopeLines(projectSettings),
     "Commands:",
-    "  /settings set project model <id>",
-    "  /settings set project provider <name>",
-    "  /settings unset project model",
-    "  /settings set global model <id>",
+    "  /settings set project memoryRoot <path>",
+    "  /settings unset project memoryRoot",
   ];
 }
 

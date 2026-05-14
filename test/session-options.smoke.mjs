@@ -9,7 +9,7 @@ export async function runSessionOptionsSmoke() {
     cwd: "D:/repo",
     provider: "test",
     modelId: "model",
-    modelRegistry: { find: (provider, modelId) => (provider === "test" && modelId === "model" ? model : null) },
+    modelRegistry: { find: (provider, modelId) => (provider === "test" && modelId === "model" ? model : null), getAvailable: () => [model] },
     engine: { cwd: "D:/repo" },
     ui: { editDiff: () => {} },
     memoryTools: [{ name: "remember" }],
@@ -18,6 +18,7 @@ export async function runSessionOptionsSmoke() {
   });
 
   assert.equal(options.model, model);
+  assert.deepEqual(options.scopedModels, [{ model }]);
   assert.equal(options.thinkingLevel, "medium");
   assert.ok(options.customTools.some((tool) => tool.name === "open_file"));
   assert.ok(options.customTools.some((tool) => tool.name === "shell_list"));

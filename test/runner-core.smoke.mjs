@@ -43,7 +43,7 @@ export async function runRunnerCoreSmoke() {
       skills: [],
       pins: [],
     }),
-    /No credentials configured for missing-provider-smoke\. Set MISSING_PROVIDER_SMOKE_API_KEY or run: march login missing-provider-smoke\./,
+    /No providers configured\. Run: march provider --config/,
   );
   console.log("  PASS");
 }

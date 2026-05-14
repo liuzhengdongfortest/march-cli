@@ -30,6 +30,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
     cycleModel: async () => ({ model: { id: "m2", provider: "test" }, thinkingLevel: "medium" }),
     getCurrentModel: () => ({ id: "m1", name: "Model One", provider: "test" }),
     getScopedModels: () => [{ model: { id: "m1", name: "Model One", provider: "test" } }],
+    getConfiguredProviders: () => ["deepseek", "openai"],
     setModel: async (model) => model,
     getExtensionDiagnostics: () => [{ type: "warning", message: "extension skipped" }],
     getExtensionLifecycleState: () => ({
@@ -158,10 +159,10 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(output.join("\n").includes("thinking: medium"));
   const model = await handleSlashCommand("/model", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(model.handled, true);
-  assert.ok(output.join("\n").includes("Model: m2 (test)"));
+  assert.ok(output.join("\n").includes("Use Ctrl+L to choose a model."));
   const indexedModel = await handleSlashCommand("/model 1", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(indexedModel.handled, true);
-  assert.ok(output.join("\n").includes("Model: Model One (test)"));
+  assert.ok(output.join("\n").includes("Use /model without arguments"));
   const session = await handleSlashCommand("/session", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(session.handled, true);
   assert.ok(output.join("\n").includes("messages: 1u + 1a + 0t = 2 total"));

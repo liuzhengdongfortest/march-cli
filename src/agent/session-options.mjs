@@ -21,7 +21,10 @@ export function resolveRunnerSessionOptions({
     throw new Error(`Runtime session cwd mismatch: engine=${engine.cwd}, session=${cwd}`);
   }
 
-  const model = modelRegistry.find(provider, modelId) ?? getModel(provider, modelId);
+  const availableModels = modelRegistry.getAvailable?.() ?? [];
+  const model = (provider && modelId ? modelRegistry.find(provider, modelId) : null)
+    ?? availableModels[0]
+    ?? (provider && modelId ? getModel(provider, modelId) : null);
   if (!model) throw new Error(`Model not found: ${provider}/${modelId}`);
 
   const customTools = createMarchCustomTools({ cwd, engine, ui, memoryTools, skillTools, shellRuntime, lspService, mcpTools, webTools, permissionController });
@@ -32,5 +35,6 @@ export function resolveRunnerSessionOptions({
     thinkingLevel: "medium",
     customTools,
     tools,
+    scopedModels: availableModels.map((model) => ({ model })),
   };
 }
