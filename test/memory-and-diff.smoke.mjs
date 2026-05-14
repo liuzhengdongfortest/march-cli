@@ -44,7 +44,7 @@ export async function runMemorySystemSmoke({ setupTmp, cleanup }) {
 
 export async function runDiffAndUiSmoke() {
   console.log("--- smoke: diff formatting ---");
-  const { formatDiff } = await import("../src/agent/tools.mjs");
+  const { formatDiff } = await import("../src/agent/file-edit-tool.mjs");
   const diff = formatDiff("a\nold\nc", "a\nnew\nc");
   assert.ok(diff.some((line) => line.type === "del" && line.text === "old"));
   assert.ok(diff.some((line) => line.type === "add" && line.text === "new"));

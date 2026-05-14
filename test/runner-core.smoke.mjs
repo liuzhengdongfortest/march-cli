@@ -3,10 +3,10 @@ import { strict as assert } from "node:assert";
 export async function runRunnerCoreSmoke() {
   console.log("--- smoke: March tool set ---");
   const { MARCH_BASE_TOOL_NAMES, createDefaultSessionManager, createRunner, installModelPayloadDumper, resolveRunnerSessionManager, syncEngineSessionState } = await import("../src/agent/runner.mjs");
-  const { createSessionBinding } = await import("../src/agent/session-binding.mjs");
+  const { createSessionBinding } = await import("../src/agent/session/session-binding.mjs");
   const { ContextEngine } = await import("../src/context/engine.mjs");
 
-  assert.deepEqual(MARCH_BASE_TOOL_NAMES, ["read", "bash", "edit", "write", "grep", "find", "ls"]);
+  assert.deepEqual(MARCH_BASE_TOOL_NAMES, ["read", "bash", "grep", "find", "ls"]);
   console.log("  PASS");
 
   console.log("--- smoke: runner session manager seam ---");

@@ -25,7 +25,7 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   assert.ok(ctx.includes("[runtime_status]"));
   assert.ok(ctx.includes("[recent_chat]"));
   assert.ok(ctx.includes("(no prior turns)"));
-  assert.ok(ctx.includes("Use write(path, content)"));
+  assert.ok(ctx.includes("Use edit_file for all file writes."));
   assert.ok(!ctx.includes("[injections]"));
   assert.ok(!ctx.includes("model: test"));
   assert.ok(!ctx.includes("thinking: medium"));

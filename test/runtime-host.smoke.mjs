@@ -3,7 +3,7 @@ import { strict as assert } from "node:assert";
 export async function runRuntimeHostSmoke() {
   console.log("--- smoke: runtime host rebind ---");
   const { createRuntimeHost } = await import("../src/agent/runtime/runtime-host.mjs");
-  const { createSessionBinding } = await import("../src/agent/session-binding.mjs");
+  const { createSessionBinding } = await import("../src/agent/session/session-binding.mjs");
 
   const calls = [];
   let rebindSession = null;

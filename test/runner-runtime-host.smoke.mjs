@@ -4,7 +4,7 @@ export async function runRunnerRuntimeHostSmoke() {
   console.log("--- smoke: runner runtime host composition ---");
   const { createRunner } = await import("../src/agent/runner.mjs");
   const { createRunnerRuntimeHost } = await import("../src/agent/runtime/runner-runtime-host.mjs");
-  const { createSessionBinding } = await import("../src/agent/session-binding.mjs");
+  const { createSessionBinding } = await import("../src/agent/session/session-binding.mjs");
 
   const calls = [];
   let rebindSession = null;

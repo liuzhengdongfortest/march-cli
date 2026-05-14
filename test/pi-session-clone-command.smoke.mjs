@@ -3,7 +3,7 @@ import { strict as assert } from "node:assert";
 export async function runPiSessionCloneCommandSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: pi session clone command handling ---");
   const { cloneCurrentPiSession } = await import("../src/agent/pi-session/pi-session-clone.mjs");
-  const { createSessionBinding } = await import("../src/agent/session-binding.mjs");
+  const { createSessionBinding } = await import("../src/agent/session/session-binding.mjs");
   const { clonePiSession, parseClonePiCommand } = await import("../src/cli/session/pi-session-clone-command.mjs");
   const { ContextEngine } = await import("../src/context/engine.mjs");
   const { loadPiSessionSidecar } = await import("../src/session/sidecar.mjs");

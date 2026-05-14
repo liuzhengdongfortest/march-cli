@@ -1,15 +1,13 @@
-import { writeFileSync, mkdirSync, existsSync } from "node:fs";
-import { dirname } from "node:path";
+import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import {
   createBashToolDefinition,
   defineTool,
 } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
+import { createEditFileTool } from "./file-edit-tool.mjs";
 import { createShellTools } from "../shell/tools.mjs";
 import { createWebTools } from "../web/tools.mjs";
-
-const LINE_RANGE_RE = /^(\d+)(?:\s*-\s*(\d+))?$/;
 
 export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], skillTools = [], shellRuntime = null, lspService = null, mcpTools = [], webTools = [], permissionController = null }) {
   const openFileTool = defineTool({
@@ -63,65 +61,7 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], skil
     },
   });
 
-  const editFileTool = defineTool({
-    name: "edit_file",
-    label: "Edit File",
-    description:
-      "Replace text in an open file. oldString can be a line range (\"55-64\" or \"55\") or exact text. File must be in [open_files]. Use write for new files.",
-    parameters: Type.Object({
-      path: Type.String({ description: "Absolute or relative path. Must be in [open_files]." }),
-      oldString: Type.String({
-        description: 'Line range ("55-64" or "55") or exact text to replace',
-      }),
-      newString: Type.String({ description: "Replacement text" }),
-    }),
-    execute: async (_toolCallId, params) => {
-      const absPath = engine.resolvePath(params.path);
-
-      if (!engine.isOpen(absPath)) {
-        return toolText(
-          `Error: ${absPath} is not in [open_files]. Use open_file first.`,
-          { error: true, requiresOpen: true },
-        );
-      }
-
-      let oldText = params.oldString;
-      const entry = engine.getOpenFile(absPath);
-      const lines = entry.content.split("\n");
-
-      const rangeMatch = oldText.trim().match(LINE_RANGE_RE);
-      if (rangeMatch && !entry.content.includes(oldText)) {
-        const startLine = parseInt(rangeMatch[1], 10);
-        const endLine = rangeMatch[2] ? parseInt(rangeMatch[2], 10) : startLine;
-        if (startLine < 1 || endLine > lines.length || startLine > endLine) {
-          return toolText(
-            `Error: line range ${startLine}-${endLine} out of bounds (file has ${lines.length} lines)`,
-            { error: true },
-          );
-        }
-        oldText = lines.slice(startLine - 1, endLine).join("\n");
-      }
-
-      if (!entry.content.includes(oldText)) {
-        return toolText(
-          `Error: oldString not found in ${absPath}. File may have changed — check [open_files] for current content.`,
-          { error: true },
-        );
-      }
-
-      const newContent = entry.content.replace(oldText, params.newString);
-      try {
-        mkdirSync(dirname(absPath), { recursive: true });
-        writeFileSync(absPath, newContent, "utf8");
-        engine.openFile(absPath);
-        lspService?.touchFile?.(absPath);
-        ui.editDiff(absPath, formatDiff(oldText, params.newString));
-        return toolText(`Edited ${absPath}`, { path: absPath });
-      } catch (err) {
-        return toolText(`Error writing ${absPath}: ${err.message}`, { error: true });
-      }
-    },
-  });
+  const editFileTool = createEditFileTool({ engine, ui, lspService });
 
   const platformTools = [];
   if (process.platform === "win32") {
@@ -194,49 +134,4 @@ function findPowerShell() {
 
 function toolText(text, details = {}) {
   return { content: [{ type: "text", text }], details };
-}
-
-export function formatDiff(oldText, newText) {
-  const oldLines = oldText.split("\n");
-  const newLines = newText.split("\n");
-
-  let prefix = 0;
-  while (prefix < oldLines.length && prefix < newLines.length && oldLines[prefix] === newLines[prefix]) {
-    prefix++;
-  }
-
-  let suffix = 0;
-  while (
-    suffix < oldLines.length - prefix &&
-    suffix < newLines.length - prefix &&
-    oldLines[oldLines.length - 1 - suffix] === newLines[newLines.length - 1 - suffix]
-  ) {
-    suffix++;
-  }
-
-  const ctx = 3;
-  const result = [];
-
-  const ctxStart = Math.max(0, prefix - ctx);
-  for (let i = ctxStart; i < prefix; i++) {
-    result.push({ type: "ctx", text: oldLines[i], lineNum: i + 1 });
-  }
-
-  const oldEnd = oldLines.length - suffix;
-  for (let i = prefix; i < oldEnd; i++) {
-    result.push({ type: "del", text: oldLines[i], lineNum: i + 1 });
-  }
-
-  const newEnd = newLines.length - suffix;
-  for (let i = prefix; i < newEnd; i++) {
-    result.push({ type: "add", text: newLines[i], lineNum: i + 1 });
-  }
-
-  const postStart = oldLines.length - suffix;
-  const postEnd = Math.min(oldLines.length, postStart + ctx);
-  for (let i = postStart; i < postEnd; i++) {
-    result.push({ type: "ctx", text: oldLines[i], lineNum: i + 1 });
-  }
-
-  return result;
 }
