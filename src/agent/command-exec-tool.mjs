@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { defineTool } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
 import { toolText } from "./tool-result.mjs";
+import { stripAnsi } from "../text/ansi.mjs";
 
 const OUTPUT_LIMIT = 64 * 1024;
 
@@ -35,8 +36,8 @@ export function executeCommand({ cwd, command, shell = "auto", timeout = 60, spa
     maxBuffer: OUTPUT_LIMIT,
   });
   if (result.error) return toolText(`Error: ${result.error.message}`, { error: true });
-  const stdout = String(result.stdout ?? "");
-  const stderr = String(result.stderr ?? "");
+  const stdout = stripAnsi(result.stdout ?? "");
+  const stderr = stripAnsi(result.stderr ?? "");
   const output = formatCommandOutput({ stdout, stderr, status: result.status });
   return toolText(output, {
     status: result.status,

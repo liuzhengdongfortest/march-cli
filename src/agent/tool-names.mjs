@@ -1,1 +1,1 @@
-export const MARCH_BASE_TOOL_NAMES = ["read", "grep", "ls"];
+export const MARCH_BASE_TOOL_NAMES = ["grep", "ls"];

@@ -1,3 +1,5 @@
+import { stripAnsi } from "../text/ansi.mjs";
+
 const MODEL_PAYLOAD_DUMPER_INSTALLED = Symbol("march.modelPayloadDumperInstalled");
 
 export function installModelPayloadDumper(session, modelContextDumper, getKind = () => "model", onModelPayload = null) {
@@ -99,17 +101,17 @@ function normalizePayload(payload) {
 }
 
 function formatMessageContent(content) {
-  if (typeof content === "string") return content;
+  if (typeof content === "string") return stripAnsi(content);
   if (Array.isArray(content)) return content.map(formatContentPart).join("\n");
-  return JSON.stringify(content, null, 2);
+  return stripAnsi(JSON.stringify(content, null, 2));
 }
 
 function formatContentPart(part) {
-  if (typeof part === "string") return part;
+  if (typeof part === "string") return stripAnsi(part);
   if (!part || typeof part !== "object") return String(part ?? "");
-  if (typeof part.text === "string") return part.text;
-  if (part.type) return `[${part.type}] ${JSON.stringify(part)}`;
-  return JSON.stringify(part);
+  if (typeof part.text === "string") return stripAnsi(part.text);
+  if (part.type) return stripAnsi(`[${part.type}] ${JSON.stringify(part)}`);
+  return stripAnsi(JSON.stringify(part));
 }
 
 function formatToolSummary(tool) {

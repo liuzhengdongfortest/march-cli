@@ -7,7 +7,7 @@ export async function runRunnerCoreSmoke() {
   const { createSessionBinding } = await import("../src/agent/session/session-binding.mjs");
   const { ContextEngine } = await import("../src/context/engine.mjs");
 
-  assert.deepEqual(MARCH_BASE_TOOL_NAMES, ["read", "grep", "ls"]);
+  assert.deepEqual(MARCH_BASE_TOOL_NAMES, ["grep", "ls"]);
   console.log("  PASS");
 
   console.log("--- smoke: runner session manager seam ---");
@@ -54,21 +54,28 @@ export async function runRunnerCoreSmoke() {
   assert.equal(dumps[0].metadata.payload, "provider_request");
   assert.ok(dumps[0].prompt.includes("# Messages"));
   assert.ok(dumps[0].prompt.includes("# Raw Payload"));
+  const toolDumps = [];
   const toolsAgent = {
     onPayload: async () => ({
-      messages: [{ role: "user", content: "hello" }],
+      messages: [{ role: "user", content: "\x1b[31mhello\x1b[0m" }],
       tools: [{ name: "read", description: "Read a file" }],
     }),
   };
   installModelPayloadDumper({ agent: toolsAgent }, {
     enabled: true,
-    dump: () => "request.md",
+    dump: (entry) => {
+      toolDumps.push(entry);
+      return "request.md";
+    },
     dumpSidecar: (entry) => sidecars.push(entry),
   }, () => "user");
   await toolsAgent.onPayload({ ignored: true }, { provider: "test", id: "model" });
+  assert.equal(toolDumps.length, 1);
+  assert.ok(toolDumps[0].prompt.includes("hello"));
+  assert.ok(!toolDumps[0].prompt.includes("\x1b["));
   assert.equal(sidecars.length, 2);
   assert.equal(sidecars[0].suffix, "payload");
-  assert.deepEqual(sidecars[0].value.messages, [{ role: "user", content: "hello" }]);
+  assert.deepEqual(sidecars[0].value.messages, [{ role: "user", content: "\x1b[31mhello\x1b[0m" }]);
   assert.equal(sidecars[1].suffix, "tools");
   assert.deepEqual(sidecars[1].value.tools, [{ name: "read", description: "Read a file" }]);
   assert.equal(sidecars[1].value.metadata.payload, "provider_tools");

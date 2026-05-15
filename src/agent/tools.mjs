@@ -5,6 +5,7 @@ import { createCommandExecTool } from "./command-exec-tool.mjs";
 import { createContextStatsTool } from "./context-stats-tool.mjs";
 import { createEditFileTool } from "./file-edit-tool.mjs";
 import { createFindTool } from "./find-tool.mjs";
+import { createReadFileTool } from "./read-file-tool.mjs";
 import { toolText } from "./tool-result.mjs";
 import { createShellTools } from "../shell/tools.mjs";
 import { createWebTools } from "../web/tools.mjs";
@@ -72,8 +73,10 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], skil
   const contextStatsTool = createContextStatsTool({ engine });
   const editFileTool = createEditFileTool({ engine, ui, lspService });
   const findTool = createFindTool({ cwd });
+  const readFileTool = createReadFileTool({ engine });
 
   const tools = [
+    readFileTool,
     openFileTool,
     closeFileTool,
     contextStatsTool,

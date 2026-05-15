@@ -25,6 +25,15 @@ export async function runCommandExecToolSmoke() {
   assert.equal(calls[0].options.cwd, "D:/repo");
   assert.equal(calls[0].options.timeout, 2000);
 
+  const colored = executeCommand({
+    cwd: "D:/repo",
+    command: "colored",
+    shell: "bash",
+    spawnSyncImpl: () => ({ status: 0, stdout: "\x1b[32mgreen\x1b[0m\n", stderr: "" }),
+  });
+  assert.equal(colored.content[0].text, "green");
+  assert.equal(colored.details.stdout, "green\n");
+
   const failed = executeCommand({
     cwd: "D:/repo",
     command: "bad",

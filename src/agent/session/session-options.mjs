@@ -28,7 +28,12 @@ export function resolveRunnerSessionOptions({
   if (!model) throw new Error(`Model not found: ${provider}/${modelId}`);
 
   const customTools = createMarchCustomTools({ cwd, engine, ui, memoryTools, skillTools, shellRuntime, lspService, mcpTools, webTools, permissionController });
-  const tools = [...MARCH_BASE_TOOL_NAMES, ...customTools.map((tool) => tool.name)];
+  const customToolNames = customTools.map((tool) => tool.name);
+  const tools = [
+    ...customToolNames.filter((name) => name === "read"),
+    ...MARCH_BASE_TOOL_NAMES,
+    ...customToolNames.filter((name) => name !== "read"),
+  ];
 
   return {
     model,
