@@ -16,9 +16,9 @@ export async function runStatusBarSmoke() {
   assert.equal(normalizeStatusText(""), "March");
   assert.equal(visibleWidth(padToWidth("abc", 8)), 8);
   assert.equal(clipToWidth("abcdef", 3), "abc");
-  const fitted = fitStatusText("git march-cli | gpt-5.4/openai-codex  think:medium | 10in/20out | pi:019e0ff8", 40);
-  assert.equal(visibleWidth(fitted), 40);
-  assert.ok(fitted.includes("pi:019e0ff8"));
+  const fitted = fitStatusText("Discuss | gpt-5.4·medium", 20);
+  assert.equal(visibleWidth(fitted), 20);
+  assert.ok(fitted.includes("gpt-5.4"));
   assert.ok(!fitted.includes("\x1b"));
 
   const statusBar = new StatusBar("git:main session:abc model:deepseek");
@@ -26,10 +26,10 @@ export async function runStatusBarSmoke() {
   assert.equal(visibleWidth(line), 16);
   assert.ok(line.includes("\x1b[48;5;236m"));
 
-  statusBar.setText("git march-cli | gpt-5.4/openai-codex  think:medium | 10in/20out | pi:019e0ff8");
+  statusBar.setText("Discuss | gpt-5.4·medium");
   const [narrow] = statusBar.render(40);
   assert.equal(visibleWidth(narrow), 40);
-  assert.ok(narrow.includes("pi:019e0ff8"));
+  assert.ok(narrow.includes("gpt-5.4"));
 
   statusBar.setText("next");
   assert.equal(visibleWidth(statusBar.render(8)[0]), 8);
@@ -67,10 +67,11 @@ export async function runStatusBarSmoke() {
   const plainStatusLine = stripAnsi(statusLine);
   assert.equal(seen.length, 1);
   assert.equal(seen[0], statusLine);
-  assert.ok(plainStatusLine.includes("pi:pi1"));
-  assert.ok(plainStatusLine.includes("3in/5out"));
+  assert.ok(plainStatusLine.includes("Do"));
+  assert.ok(plainStatusLine.includes("m1·medium"));
   assert.ok(plainStatusLine.includes(" | "));
-  assert.ok(plainStatusLine.includes("git "));
+  assert.equal(plainStatusLine.includes("git "), false);
+  assert.equal(plainStatusLine.includes("pi:"), false);
   console.log("  PASS");
 }
 

@@ -75,54 +75,19 @@ export function formatStatusLine({
 
 export function formatStatusBarLine({
   engine,
-  sessionState,
-  sessionStats = null,
-  sessionSource = "legacy",
-  extensionDiagnostics = [],
-  lifecycleState = null,
-  gitBranch = null,
   mode = MODES.DO,
 }) {
-  const statsSessionId = sessionStats?.sessionId ?? sessionState?.sessionId ?? "unknown";
-  const session = shortSessionId(statsSessionId);
   const model = engine.modelId || "model?";
-  const provider = engine.provider || "provider?";
-  const thinking = engine.thinkingLevel ? `think:${engine.thinkingLevel}` : null;
-  const tokenText = formatTokenSummary(sessionStats?.tokens);
-  const ext = formatExtensionDiagnosticSummary(extensionDiagnostics, lifecycleState);
-  const open = engine.openFiles?.size ?? 0;
-  const pins = engine.getPins?.().length ?? engine.pins?.size ?? 0;
-  const skills = engine.getSkills?.()?.length ?? 0;
+  const thinking = engine.thinkingLevel || "thinking?";
 
   const C = PREFIX; // foreground-only color prefixes (no reset)
   const DIM = C.brightBlack;
-  const ACC = C.cyan;
   const OK = "\x1b[32m";  // green, no reset
   const WARN = "\x1b[33m"; // yellow, no reset
   const modeSegment = `${mode === MODES.DISCUSS ? WARN : OK}${formatModeLabel(mode)}`;
+  const runtime = `${C.cyan}${model}${DIM}·${thinking}`;
 
-  const project = [
-    gitBranch ? `${DIM}git ${gitBranch}` : null,
-    engine.sessionName ? `${DIM}${engine.sessionName}` : null,
-  ].filter(Boolean).join(" ");
-
-  const runtime = [
-    `${ACC}${model}${DIM}/${provider}`,
-    thinking ? `${DIM}${thinking}` : null,
-  ].filter(Boolean).join(" ");
-
-  const extColor = ext === "ok" ? OK : WARN;
-  const context = [
-    tokenText ? `${DIM}${tokenText}` : null,
-    `${extColor}ext:${ext}`,
-    open > 0 ? `${DIM}open:${open}` : null,
-    pins > 0 ? `${DIM}pins:${pins}` : null,
-    skills > 0 ? `${ACC}skills:${skills}` : null,
-  ].filter(Boolean).join("  ");
-
-  const sessionSegment = `${DIM}${sessionSource}:${session}`;
-
-  const inner = [modeSegment, project, runtime, context, sessionSegment].filter(Boolean).join(` ${DIM}|${C.fg250} `);
+  const inner = [modeSegment, runtime].join(` ${DIM}|${C.fg250} `);
   return `${inner}${R}`;
 }
 
@@ -150,21 +115,6 @@ export function shortSessionId(sessionId) {
   const value = String(sessionId || "unknown");
   if (value === "unknown" || value.length <= 8) return value;
   return value.slice(0, 8);
-}
-
-function formatTokenSummary(tokens) {
-  if (!tokens) return null;
-  const input = tokens.input ?? 0;
-  const output = tokens.output ?? 0;
-  if (input === 0 && output === 0) return null;
-  return `${compactNumber(input)}in/${compactNumber(output)}out`;
-}
-
-function compactNumber(value) {
-  const number = Number(value) || 0;
-  if (Math.abs(number) >= 1000000) return `${(number / 1000000).toFixed(1).replace(/\.0$/, "")}m`;
-  if (Math.abs(number) >= 1000) return `${(number / 1000).toFixed(1).replace(/\.0$/, "")}k`;
-  return String(number);
 }
 
 function runGit(cwd, args) {
