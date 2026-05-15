@@ -27,5 +27,8 @@
     "@xterm/headless": "^5.5.0",
     "node-pty": "^1.1.0",
     "typebox": "^1.0.58"
+  },
+  "optionalDependencies": {
+    "@vscode/ripgrep": "^1.18.0"
   }
 }

@@ -14,6 +14,7 @@ import {
 } from "./markdown/markdown-format.mjs";
 import { formatRecallHints, scoreEntry, toHint } from "./markdown/markdown-recall.mjs";
 import { clearMarkdownMemoryIndex, loadMarkdownMemoryIndex, openMarkdownMemoryIndex, queryMarkdownMemoryIndex, replaceMarkdownMemoryIndex } from "./markdown/sqlite-index.mjs";
+import { resolveRipgrepCommand } from "./markdown/ripgrep.mjs";
 
 export { formatRecallHints } from "./markdown/markdown-recall.mjs";
 export { normalizeTags } from "./markdown/markdown-format.mjs";
@@ -150,7 +151,7 @@ export class MarkdownMemoryStore {
     const max = Math.max(1, Number(limit) || 20);
     const paths = this.#activeMemoryPaths();
     if (paths.length === 0) return [];
-    const rg = spawnSync("rg", ["--line-number", "--context", "1", "--color", "never", trimmed, ...paths], {
+    const rg = spawnSync(resolveRipgrepCommand(), ["--line-number", "--context", "1", "--color", "never", trimmed, ...paths], {
       encoding: "utf8",
       timeout: 10000,
       windowsHide: true,
