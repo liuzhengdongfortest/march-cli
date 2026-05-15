@@ -296,4 +296,4 @@ function resolveMemoryRoot(configured, stateRoot) {
   return resolve(stateRoot, "March Memories");
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) process.exit(await run(process.argv.slice(2)));
+if (process.argv[1] === fileURLToPath(import.meta.url)) process.exitCode = await run(process.argv.slice(2));

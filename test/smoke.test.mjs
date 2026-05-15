@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
@@ -120,6 +120,9 @@ function cleanup(dir) {
   const login = parseCliArgs(["login", "openai-codex"]);
   assert.deepEqual(login.command, { name: "login", args: ["openai-codex"] });
   assert.equal(login.prompt, "");
+
+  assert.ok(!readFileSync("bin/march.mjs", "utf8").includes("process.exit("));
+  assert.ok(!readFileSync("src/main.mjs", "utf8").includes("process.exit("));
 
   console.log("  PASS");
 }

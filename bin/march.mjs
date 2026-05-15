@@ -10,4 +10,4 @@ process.emitWarning = function filteredWarning(warning, ...args) {
 
 const { run } = await import("../src/main.mjs");
 const code = await run(process.argv.slice(2));
-process.exit(code);
+process.exitCode = code;
