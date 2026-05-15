@@ -18,13 +18,14 @@ export async function runShellToolsSmoke() {
       kill: () => onExit({ signal: "SIGTERM" }),
     }),
   });
-  const tools = createShellTools(runtime);
+  const tools = createShellTools(runtime, { platform: "linux" });
   const byName = Object.fromEntries(tools.map((tool) => [tool.name, tool]));
 
   assert.deepEqual(createShellTools(null), []);
   assert.ok(byName.terminal_spawn);
   assert.ok(byName.terminal_send);
   assert.ok(byName.terminal_send.parameters.properties.text.description.includes("Include a newline"));
+  assert.ok(byName.terminal_send.parameters.properties.text.description.includes("Windows PTYs use CRLF"));
   assert.ok(byName.terminal_send.parameters.properties.wait_for_idle.description.includes("does not press Enter automatically"));
   assert.equal(byName.terminal_run, undefined);
   assert.ok(byName.terminal_list);
@@ -76,6 +77,14 @@ export async function runShellToolsSmoke() {
   assert.ok(sentCtrlC.content[0].text.includes("Sent 1 chars"));
   assert.equal(writes.at(-1), "\x03");
 
+  const windowsTools = Object.fromEntries(createShellTools(runtime, { platform: "win32" }).map((tool) => [tool.name, tool]));
+  await windowsTools.terminal_send.execute("tc-win-enter", { shell_id: "sh1", text: "echo hello\n" });
+  assert.equal(writes.at(-1), "echo hello\r\n");
+  await windowsTools.terminal_send.execute("tc-win-literal-enter", { shell_id: "sh1", text: "echo hello\\n" });
+  assert.equal(writes.at(-1), "echo hello\r\n");
+  await windowsTools.terminal_send.execute("tc-win-key-enter", { shell_id: "sh1", key: "enter" });
+  assert.equal(writes.at(-1), "\r\n");
+
   const exec = await byName.terminal_send.execute("tc-exec", { shell_id: "sh1", text: "echo ok\n", wait_for_idle: true, timeout_ms: 1000, idle_ms: 20 });
   assert.ok(exec.content[0].text.includes("seen:echo ok"));
   assert.ok(exec.details.screenDelta.includes("seen:echo ok"));
@@ -106,6 +115,23 @@ export async function runShellToolsSmoke() {
   const deltaExec = await deltaTools.terminal_send.execute("tc-delta", { shell_id: "delta-sh", text: "cmd\n", wait_for_idle: true, timeout_ms: 1000, idle_ms: 20 });
   assert.equal(deltaExec.content[0].text, "screen-after");
   assert.equal(deltaExec.details.screenDelta, "full-screen screen-after");
+
+  const delayedRuntime = createShellRuntime({
+    idFactory: () => "delayed-sh",
+    createPty: ({ onData }) => ({
+      write: () => {
+        onData("slow-command\n");
+        setTimeout(() => onData("delayed-output\n"), 80);
+      },
+      resize: () => {},
+      kill: () => {},
+    }),
+  });
+  delayedRuntime.spawnShell({ name: "delayed" });
+  const delayedTools = Object.fromEntries(createShellTools(delayedRuntime, { platform: "linux" }).map((tool) => [tool.name, tool]));
+  const delayedExec = await delayedTools.terminal_send.execute("tc-delayed", { shell_id: "delayed-sh", text: "slow-command\n", wait_for_idle: true, timeout_ms: 1000, idle_ms: 20 });
+  assert.ok(delayedExec.content[0].text.includes("slow-command"));
+  assert.ok(delayedExec.content[0].text.includes("delayed-output"));
 
   const resize = await byName.terminal_resize.execute("tc-resize", { shell_id: "sh1", cols: 100, rows: 20 });
   assert.ok(resize.content[0].text.includes("100x20"));

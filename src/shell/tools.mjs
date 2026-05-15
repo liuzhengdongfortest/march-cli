@@ -2,7 +2,7 @@ import { defineTool } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
 import { toolText } from "../agent/tool-result.mjs";
 
-export function createShellTools(shellRuntime = null) {
+export function createShellTools(shellRuntime = null, { platform = process.platform } = {}) {
   if (!shellRuntime) return [];
 
   const terminalSpawn = defineTool({
@@ -35,24 +35,26 @@ export function createShellTools(shellRuntime = null) {
   const terminalSend = defineTool({
     name: "terminal_send",
     label: "Terminal Send",
-    description: "Send text or control sequences to a running interactive terminal. Set wait_for_idle=true after sending Enter when you need output.",
+    description: "Send text or control sequences to a running interactive terminal. Set wait_for_idle=true after sending Enter when you need output. Enter is converted for the current platform; Windows PTYs use CRLF.",
     parameters: Type.Object({
       shell_id: Type.String({ description: "Shell id returned by terminal_spawn or terminal_list" }),
-      text: Type.Optional(Type.String({ description: "Text to type into the terminal. Include a newline (\\n/\\r) or use key:\"enter\" to execute a command." })),
+      text: Type.Optional(Type.String({ description: "Text to type into the terminal. Include a newline (\\n/\\r) or use key:\"enter\" to execute a command. Newlines are converted to the platform Enter sequence; Windows PTYs use CRLF." })),
       key: Type.Optional(Type.String({ description: "Named control key to send: enter, ctrl_c, ctrl_d, ctrl_z, tab, escape, backspace" })),
       wait_for_idle: Type.Optional(Type.Boolean({ description: "Wait until terminal output becomes idle and return the output delta; does not press Enter automatically; default false" })),
       timeout_ms: Type.Optional(Type.Number({ description: "Maximum wait time when wait_for_idle=true, default 10000" })),
-      idle_ms: Type.Optional(Type.Number({ description: "Output idle time before returning when wait_for_idle=true, default 300" })),
+      idle_ms: Type.Optional(Type.Number({ description: "Output idle time before returning when wait_for_idle=true, default 1000 after Enter, otherwise 300" })),
     }),
     execute: async (_toolCallId, params) => {
       const before = params.wait_for_idle ? shellRuntime.snapshotShell(params.shell_id) : null;
-      const text = normalizeShellToolInput(params.text, params.key);
+      const text = normalizeShellToolInput(params.text, params.key, { platform });
       const result = shellRuntime.sendShell(params.shell_id, text);
       if (!result.ok) return toolText(`Error: ${result.error}`, { error: true, shell: result.shell });
       if (params.wait_for_idle) {
+        const submitted = text.includes("\r") || text.includes("\n");
         const idle = await waitForShellIdle(shellRuntime, params.shell_id, before, {
           timeoutMs: params.timeout_ms,
-          idleMs: params.idle_ms,
+          idleMs: params.idle_ms ?? (submitted ? 1000 : 300),
+          submittedText: submitted ? text : "",
         });
         const output = idle.delta || idle.screenDelta || idle.snapshot.screen?.plain || idle.snapshot.plain || "(no output)";
         return toolText(output, {
@@ -180,20 +182,20 @@ function normalizeNameConflict(value) {
   return "reuse";
 }
 
-function normalizeShellToolInput(text, key) {
-  if (key) return controlKeyToSequence(key);
+function normalizeShellToolInput(text, key, { platform = process.platform } = {}) {
+  if (key) return controlKeyToSequence(key, { platform });
+  const enter = enterSequenceForPlatform(platform);
+  const marker = "\0MARCH_ENTER\0";
   return String(text ?? "")
-    .replace(/\\r\\n/g, "\r")
-    .replace(/\\n/g, "\r")
-    .replace(/\\r/g, "\r")
-    .replace(/\r\n/g, "\r")
-    .replace(/\n/g, "\r");
+    .replace(/\\r\\n|\\n|\\r/g, marker)
+    .replace(/\r\n|\n|\r/g, marker)
+    .replaceAll(marker, enter);
 }
 
-function controlKeyToSequence(key) {
+function controlKeyToSequence(key, { platform = process.platform } = {}) {
   const normalized = String(key ?? "").trim().toLowerCase().replace(/[-+ ]/g, "_");
   const sequences = {
-    enter: "\r",
+    enter: enterSequenceForPlatform(platform),
     ctrl_c: "\x03",
     ctrl_d: "\x04",
     ctrl_z: "\x1a",
@@ -206,9 +208,12 @@ function controlKeyToSequence(key) {
   return sequences[normalized];
 }
 
-async function waitForShellIdle(shellRuntime, shellId, beforeSnapshot, { timeoutMs = 10000, idleMs = 300 } = {}) {
+async function waitForShellIdle(shellRuntime, shellId, beforeSnapshot, { timeoutMs = 10000, idleMs = 300, submittedText = "" } = {}) {
   const timeout = Math.max(1, Number(timeoutMs) || 10000);
   const idle = Math.max(1, Number(idleMs) || 300);
+  const submitted = Boolean(submittedText);
+  const echoOnlyGraceMs = Math.min(timeout, 2500);
+  const screenOnlyGraceMs = Math.min(timeout, 2500);
   const beforePlain = beforeSnapshot?.plain ?? "";
   const beforeScreenPlain = beforeSnapshot?.screen?.plain ?? "";
   const started = Date.now();
@@ -222,15 +227,21 @@ async function waitForShellIdle(shellRuntime, shellId, beforeSnapshot, { timeout
     snapshot = shellRuntime.snapshotShell(shellId);
     const plain = snapshot.plain;
     const screenPlain = snapshot.screen?.plain ?? "";
+    const hasPlainChange = plain !== beforePlain;
+    const hasScreenChange = screenPlain !== beforeScreenPlain;
+    const delta = plain.startsWith(beforePlain) ? plain.slice(beforePlain.length).replace(/^\n/, "") : plain;
+    const screenDelta = screenPlain.startsWith(beforeScreenPlain) ? screenPlain.slice(beforeScreenPlain.length).replace(/^\n/, "") : screenPlain;
     if (plain !== lastPlain || screenPlain !== lastScreenPlain) {
       lastPlain = plain;
       lastScreenPlain = screenPlain;
       lastChanged = Date.now();
     }
-    const timedOut = Date.now() - started >= timeout;
-    if (timedOut || ((plain !== beforePlain || screenPlain !== beforeScreenPlain) && Date.now() - lastChanged >= idle)) {
-      const delta = plain.startsWith(beforePlain) ? plain.slice(beforePlain.length).replace(/^\n/, "") : plain;
-      const screenDelta = screenPlain.startsWith(beforeScreenPlain) ? screenPlain.slice(beforeScreenPlain.length).replace(/^\n/, "") : screenPlain;
+    const elapsed = Date.now() - started;
+    const timedOut = elapsed >= timeout;
+    const echoOnly = submitted && hasPlainChange && isLikelyEchoOnlyDelta(delta, submittedText);
+    const changedEnough = hasPlainChange || (!submitted && hasScreenChange) || (submitted && hasScreenChange && elapsed >= screenOnlyGraceMs);
+    const echoOnlyAllowed = !echoOnly || elapsed >= echoOnlyGraceMs;
+    if (timedOut || (changedEnough && echoOnlyAllowed && Date.now() - lastChanged >= idle)) {
       return {
         shell: shellRuntime.getShell(shellId),
         snapshot,
@@ -244,4 +255,18 @@ async function waitForShellIdle(shellRuntime, shellId, beforeSnapshot, { timeout
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function enterSequenceForPlatform(platform) {
+  return platform === "win32" ? "\r\n" : "\r";
+}
+
+function isLikelyEchoOnlyDelta(delta, submittedText) {
+  const submitted = String(submittedText ?? "").replace(/[\r\n]+$/g, "").trim();
+  const lines = String(delta ?? "")
+    .split("\n")
+    .map((line) => line.replace(/\r/g, "").trim())
+    .filter(Boolean);
+  if (!submitted || lines.length !== 1) return false;
+  return lines[0] === submitted || lines[0].endsWith(submitted);
 }
