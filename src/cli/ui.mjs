@@ -213,12 +213,9 @@ export function createTuiUI({
 
     turnStart: () => {
       ensureStarted();
-      spinnerStatus.start("Thinking...");
     },
 
-    turnEnd: () => {
-      spinnerStatus.stop();
-    },
+    turnEnd: () => {},
 
     retryStart,
     retryEnd,
