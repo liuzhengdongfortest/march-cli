@@ -80,6 +80,7 @@ export async function runRunnerRuntimeHostSmoke() {
 
   const dumpEntries = [];
   const dumpSidecars = [];
+  const observedPayloads = [];
   const previousDumpDeepseekKey = process.env.DEEPSEEK_API_KEY;
   process.env.DEEPSEEK_API_KEY = previousDumpDeepseekKey || "test-key";
   const dumpRunner = await createRunner({
@@ -99,6 +100,7 @@ export async function runRunnerRuntimeHostSmoke() {
       },
       dumpSidecar: (entry) => dumpSidecars.push(entry),
     },
+    onModelPayload: (entry) => observedPayloads.push(entry),
     createRuntimeServices: async (options) => options,
     createRuntimeSessionFromServices: async () => ({
       session: {
@@ -122,6 +124,8 @@ export async function runRunnerRuntimeHostSmoke() {
   });
   await dumpRunner.session.agent.onPayload({ messages: [{ role: "user", content: "hello" }] }, dumpRunner.session.model);
   assert.equal(dumpEntries.length, 1);
+  assert.equal(observedPayloads.length, 1);
+  assert.equal(observedPayloads[0].estimatedTokens, 2);
   assert.equal(dumpEntries[0].kind, "model");
   assert.equal(dumpSidecars[0].suffix, "payload");
   await dumpRunner.dispose();

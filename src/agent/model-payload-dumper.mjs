@@ -1,20 +1,28 @@
 const MODEL_PAYLOAD_DUMPER_INSTALLED = Symbol("march.modelPayloadDumperInstalled");
 
-export function installModelPayloadDumper(session, modelContextDumper, getKind = () => "model") {
-  if (!modelContextDumper?.enabled || !session?.agent) return;
+export function installModelPayloadDumper(session, modelContextDumper, getKind = () => "model", onModelPayload = null) {
+  if ((!modelContextDumper?.enabled && typeof onModelPayload !== "function") || !session?.agent) return;
   const agent = session.agent;
   if (agent[MODEL_PAYLOAD_DUMPER_INSTALLED]) return;
   const originalOnPayload = agent.onPayload;
   agent.onPayload = async (payload, model) => {
     const replacement = originalOnPayload ? await originalOnPayload(payload, model) : undefined;
     const effectivePayload = replacement === undefined ? payload : replacement;
+    const kind = getKind();
+    onModelPayload?.({
+      payload: effectivePayload,
+      model,
+      kind,
+      estimatedTokens: estimateProviderPayloadTokens(effectivePayload),
+    });
+    if (!modelContextDumper?.enabled) return replacement;
     const metadata = {
       provider: model?.provider,
       model: model?.id,
       payload: "provider_request",
     };
     const requestPath = modelContextDumper.dump({
-      kind: getKind(),
+      kind,
       prompt: formatHumanPayload(effectivePayload),
       metadata,
     });
@@ -37,6 +45,21 @@ export function installModelPayloadDumper(session, modelContextDumper, getKind =
     return replacement;
   };
   agent[MODEL_PAYLOAD_DUMPER_INSTALLED] = true;
+}
+
+export function estimateProviderPayloadTokens(payload) {
+  const request = normalizePayload(payload);
+  let chars = 0;
+  for (const key of ["system", "systemPrompt", "instructions"]) {
+    chars += textChars(request[key]);
+  }
+  for (const key of ["messages", "input"]) {
+    if (Array.isArray(request[key])) chars += textChars(request[key]);
+  }
+  const tools = extractPayloadTools(payload);
+  if (tools?.length) chars += JSON.stringify(tools).length;
+  if (chars === 0) chars = JSON.stringify(request).length;
+  return Math.ceil(chars / 4);
 }
 
 function formatHumanPayload(payload) {
@@ -106,4 +129,16 @@ function extractPayloadTools(payload) {
     } catch {}
   }
   return null;
+}
+
+function textChars(value) {
+  if (value == null) return 0;
+  if (typeof value === "string") return value.length;
+  if (Array.isArray(value)) return value.reduce((sum, item) => sum + textChars(item), 0);
+  if (typeof value !== "object") return String(value).length;
+  if (typeof value.text === "string") return value.text.length;
+  if (typeof value.content === "string") return value.content.length;
+  if (Array.isArray(value.content)) return textChars(value.content);
+  if (value.type === "image" || value.type === "image_url") return 0;
+  return JSON.stringify(value).length;
 }

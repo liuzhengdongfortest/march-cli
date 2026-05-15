@@ -25,7 +25,7 @@ export { installModelPayloadDumper } from "./model-payload-dumper.mjs";
 export { createDefaultSessionManager, resolveRunnerSessionManager } from "./runner/runner-init.mjs";
 export { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
 
-export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, skills, skillPool = [], pins, memoryStore = null, memoryTools = [], skillTools = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, modelContextDumper = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices }) {
+export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, skills, skillPool = [], pins, memoryStore = null, memoryTools = [], skillTools = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, modelContextDumper = null, onModelPayload = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices }) {
   if (!useRuntimeHost && extensionPaths.length > 0) {
     throw new Error("--extension requires the default pi runtime host path; remove --legacy-sessions to load extensions");
   }
@@ -77,7 +77,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       permissionController,
       extensionPaths,
       onRebind: (session) => {
-        installModelPayloadDumper(session, modelContextDumper, () => currentModelCallKind);
+        installModelPayloadDumper(session, modelContextDumper, () => currentModelCallKind, onModelPayload);
         syncEngineSessionState(engine, session);
       },
       createAgentSessionRuntimeImpl,
@@ -110,7 +110,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       settingsManager,
     });
     sessionBinding.set(session);
-    installModelPayloadDumper(session, modelContextDumper, () => currentModelCallKind);
+    installModelPayloadDumper(session, modelContextDumper, () => currentModelCallKind, onModelPayload);
   }
 
   syncEngineSessionState(engine, sessionBinding.get());

@@ -4,6 +4,7 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: status command ---");
   const {
     formatExtensionDiagnosticSummary,
+    formatCompactTokenCount,
     formatStatusBarLine,
     formatStatusLine,
     getGitBranch,
@@ -29,6 +30,9 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
     [{ type: "warning", message: "a" }],
     { diagnostics: [{ type: "error", message: "b" }, { type: "warning", message: "c" }] },
   ), "1error,2warning");
+  assert.equal(formatCompactTokenCount(980), "980");
+  assert.equal(formatCompactTokenCount(11300), "11.3K");
+  assert.equal(formatCompactTokenCount(1200000), "1.2M");
   const line = formatStatusLine({
     engine,
     sessionState: { sessionId: "legacy1" },
@@ -75,6 +79,16 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
     gitBranch: "march-cli",
     mode: "discuss",
   })), "Discuss | deepseek-chat·high");
+  assert.equal(stripAnsi(formatStatusBarLine({
+    engine,
+    mode: "do",
+    contextTokens: 11300,
+  })), "Do | deepseek-chat·high | 11.3K");
+  assert.equal(stripAnsi(formatStatusBarLine({
+    engine,
+    mode: "do",
+    contextTokens: 11300,
+  })).includes("ctx:"), false);
   const branch = getGitBranch(dir);
   assert.ok(branch === null || typeof branch === "string");
   assert.deepEqual(statusCommand({

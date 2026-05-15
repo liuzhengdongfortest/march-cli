@@ -3,6 +3,7 @@ import { strict as assert } from "node:assert";
 export async function runRunnerCoreSmoke() {
   console.log("--- smoke: March tool set ---");
   const { MARCH_BASE_TOOL_NAMES, createDefaultSessionManager, createRunner, installModelPayloadDumper, resolveRunnerSessionManager, syncEngineSessionState } = await import("../src/agent/runner.mjs");
+  const { estimateProviderPayloadTokens } = await import("../src/agent/model-payload-dumper.mjs");
   const { createSessionBinding } = await import("../src/agent/session/session-binding.mjs");
   const { ContextEngine } = await import("../src/context/engine.mjs");
 
@@ -34,16 +35,20 @@ export async function runRunnerCoreSmoke() {
 
   console.log("--- smoke: model payload dumper ---");
   const dumps = [];
+  const observed = [];
   const agent = {
     onPayload: async () => ({ sent: "replacement" }),
   };
   installModelPayloadDumper({ agent }, {
     enabled: true,
     dump: (entry) => dumps.push(entry),
-  }, () => "summary");
+  }, () => "summary", (entry) => observed.push(entry));
   const sidecars = [];
   const replacement = await agent.onPayload({ sent: "original", tools: [{ name: "edit_file" }] }, { provider: "deepseek", id: "deepseek-v4-pro" });
   assert.deepEqual(replacement, { sent: "replacement" });
+  assert.equal(observed.length, 1);
+  assert.equal(observed[0].kind, "summary");
+  assert.equal(observed[0].estimatedTokens, estimateProviderPayloadTokens({ sent: "replacement" }));
   assert.equal(dumps.length, 1);
   assert.equal(dumps[0].kind, "summary");
   assert.equal(dumps[0].metadata.payload, "provider_request");
@@ -67,6 +72,12 @@ export async function runRunnerCoreSmoke() {
   assert.equal(sidecars[1].suffix, "tools");
   assert.deepEqual(sidecars[1].value.tools, [{ name: "read", description: "Read a file" }]);
   assert.equal(sidecars[1].value.metadata.payload, "provider_tools");
+  const observerOnly = [];
+  const observerAgent = { onPayload: null };
+  installModelPayloadDumper({ agent: observerAgent }, { enabled: false }, () => "user", (entry) => observerOnly.push(entry));
+  await observerAgent.onPayload({ messages: [{ role: "user", content: [{ type: "text", text: "hello world" }] }] }, { provider: "test", id: "model" });
+  assert.equal(observerOnly.length, 1);
+  assert.equal(observerOnly[0].estimatedTokens, 3);
   console.log("  PASS");
 
   console.log("--- smoke: runner missing credentials message ---");

@@ -162,6 +162,7 @@ export async function run(argv) {
 
   // Esc to abort current turn
   let turnRunning = false;
+  let refreshStatusBar = null;
 
   const runner = await createRunner({
     cwd,
@@ -196,9 +197,12 @@ export async function run(argv) {
     authStorage: authConfig.authStorage,
     permissionController,
     modelContextDumper,
+    onModelPayload: ({ estimatedTokens }) => {
+      refreshStatusBar?.({ contextTokens: estimatedTokens });
+    },
   });
 
-  const refreshStatusBar = createStatusLineUpdater({
+  refreshStatusBar = createStatusLineUpdater({
     ui,
     runner,
     sessionState,

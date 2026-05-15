@@ -63,15 +63,18 @@ export async function runStatusBarSmoke() {
     sessionState: { sessionId: "legacy1" },
     sessionSource: "pi",
   });
-  const statusLine = update();
+  const statusLine = update({ contextTokens: 11300 });
   const plainStatusLine = stripAnsi(statusLine);
   assert.equal(seen.length, 1);
   assert.equal(seen[0], statusLine);
   assert.ok(plainStatusLine.includes("Do"));
   assert.ok(plainStatusLine.includes("m1·medium"));
+  assert.ok(plainStatusLine.includes("11.3K"));
+  assert.equal(plainStatusLine.includes("ctx:"), false);
   assert.ok(plainStatusLine.includes(" | "));
   assert.equal(plainStatusLine.includes("git "), false);
   assert.equal(plainStatusLine.includes("pi:"), false);
+  assert.ok(stripAnsi(update()).includes("11.3K"));
   console.log("  PASS");
 }
 

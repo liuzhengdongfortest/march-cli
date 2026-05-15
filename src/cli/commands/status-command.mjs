@@ -29,6 +29,7 @@ export function statusBarLine({
   lifecycleState = null,
   gitBranch = getGitBranch(runner.engine.cwd),
   mode = MODES.DO,
+  contextTokens = null,
 }) {
   return formatStatusBarLine({
     engine: runner.engine,
@@ -39,6 +40,7 @@ export function statusBarLine({
     lifecycleState,
     gitBranch,
     mode,
+    contextTokens,
   });
 }
 
@@ -76,6 +78,7 @@ export function formatStatusLine({
 export function formatStatusBarLine({
   engine,
   mode = MODES.DO,
+  contextTokens = null,
 }) {
   const model = engine.modelId || "model?";
   const thinking = engine.thinkingLevel || "thinking?";
@@ -86,9 +89,20 @@ export function formatStatusBarLine({
   const WARN = "\x1b[33m"; // yellow, no reset
   const modeSegment = `${mode === MODES.DISCUSS ? WARN : OK}${formatModeLabel(mode)}`;
   const runtime = `${C.cyan}${model}${DIM}·${thinking}`;
+  const segments = [modeSegment, runtime];
+  const compactTokens = formatCompactTokenCount(contextTokens);
+  if (compactTokens) segments.push(`${C.fg250}${compactTokens}`);
 
-  const inner = [modeSegment, runtime].join(` ${DIM}|${C.fg250} `);
+  const inner = segments.join(` ${DIM}|${C.fg250} `);
   return `${inner}${R}`;
+}
+
+export function formatCompactTokenCount(tokens) {
+  const value = Number(tokens);
+  if (!Number.isFinite(value) || value <= 0) return "";
+  if (value < 1000) return String(Math.ceil(value));
+  if (value < 1000000) return `${formatOneDecimal(value / 1000)}K`;
+  return `${formatOneDecimal(value / 1000000)}M`;
 }
 
 export function formatExtensionDiagnosticSummary(extensionDiagnostics = [], lifecycleState = null) {
@@ -125,4 +139,9 @@ function runGit(cwd, args) {
   });
   if (result.status !== 0) return null;
   return result.stdout.trim() || null;
+}
+
+function formatOneDecimal(value) {
+  const rounded = Math.round(value * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
 }
