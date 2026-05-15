@@ -24,11 +24,9 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
       getPins: () => [],
       setSessionName(name) { this.sessionName = name; },
     },
-    cycleThinkingLevel: () => "high",
     getAvailableThinkingLevels: () => ["off", "medium", "high"],
     getThinkingLevel: () => "high",
     setThinkingLevel: (level) => level,
-    cycleModel: async () => ({ model: { id: "m2", provider: "test" }, thinkingLevel: "medium" }),
     getCurrentModel: () => ({ id: "m1", name: "Model One", provider: "test" }),
     getScopedModels: () => [{ model: { id: "m1", name: "Model One", provider: "test" } }],
     getConfiguredProviders: () => ["deepseek", "openai"],
@@ -169,8 +167,12 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   const indexedThinking = await handleSlashCommand("/thinking 2", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(indexedThinking.handled, true);
   assert.ok(output.join("\n").includes("thinking: medium"));
+  ui.selectList = async ({ items }) => items[0];
+  const selectedThinking = await handleSlashCommand("/thinking", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
+  assert.equal(selectedThinking.handled, true);
+  assert.ok(output.join("\n").includes("thinking: off"));
   ui.selectList = async ({ items, anchor }) => {
-    assert.equal(anchor, "bottom-left");
+    assert.equal(anchor, undefined);
     return items[0];
   };
   const model = await handleSlashCommand("/model", { ui, runner, sessionState, sessionsRoot, projectMarchDir, configHomeDir: dir });

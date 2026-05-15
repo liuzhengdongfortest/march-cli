@@ -21,7 +21,7 @@ export const KEYBINDING_ACTIONS = Object.freeze({
   abort: "Abort current turn; cancel retry wait",
   interrupt: "Abort current turn or exit when idle",
   toggleMode: "Toggle Do/Discuss mode",
-  cycleThinking: "Cycle thinking level",
+  cycleThinking: "Open thinking selector",
   thinkingSelector: "Open thinking selector",
   modelSelector: "Open model selector",
   externalEditor: "Open external editor ($VISUAL or $EDITOR)",

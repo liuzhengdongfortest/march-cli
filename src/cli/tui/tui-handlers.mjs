@@ -29,44 +29,38 @@ export function wireTuiHandlers({
     ui.requestExit?.();
   });
 
-  const cycleThinkingLevel = () => {
-    const level = runner.cycleThinkingLevel();
-    if (level) {
-      ui.writeln(brightBlack(`● thinking: ${level}`));
+  const selectThinkingLevel = async () => {
+    try {
+      const levels = runner.getAvailableThinkingLevels?.() || [];
+      if (!ui.selectList || levels.length === 0) {
+        ui.writeln(brightBlack(`● thinking: no selector available`));
+        return;
+      }
+      const current = runner.getThinkingLevel?.();
+      const selectedIndex = Math.max(0, levels.indexOf(current));
+      const item = await ui.selectList({
+        items: buildThinkingSelectItems(levels, current),
+        selectedIndex,
+        width: 48,
+      });
+      if (!item) {
+        ui.writeln(brightBlack(`● thinking: unchanged`));
+        return;
+      }
+      ui.writeln(brightBlack(`● thinking: ${runner.setThinkingLevel(item.level)}`));
       refreshStatusBar();
+    } catch (err) {
+      ui.writeln(`Error: ${err.message}`);
     }
   };
 
-  ui.setShiftTabHandler(cycleThinkingLevel);
+  ui.setShiftTabHandler(selectThinkingLevel);
   ui.setToggleModeHandler?.(() => {
     const mode = modeState?.toggle?.();
     if (!mode) return;
     refreshStatusBar();
   });
-  ui.setCtrlTHandler(async () => {
-    try {
-      const levels = runner.getAvailableThinkingLevels?.() || [];
-      if (ui.selectList && levels.length > 0) {
-        const current = runner.getThinkingLevel?.();
-        const selectedIndex = Math.max(0, levels.indexOf(current));
-        const item = await ui.selectList({
-          items: buildThinkingSelectItems(levels, current),
-          selectedIndex,
-          width: 48,
-        });
-        if (!item) {
-          ui.writeln(brightBlack(`● thinking: unchanged`));
-          return;
-        }
-        ui.writeln(brightBlack(`● thinking: ${runner.setThinkingLevel(item.level)}`));
-        refreshStatusBar();
-        return;
-      }
-      cycleThinkingLevel();
-    } catch (err) {
-      ui.writeln(`Error: ${err.message}`);
-    }
-  });
+  ui.setCtrlTHandler(selectThinkingLevel);
 
   ui.setCtrlLHandler(async () => {
     try {
@@ -80,7 +74,6 @@ export function wireTuiHandlers({
           items: buildModelSelectItems({ current, scopedModels }),
           selectedIndex,
           width: 72,
-          anchor: "bottom-left",
         });
         if (!item) {
           ui.writeln(brightBlack(`● model: unchanged`));
@@ -93,15 +86,7 @@ export function wireTuiHandlers({
         refreshStatusBar();
         return;
       }
-      const result = await runner.cycleModel();
-      if (result) {
-        persistModelSelection(result.model, { configHomeDir });
-        const name = result.model.name || result.model.id;
-        ui.writeln(brightBlack(`● model: ${name} (${result.model.provider})  thinking: ${result.thinkingLevel}`));
-        refreshStatusBar();
-      } else {
-        ui.writeln(brightBlack(`● model: only one available`));
-      }
+      ui.writeln(brightBlack(`● model: no selector available`));
     } catch (err) {
       ui.writeln(`Error: ${err.message}`);
     }

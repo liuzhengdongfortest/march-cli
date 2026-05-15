@@ -102,7 +102,7 @@ export async function handleSlashCommand(trimmed, {
 
   const thinkingCommand = parseThinkingCommand(trimmed);
   if (thinkingCommand.type !== "none") {
-    for (const line of handleThinkingCommand(thinkingCommand, { runner })) ui.writeln(line);
+    for (const line of await handleThinkingCommand(thinkingCommand, { runner, ui })) ui.writeln(line);
     return { handled: true };
   }
 

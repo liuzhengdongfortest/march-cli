@@ -10,13 +10,6 @@ export function parseModelCommand(input) {
   return { type: "error", message: "Use /model without arguments or Ctrl+L to choose a model." };
 }
 
-export async function cycleModel({ runner }) {
-  const result = await runner.cycleModel();
-  if (!result) return "(only one model available)";
-  const name = result.model.name || result.model.id;
-  return `Model: ${name} (${result.model.provider})  thinking: ${result.thinkingLevel}`;
-}
-
 export async function selectModelByIndex(index, { runner }) {
   const scopedModels = runner.getScopedModels?.() || [];
   if (scopedModels.length === 0) return "(no available models - run `march provider --config`)";
@@ -48,7 +41,6 @@ export async function handleModelCommand(parsed, { runner, ui = null, configHome
       items: buildModelSelectItems({ current, scopedModels }),
       selectedIndex,
       width: 72,
-      anchor: "bottom-left",
     });
     if (!item) return "Model unchanged.";
     const model = await runner.setModel(item.model);

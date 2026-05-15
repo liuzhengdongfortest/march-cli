@@ -26,7 +26,6 @@ export async function runModelCommandSmoke() {
   console.log("--- smoke: model command handling ---");
   const {
     buildModelSelectItems,
-    cycleModel,
     formatModelsList,
     handleModelCommand,
     listModels,
@@ -61,7 +60,6 @@ export async function runModelCommandSmoke() {
 
   let selectedModel = null;
   const runner = {
-    cycleModel: async () => ({ model: models[1].model, thinkingLevel: "high" }),
     getCurrentModel: () => models[0].model,
     getScopedModels: () => models,
     setModel: async (model) => {
@@ -69,14 +67,13 @@ export async function runModelCommandSmoke() {
       return model;
     },
   };
-  assert.equal(await cycleModel({ runner }), "Model: b (other)  thinking: high");
   assert.equal(await selectModelByIndex(2, { runner }), "Model: b (other)");
   assert.equal(selectedModel.id, "b");
   assert.equal(await selectModelByIndex(3, { runner }), "Error: model index out of range: 3");
   try {
     assert.equal(await handleModelCommand({ type: "select-interactive" }, { runner }), "Use Ctrl+L to choose a model.");
     assert.equal(await handleModelCommand({ type: "select-interactive" }, { runner, ui: { selectList: async ({ items, anchor }) => {
-      assert.equal(anchor, "bottom-left");
+      assert.equal(anchor, undefined);
       return items[1];
     } }, configHomeDir }), "Model: b (other)");
     const configPath = join(configHomeDir, ".march", "config.json");

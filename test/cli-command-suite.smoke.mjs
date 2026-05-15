@@ -87,7 +87,7 @@ async function runThinkingCommandHandlingSmoke() {
   } = await import("../src/cli/commands/thinking-command.mjs");
 
   assert.deepEqual(parseThinkingCommand("hello"), { type: "none" });
-  assert.deepEqual(parseThinkingCommand("/thinking"), { type: "cycle" });
+  assert.deepEqual(parseThinkingCommand("/thinking"), { type: "select-interactive" });
   assert.deepEqual(parseThinkingCommand("/thinking list"), { type: "list" });
   assert.deepEqual(parseThinkingCommand("/thinking high"), { type: "set", level: "high" });
   assert.deepEqual(parseThinkingCommand("/thinking 2"), { type: "select", index: 2 });
@@ -104,10 +104,6 @@ async function runThinkingCommandHandlingSmoke() {
 
   let level = "medium";
   const runner = {
-    cycleThinkingLevel: () => {
-      level = "high";
-      return level;
-    },
     getAvailableThinkingLevels: () => ["off", "medium", "high"],
     getThinkingLevel: () => level,
     setThinkingLevel: (next) => {
@@ -115,11 +111,12 @@ async function runThinkingCommandHandlingSmoke() {
       return level;
     },
   };
-  assert.deepEqual(handleThinkingCommand({ type: "cycle" }, { runner }), ["thinking: high"]);
+  assert.deepEqual(await handleThinkingCommand({ type: "select-interactive" }, { runner }), ["Use /thinking list or run in TUI to choose a thinking level."]);
+  assert.deepEqual(await handleThinkingCommand({ type: "select-interactive" }, { runner, ui: { selectList: async ({ items }) => items[0] } }), ["thinking: off"]);
   assert.equal(selectThinkingByIndex(2, { runner }), "thinking: medium");
   assert.equal(selectThinkingByIndex(4, { runner }), "Error: thinking index out of range: 4");
-  assert.deepEqual(handleThinkingCommand({ type: "set", level: "off" }, { runner }), ["thinking: off"]);
-  assert.deepEqual(handleThinkingCommand({ type: "list" }, { runner }), [
+  assert.deepEqual(await handleThinkingCommand({ type: "set", level: "off" }, { runner }), ["thinking: off"]);
+  assert.deepEqual(await handleThinkingCommand({ type: "list" }, { runner }), [
     "* 1. off",
     "  2. medium",
     "  3. high",

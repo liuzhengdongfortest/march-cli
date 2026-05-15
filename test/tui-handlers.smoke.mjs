@@ -24,7 +24,6 @@ export async function runTuiHandlersSmoke() {
   };
   const runner = {
     abort: () => calls.push(["abort"]),
-    cycleThinkingLevel: () => "high",
     getAvailableThinkingLevels: () => ["off", "medium", "high"],
     getThinkingLevel: () => "medium",
     setThinkingLevel: (level) => level,
@@ -34,7 +33,6 @@ export async function runTuiHandlersSmoke() {
     ],
     getCurrentModel: () => ({ id: "a", provider: "p" }),
     setModel: async (model) => model,
-    cycleModel: async () => ({ model: { id: "fallback", provider: "p" }, thinkingLevel: "medium" }),
     getSessionStats: () => ({ sessionId: "runner-session" }),
   };
   const modeState = {
@@ -69,7 +67,8 @@ export async function runTuiHandlersSmoke() {
   handlers.ctrlC();
   assert.deepEqual(calls.filter(([type]) => type === "abort").length, 2);
 
-  handlers.shiftTab();
+  ui.selectList = async ({ items }) => items[2];
+  await handlers.shiftTab();
   assert.ok(calls.some(([type, line]) => type === "writeln" && line.includes("thinking: high")));
   assert.equal(refreshCount, 1);
 
@@ -85,7 +84,7 @@ export async function runTuiHandlersSmoke() {
   assert.equal(refreshCount, 3);
 
   ui.selectList = async ({ items, anchor }) => {
-    assert.equal(anchor, "bottom-left");
+    assert.equal(anchor, undefined);
     return items[1];
   };
   await handlers.ctrlL();
@@ -97,10 +96,10 @@ export async function runTuiHandlersSmoke() {
 
   runner.getScopedModels = () => [];
   await handlers.ctrlL();
-  assert.ok(calls.some(([type, line]) => type === "writeln" && line.includes("model: fallback (p)")));
-  assert.equal(refreshCount, 5);
+  assert.ok(calls.some(([type, line]) => type === "writeln" && line.includes("model: no selector available")));
+  assert.equal(refreshCount, 4);
   const fallbackConfig = JSON.parse(readFileSync(join(configHomeDir, ".march", "config.json"), "utf8"));
-  assert.equal(fallbackConfig.model, "fallback");
+  assert.equal(fallbackConfig.model, "b");
 
   handlers.pasteImage();
   assert.equal(pasteArgs.projectMarchDir, "D:/repo/.march");

@@ -7,7 +7,7 @@ export function parseThinkingCommand(input) {
     return { type: "none" };
   }
   const arg = input.slice("/thinking".length).trim();
-  if (!arg) return { type: "cycle" };
+  if (!arg) return { type: "select-interactive" };
   if (arg === "list") return { type: "list" };
   const index = Number(arg);
   if (Number.isInteger(index) && index > 0) return { type: "select", index };
@@ -44,11 +44,10 @@ export function selectThinkingByIndex(index, { runner }) {
   return `thinking: ${runner.setThinkingLevel(level)}`;
 }
 
-export function handleThinkingCommand(parsed, { runner }) {
-  if (parsed.type === "cycle") {
-    const level = runner.cycleThinkingLevel();
-    if (!level) return ["thinking: no available levels"];
-    return [`thinking: ${level}`];
+export async function handleThinkingCommand(parsed, { runner, ui = null } = {}) {
+  if (parsed.type === "select-interactive") {
+    if (ui?.selectList) return [await selectThinkingInteractively({ runner, ui })];
+    return ["Use /thinking list or run in TUI to choose a thinking level."];
   }
   if (parsed.type === "list") {
     return formatThinkingLevels(
@@ -63,4 +62,18 @@ export function handleThinkingCommand(parsed, { runner }) {
   }
   if (parsed.type === "error") return [`Error: ${parsed.message}`];
   return [];
+}
+
+async function selectThinkingInteractively({ runner, ui }) {
+  const levels = runner.getAvailableThinkingLevels?.() || THINKING_LEVELS;
+  if (levels.length === 0) return "thinking: no available levels";
+  const current = runner.getThinkingLevel?.();
+  const selectedIndex = Math.max(0, levels.indexOf(current));
+  const item = await ui.selectList({
+    items: buildThinkingSelectItems(levels, current),
+    selectedIndex,
+    width: 48,
+  });
+  if (!item) return "thinking: unchanged";
+  return `thinking: ${runner.setThinkingLevel(item.level)}`;
 }
