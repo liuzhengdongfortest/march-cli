@@ -99,11 +99,16 @@ function formatHumanPayload(payload) {
   const request = normalizePayload(payload);
   const lines = ["# Messages", ""];
   const messages = Array.isArray(request.messages) ? request.messages : [];
+  const toolCalls = collectToolCalls(messages);
   if (messages.length === 0) {
     lines.push("(no messages found)", "");
   } else {
     for (const message of messages) {
-      lines.push(`## ${message.role ?? "message"}`, "", formatMessageContent(message.content), "");
+      lines.push(formatMessageHeading(message, toolCalls), "", formatMessageContent(message.content));
+      if (Array.isArray(message.tool_calls) && message.tool_calls.length > 0) {
+        lines.push("", ...message.tool_calls.map(formatToolCallLine));
+      }
+      lines.push("");
     }
   }
 
@@ -117,6 +122,36 @@ function formatHumanPayload(payload) {
   lines.push("# Raw Payload", "", "See the sibling `*-payload.json` file for the exact provider request.");
   if (tools?.length) lines.push("See the sibling `*-tools.json` file for the complete tool schema.");
   return lines.join("\n");
+}
+
+function collectToolCalls(messages) {
+  const calls = new Map();
+  for (const message of messages) {
+    if (!Array.isArray(message?.tool_calls)) continue;
+    for (const call of message.tool_calls) {
+      if (call?.id) calls.set(call.id, call);
+    }
+  }
+  return calls;
+}
+
+function formatMessageHeading(message, toolCalls) {
+  if (message?.role !== "tool") return `## ${message?.role ?? "message"}`;
+  const call = toolCalls.get(message.tool_call_id);
+  const name = call?.function?.name ?? message.name;
+  return name ? `## tool ${name}` : "## tool";
+}
+
+function formatToolCallLine(call) {
+  const name = call?.function?.name ?? call?.name ?? "unnamed_tool";
+  const args = call?.function?.arguments ?? call?.arguments ?? "";
+  return `tool_call ${name}(${truncateOneLine(args, 240)})`;
+}
+
+function truncateOneLine(text, maxLen) {
+  const value = stripAnsi(String(text ?? "")).replace(/[\r\n]+/g, " ").trim();
+  if (value.length <= maxLen) return value;
+  return `${value.slice(0, maxLen - 15)}...(truncated)`;
 }
 
 function normalizePayload(payload) {

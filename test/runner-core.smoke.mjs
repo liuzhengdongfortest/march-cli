@@ -57,7 +57,15 @@ export async function runRunnerCoreSmoke() {
   const toolDumps = [];
   const toolsAgent = {
     onPayload: async () => ({
-      messages: [{ role: "user", content: "\x1b[31mhello\x1b[0m" }],
+      messages: [
+        { role: "user", content: "\x1b[31mhello\x1b[0m" },
+        {
+          role: "assistant",
+          content: null,
+          tool_calls: [{ id: "call_1", type: "function", function: { name: "close_file", arguments: '{"path":"src/main.mjs"}' } }],
+        },
+        { role: "tool", content: "Closed main.mjs", tool_call_id: "call_1" },
+      ],
       tools: [{ name: "read", description: "Read a file" }],
     }),
   };
@@ -73,9 +81,11 @@ export async function runRunnerCoreSmoke() {
   assert.equal(toolDumps.length, 1);
   assert.ok(toolDumps[0].prompt.includes("hello"));
   assert.ok(!toolDumps[0].prompt.includes("\x1b["));
+  assert.ok(toolDumps[0].prompt.includes('tool_call close_file({"path":"src/main.mjs"})'));
+  assert.ok(toolDumps[0].prompt.includes("## tool close_file"));
   assert.equal(sidecars.length, 2);
   assert.equal(sidecars[0].suffix, "payload");
-  assert.deepEqual(sidecars[0].value.messages, [{ role: "user", content: "\x1b[31mhello\x1b[0m" }]);
+  assert.equal(sidecars[0].value.messages[0].content, "\x1b[31mhello\x1b[0m");
   assert.equal(sidecars[1].suffix, "tools");
   assert.deepEqual(sidecars[1].value.tools, [{ name: "read", description: "Read a file" }]);
   assert.equal(sidecars[1].value.metadata.payload, "provider_tools");
