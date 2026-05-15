@@ -245,6 +245,15 @@ await runTuiAutocompleteEscSmoke({ setupTmp, cleanup });
   const plain = new OutputBuffer();
   plain.write("### plain `code`");
   assert.equal(plain.render(80).join("\n"), "### plain `code`");
+
+  const dimmed = new OutputBuffer();
+  dimmed.write("\x1b[2mabcdefghij\x1b[0m");
+  const dimmedLines = dimmed.render(5);
+  assert.equal(dimmedLines.length, 2);
+  assert.ok(dimmedLines[0].startsWith("\x1b[2m"));
+  assert.ok(dimmedLines[0].endsWith("\x1b[0m"));
+  assert.ok(dimmedLines[1].startsWith("\x1b[2m"));
+  assert.ok(dimmedLines[1].endsWith("\x1b[0m"));
   console.log("  PASS");
 }
 
