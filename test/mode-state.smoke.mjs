@@ -39,7 +39,8 @@ export async function runModeStateSmoke() {
   });
 
   assert.equal(userMessages[0], "please inspect");
-  assert.ok(prompts[0].includes("[user]\nplease inspect\n\n<mode>"));
+  assert.ok(prompts[0].startsWith("please inspect\n\n<mode>"));
+  assert.ok(!prompts[0].includes("[system]"));
   assert.ok(prompts[0].includes("You are in discuss mode"));
   assert.ok(!userMessages[0].includes("<mode>"));
   assert.ok(uiLines.join("\n").includes("please inspect"));

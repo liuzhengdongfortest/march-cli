@@ -13,7 +13,12 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
 
   let subscriber = null;
   const promptCalls = [];
+  const providerPayloads = [];
   const session = {
+    agent: {
+      state: { messages: [{ role: "user", content: "stale context" }] },
+      onPayload: async (payload) => payload,
+    },
     model: { id: "deepseek-v4-pro", provider: "deepseek" },
     thinkingLevel: "medium",
     sessionManager: {
@@ -28,6 +33,13 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
     },
     async prompt(prompt) {
       promptCalls.push(prompt);
+      assert.deepEqual(this.agent.state.messages, []);
+      providerPayloads.push(await this.agent.onPayload({
+        messages: [
+          { role: "system", content: "Pi system" },
+          { role: "user", content: [{ type: "text", text: prompt }] },
+        ],
+      }, this.model));
       if (promptCalls.length === 1) {
         emit({ type: "message_update", assistantMessageEvent: { type: "thinking_start" } });
         emit({ type: "message_update", assistantMessageEvent: { type: "thinking_delta", delta: "12345678" } });
@@ -87,7 +99,23 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   const result = await runner.runTurn("hello", "hello");
   assert.equal(result.draft, "draft text");
   assert.equal(promptCalls.length, 1);
+  assert.ok(!promptCalls[0].includes("[system_core]"));
+  assert.equal(providerPayloads[0].messages[0].role, "system");
+  assert.ok(providerPayloads[0].messages[0].content.includes("[system_core]"));
+  assert.ok(providerPayloads[0].messages[0].content.includes("[workspace_status]"));
+  assert.equal(providerPayloads[0].messages[1].role, "user");
+  assert.ok(!providerPayloads[0].messages[1].content[0].text.includes("[system_core]"));
+  assert.ok(!providerPayloads[0].messages[1].content[0].text.includes("[workspace_status]"));
+  assert.ok(!providerPayloads[0].messages.some((message, index) => index > 0 && message.role === "system"));
   assert.equal(runner.engine.turns[0].assistantMessage, "draft text");
+
+  await runner.runTurn("second", "second");
+  assert.equal(promptCalls.length, 2);
+  assert.ok(!promptCalls[1].includes("[system_core]"));
+  assert.ok(providerPayloads[1].messages[0].content.includes("[system_core]"));
+  assert.ok(providerPayloads[1].messages[0].content.includes("[recent_chat]"));
+  assert.equal(countOccurrences(providerPayloads[1].messages[0].content, "[system_core]"), 1);
+  assert.ok(!providerPayloads[1].messages[1].content[0].text.includes("[system_core]"));
   const sidecar = loadPiSessionSidecar({ projectMarchDir, sessionRef: "turn-flow.jsonl" });
   assert.equal(sidecar.state.turns[0].assistantMessage, "draft text");
   assert.ok(!("summary" in sidecar.state.turns[0]));
@@ -101,4 +129,8 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   }
   cleanup(dir);
   console.log("  PASS");
+}
+
+function countOccurrences(text, needle) {
+  return String(text).split(needle).length - 1;
 }

@@ -29,6 +29,7 @@ export async function runRunnerTurn({
     });
     setModelCallKind("user");
     try {
+      resetPiMessageHistory(activeSession);
       await activeSession.prompt(
         prompt,
         attachmentReferences.images.length > 0 ? { images: attachmentReferences.images } : undefined,
@@ -53,5 +54,11 @@ export async function runRunnerTurn({
   } finally {
     ui.turnEnd();
     unsubscribe();
+  }
+}
+
+function resetPiMessageHistory(session) {
+  if (Array.isArray(session?.agent?.state?.messages)) {
+    session.agent.state.messages = [];
   }
 }

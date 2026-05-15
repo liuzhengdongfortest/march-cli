@@ -3,7 +3,7 @@ import { strict as assert } from "node:assert";
 export async function runRunnerCoreSmoke() {
   console.log("--- smoke: March tool set ---");
   const { MARCH_BASE_TOOL_NAMES, createDefaultSessionManager, createRunner, installModelPayloadDumper, resolveRunnerSessionManager, syncEngineSessionState } = await import("../src/agent/runner.mjs");
-  const { estimateProviderPayloadTokens } = await import("../src/agent/model-payload-dumper.mjs");
+  const { estimateProviderPayloadTokens, replaceProviderSystemPrompt } = await import("../src/agent/model-payload-dumper.mjs");
   const { createSessionBinding } = await import("../src/agent/session/session-binding.mjs");
   const { ContextEngine } = await import("../src/context/engine.mjs");
 
@@ -85,6 +85,18 @@ export async function runRunnerCoreSmoke() {
   await observerAgent.onPayload({ messages: [{ role: "user", content: [{ type: "text", text: "hello world" }] }] }, { provider: "test", id: "model" });
   assert.equal(observerOnly.length, 1);
   assert.equal(observerOnly[0].estimatedTokens, 3);
+  const transformedAgent = { onPayload: null };
+  installModelPayloadDumper({ agent: transformedAgent }, { enabled: false }, () => "user", null, (payload) => replaceProviderSystemPrompt(payload, "[system_core]\nMarch system"));
+  const transformed = await transformedAgent.onPayload({
+    messages: [
+      { role: "system", content: "Pi system" },
+      { role: "user", content: [{ type: "text", text: "hello" }] },
+    ],
+  }, { provider: "test", id: "model" });
+  assert.equal(transformed.messages[0].role, "system");
+  assert.equal(transformed.messages[0].content, "[system_core]\nMarch system");
+  assert.equal(transformed.messages[1].role, "user");
+  assert.equal(transformed.messages[1].content[0].text, "hello");
   console.log("  PASS");
 
   console.log("--- smoke: runner missing credentials message ---");

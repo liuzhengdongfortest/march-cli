@@ -2,22 +2,27 @@ import { stripAnsi } from "../text/ansi.mjs";
 
 const MODEL_PAYLOAD_DUMPER_INSTALLED = Symbol("march.modelPayloadDumperInstalled");
 
-export function installModelPayloadDumper(session, modelContextDumper, getKind = () => "model", onModelPayload = null) {
-  if ((!modelContextDumper?.enabled && typeof onModelPayload !== "function") || !session?.agent) return;
+export function installModelPayloadDumper(session, modelContextDumper, getKind = () => "model", onModelPayload = null, transformPayload = null) {
+  if ((!modelContextDumper?.enabled && typeof onModelPayload !== "function" && typeof transformPayload !== "function") || !session?.agent) return;
   const agent = session.agent;
   if (agent[MODEL_PAYLOAD_DUMPER_INSTALLED]) return;
   const originalOnPayload = agent.onPayload;
   agent.onPayload = async (payload, model) => {
     const replacement = originalOnPayload ? await originalOnPayload(payload, model) : undefined;
-    const effectivePayload = replacement === undefined ? payload : replacement;
+    const originalEffectivePayload = replacement === undefined ? payload : replacement;
     const kind = getKind();
+    const effectivePayload = typeof transformPayload === "function"
+      ? transformPayload(originalEffectivePayload, { kind, model })
+      : originalEffectivePayload;
     onModelPayload?.({
       payload: effectivePayload,
       model,
       kind,
       estimatedTokens: estimateProviderPayloadTokens(effectivePayload),
     });
-    if (!modelContextDumper?.enabled) return replacement;
+    if (!modelContextDumper?.enabled) {
+      return effectivePayload !== originalEffectivePayload ? effectivePayload : replacement;
+    }
     const metadata = {
       provider: model?.provider,
       model: model?.id,
@@ -44,9 +49,35 @@ export function installModelPayloadDumper(session, modelContextDumper, getKind =
         },
       });
     }
+    if (effectivePayload !== originalEffectivePayload) return effectivePayload;
     return replacement;
   };
   agent[MODEL_PAYLOAD_DUMPER_INSTALLED] = true;
+}
+
+export function replaceProviderSystemPrompt(payload, systemPrompt) {
+  if (!payload || typeof payload !== "object" || !systemPrompt) return payload;
+  if (payload.body && typeof payload.body === "object") {
+    const body = replaceProviderSystemPrompt(payload.body, systemPrompt);
+    return body === payload.body ? payload : { ...payload, body };
+  }
+  if (typeof payload.body === "string") {
+    try {
+      const body = JSON.parse(payload.body);
+      const replaced = replaceProviderSystemPrompt(body, systemPrompt);
+      return replaced === body ? payload : { ...payload, body: JSON.stringify(replaced) };
+    } catch {
+      return payload;
+    }
+  }
+  if (!Array.isArray(payload.messages)) return payload;
+  return {
+    ...payload,
+    messages: [
+      { role: "system", content: systemPrompt },
+      ...payload.messages.filter((message) => message?.role !== "system"),
+    ],
+  };
 }
 
 export function estimateProviderPayloadTokens(payload) {
