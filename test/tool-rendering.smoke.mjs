@@ -7,9 +7,8 @@ export async function runToolRenderingSmoke() {
   const lines = [];
   const output = { writeln: (line) => lines.push(line) };
   writeToolStart({ output, name: "read", args: { path: "D:\\repo\\src\\agent\\runtime\\runner-runtime-host.mjs", offset: 1, limit: 2000 } });
-  assert.equal(lines[0], "");
-  assert.ok(lines[1].includes("→ read · src\\agent\\runtime\\runner-runtime-host.mjs · lines 1-2000"));
-  assert.ok(lines[1].length < 150);
+  assert.ok(lines[0].includes("→ read · src\\agent\\runtime\\runner-runtime-host.mjs · lines 1-2000"));
+  assert.ok(lines[0].length < 150);
   assert.equal(formatToolStartLine("grep", { pattern: "onPayload|payload|agent", path: "test" }), "✱ grep · \"onPayload|payload|agent\" · test");
   assert.equal(formatToolStartLine("find", { pattern: "**/*.mjs", path: "src" }), "✱ find · \"**/*.mjs\" · src");
   assert.equal(formatToolStartLine("edit_file", { path: "test/session-name-command.smoke.mjs", edits: [{ newText: "very long\ntext" }] }), "◆ edit_file · test\\session-name-command.smoke.mjs · 1 edit");

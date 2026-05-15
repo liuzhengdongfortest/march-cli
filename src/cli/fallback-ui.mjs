@@ -65,10 +65,19 @@ export function createJsonUI() {
 
 export function createPlainUI() {
   let thinkingBuf = "";
+  let needsNewline = false;
+  const writeText = (text) => {
+    stdout.write(text);
+    needsNewline = text.length > 0 && !text.endsWith("\n");
+  };
+  const ensureNewline = () => {
+    if (needsNewline) stdout.write("\n");
+    needsNewline = false;
+  };
   return {
     readline: (_prompt) => Promise.resolve(""),
-    write: (text) => { stdout.write(text); },
-    writeln: (text) => { stdout.write(text + "\n"); },
+    write: writeText,
+    writeln: (text) => { stdout.write(text + "\n"); needsNewline = false; },
     thinkingStart: () => { thinkingBuf = ""; },
     thinkingDelta: (delta) => { thinkingBuf += delta; },
     thinkingEnd: (tokens) => {
@@ -76,15 +85,18 @@ export function createPlainUI() {
       stdout.write(`${brightBlack(thinkingBuf)}\n`);
       stdout.write(`${brightBlack("--- end thinking ---")}\n\n`);
       thinkingBuf = "";
+      needsNewline = false;
     },
     thinkingBlock: (tokens, content) => {
       stdout.write(`\n${brightBlack(`--- thinking (${tokens} tokens) ---`)}\n`);
       stdout.write(`${brightBlack(content)}\n`);
       stdout.write(`${brightBlack("--- end thinking ---")}\n\n`);
+      needsNewline = false;
     },
     toggleLastThinking: () => {},
     toolStart: (name, args) => {
-      stdout.write(`\n${dim(`  ${formatToolStartLine(name, args)}`)}\n`);
+      ensureNewline();
+      stdout.write(`${dim(`  ${formatToolStartLine(name, args)}`)}\n`);
     },
     toolEnd: (name, isError, result) => {
       const out = extractToolOutput(result);
@@ -94,20 +106,24 @@ export function createPlainUI() {
       } else if (out) {
         stdout.write(`${dim(`    ${out.split("\n")[0].slice(0, 200)}`)}\n`);
       }
+      needsNewline = false;
     },
-    textDelta: (delta) => { stdout.write(delta); },
-    status: (text) => { stdout.write(`${brightBlack(`● ${text}`)}\n`); },
+    textDelta: writeText,
+    status: (text) => { ensureNewline(); stdout.write(`${brightBlack(`● ${text}`)}\n`); },
     passiveRecall: ({ hints }) => {
+      ensureNewline();
       for (const line of formatPassiveRecallLines(hints)) stdout.write(`${brightBlack(line)}\n`);
     },
     clearOutput: () => {},
     setStatusBar: () => {},
     turnStart: () => {},
-    turnEnd: () => {},
+    turnEnd: ensureNewline,
     retryStart: ({ attempt, maxAttempts, delayMs, errorMessage }) => {
+      ensureNewline();
       stdout.write(`${yellow(`● retrying (${attempt}/${maxAttempts}) in ${Math.ceil(delayMs / 1000)}s: ${errorMessage || "Unknown error"}`)}\n`);
     },
     retryEnd: ({ success, attempt, finalError }) => {
+      ensureNewline();
       const status = success ? "recovered" : "stopped";
       stdout.write(`${brightBlack(`● retry ${status} after ${attempt} attempt${attempt === 1 ? "" : "s"}${finalError ? `: ${finalError}` : ""}`)}\n`);
     },

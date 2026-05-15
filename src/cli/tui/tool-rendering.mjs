@@ -2,7 +2,6 @@ import { extractToolOutput } from "../tool-output.mjs";
 import { dim, red } from "./ui-theme.mjs";
 
 export function writeToolStart({ output, name, args }) {
-  output.writeln("");
   output.writeln(dim(`  ${formatToolStartLine(name, args)}`));
 }
 

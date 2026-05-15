@@ -111,6 +111,12 @@ export class OutputBuffer {
     this.currentText.push({ text: "", markdown: false });
   }
 
+  ensureNewline() {
+    const current = this.currentText.at(-1);
+    if (!current || current.text === "") return false;
+    this.currentText.push({ text: "", markdown: false });
+    return true;
+  }
   startThinking() {
     this._flushText();
     const seg = { type: "thinking", tokens: 0, content: [] };

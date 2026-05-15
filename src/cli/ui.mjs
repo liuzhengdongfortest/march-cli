@@ -180,7 +180,7 @@ export function createTuiUI({
     toggleLastThinking: () => false,
 
     toolStart: (name, args) => {
-      ensureStarted(); retryStatus.stop(); spinnerStatus.stop();
+      ensureStarted(); retryStatus.stop(); spinnerStatus.stop(); output.ensureNewline();
       writeToolStart({ output, name, args });
       requestRender();
     },
@@ -202,7 +202,7 @@ export function createTuiUI({
     },
 
     passiveRecall: ({ hints }) => {
-      ensureStarted(); retryStatus.stop(); spinnerStatus.stop(); writePassiveRecall({ output, hints }); requestRender();
+      ensureStarted(); retryStatus.stop(); spinnerStatus.stop(); output.ensureNewline(); writePassiveRecall({ output, hints }); requestRender();
     },
 
     clearOutput: () => {
@@ -217,7 +217,9 @@ export function createTuiUI({
       ensureStarted();
     },
 
-    turnEnd: () => {},
+    turnEnd: () => {
+      if (output.ensureNewline()) requestRender();
+    },
 
     retryStart,
     retryEnd,
