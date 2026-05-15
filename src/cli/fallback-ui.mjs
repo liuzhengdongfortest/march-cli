@@ -1,5 +1,6 @@
 import { stdout } from "node:process";
 import { extractToolOutput } from "./tool-output.mjs";
+import { formatPassiveRecallLines } from "./tui/recall-rendering.mjs";
 import { formatToolStartLine } from "./tui/tool-rendering.mjs";
 import { brightBlack, dim, red, green, yellow } from "./tui/ui-theme.mjs";
 
@@ -31,6 +32,7 @@ export function createJsonUI() {
       stdout.write(delta);
     },
     status: () => {},
+    passiveRecall: () => {},
     clearOutput: () => {},
     setStatusBar: () => {},
     turnStart: () => {},
@@ -95,6 +97,9 @@ export function createPlainUI() {
     },
     textDelta: (delta) => { stdout.write(delta); },
     status: (text) => { stdout.write(`${brightBlack(`● ${text}`)}\n`); },
+    passiveRecall: ({ hints }) => {
+      for (const line of formatPassiveRecallLines(hints)) stdout.write(`${brightBlack(line)}\n`);
+    },
     clearOutput: () => {},
     setStatusBar: () => {},
     turnStart: () => {},

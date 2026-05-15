@@ -41,6 +41,7 @@ export async function runRunnerTurn({
     const assistantRecallHints = memoryStore
       ? memoryStore.recallForAssistant(turnState.draft, { currentProject, excludedIds: engine.getRecentRecallMemoryIds?.() ?? [] })
       : [];
+    ui.passiveRecall?.({ source: "assistant", hints: assistantRecallHints });
 
     engine.recordTurn({
       userMessage: userMessage ?? prompt.slice(0, 300),

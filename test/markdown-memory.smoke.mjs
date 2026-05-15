@@ -5,6 +5,7 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: markdown memory system ---");
   const { MarkdownMemoryStore, formatRecallHints } = await import("../src/memory/markdown-store.mjs");
   const { createMarkdownMemoryTools } = await import("../src/memory/markdown-tools.mjs");
+  const { formatPassiveRecallLines } = await import("../src/cli/tui/recall-rendering.mjs");
   const dir = setupTmp();
 
   const store = new MarkdownMemoryStore({
@@ -30,6 +31,12 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   assert.equal(userHints.length, 1);
   assert.equal(userHints[0].id, entry.id);
   assert.ok(formatRecallHints("user", userHints).includes("[passive_recall source=\"user\"]"));
+  assert.deepEqual(formatPassiveRecallLines(userHints), [`◈ passive recall: ${entry.id} Passive recall dedup`]);
+  assert.deepEqual(formatPassiveRecallLines([userHints[0], { id: "mem_other", name: "Other memory" }]), [
+    "◈ passive recall: 2 memories",
+    `  ${entry.id} Passive recall dedup`,
+    "  mem_other Other memory",
+  ]);
 
   const assistantHints = store.recallForAssistant("passive recall dedup again", { currentProject: "march-cli" });
   assert.equal(assistantHints.length, 0);

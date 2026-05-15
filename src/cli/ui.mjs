@@ -15,6 +15,7 @@ import { createSpinnerStatusController } from "./tui/status/spinner-status.mjs";
 import { StatusBar } from "./tui/status/status-bar.mjs";
 import { writeEditDiff } from "./tui/tui-diff-rendering.mjs";
 import { createTuiInputController } from "./tui/tui-input-controller.mjs";
+import { writePassiveRecall } from "./tui/recall-rendering.mjs";
 import { writeToolEnd, writeToolStart } from "./tui/tool-rendering.mjs";
 import { EDITOR_THEME, yellow, brightBlack } from "./tui/ui-theme.mjs";
 
@@ -201,16 +202,15 @@ export function createTuiUI({
     },
 
     status: (text) => {
-      ensureStarted();
-      spinnerStatus.stop();
-      output.writeln(brightBlack(`● ${text}`));
-      requestRender();
+      ensureStarted(); spinnerStatus.stop(); output.writeln(brightBlack(`● ${text}`)); requestRender();
+    },
+
+    passiveRecall: ({ hints }) => {
+      ensureStarted(); spinnerStatus.stop(); writePassiveRecall({ output, hints }); requestRender();
     },
 
     clearOutput: () => {
-      ensureStarted();
-      spinnerStatus.stop(); retryStatus.stop(); output.clear();
-      requestRender();
+      ensureStarted(); spinnerStatus.stop(); retryStatus.stop(); output.clear(); requestRender();
     },
 
     setStatusBar: (text) => {
