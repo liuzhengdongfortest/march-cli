@@ -4,6 +4,7 @@ import { Type } from "typebox";
 import { createCommandExecTool } from "./command-exec-tool.mjs";
 import { createContextStatsTool } from "./context-stats-tool.mjs";
 import { createEditFileTool } from "./file-edit-tool.mjs";
+import { createFindTool } from "./find-tool.mjs";
 import { toolText } from "./tool-result.mjs";
 import { createShellTools } from "../shell/tools.mjs";
 import { createWebTools } from "../web/tools.mjs";
@@ -70,6 +71,7 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], skil
   const commandExecTool = createCommandExecTool({ cwd });
   const contextStatsTool = createContextStatsTool({ engine });
   const editFileTool = createEditFileTool({ engine, ui, lspService });
+  const findTool = createFindTool({ cwd });
 
   const tools = [
     openFileTool,
@@ -77,6 +79,7 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], skil
     contextStatsTool,
     commandExecTool,
     editFileTool,
+    findTool,
     ...createShellTools(shellRuntime),
     ...memoryTools,
     ...skillTools,

@@ -23,12 +23,13 @@ export async function runSessionOptionsSmoke() {
   assert.ok(options.customTools.some((tool) => tool.name === "open_file"));
   assert.ok(options.customTools.some((tool) => tool.name === "terminal_list"));
   assert.ok(options.customTools.some((tool) => tool.name === "remember"));
-  assert.deepEqual(options.tools.slice(0, 4), ["read", "grep", "find", "ls"]);
+  assert.deepEqual(options.tools.slice(0, 3), ["read", "grep", "ls"]);
   assert.ok(!options.tools.includes("bash"));
   assert.ok(!options.tools.includes("powershell"));
   assert.ok(!options.tools.includes("edit"));
   assert.ok(!options.tools.includes("write"));
   assert.ok(options.tools.includes("open_file"));
+  assert.ok(options.tools.includes("find"));
   assert.ok(options.tools.includes("command_exec"));
   assert.ok(options.tools.includes("edit_file"));
   assert.ok(options.tools.includes("terminal_spawn"));
