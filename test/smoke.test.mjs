@@ -41,6 +41,7 @@ import { runShellSplitLayoutSmoke } from "./shell-split-layout.smoke.mjs";
 import { runShellToolsSmoke } from "./shell-tools.smoke.mjs";
 import { runSourceDirectoryLimitSmoke } from "./source-directory-limit.smoke.mjs";
 import { runSourceLineLimitSmoke } from "./source-line-limit.smoke.mjs";
+import { runStartupBannerSmoke } from "./startup-banner.smoke.mjs";
 import { runStartupResumeSmoke } from "./startup-resume.smoke.mjs";
 import { runTuiAutocompleteEscSmoke } from "./tui-autocomplete-esc.smoke.mjs";
 import { runTuiShellDrawerSmoke } from "./tui-shell-drawer.smoke.mjs";
@@ -110,6 +111,7 @@ function cleanup(dir) {
 
 await runSourceLineLimitSmoke();
 await runSourceDirectoryLimitSmoke();
+await runStartupBannerSmoke();
 await runStartupResumeSmoke({ setupTmp, cleanup });
 await runAuthStorageSmoke({ setupTmp, cleanup });
 await runLoginCommandSmoke();

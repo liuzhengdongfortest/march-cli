@@ -23,6 +23,7 @@ import { discoverProjectExtensionPaths } from "./extensions/discovery.mjs";
 import { loadProjectLifecycleHookManifests } from "./extensions/lifecycle-manifest.mjs";
 import { resolvePiSessionManager } from "./session/pi-manager.mjs";
 import { loadOrCreateProjectId, resumeStartupSession } from "./cli/startup/startup-session.mjs";
+import { formatStartupBanner } from "./cli/startup/startup-banner.mjs";
 import { activateStartupSkills, createStartupSkillRuntime } from "./cli/startup/startup-skills.mjs";
 import { initializeMcp } from "./mcp/index.mjs";
 import { createWebTools } from "./web/tools.mjs";
@@ -256,7 +257,8 @@ export async function run(argv) {
     return 0;
   }
 
-  if (args.dumpContext) ui.writeln(`dumps: ${relative(cwd, contextDumpRoot)}`);
+  const dumpContextPath = args.dumpContext ? relative(cwd, contextDumpRoot) : null;
+  for (const line of formatStartupBanner({ cwd, modelId: runner.engine.modelId, thinkingLevel: runner.engine.thinkingLevel, mode: modeState.get(), dumpContextPath })) ui.writeln(line);
   await runInteractiveRepl({
     cwd,
     args,
