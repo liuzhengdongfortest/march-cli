@@ -15,8 +15,13 @@ export function installModelPayloadDumper(session, modelContextDumper, getKind =
     };
     const requestPath = modelContextDumper.dump({
       kind: getKind(),
-      prompt: formatModelPayload(effectivePayload),
+      prompt: formatHumanPayload(effectivePayload),
       metadata,
+    });
+    modelContextDumper.dumpSidecar?.({
+      sourcePath: requestPath,
+      suffix: "payload",
+      value: effectivePayload,
     });
     const tools = extractPayloadTools(effectivePayload);
     if (tools) {
@@ -34,9 +39,60 @@ export function installModelPayloadDumper(session, modelContextDumper, getKind =
   agent[MODEL_PAYLOAD_DUMPER_INSTALLED] = true;
 }
 
-function formatModelPayload(payload) {
-  if (typeof payload === "string") return payload;
-  return JSON.stringify(payload, null, 2);
+function formatHumanPayload(payload) {
+  const request = normalizePayload(payload);
+  const lines = ["# Messages", ""];
+  const messages = Array.isArray(request.messages) ? request.messages : [];
+  if (messages.length === 0) {
+    lines.push("(no messages found)", "");
+  } else {
+    for (const message of messages) {
+      lines.push(`## ${message.role ?? "message"}`, "", formatMessageContent(message.content), "");
+    }
+  }
+
+  const tools = extractPayloadTools(payload);
+  if (tools?.length) {
+    lines.push("# Tools", "");
+    for (const tool of tools) lines.push(`- ${formatToolSummary(tool)}`);
+    lines.push("");
+  }
+
+  lines.push("# Raw Payload", "", "See the sibling `*-payload.json` file for the exact provider request.");
+  if (tools?.length) lines.push("See the sibling `*-tools.json` file for the complete tool schema.");
+  return lines.join("\n");
+}
+
+function normalizePayload(payload) {
+  if (!payload || typeof payload !== "object") return { messages: [{ role: "payload", content: String(payload ?? "") }] };
+  if (Array.isArray(payload.messages)) return payload;
+  if (payload.body && typeof payload.body === "object") return payload.body;
+  if (typeof payload.body === "string") {
+    try {
+      return JSON.parse(payload.body);
+    } catch {}
+  }
+  return payload;
+}
+
+function formatMessageContent(content) {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) return content.map(formatContentPart).join("\n");
+  return JSON.stringify(content, null, 2);
+}
+
+function formatContentPart(part) {
+  if (typeof part === "string") return part;
+  if (!part || typeof part !== "object") return String(part ?? "");
+  if (typeof part.text === "string") return part.text;
+  if (part.type) return `[${part.type}] ${JSON.stringify(part)}`;
+  return JSON.stringify(part);
+}
+
+function formatToolSummary(tool) {
+  const name = tool?.function?.name ?? tool?.name ?? "unnamed_tool";
+  const description = tool?.function?.description ?? tool?.description ?? "";
+  return description ? `${name}: ${description}` : name;
 }
 
 function extractPayloadTools(payload) {

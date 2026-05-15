@@ -47,9 +47,13 @@ export async function runRunnerCoreSmoke() {
   assert.equal(dumps.length, 1);
   assert.equal(dumps[0].kind, "summary");
   assert.equal(dumps[0].metadata.payload, "provider_request");
-  assert.ok(dumps[0].prompt.includes('"sent": "replacement"'));
+  assert.ok(dumps[0].prompt.includes("# Messages"));
+  assert.ok(dumps[0].prompt.includes("# Raw Payload"));
   const toolsAgent = {
-    onPayload: async () => ({ tools: [{ name: "read" }] }),
+    onPayload: async () => ({
+      messages: [{ role: "user", content: "hello" }],
+      tools: [{ name: "read", description: "Read a file" }],
+    }),
   };
   installModelPayloadDumper({ agent: toolsAgent }, {
     enabled: true,
@@ -57,9 +61,12 @@ export async function runRunnerCoreSmoke() {
     dumpSidecar: (entry) => sidecars.push(entry),
   }, () => "user");
   await toolsAgent.onPayload({ ignored: true }, { provider: "test", id: "model" });
-  assert.equal(sidecars.length, 1);
-  assert.deepEqual(sidecars[0].value.tools, [{ name: "read" }]);
-  assert.equal(sidecars[0].value.metadata.payload, "provider_tools");
+  assert.equal(sidecars.length, 2);
+  assert.equal(sidecars[0].suffix, "payload");
+  assert.deepEqual(sidecars[0].value.messages, [{ role: "user", content: "hello" }]);
+  assert.equal(sidecars[1].suffix, "tools");
+  assert.deepEqual(sidecars[1].value.tools, [{ name: "read", description: "Read a file" }]);
+  assert.equal(sidecars[1].value.metadata.payload, "provider_tools");
   console.log("  PASS");
 
   console.log("--- smoke: runner missing credentials message ---");
