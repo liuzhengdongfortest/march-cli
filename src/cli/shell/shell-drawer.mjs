@@ -159,7 +159,7 @@ export class ShellDrawer {
 
 export function formatAnsiLines(snapshot) {
   const screen = snapshot?.screen;
-  const text = screen?.ansi || screen?.plain || snapshot?.ansi || snapshot?.plain || "";
+  const text = screen ? (screen.ansi || screen.plain || "") : (snapshot?.ansi || snapshot?.plain || "");
   const lines = sanitizeAnsiForDrawer(text)
     .replace(/\r/g, "")
     .split("\n");
