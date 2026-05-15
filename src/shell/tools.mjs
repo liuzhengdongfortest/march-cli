@@ -38,7 +38,7 @@ export function createShellTools(shellRuntime = null) {
     description: "Send text or control sequences to a running interactive terminal. Set wait_for_idle=true when sending a command and you need output.",
     parameters: Type.Object({
       shell_id: Type.String({ description: "Shell id returned by terminal_spawn or terminal_list" }),
-      text: Type.Optional(Type.String({ description: "Text to send to the terminal. Use \\r or \\n for Enter." })),
+      text: Type.Optional(Type.String({ description: "Text to send to the terminal. Newlines, \\n, and \\r are treated as Enter." })),
       key: Type.Optional(Type.String({ description: "Named control key to send: enter, ctrl_c, ctrl_d, ctrl_z, tab, escape, backspace" })),
       wait_for_idle: Type.Optional(Type.Boolean({ description: "Wait until terminal output becomes idle and return the output delta; default false" })),
       timeout_ms: Type.Optional(Type.Number({ description: "Maximum wait time when wait_for_idle=true, default 10000" })),
@@ -117,7 +117,13 @@ export function createShellTools(shellRuntime = null) {
       shell_id: Type.String({ description: "Shell id returned by terminal_spawn or terminal_list" }),
     }),
     execute: async (_toolCallId, params) => {
-      const result = shellRuntime.clearShell(params.shell_id);
+      let result;
+      try {
+        result = shellRuntime.clearShell(params.shell_id);
+      } catch (error) {
+        return toolText(`Error: ${error?.message ?? String(error)}`, { error: true });
+      }
+      if (!result.ok) return toolText(`Error: ${result.error}`, { error: true, shell: result.shell });
       return toolText(`Cleared ${result.shell.name} (${result.shell.id}).`, result);
     },
   });

@@ -24,6 +24,7 @@ export async function runShellToolsSmoke() {
   assert.deepEqual(createShellTools(null), []);
   assert.ok(byName.terminal_spawn);
   assert.ok(byName.terminal_send);
+  assert.ok(byName.terminal_send.parameters.properties.text.description.includes("Newlines"));
   assert.equal(byName.terminal_run, undefined);
   assert.ok(byName.terminal_list);
   assert.ok(byName.terminal_kill);
@@ -99,6 +100,10 @@ export async function runShellToolsSmoke() {
   const late = await byName.terminal_send.execute("tc5", { shell_id: "sh1", text: "late" });
   assert.equal(late.details.error, true);
   assert.ok(late.content[0].text.includes("is killed"));
+
+  const missingClear = await byName.terminal_clear.execute("tc-clear-missing", { shell_id: "missing" });
+  assert.equal(missingClear.details.error, true);
+  assert.ok(missingClear.content[0].text.includes("shell not found"));
 
   const defaultSpawned = await byName.terminal_spawn.execute("tc6", { name: "default" });
   assert.equal(defaultSpawned.details.shell.name, "default");
