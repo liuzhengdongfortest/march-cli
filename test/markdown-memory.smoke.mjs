@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
 export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: markdown memory system ---");
@@ -23,6 +23,7 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
 
   assert.ok(entry.id.startsWith("mem_"));
   assert.deepEqual(entry.tags, ["memory/passive-recall", "memory/dedup", "project/march-cli"]);
+  assert.ok(existsSync(store.indexPath));
 
   store.beginTurn();
   const userHints = store.recallForUser("我们继续讨论 passive recall 的去重", { currentProject: "march-cli" });
@@ -66,6 +67,11 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
 
   const saveResult = await save.execute("t3", { id: entry.id, tags: ["memory/passive-recall", "memory/window"] });
   assert.ok(saveResult.content[0].text.includes("memory/window"));
+
+  store.close();
+  const cachedStore = new MarkdownMemoryStore({ root: dir });
+  assert.equal(cachedStore.entries.get(entry.id).name, "Passive recall dedup");
+  cachedStore.close();
 
   cleanup(dir);
   console.log("  PASS");

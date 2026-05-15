@@ -1,5 +1,5 @@
 import { homedir } from "node:os";
-import { join, resolve, dirname, basename } from "node:path";
+import { join, resolve, dirname, basename, relative } from "node:path";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseCliArgs, showHelp } from "./cli/args.mjs";
@@ -159,8 +159,6 @@ export async function run(argv) {
     historyStore: inputHistoryStore,
   });
 
-  ui.status(`Starting March session ${sessionState.sessionId} in ${cwd}`);
-
   // Esc to abort current turn
   let turnRunning = false;
 
@@ -258,10 +256,7 @@ export async function run(argv) {
     return 0;
   }
 
-  if (args.dumpContext) ui.writeln(`Context dumps: ${contextDumpRoot}`);
-
-  ui.writeln("March REPL. Type /help for commands, Esc to abort, /exit to quit.");
-  ui.writeln("");
+  if (args.dumpContext) ui.writeln(`dumps: ${relative(cwd, contextDumpRoot)}`);
   await runInteractiveRepl({
     cwd,
     args,

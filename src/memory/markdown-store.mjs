@@ -1,4 +1,3 @@
-import { DatabaseSync } from "node:sqlite";
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -14,6 +13,7 @@ import {
   walkMarkdownFiles,
 } from "./markdown/markdown-format.mjs";
 import { formatRecallHints, scoreEntry, toHint } from "./markdown/markdown-recall.mjs";
+import { clearMarkdownMemoryIndex, loadMarkdownMemoryIndex, openMarkdownMemoryIndex, queryMarkdownMemoryIndex, replaceMarkdownMemoryIndex } from "./markdown/sqlite-index.mjs";
 
 export { formatRecallHints } from "./markdown/markdown-recall.mjs";
 export { normalizeTags } from "./markdown/markdown-format.mjs";
@@ -21,11 +21,12 @@ export { normalizeTags } from "./markdown/markdown-format.mjs";
 const DEFAULT_SCAN_INTERVAL_MS = 5000;
 
 export class MarkdownMemoryStore {
-  constructor({ root, now = () => new Date() } = {}) {
+  constructor({ root, now = () => new Date(), indexPath = null } = {}) {
     if (!root) throw new Error("MarkdownMemoryStore requires a root path");
     this.root = resolve(root);
     this.now = now;
-    this.db = new DatabaseSync(":memory:");
+    this.indexPath = indexPath ? resolve(indexPath) : join(this.root, ".march-memory-index.sqlite");
+    this.db = openMarkdownMemoryIndex(this.indexPath);
     this.entries = new Map();
     this.pathStats = new Map();
     this.tagDictionary = new Set();
@@ -35,15 +36,16 @@ export class MarkdownMemoryStore {
     this.userRecallSuppression = new Map();
     this.turnSeenMemoryIds = new Set();
     this.userTurnIndex = 0;
-    this.#initDb();
-    this.scan({ force: true });
+    this.scan();
   }
 
   scan({ force = false } = {}) {
     mkdirSync(this.root, { recursive: true });
+    if (force) clearMarkdownMemoryIndex(this.db);
+    const cached = force ? { entries: new Map(), pathStats: new Map() } : loadMarkdownMemoryIndex(this.db);
     const seenPaths = new Set();
-    const nextEntries = force ? new Map() : new Map(this.entries);
-    const nextStats = force ? new Map() : new Map(this.pathStats);
+    const nextEntries = new Map(cached.entries);
+    const nextStats = new Map(cached.pathStats);
     const diagnostics = [];
 
     for (const path of walkMarkdownFiles(this.root)) {
@@ -98,7 +100,8 @@ export class MarkdownMemoryStore {
     this.entries = nextEntries;
     this.pathStats = nextStats;
     this.diagnostics = diagnostics;
-    this.#rebuildIndex();
+    this.#rebuildTagDictionary();
+    replaceMarkdownMemoryIndex(this.db, this.entries, expandTags);
     this.lastScanAt = Date.now();
     return { entries: this.entries.size, diagnostics };
   }
@@ -118,6 +121,10 @@ export class MarkdownMemoryStore {
       if (lastSeenTurn < cutoff) this.userRecallSuppression.delete(id);
     }
     this.turnSeenMemoryIds = new Set();
+  }
+
+  close() {
+    this.db.close?.();
   }
 
   recallForUser(text, { limit = 3, currentProject = "" } = {}) {
@@ -203,7 +210,7 @@ export class MarkdownMemoryStore {
     const query = queryTerms.map(quoteFtsTerm).join(" OR ");
     let rows = [];
     try {
-      rows = this.db.prepare("SELECT id FROM memory_tags_fts WHERE tags_text MATCH ? LIMIT 50").all(query);
+      rows = queryMarkdownMemoryIndex(this.db, query);
     } catch {
       return [];
     }
@@ -231,38 +238,11 @@ export class MarkdownMemoryStore {
     return [...new Set(terms)].sort((a, b) => b.length - a.length).slice(0, 16);
   }
 
-  #rebuildIndex() {
-    this.db.exec("DELETE FROM memory_index");
-    this.db.exec("DELETE FROM memory_tags_fts");
+  #rebuildTagDictionary() {
     this.tagDictionary = new Set();
-    const insertMeta = this.db.prepare("INSERT INTO memory_index (id, path, name, description, tags_json, status, mtime_ms, size) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-    const insertFts = this.db.prepare("INSERT INTO memory_tags_fts (id, tags_text) VALUES (?, ?)");
     for (const entry of this.entries.values()) {
-      insertMeta.run(entry.id, entry.path, entry.name, entry.description, JSON.stringify(entry.tags), entry.status, entry.mtimeMs, entry.size);
-      const tagsText = expandTags(entry.tags).join(" ");
-      insertFts.run(entry.id, tagsText);
       for (const term of expandTags(entry.tags)) this.tagDictionary.add(normalizeText(term));
     }
-  }
-
-  #initDb() {
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS memory_index (
-        id TEXT PRIMARY KEY,
-        path TEXT NOT NULL,
-        name TEXT NOT NULL,
-        description TEXT NOT NULL,
-        tags_json TEXT NOT NULL,
-        status TEXT NOT NULL,
-        mtime_ms REAL NOT NULL,
-        size INTEGER NOT NULL
-      );
-      CREATE VIRTUAL TABLE IF NOT EXISTS memory_tags_fts USING fts5(
-        id UNINDEXED,
-        tags_text,
-        tokenize = 'unicode61'
-      );
-    `);
   }
 
   #newMemoryPath(isoDate, name) {
