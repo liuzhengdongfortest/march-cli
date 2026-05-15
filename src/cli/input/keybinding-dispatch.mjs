@@ -3,6 +3,7 @@ import { DEFAULT_KEYBINDINGS, KEYBINDING_ACTIONS } from "./keybindings.mjs";
 
 export const TERMINAL_KEY_SEQUENCES = Object.freeze({
   Esc: "\x1b",
+  Tab: "\t",
   "Shift+Tab": "\x1b[Z",
   ...Object.fromEntries(
     Array.from({ length: 26 }, (_, index) => {
@@ -33,6 +34,7 @@ export function createKeybindingDispatcher({
 
       if (action === "interrupt") return runHandler(handlers[action]);
       if (action === "abort" && isAutocompleteOpen()) return undefined;
+      if (action === "toggleMode" && isAutocompleteOpen()) return undefined;
       if (hasOverlay()) return undefined;
 
       return runHandler(handlers[action]);

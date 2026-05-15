@@ -44,9 +44,15 @@ export async function runKeybindingsSmoke({ setupTmp, cleanup }) {
   } = await import("../src/cli/input/keybinding-dispatch.mjs");
 
   let toggles = 0;
+  let modeToggles = 0;
   const defaultDispatcher = createKeybindingDispatcher({
-    handlers: { toggleToolOutput: () => { toggles += 1; } },
+    handlers: {
+      toggleMode: () => { modeToggles += 1; },
+      toggleToolOutput: () => { toggles += 1; },
+    },
   });
+  assert.deepEqual(defaultDispatcher.dispatch(TERMINAL_KEY_SEQUENCES.Tab), { consume: true });
+  assert.equal(modeToggles, 1);
   assert.deepEqual(defaultDispatcher.dispatch(TERMINAL_KEY_SEQUENCES["Ctrl+O"]), { consume: true });
   assert.equal(toggles, 1);
 
@@ -116,10 +122,13 @@ export async function runKeybindingsSmoke({ setupTmp, cleanup }) {
     handlers: {
       abort: () => { aborts += 1; },
       interrupt: () => { interrupts += 1; },
+      toggleMode: () => { modeToggles += 1; },
     },
     isAutocompleteOpen: () => true,
   });
   assert.equal(autocompleteDispatcher.dispatch(TERMINAL_KEY_SEQUENCES.Esc), undefined);
+  assert.equal(autocompleteDispatcher.dispatch(TERMINAL_KEY_SEQUENCES.Tab), undefined);
+  assert.equal(modeToggles, 1);
   assert.equal(aborts, 0);
   assert.deepEqual(autocompleteDispatcher.dispatch(TERMINAL_KEY_SEQUENCES["Ctrl+C"]), { consume: true });
   assert.equal(interrupts, 4);

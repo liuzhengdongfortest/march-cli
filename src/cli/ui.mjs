@@ -57,17 +57,14 @@ export function createTuiUI({
   const retryStatus = createRetryStatusController({ output, requestRender, stopSpinner: spinnerStatus.stop });
   const shellDrawerControls = createShellDrawerControls({ shellDrawer, output, requestRender });
 
-  let onEscapeHandler = null;
-  let onCtrlCHandler = null;
-  let onShiftTabHandler = null;
-  let onCtrlTHandler = null;
-  let onCtrlLHandler = null;
-  let onPasteImageHandler = null;
+  let onEscapeHandler = null, onCtrlCHandler = null, onShiftTabHandler = null;
+  let onCtrlTHandler = null, onCtrlLHandler = null, onPasteImageHandler = null, onToggleModeHandler = null;
   const keybindingDispatcher = createKeybindingDispatcher({
     keybindings,
     handlers: {
       abort: () => onEscapeHandler?.(),
       interrupt: () => onCtrlCHandler?.(),
+      toggleMode: () => onToggleModeHandler?.(),
       cycleThinking: () => onShiftTabHandler?.(),
       thinkingSelector: () => onCtrlTHandler?.(),
       modelSelector: () => onCtrlLHandler?.(),
@@ -268,6 +265,7 @@ export function createTuiUI({
     setCtrlTHandler: (fn) => { onCtrlTHandler = fn; },
     setCtrlLHandler: (fn) => { onCtrlLHandler = fn; },
     setPasteImageHandler: (fn) => { onPasteImageHandler = fn; },
+    setToggleModeHandler: (fn) => { onToggleModeHandler = fn; },
 
     selectList,
     getInputText: () => inputController.getInputText(),

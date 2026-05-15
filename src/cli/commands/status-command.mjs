@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { MODES, formatModeLabel } from "../input/mode-state.mjs";
 import { accent, text, PREFIX, R } from "../tui/ui-theme.mjs";
 
 export function statusCommand({
@@ -27,6 +28,7 @@ export function statusBarLine({
   extensionDiagnostics = [],
   lifecycleState = null,
   gitBranch = getGitBranch(runner.engine.cwd),
+  mode = MODES.DO,
 }) {
   return formatStatusBarLine({
     engine: runner.engine,
@@ -36,6 +38,7 @@ export function statusBarLine({
     extensionDiagnostics,
     lifecycleState,
     gitBranch,
+    mode,
   });
 }
 
@@ -78,6 +81,7 @@ export function formatStatusBarLine({
   extensionDiagnostics = [],
   lifecycleState = null,
   gitBranch = null,
+  mode = MODES.DO,
 }) {
   const statsSessionId = sessionStats?.sessionId ?? sessionState?.sessionId ?? "unknown";
   const session = shortSessionId(statsSessionId);
@@ -95,6 +99,7 @@ export function formatStatusBarLine({
   const ACC = C.cyan;
   const OK = "\x1b[32m";  // green, no reset
   const WARN = "\x1b[33m"; // yellow, no reset
+  const modeSegment = `${mode === MODES.DISCUSS ? WARN : OK}${formatModeLabel(mode)}`;
 
   const project = [
     gitBranch ? `${DIM}git ${gitBranch}` : null,
@@ -117,7 +122,7 @@ export function formatStatusBarLine({
 
   const sessionSegment = `${DIM}${sessionSource}:${session}`;
 
-  const inner = [project, runtime, context, sessionSegment].filter(Boolean).join(` ${DIM}|${C.fg250} `);
+  const inner = [modeSegment, project, runtime, context, sessionSegment].filter(Boolean).join(` ${DIM}|${C.fg250} `);
   return `${inner}${R}`;
 }
 

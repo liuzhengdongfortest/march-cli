@@ -1,0 +1,47 @@
+import { strict as assert } from "node:assert";
+
+export async function runModeStateSmoke() {
+  console.log("--- smoke: do/discuss mode prompt insertion ---");
+  const { appendModeReminder, createModeState, formatModeLabel, formatModeReminder } = await import("../src/cli/input/mode-state.mjs");
+  const { runSingleShotPrompt } = await import("../src/cli/repl-loop.mjs");
+
+  const modeState = createModeState();
+  assert.equal(modeState.get(), "do");
+  assert.equal(formatModeLabel(modeState.get()), "Do");
+  assert.equal(modeState.toggle(), "discuss");
+  assert.equal(formatModeLabel(modeState.get()), "Discuss");
+  assert.ok(formatModeReminder("discuss").includes("Do not edit files"));
+  assert.ok(appendModeReminder("hello", "do").includes("<mode>"));
+
+  const prompts = [];
+  const userMessages = [];
+  const uiLines = [];
+  await runSingleShotPrompt({
+    prompt: "please inspect",
+    runner: {
+      engine: { buildContext: () => "[system]\nctx" },
+      runTurn: async (fullPrompt, userMessage) => {
+        prompts.push(fullPrompt);
+        userMessages.push(userMessage);
+      },
+    },
+    memoryStore: {
+      beginTurn() {},
+      recallForUser: () => [],
+      endTurn() {},
+    },
+    currentProject: "project",
+    ui: { writeln: (line) => uiLines.push(line) },
+    sessionState: { sessionDir: "unused" },
+    usePiSessionDefaults: true,
+    refreshStatusBar() {},
+    modeState,
+  });
+
+  assert.equal(userMessages[0], "please inspect");
+  assert.ok(prompts[0].includes("[user]\nplease inspect\n\n<mode>"));
+  assert.ok(prompts[0].includes("You are in discuss mode"));
+  assert.ok(!userMessages[0].includes("<mode>"));
+  assert.ok(uiLines.join("\n").includes("please inspect"));
+  console.log("  PASS");
+}

@@ -1,5 +1,6 @@
 import { bold, brightBlack } from "./tui/ui-theme.mjs";
 import { handleSlashCommand } from "./slash-commands.mjs";
+import { appendModeReminder } from "./input/mode-state.mjs";
 import { expandPromptTemplate } from "./input/prompt-templates.mjs";
 import { parseInlineShellInput, parseSkillInvocation, runInlineShellCommand } from "./repl-commands.mjs";
 import { formatRecallHints } from "../memory/markdown-store.mjs";
@@ -15,12 +16,14 @@ export async function runSingleShotPrompt({
   sessionState,
   usePiSessionDefaults,
   refreshStatusBar,
+  modeState = null,
 }) {
   memoryStore.beginTurn();
   const userRecallHints = memoryStore.recallForUser(prompt, { currentProject });
   const context = runner.engine.buildContext(prompt);
   const recallBlock = formatRecallHints("user", userRecallHints);
-  const fullPrompt = `${context}\n\n[user]\n${prompt}${recallBlock ? `\n\n${recallBlock}` : ""}`;
+  const modePrompt = appendModeReminder(prompt, modeState?.get?.());
+  const fullPrompt = `${context}\n\n[user]\n${modePrompt}${recallBlock ? `\n\n${recallBlock}` : ""}`;
   ui.writeln(`${bold("[user]")} ${formatMessageAttachmentsForDisplay(prompt)}`);
   try {
     await runner.runTurn(fullPrompt, prompt, { userRecallHints, currentProject });
@@ -50,6 +53,7 @@ export async function runInteractiveRepl({
   usePiSessionDefaults,
   refreshStatusBar,
   setTurnRunning,
+  modeState = null,
 }) {
   let lastInlineShellCommand = "";
 
@@ -108,6 +112,7 @@ export async function runInteractiveRepl({
       ui,
       refreshStatusBar,
       setTurnRunning,
+      modeState,
     });
   }
 }
@@ -141,12 +146,13 @@ function handleSkillInvocation(trimmed, { skillPool, skillState, runner, ui }) {
   return skillInvocation.prompt ? { type: "none", prompt: skillInvocation.prompt } : { type: "handled" };
 }
 
-async function runReplTurn({ prompt, args, runner, memoryStore, currentProject, ui, refreshStatusBar, setTurnRunning }) {
+async function runReplTurn({ prompt, args, runner, memoryStore, currentProject, ui, refreshStatusBar, setTurnRunning, modeState = null }) {
   memoryStore.beginTurn();
   const userRecallHints = memoryStore.recallForUser(prompt, { currentProject });
   const context = runner.engine.buildContext(args.prompt || prompt);
   const recallBlock = formatRecallHints("user", userRecallHints);
-  const fullPrompt = `${context}\n\n[user]\n${prompt}${recallBlock ? `\n\n${recallBlock}` : ""}`;
+  const modePrompt = appendModeReminder(prompt, modeState?.get?.());
+  const fullPrompt = `${context}\n\n[user]\n${modePrompt}${recallBlock ? `\n\n${recallBlock}` : ""}`;
   try {
     ui.writeln(`${bold("[user]")} ${formatMessageAttachmentsForDisplay(prompt)}`);
     setTurnRunning(true);

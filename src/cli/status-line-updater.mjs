@@ -5,6 +5,7 @@ export function createStatusLineUpdater({
   runner,
   sessionState,
   sessionSource = "legacy",
+  getMode = () => undefined,
 }) {
   return () => {
     if (typeof ui.setStatusBar !== "function") return null;
@@ -14,6 +15,7 @@ export function createStatusLineUpdater({
       sessionSource,
       extensionDiagnostics: runner.getExtensionDiagnostics?.() ?? [],
       lifecycleState: runner.getExtensionLifecycleState?.() ?? null,
+      mode: getMode(),
     });
     ui.setStatusBar(line);
     return line;

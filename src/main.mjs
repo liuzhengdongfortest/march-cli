@@ -7,6 +7,7 @@ import { createUI } from "./cli/ui.mjs";
 import { createPermissionController, MODE } from "./cli/permissions.mjs";
 import { loadKeybindings } from "./cli/input/keybindings.mjs";
 import { createInputHistoryStore } from "./cli/input/history-store.mjs";
+import { createModeState } from "./cli/input/mode-state.mjs";
 import { loadPromptTemplates } from "./cli/input/prompt-templates.mjs";
 import { runInteractiveRepl, runSingleShotPrompt } from "./cli/repl-loop.mjs";
 import { createStatusLineUpdater } from "./cli/status-line-updater.mjs";
@@ -15,7 +16,7 @@ import { createMarchAuthStorage } from "./auth/storage.mjs";
 import { runLoginCommand } from "./auth/login-command.mjs";
 import { createRunner } from "./agent/runner.mjs";
 import { createCliShellRuntime } from "./shell/cli-runtime.mjs";
-import { MarkdownMemoryStore, formatRecallHints } from "./memory/markdown-store.mjs";
+import { MarkdownMemoryStore } from "./memory/markdown-store.mjs";
 import { createMarkdownMemoryTools } from "./memory/markdown-tools.mjs";
 import { loadConfig } from "./config/loader.mjs";
 import { discoverProjectExtensionPaths } from "./extensions/discovery.mjs";
@@ -98,6 +99,7 @@ export async function run(argv) {
   const projectMarchDir = resolve(cwd, ".march");
   if (!existsSync(projectMarchDir)) mkdirSync(projectMarchDir, { recursive: true });
   const inputHistoryStore = createInputHistoryStore({ path: join(projectMarchDir, "input-history.json") });
+  const modeState = createModeState();
   const namespace = loadOrCreateProjectId(projectMarchDir);
   const memoryRoot = resolveMemoryRoot(config.memoryRoot, stateRoot);
   const memoryStore = new MarkdownMemoryStore({ root: memoryRoot });
@@ -202,6 +204,7 @@ export async function run(argv) {
     runner,
     sessionState,
     sessionSource,
+    getMode: () => modeState.get(),
   });
   refreshStatusBar();
 
@@ -212,6 +215,7 @@ export async function run(argv) {
     projectMarchDir,
     refreshStatusBar,
     isTurnRunning: () => turnRunning,
+    modeState,
   });
 
   // Wire back-reference for skill tools → engine
@@ -243,6 +247,7 @@ export async function run(argv) {
         sessionState,
         usePiSessionDefaults,
         refreshStatusBar,
+        modeState,
       });
     } finally {
       turnRunning = false;
@@ -276,6 +281,7 @@ export async function run(argv) {
     usePiSessionDefaults,
     refreshStatusBar,
     setTurnRunning: (value) => { turnRunning = value; },
+    modeState,
   });
 
   await runner.dispose();
@@ -289,7 +295,4 @@ function resolveMemoryRoot(configured, stateRoot) {
   return resolve(stateRoot, "March Memories");
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const code = await run(process.argv.slice(2));
-  process.exit(code);
-}
+if (process.argv[1] === fileURLToPath(import.meta.url)) process.exit(await run(process.argv.slice(2)));

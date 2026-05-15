@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 export const DEFAULT_KEYBINDINGS = Object.freeze({
   abort: "Esc",
   interrupt: "Ctrl+C",
+  toggleMode: "Tab",
   cycleThinking: "Shift+Tab",
   thinkingSelector: "Ctrl+T",
   modelSelector: "Ctrl+L",
@@ -19,6 +20,7 @@ export const DEFAULT_KEYBINDINGS = Object.freeze({
 export const KEYBINDING_ACTIONS = Object.freeze({
   abort: "Abort current turn; cancel retry wait",
   interrupt: "Abort current turn or exit when idle",
+  toggleMode: "Toggle Do/Discuss mode",
   cycleThinking: "Cycle thinking level",
   thinkingSelector: "Open thinking selector",
   modelSelector: "Open model selector",
@@ -82,7 +84,7 @@ export function formatKeybindingLines(keybindings = DEFAULT_KEYBINDINGS) {
 }
 
 function isSupportedKey(key) {
-  return typeof key === "string" && /^(Esc|Shift\+Tab|Ctrl\+[A-Z]|Alt\+[A-Z])$/.test(key);
+  return typeof key === "string" && /^(Esc|Tab|Shift\+Tab|Ctrl\+[A-Z]|Alt\+[A-Z])$/.test(key);
 }
 
 function padKey(key) {

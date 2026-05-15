@@ -1,6 +1,7 @@
 import { buildModelSelectItems } from "../commands/model-command.mjs";
 import { pasteClipboardImage } from "../commands/paste-image-command.mjs";
 import { buildThinkingSelectItems } from "../commands/thinking-command.mjs";
+import { formatModeLabel } from "../input/mode-state.mjs";
 import { yellow, brightBlack } from "./ui-theme.mjs";
 
 export function wireTuiHandlers({
@@ -10,6 +11,7 @@ export function wireTuiHandlers({
   projectMarchDir,
   refreshStatusBar = () => {},
   isTurnRunning = () => false,
+  modeState = null,
   pasteClipboardImageImpl = pasteClipboardImage,
 } = {}) {
   ui.setEscapeHandler(() => {
@@ -36,6 +38,12 @@ export function wireTuiHandlers({
   };
 
   ui.setShiftTabHandler(cycleThinkingLevel);
+  ui.setToggleModeHandler?.(() => {
+    const mode = modeState?.toggle?.();
+    if (!mode) return;
+    ui.writeln(brightBlack(`● ${formatModeLabel(mode)}`));
+    refreshStatusBar();
+  });
   ui.setCtrlTHandler(async () => {
     try {
       const levels = runner.getAvailableThinkingLevels?.() || [];
