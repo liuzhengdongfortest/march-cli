@@ -48,6 +48,7 @@ import { runStartupResumeSmoke } from "./startup-resume.smoke.mjs";
 import { runSummaryUiSmoke } from "./summary-ui.smoke.mjs";
 import { runTuiAutocompleteEscSmoke } from "./tui-autocomplete-esc.smoke.mjs";
 import { runTuiShellDrawerSmoke } from "./tui-shell-drawer.smoke.mjs";
+import { runUserDisplayMessageSmoke } from "./user-display-message.smoke.mjs";
 
 // Minimal mocks for smoke testing without DEEPSEEK_API_KEY
 
@@ -139,6 +140,7 @@ await runRipgrepResolverSmoke();
 await runModelContextDumperSmoke({ setupTmp, cleanup });
 await runInputHistorySmoke({ setupTmp, cleanup });
 await runModeStateSmoke();
+await runUserDisplayMessageSmoke();
 await runSessionNameCommandSmoke({ setupTmp, cleanup });
 await runShellScreenBufferSmoke();
 await runShellRuntimeSmoke();

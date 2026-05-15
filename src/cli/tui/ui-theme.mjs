@@ -21,6 +21,7 @@ const softGreen = (s) => `\x1b[38;2;127;216;143m${s}${R}`;
 // ── Formatters ───────────────────────────────────────────────────────
 const bold = (s) => `${B}${s}${R}`;
 const dim = (s) => `${D}${s}${R}`;
+const inverse = (s) => `\x1b[7m${s}${R}`;
 
 // ── 256-color helpers ────────────────────────────────────────────────
 const fg256 = (n) => (s) => `\x1b[38;5;${n}m${s}${R}`;
@@ -127,7 +128,7 @@ export {
   black, red, green, yellow, blue, magenta, cyan, white,
   brightBlack, brightRed, brightGreen,
   orange, softGreen,
-  bold, dim,
+  bold, dim, inverse,
   fg256, bg256,
   // Semantic
   text,

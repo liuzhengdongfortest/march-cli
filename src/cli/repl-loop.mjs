@@ -1,4 +1,4 @@
-import { bold, brightBlack } from "./tui/ui-theme.mjs";
+import { brightBlack, inverse } from "./tui/ui-theme.mjs";
 import { handleSlashCommand } from "./slash-commands.mjs";
 import { appendModeReminder } from "./input/mode-state.mjs";
 import { expandPromptTemplate } from "./input/prompt-templates.mjs";
@@ -24,7 +24,7 @@ export async function runSingleShotPrompt({
   const recallBlock = formatRecallHints("user", userRecallHints);
   const modePrompt = appendModeReminder(prompt, modeState?.get?.());
   const fullPrompt = `${context}\n\n[user]\n${modePrompt}${recallBlock ? `\n\n${recallBlock}` : ""}`;
-  ui.writeln(`${bold("[user]")} ${formatMessageAttachmentsForDisplay(prompt)}`);
+  ui.writeln(formatUserDisplayMessage(prompt));
   try {
     await runner.runTurn(fullPrompt, prompt, { userRecallHints, currentProject });
   } finally {
@@ -154,7 +154,7 @@ async function runReplTurn({ prompt, args, runner, memoryStore, currentProject, 
   const modePrompt = appendModeReminder(prompt, modeState?.get?.());
   const fullPrompt = `${context}\n\n[user]\n${modePrompt}${recallBlock ? `\n\n${recallBlock}` : ""}`;
   try {
-    ui.writeln(`${bold("[user]")} ${formatMessageAttachmentsForDisplay(prompt)}`);
+    ui.writeln(formatUserDisplayMessage(prompt));
     setTurnRunning(true);
     await runner.runTurn(fullPrompt, prompt, { userRecallHints, currentProject });
     setTurnRunning(false);
@@ -167,4 +167,8 @@ async function runReplTurn({ prompt, args, runner, memoryStore, currentProject, 
     refreshStatusBar();
     ui.writeln(`Error: ${err.message}`);
   }
+}
+
+export function formatUserDisplayMessage(prompt) {
+  return `${inverse(" USER ")} ${formatMessageAttachmentsForDisplay(prompt)}`;
 }
