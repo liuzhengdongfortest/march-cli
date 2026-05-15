@@ -1,5 +1,6 @@
 import { visibleWidth } from "@mariozechner/pi-tui";
 import { R, brightBlack, dim } from "./ui-theme.mjs";
+import { renderMarkdown } from "./markdown-renderer.mjs";
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
@@ -47,65 +48,21 @@ function appendText(lines, text, width) {
   for (const wrapped of wrapLine(text, width)) lines.push(wrapped);
 }
 
-function appendMarkdownLine(lines, line, width) {
-  for (const wrapped of wrapMarkdownTokens(parseMarkdownLine(line), width)) {
-    lines.push(renderMarkdownTokens(wrapped));
-  }
-}
-
-function parseMarkdownLine(line) {
-  const heading = line.match(/^#{1,6}\s+(.+)$/);
-  if (heading) return [{ text: heading[1], color: "orange" }];
-  const strongLine = line.match(/^\*\*(.+)\*\*$/);
-  if (strongLine) return [{ text: strongLine[1], color: "orange" }];
-
-  const tokens = [];
-  let index = 0;
-  const codeRe = /`([^`]+)`/g;
-  for (let match = codeRe.exec(line); match; match = codeRe.exec(line)) {
-    if (match.index > index) tokens.push({ text: line.slice(index, match.index), color: null });
-    tokens.push({ text: match[1], color: "green" });
-    index = match.index + match[0].length;
-  }
-  if (index < line.length) tokens.push({ text: line.slice(index), color: null });
-  return tokens.length > 0 ? tokens : [{ text: line, color: null }];
-}
-
-function wrapMarkdownTokens(tokens, width) {
-  if (width <= 0) return [[{ text: "", color: null }]];
-  const lines = [];
-  let current = [];
-  let currentWidth = 0;
-  for (const token of tokens) {
-    for (const ch of token.text) {
-      const charWidth = visibleWidth(ch);
-      if (currentWidth + charWidth > width && current.length > 0) {
-        lines.push(current);
-        current = [];
-        currentWidth = 0;
-      }
-      current.push({ text: ch, color: token.color });
-      currentWidth += charWidth;
+function appendSegmentLines(lines, segmentLines, width) {
+  for (let i = 0; i < segmentLines.length;) {
+    const line = segmentLines[i];
+    if (!line.markdown) {
+      appendText(lines, line.text, width);
+      i += 1;
+      continue;
     }
-  }
-  lines.push(current);
-  return lines;
-}
-
-function renderMarkdownTokens(tokens) {
-  let out = "";
-  let color = null;
-  for (const token of tokens) {
-    if (token.color !== color) {
-      if (color) out += R;
-      color = token.color;
-      if (color === "orange") out += "\x1b[38;2;245;167;66m";
-      else if (color === "green") out += "\x1b[38;2;127;216;143m";
+    const batch = [];
+    while (i < segmentLines.length && segmentLines[i].markdown) {
+      batch.push(segmentLines[i].text);
+      i += 1;
     }
-    out += token.text;
+    for (const rendered of renderMarkdown(batch.join("\n"), width)) lines.push(rendered);
   }
-  if (color) out += R;
-  return out;
 }
 
 export class OutputBuffer {
@@ -204,10 +161,7 @@ export class OutputBuffer {
     const lines = [];
     for (const seg of this.segments) {
       if (seg.type === "text") {
-        for (const line of seg.lines) {
-          if (line.markdown) appendMarkdownLine(lines, line.text, width);
-          else appendText(lines, line.text, width);
-        }
+        appendSegmentLines(lines, seg.lines, width);
       } else if (seg.type === "thinking") {
         lines.push(dim(`· thinking (${seg.tokens} tokens)`));
         const indent = width > 40 ? width - 40 : width - 2;
@@ -219,10 +173,7 @@ export class OutputBuffer {
         }
       }
     }
-    for (const line of this.currentText) {
-      if (line.markdown) appendMarkdownLine(lines, line.text, width);
-      else appendText(lines, line.text, width);
-    }
+    appendSegmentLines(lines, this.currentText, width);
     if (this.spinning) {
       const frame = SPINNER_FRAMES[this.spinnerIdx];
       lines.push(brightBlack(`${frame} ${this.spinnerText}`));

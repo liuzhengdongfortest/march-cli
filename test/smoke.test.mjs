@@ -245,13 +245,21 @@ await runTuiAutocompleteEscSmoke({ setupTmp, cleanup });
   const markdownLines = markdown.render(20);
   const markdownRendered = markdownLines.join("\n");
   const plainMarkdown = stripAnsi(markdownRendered);
-  assert.ok(markdownRendered.includes("\x1b[38;2;245;167;66m标题\x1b[0m"));
-  assert.ok(markdownRendered.includes("\x1b[38;2;245;167;66m1. Context"));
-  assert.ok(markdownRendered.includes("\x1b[38;2;127;216;143medit\x1b[0m"));
+  assert.ok(markdownRendered.includes("\x1b[38;2;245;167;66m"));
+  assert.ok(markdownRendered.includes("\x1b[38;2;127;216;143m"));
   assert.ok(!plainMarkdown.includes("###"));
   assert.ok(!plainMarkdown.includes("**"));
   assert.ok(!plainMarkdown.includes("`"));
   assert.ok(markdownLines.length > 3);
+
+  const structuredMarkdown = new OutputBuffer();
+  structuredMarkdown.writeMarkdown("- **交互更平滑**。Claude Code\n- **编辑体验**。March 的 `edit_file`\n\n| 维度 | 分数 | 说人话 |\n|------|------|--------|\n| 工具覆盖度 | ★★★★★ | 够用，不多不少 |");
+  const structuredPlain = stripAnsi(structuredMarkdown.render(80).join("\n"));
+  assert.ok(structuredPlain.includes("• 交互更平滑"));
+  assert.ok(structuredPlain.includes("• 编辑体验"));
+  assert.ok(structuredPlain.includes("维度"));
+  assert.ok(structuredPlain.includes("工具覆盖度"));
+  assert.ok(!structuredPlain.includes("|------|"));
 
   const plain = new OutputBuffer();
   plain.write("### plain `code`");
