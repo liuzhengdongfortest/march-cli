@@ -111,6 +111,34 @@ export async function runRunnerCoreSmoke() {
   assert.equal(transformed.messages[1].role, "user");
   assert.equal(transformed.messages[1].content, "[recent_chat]\n(no prior turns)\n\n[current_user]\nhello");
   assert.equal(transformed.messages.length, 2);
+  const transformedResponses = replaceProviderContextMessages({
+    instructions: "Pi system",
+    input: [
+      { role: "user", content: [{ type: "input_text", text: "hello" }, { type: "input_image", image_url: "file://a.png" }] },
+      { type: "reasoning", id: "rs_1", summary: [] },
+      { type: "function_call", call_id: "call_1", name: "read", arguments: "{}" },
+      { type: "function_call_output", call_id: "call_1", output: "ok" },
+    ],
+  }, {
+    system: "[system_core]\nMarch system",
+    userMessages: [
+      { name: "workspace_status", content: "[workspace_status]\nclean" },
+      { name: "recent_chat", content: "[recent_chat]\n## Turn 1\n[March]\nold\n\n[current_user]\nhello" },
+    ],
+  });
+  assert.equal(transformedResponses.instructions, "[system_core]\nMarch system");
+  assert.equal(transformedResponses.input[0].role, "user");
+  assert.equal(transformedResponses.input[0].content[0].type, "input_text");
+  assert.equal(transformedResponses.input[0].content[0].text, "[workspace_status]\nclean");
+  assert.equal(transformedResponses.input[1].content[0].text, "[recent_chat]\n## Turn 1\n[March]\nold\n\n[current_user]\nhello");
+  assert.deepEqual(transformedResponses.input[1].content[1], { type: "input_image", image_url: "file://a.png" });
+  assert.equal(transformedResponses.input.filter((item) => item.role === "user").length, 2);
+  assert.ok(!JSON.stringify(transformedResponses.input).includes('"text":"hello"'));
+  assert.deepEqual(transformedResponses.input.slice(2), [
+    { type: "reasoning", id: "rs_1", summary: [] },
+    { type: "function_call", call_id: "call_1", name: "read", arguments: "{}" },
+    { type: "function_call_output", call_id: "call_1", output: "ok" },
+  ]);
   console.log("  PASS");
 
   console.log("--- smoke: runner missing credentials message ---");

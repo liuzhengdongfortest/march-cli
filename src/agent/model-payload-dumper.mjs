@@ -95,7 +95,12 @@ export function replaceProviderContextMessages(payload, providerContext) {
       return payload;
     }
   }
-  if (!Array.isArray(payload.messages)) return payload;
+  if (Array.isArray(payload.messages)) return replaceChatMessagesPayload(payload, providerContext);
+  if (Array.isArray(payload.input) && typeof payload.instructions === "string") return replaceResponsesPayload(payload, providerContext);
+  return payload;
+}
+
+function replaceChatMessagesPayload(payload, providerContext) {
   const originalUser = payload.messages.findLast?.((message) => message?.role === "user")
     ?? [...payload.messages].reverse().find((message) => message?.role === "user");
   const userMessages = (providerContext.userMessages ?? []).filter((message) => message?.content);
@@ -111,6 +116,38 @@ export function replaceProviderContextMessages(payload, providerContext) {
       ...payload.messages.filter((message) => message?.role !== "system" && message?.role !== "user"),
     ],
   };
+}
+
+function replaceResponsesPayload(payload, providerContext) {
+  const userMessages = (providerContext.userMessages ?? []).filter((message) => message?.content);
+  const originalUser = payload.input.findLast?.((item) => item?.role === "user")
+    ?? [...payload.input].reverse().find((item) => item?.role === "user");
+  return {
+    ...payload,
+    instructions: providerContext.system,
+    input: [
+      ...userMessages.map((message, index) => ({
+        role: "user",
+        content: index === userMessages.length - 1
+          ? responsesContentWithOriginalNonTextParts(message.content, originalUser)
+          : [{ type: "input_text", text: message.content }],
+      })),
+      ...payload.input.filter((item) => item?.role !== "user"),
+    ],
+  };
+}
+
+function responsesContentWithOriginalNonTextParts(text, originalUser) {
+  return [{ type: "input_text", text }, ...responsesNonTextContentParts(originalUser?.content)];
+}
+
+function responsesNonTextContentParts(content) {
+  if (!Array.isArray(content)) return [];
+  return content.filter((part) => {
+    if (!part || typeof part !== "object") return false;
+    if (part.type === "input_text" || part.type === "text" || typeof part.text === "string") return false;
+    return true;
+  });
 }
 
 function contentWithOriginalNonTextParts(text, originalUser) {
