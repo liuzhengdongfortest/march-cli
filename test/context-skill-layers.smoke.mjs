@@ -5,13 +5,14 @@ export async function runContextSkillLayersSmoke() {
   const { buildActiveSkills, buildSkillCatalog } = await import("../src/context/skill-layers.mjs");
 
   const catalog = buildSkillCatalog([
-    { name: "review", description: "Review code" },
-    { name: "plain" },
+    { name: "review", description: "Review code", filePath: "/path/review/SKILL.md" },
+    { name: "plain", description: "No special instructions", filePath: "/path/plain/SKILL.md" },
   ]);
   assert.ok(catalog.includes("[available_skills]"));
   assert.ok(catalog.includes("<name>review</name>"));
   assert.ok(catalog.includes("<description>Review code</description>"));
-  assert.ok(catalog.includes("<description>(no description)</description>"));
+  assert.ok(catalog.includes("<location>"));
+  assert.ok(catalog.includes("activate_skill"));
 
   const active = buildActiveSkills([
     "quick",

@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { readFileSync, existsSync, statSync } from "node:fs";
 import { resolve, basename } from "node:path";
-import { loadSkillsFromDir } from "@mariozechner/pi-coding-agent";
+import { loadSkills, loadSkillsFromDir } from "@mariozechner/pi-coding-agent";
 
 /**
  * Convert a Pi Skill to our internal format (augmented with raw content).
@@ -74,23 +74,23 @@ export function resolveSkill(skillPool, name) {
 }
 
 /**
- * Load skills from both project-level and global directories.
+ * Load skills from both project-level and global directories using the SDK's
+ * loadSkills() for dedup, collision detection, and validation diagnostics.
+ *
+ * Convention: ~/.march/skills/ + cwd/.march/skills/
  * Project skills take precedence over global skills with the same name.
- * Convention: cwd/.march/skills/ + ~/.march/skills/
  */
 export function loadSkillPool(cwd) {
   const globalDir = resolve(homedir(), ".march", "skills");
   const projectDir = resolve(cwd, ".march", "skills");
 
-  const pool = new Map();
+  // Use SDK's loadSkills with project dir first so project skills win on name collision
+  const result = loadSkills({
+    cwd,
+    agentDir: resolve(homedir(), ".march"),
+    skillPaths: [projectDir, globalDir].filter(p => existsSync(p)),
+    includeDefaults: false,
+  });
 
-  // Load global first, so project can override
-  for (const skill of scanSkillDir(globalDir)) {
-    pool.set(skill.name, skill);
-  }
-  for (const skill of scanSkillDir(projectDir)) {
-    pool.set(skill.name, skill);
-  }
-
-  return [...pool.values()];
+  return result.skills.map(augment);
 }

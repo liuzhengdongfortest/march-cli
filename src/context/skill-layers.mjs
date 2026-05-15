@@ -1,17 +1,27 @@
+import { formatSkillsForPrompt } from "@mariozechner/pi-coding-agent";
+
 export function buildSkillCatalog(skillPool = []) {
+  // Ensure all skills have the fields the SDK expects
+  const safePool = skillPool.map(s => ({
+    ...s,
+    description: s.description ?? "",
+    filePath: s.filePath ?? s.path ?? "",
+  }));
+
+  const sdkOutput = formatSkillsForPrompt(safePool);
+  if (!sdkOutput) return "[available_skills]\n(no skills available)";
+
+  // Replace the SDK's instruction header with our own that references activate_skill
+  const xmlIndex = sdkOutput.indexOf("<available_skills>");
+  const xmlBlock = xmlIndex !== -1 ? sdkOutput.slice(xmlIndex) : sdkOutput;
+
   const lines = [
     "The following skills provide specialized instructions for specific tasks.",
     "When a task matches a skill's description, use activate_skill to load its full instructions.",
+    "When a skill file references a relative path, resolve it against the skill directory.",
     "",
-    "<available_skills>",
+    xmlBlock,
   ];
-  for (const skill of skillPool) {
-    lines.push("  <skill>");
-    lines.push(`    <name>${skill.name}</name>`);
-    lines.push(`    <description>${skill.description || "(no description)"}</description>`);
-    lines.push("  </skill>");
-  }
-  lines.push("</available_skills>");
   return `[available_skills]\n${lines.join("\n")}`;
 }
 
