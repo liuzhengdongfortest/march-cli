@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { defineTool } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
+import { toolText } from "./tool-result.mjs";
 
 const PATCH_MODE = "patch";
 const WRITE_MODE = "write";
@@ -165,10 +166,6 @@ function applyPreparedEdits(content, edits) {
     next = next.slice(0, edit.start) + edit.newText + next.slice(edit.end);
   }
   return next;
-}
-
-function toolText(text, details = {}) {
-  return { content: [{ type: "text", text }], details };
 }
 
 export function formatDiff(oldText, newText) {

@@ -3,6 +3,7 @@ import { defineTool } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
 import { createCommandExecTool } from "./command-exec-tool.mjs";
 import { createEditFileTool } from "./file-edit-tool.mjs";
+import { toolText } from "./tool-result.mjs";
 import { createShellTools } from "../shell/tools.mjs";
 import { createWebTools } from "../web/tools.mjs";
 
@@ -100,10 +101,6 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], skil
     };
     return { ...tool, execute: wrapped };
   });
-}
-
-function toolText(text, details = {}) {
-  return { content: [{ type: "text", text }], details };
 }
 
 function normalizeToolPaths(params) {

@@ -1,5 +1,6 @@
 import { defineTool } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
+import { toolText } from "../agent/tool-result.mjs";
 
 export function createShellTools(shellRuntime = null) {
   if (!shellRuntime) return [];
@@ -224,8 +225,4 @@ async function waitForShellIdle(shellRuntime, shellId, beforePlain, { timeoutMs 
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function toolText(text, details = {}) {
-  return { content: [{ type: "text", text }], details };
 }

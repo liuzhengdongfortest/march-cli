@@ -1,5 +1,6 @@
 import { defineTool } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
+import { toolText } from "../agent/tool-result.mjs";
 import { SystemViews } from "./system-views.mjs";
 
 export function createMemoryTools(graph, glossary, searchIndexer = null, systemViews = null, namespace = "") {
@@ -200,7 +201,8 @@ export function createMemoryTools(graph, glossary, searchIndexer = null, systemV
               : `node:${r.node_uuid}`;
             return `--- ${uri} (score: ${r.score?.toFixed(1) ?? "?"}) ---\n${r.snippet ?? r.content?.slice(0, 200)}`;
           });
-          return toolText(`${results.length} results for "${params.query}":\n\n${lines.join("\n\n")}`, { results });
+          const limitHint = results.length >= limit ? `\n\nShowing first ${limit} matches. Increase limit if you need more.` : "";
+          return toolText(`${results.length} results for "${params.query}":\n\n${lines.join("\n\n")}${limitHint}`, { results });
         }
 
         // Fallback: return recent memories from both namespaces
@@ -211,14 +213,11 @@ export function createMemoryTools(graph, glossary, searchIndexer = null, systemV
           return toolText("No memories found. The memory graph is empty.");
         }
         const lines = all.map((m) => `${m.uri} | priority: ${m.priority} | ${m.created_at}`);
-        return toolText(`${all.length} recent memories:\n\n${lines.join("\n")}`, { memories: all });
+        const limitHint = all.length >= limit ? `\n\nShowing first ${limit} memories. Increase limit if you need more.` : "";
+        return toolText(`${all.length} recent memories:\n\n${lines.join("\n")}${limitHint}`, { memories: all });
       },
     }),
   ];
-}
-
-function toolText(text, details = {}) {
-  return { content: [{ type: "text", text }], details };
 }
 
 function handleSystemView(path, views) {

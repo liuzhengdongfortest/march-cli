@@ -1,5 +1,6 @@
 import { defineTool } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
+import { toolText } from "../agent/tool-result.mjs";
 
 export function createMarkdownMemoryTools(store) {
   if (!store) return [];
@@ -49,7 +50,7 @@ export function createMarkdownMemoryTools(store) {
         name: Type.Optional(Type.String({ description: "Memory name. Required when creating." })),
         description: Type.Optional(Type.String({ description: "Short natural-language summary shown in passive recall. Required when creating." })),
         body: Type.Optional(Type.String({ description: "Markdown memory body. Required when creating." })),
-        tags: Type.Optional(Type.Array(Type.String(), { description: "Tags used for passive recall. Required and non-empty when creating; replaces tags when updating." })),
+        tags: Type.Optional(Type.Array(Type.String(), { description: "Tags used for passive recall. Required and non-empty when creating; replaces tags when updating. Prefer stable retrieval keys: project name, technology, feature/domain, user/person, and decision topic. Use lowercase kebab-case when possible. Examples: ['march-cli', 'tooling', 'permissions'], ['memory', 'sqlite-index']." })),
       }),
       execute: async (_toolCallId, params) => {
         try {
@@ -64,8 +65,4 @@ export function createMarkdownMemoryTools(store) {
       },
     }),
   ];
-}
-
-function toolText(text, details = {}) {
-  return { content: [{ type: "text", text }], details };
 }

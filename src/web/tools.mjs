@@ -1,5 +1,6 @@
 import { defineTool } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
+import { toolText } from "../agent/tool-result.mjs";
 import { searchWeb } from "./search.mjs";
 import { fetchWebPage } from "./fetch.mjs";
 
@@ -9,6 +10,7 @@ export function createWebTools({ tavilyKey, braveKey } = {}) {
     label: "Web Search",
     description:
       "Search the web for current information on any topic. " +
+      "Requires TAVILY_API_KEY or BRAVE_API_KEY; if neither is configured, use web_fetch when you already know the URL. " +
       "Use this for news, facts, or data beyond your knowledge cutoff. " +
       "Returns result titles, URLs, and snippets.",
     parameters: Type.Object({
@@ -72,8 +74,4 @@ export function createWebTools({ tavilyKey, braveKey } = {}) {
   });
 
   return [webSearchTool, webFetchTool];
-}
-
-function toolText(text, details = {}) {
-  return { content: [{ type: "text", text }], details };
 }

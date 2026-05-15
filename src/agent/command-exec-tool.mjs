@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { defineTool } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
+import { toolText } from "./tool-result.mjs";
 
 const OUTPUT_LIMIT = 64 * 1024;
 
@@ -82,8 +83,4 @@ function formatCommandOutput({ stdout, stderr, status }) {
 function truncateOutput(text) {
   if (text.length <= OUTPUT_LIMIT) return text;
   return `${text.slice(-OUTPUT_LIMIT)}\n... (truncated to last ${OUTPUT_LIMIT} chars)`;
-}
-
-function toolText(text, details = {}) {
-  return { content: [{ type: "text", text }], details };
 }
