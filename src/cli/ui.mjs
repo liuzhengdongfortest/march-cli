@@ -207,6 +207,12 @@ export function createTuiUI({
       requestRender();
     },
 
+    clearOutput: () => {
+      ensureStarted();
+      spinnerStatus.stop(); retryStatus.stop(); output.clear();
+      requestRender();
+    },
+
     setStatusBar: (text) => {
       if (statusBar.setText(text)) requestRender();
     },

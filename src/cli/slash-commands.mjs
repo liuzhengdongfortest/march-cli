@@ -28,6 +28,7 @@ export async function handleSlashCommand(trimmed, {
   keybindingDiagnostics = [],
   promptTemplates = [],
   promptTemplateDiagnostics = [],
+  renderStartupBanner = null,
   settingsHomeDir,
   writeClipboard,
 }) {
@@ -46,7 +47,13 @@ export async function handleSlashCommand(trimmed, {
       if (result?.cancelled) {
         ui.writeln("New session cancelled");
       } else {
-        ui.writeln(`Started new session: ${result.sessionId}`);
+        ui.clearOutput?.();
+        const bannerLines = typeof renderStartupBanner === "function" ? renderStartupBanner() : [];
+        if (bannerLines.length > 0) {
+          for (const line of bannerLines) ui.writeln(line);
+        } else {
+          ui.writeln(`Started new session: ${result.sessionId}`);
+        }
       }
     } catch (err) {
       ui.writeln(`Error: ${err.message}`);

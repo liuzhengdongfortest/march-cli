@@ -107,9 +107,16 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   for (let i = 0; i < 10; i++) {
     engine.recordTurn({ userMessage: `extra ${i}`, assistantMessage: `answer ${i}` });
   }
-  assert.equal(engine.turns.length, 10);
-  assert.equal(engine.turns[0].userMessage, "extra 0");
+  assert.equal(engine.turns.length, 11);
+  assert.equal(engine.turns[0].userMessage, "hello");
   assert.equal(engine.turns.at(-1).userMessage, "extra 9");
+
+  for (let i = 10; i < 15; i++) {
+    engine.recordTurn({ userMessage: `extra ${i}`, assistantMessage: `answer ${i}` });
+  }
+  assert.equal(engine.turns.length, 10);
+  assert.equal(engine.turns[0].userMessage, "extra 5");
+  assert.equal(engine.turns.at(-1).userMessage, "extra 14");
 
   const testFile = join(dir, "test.txt");
   writeFileSync(testFile, "line1\nline2\nline3");

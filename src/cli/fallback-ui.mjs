@@ -31,6 +31,7 @@ export function createJsonUI() {
       stdout.write(delta);
     },
     status: () => {},
+    clearOutput: () => {},
     setStatusBar: () => {},
     turnStart: () => {},
     turnEnd: () => {},
@@ -94,6 +95,7 @@ export function createPlainUI() {
     },
     textDelta: (delta) => { stdout.write(delta); },
     status: (text) => { stdout.write(`${brightBlack(`● ${text}`)}\n`); },
+    clearOutput: () => {},
     setStatusBar: () => {},
     turnStart: () => {},
     turnEnd: () => {},

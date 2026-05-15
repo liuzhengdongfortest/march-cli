@@ -230,6 +230,8 @@ await runTuiAutocompleteEscSmoke({ setupTmp, cleanup });
   assert.ok(rendered.includes("thinking (12 tokens)"));
   assert.ok(rendered.includes("reasoning line"));
   assert.ok(rendered.includes("Thinking..."));
+  buffer.clear();
+  assert.equal(stripAnsi(buffer.render(80).join("\n")), "");
 
   const markdown = new OutputBuffer();
   markdown.writeMarkdown("### 标题\n**1. Context 浪费严重 — 最大痛点**\n这里有 `edit` 和一段很长很长很长的正文");

@@ -75,6 +75,15 @@ export class OutputBuffer {
     this._activeThinking = null;
   }
 
+  clear() {
+    this.segments = [];
+    this.currentText = [{ text: "", markdown: false }];
+    this.spinning = false;
+    this.spinnerText = "";
+    this.spinnerIdx = 0;
+    this._activeThinking = null;
+  }
+
   write(text) {
     this._writeText(text, false);
   }

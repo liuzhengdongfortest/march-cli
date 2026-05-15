@@ -207,6 +207,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       const result = await runtimeHost.newSession();
       if (result?.cancelled) return { cancelled: true };
       engine.restoreSession({}, [], { replace: true });
+      shellRuntime?.killAll?.();
       const stats = getRunnerSessionStats(sessionBinding.get(), runtimeHost);
       return { sessionId: stats.sessionId, sessionFile: stats.sessionFile };
     },

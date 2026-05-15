@@ -278,6 +278,7 @@ export async function run(argv) {
     extensionPaths,
     keybindingConfig,
     promptTemplateConfig,
+    renderStartupBanner: () => formatStartupBanner({ cwd, modelId: runner.engine.modelId, thinkingLevel: runner.engine.thinkingLevel, mode: modeState.get(), dumpContextPath }),
     refreshStatusBar,
     setTurnRunning: (value) => { turnRunning = value; },
     modeState,

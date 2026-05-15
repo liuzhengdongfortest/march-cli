@@ -46,6 +46,7 @@ export async function runInteractiveRepl({
   extensionPaths,
   keybindingConfig,
   promptTemplateConfig,
+  renderStartupBanner = null,
   refreshStatusBar,
   setTurnRunning,
   modeState = null,
@@ -82,6 +83,7 @@ export async function runInteractiveRepl({
       keybindingDiagnostics: keybindingConfig.diagnostics,
       promptTemplates: promptTemplateConfig.templates,
       promptTemplateDiagnostics: promptTemplateConfig.diagnostics,
+      renderStartupBanner,
     });
     if (slashResult.exit) break;
     if (slashResult.handled) {

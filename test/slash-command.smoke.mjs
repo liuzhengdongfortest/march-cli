@@ -6,7 +6,8 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: slash command handling ---");
   const { handleSlashCommand } = await import("../src/cli/slash-commands.mjs");
   const output = [];
-  const ui = { writeln: (text) => output.push(text), toggleMouse: () => false };
+  let clearOutputCount = 0;
+  const ui = { writeln: (text) => output.push(text), clearOutput: () => { clearOutputCount++; output.length = 0; }, toggleMouse: () => false };
   const dir = setupTmp();
   const projectMarchDir = join(dir, ".march");
   const runner = {
@@ -32,6 +33,8 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
     getScopedModels: () => [{ model: { id: "m1", name: "Model One", provider: "test" } }],
     getConfiguredProviders: () => ["deepseek", "openai"],
     setModel: async (model) => model,
+    canSwitchPiSession: () => true,
+    startNewSession: async () => ({ sessionId: "new-session" }),
     getExtensionDiagnostics: () => [{ type: "warning", message: "extension skipped" }],
     getExtensionLifecycleState: () => ({
       status: "read-only",
@@ -77,6 +80,18 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   };
   const sessionsRoot = join(dir, "sessions");
   const sessionState = { sessionId: "s1", sessionDir: join(sessionsRoot, "s1") };
+  const newSession = await handleSlashCommand("/new", {
+    ui,
+    runner,
+    sessionState,
+    sessionsRoot,
+    projectMarchDir,
+    renderStartupBanner: () => ["March", "banner"],
+  });
+  assert.equal(newSession.handled, true);
+  assert.equal(clearOutputCount, 1);
+  assert.deepEqual(output, ["March", "banner"]);
+
   const status = await handleSlashCommand("/status", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(status.handled, true);
   assert.ok(output.join("\n").includes("session:s1"));

@@ -81,8 +81,18 @@ export async function runRunnerRuntimeHostSmoke() {
   const dumpEntries = [];
   const dumpSidecars = [];
   const observedPayloads = [];
+  const shellKills = [];
   const previousDumpDeepseekKey = process.env.DEEPSEEK_API_KEY;
   process.env.DEEPSEEK_API_KEY = previousDumpDeepseekKey || "test-key";
+  const createDumpSession = (sessionId = "dump-session") => ({
+    agent: {},
+    model: { id: "deepseek-v4-pro", provider: "deepseek" },
+    thinkingLevel: "medium",
+    getActiveToolNames: () => [],
+    getToolDefinition: () => null,
+    getSessionStats: () => ({ sessionId, tokens: {} }),
+    dispose: () => {},
+  });
   const dumpRunner = await createRunner({
     cwd: "D:/repo",
     stateRoot: "D:/state",
@@ -91,6 +101,7 @@ export async function runRunnerRuntimeHostSmoke() {
     ui: { editDiff: () => {} },
     skills: [],
     pins: [],
+    shellRuntime: { killAll: () => shellKills.push("killAll") },
     useRuntimeHost: true,
     modelContextDumper: {
       enabled: true,
@@ -102,22 +113,18 @@ export async function runRunnerRuntimeHostSmoke() {
     },
     onModelPayload: (entry) => observedPayloads.push(entry),
     createRuntimeServices: async (options) => options,
-    createRuntimeSessionFromServices: async () => ({
-      session: {
-        agent: {},
-        model: { id: "deepseek-v4-pro", provider: "deepseek" },
-        thinkingLevel: "medium",
-        getActiveToolNames: () => [],
-        getToolDefinition: () => null,
-        getSessionStats: () => ({ tokens: {} }),
-        dispose: () => {},
-      },
-    }),
+    createRuntimeSessionFromServices: async () => ({ session: createDumpSession() }),
     createAgentSessionRuntimeImpl: async (createRuntime, options) => {
       const result = await createRuntime({ cwd: options.cwd, sessionManager: options.sessionManager });
+      let rebindSession = null;
       return {
         session: result.session,
-        setRebindSession() {},
+        setRebindSession(callback) { rebindSession = callback; },
+        async newSession() {
+          this.session = createDumpSession("new-session");
+          await rebindSession(this.session);
+          return { cancelled: false };
+        },
         async dispose() {},
       };
     },
@@ -128,6 +135,10 @@ export async function runRunnerRuntimeHostSmoke() {
   assert.equal(observedPayloads[0].estimatedTokens, 2);
   assert.equal(dumpEntries[0].kind, "model");
   assert.equal(dumpSidecars[0].suffix, "payload");
+  const newSessionResult = await dumpRunner.startNewSession();
+  assert.equal(newSessionResult.sessionId, "new-session");
+  assert.deepEqual(shellKills, ["killAll"]);
+  assert.deepEqual(dumpRunner.engine.turns, []);
   await dumpRunner.dispose();
   if (previousDumpDeepseekKey === undefined) {
     delete process.env.DEEPSEEK_API_KEY;
