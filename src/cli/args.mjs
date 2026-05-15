@@ -25,7 +25,7 @@ export function parseCliArgs(argv) {
     allowPositionals: true,
   });
 
-  const commandName = ["login", "provider"].includes(positionals[0]) ? positionals[0] : null;
+  const commandName = ["login", "provider", "websearch"].includes(positionals[0]) ? positionals[0] : null;
 
   return {
     command: commandName ? { name: commandName, args: positionals.slice(1) } : null,
@@ -57,13 +57,14 @@ Usage:
   march [options]            (starts REPL)
   march login [provider]     Login to an OAuth provider
   march provider --config    Configure provider credentials
+  march websearch --config  Configure web search credentials
 
 Options:
   -m, --model <id>     Initial model ID override
   --provider <name>    Initial provider override
   --resume <id>        Resume a pi session by default
   --json               JSON output mode (no TUI)
-  --config             With provider command, open provider configuration
+  --config             With provider/websearch command, open configuration
   --dump-context       Write every prompt sent to the model under .march/context-dumps/
   --legacy-sessions    Use old .march/sessions startup and command semantics
   --pi-sessions        Force pi JSONL SessionManager persistence

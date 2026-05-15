@@ -50,6 +50,8 @@ import { runSummaryUiSmoke } from "./summary-ui.smoke.mjs";
 import { runTuiAutocompleteEscSmoke } from "./tui-autocomplete-esc.smoke.mjs";
 import { runTuiShellDrawerSmoke } from "./tui-shell-drawer.smoke.mjs";
 import { runUserDisplayMessageSmoke } from "./user-display-message.smoke.mjs";
+import { runWebSearchConfigCommandSmoke } from "./websearch-config-command.smoke.mjs";
+import { runWebToolsSmoke } from "./web-tools.smoke.mjs";
 
 // Minimal mocks for smoke testing without DEEPSEEK_API_KEY
 
@@ -111,6 +113,10 @@ function cleanup(dir) {
   assert.deepEqual(providerConfig.command, { name: "provider", args: [] });
   assert.equal(providerConfig.providerConfig, true);
 
+  const websearchConfig = parseCliArgs(["websearch", "--config"]);
+  assert.deepEqual(websearchConfig.command, { name: "websearch", args: [] });
+  assert.equal(websearchConfig.providerConfig, true);
+
   const login = parseCliArgs(["login", "openai-codex"]);
   assert.deepEqual(login.command, { name: "login", args: ["openai-codex"] });
   assert.equal(login.prompt, "");
@@ -138,6 +144,8 @@ await runKeybindingsSmoke({ setupTmp, cleanup });
 await runPromptTemplatesSmoke({ setupTmp, cleanup });
 await runSettingsCommandSmoke({ setupTmp, cleanup });
 await runProviderConfigCommandSmoke({ setupTmp, cleanup });
+await runWebSearchConfigCommandSmoke({ setupTmp, cleanup });
+await runWebToolsSmoke();
 await runRipgrepResolverSmoke();
 await runModelContextDumperSmoke({ setupTmp, cleanup });
 await runInputHistorySmoke({ setupTmp, cleanup });

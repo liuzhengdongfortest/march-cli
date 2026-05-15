@@ -26,9 +26,10 @@ import { loadOrCreateProjectId, resumeStartupSession } from "./cli/startup/start
 import { formatStartupBanner } from "./cli/startup/startup-banner.mjs";
 import { activateStartupSkills, createStartupSkillRuntime } from "./cli/startup/startup-skills.mjs";
 import { initializeMcp } from "./mcp/index.mjs";
-import { createWebTools } from "./web/tools.mjs";
+import { createWebToolsFromConfig } from "./web/tools.mjs";
 import { createModelContextDumper } from "./debug/model-context-dumper.mjs";
 import { runProviderConfigCommand } from "./provider/config-command.mjs";
+import { runWebSearchConfigCommand } from "./web/config-command.mjs";
 
 function loadDotEnv(cwd) {
   for (const dir of [cwd, dirname(fileURLToPath(import.meta.url))]) {
@@ -68,9 +69,10 @@ export async function run(argv) {
     }
   }
 
-  if (args.command?.name === "provider") {
-    if (args.providerConfig) return await runProviderConfigCommand({ homeDir: homedir() });
-    process.stderr.write("Usage: march provider --config\n");
+  if (args.command?.name === "provider" || args.command?.name === "websearch") {
+    const command = args.command.name === "provider" ? runProviderConfigCommand : runWebSearchConfigCommand;
+    if (args.providerConfig) return await command({ homeDir: homedir() });
+    process.stderr.write(`Usage: march ${args.command.name} --config\n`);
     return 1;
   }
 
@@ -125,9 +127,7 @@ export async function run(argv) {
     }
   }
 
-  // Web tools: search + fetch
-  const tavilyKey = process.env.TAVILY_API_KEY ?? "";
-  const webTools = createWebTools({ tavilyKey });
+  const webTools = createWebToolsFromConfig(config);
 
   // Permission controller
   const permissionMode = args.permissionMode ?? MODE.BYPASS;

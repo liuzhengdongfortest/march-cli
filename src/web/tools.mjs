@@ -75,3 +75,11 @@ export function createWebTools({ tavilyKey, braveKey } = {}) {
 
   return [webSearchTool, webFetchTool];
 }
+
+export function createWebToolsFromConfig(config = {}) {
+  const providers = config.webSearch?.providers ?? {};
+  return createWebTools({
+    tavilyKey: providers.tavily?.apiKey ?? "",
+    braveKey: providers.brave?.apiKey ?? "",
+  });
+}

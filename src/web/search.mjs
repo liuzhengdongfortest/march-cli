@@ -79,8 +79,5 @@ export async function searchWeb(query, { tavilyKey, braveKey, maxResults = 5 } =
     return { results, provider: "brave" };
   }
 
-  throw new Error(
-    "No search API key configured. Set TAVILY_API_KEY or BRAVE_API_KEY in your environment " +
-    "or .marchrc. Get a free tavily key at https://tavily.com",
-  );
+  throw new Error("No search API key configured. Run: march websearch --config");
 }

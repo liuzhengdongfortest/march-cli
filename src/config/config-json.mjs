@@ -37,3 +37,24 @@ export function upsertProviderProfile({ path = globalConfigJsonPath(), id, type,
   writeConfigJson(path, config);
   return config;
 }
+
+export function upsertWebSearchProvider({ path = globalConfigJsonPath(), id, apiKey }) {
+  const config = readConfigJson(path);
+  const webSearch = config.webSearch && typeof config.webSearch === "object" && !Array.isArray(config.webSearch)
+    ? config.webSearch
+    : {};
+  const providers = webSearch.providers && typeof webSearch.providers === "object" && !Array.isArray(webSearch.providers)
+    ? webSearch.providers
+    : {};
+  providers[id] = {
+    ...(providers[id] ?? {}),
+    apiKey,
+  };
+  config.webSearch = {
+    ...webSearch,
+    provider: id,
+    providers,
+  };
+  writeConfigJson(path, config);
+  return config;
+}

@@ -44,6 +44,7 @@ function mergeLayers(layers) {
     model: null,
     provider: null,
     providers: {},
+    webSearch: { provider: null, providers: {} },
     skills: [],
     pins: [],
     memoryRoot: null,
@@ -55,6 +56,9 @@ function mergeLayers(layers) {
     if (layer.provider) result.provider = layer.provider;
     if (layer.providers && typeof layer.providers === "object" && !Array.isArray(layer.providers)) {
       result.providers = mergeProviders(result.providers, layer.providers);
+    }
+    if (layer.webSearch && typeof layer.webSearch === "object" && !Array.isArray(layer.webSearch)) {
+      result.webSearch = mergeWebSearch(result.webSearch, layer.webSearch);
     }
     if (layer.memoryRoot) result.memoryRoot = layer.memoryRoot;
     if (Array.isArray(layer.skills)) {
@@ -70,6 +74,23 @@ function mergeLayers(layers) {
   }
 
   return result;
+}
+
+function mergeWebSearch(current, next) {
+  const merged = {
+    provider: next.provider ?? current.provider ?? null,
+    providers: { ...(current.providers ?? {}) },
+  };
+  if (next.providers && typeof next.providers === "object" && !Array.isArray(next.providers)) {
+    for (const [id, profile] of Object.entries(next.providers)) {
+      if (!profile || typeof profile !== "object" || Array.isArray(profile)) continue;
+      merged.providers[id] = {
+        ...(merged.providers[id] ?? {}),
+        ...profile,
+      };
+    }
+  }
+  return merged;
 }
 
 function mergeProviders(current, next) {
