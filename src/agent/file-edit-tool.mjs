@@ -123,7 +123,7 @@ function prepareOneEdit(content, edit, path) {
 function prepareTextEdit(content, edit, path) {
   if (!edit.oldText) return { error: "Error: replace_text oldText must be non-empty" };
   const first = content.indexOf(edit.oldText);
-  if (first < 0) return { error: `Error: oldText not found in ${path}. File may have changed.` };
+  if (first < 0) return { error: formatMissingOldTextError(content, edit.oldText, path) };
   const second = content.indexOf(edit.oldText, first + edit.oldText.length);
   if (second >= 0) return { error: `Error: oldText is not unique in ${path}. Use replace_range or include more context.` };
   return {
@@ -134,6 +134,68 @@ function prepareTextEdit(content, edit, path) {
       newText: edit.newText,
     },
   };
+}
+
+function formatMissingOldTextError(content, oldText, path) {
+  const candidate = findClosestTextCandidate(content, oldText);
+  const lines = [`Error: oldText not found in ${path}. File may have changed.`];
+  if (!candidate) return lines.join("\n");
+  lines.push(
+    "",
+    "Closest candidate:",
+    `lines ${candidate.startLine}-${candidate.endLine}, similarity ${candidate.score.toFixed(2)}`,
+    "---",
+    candidate.snippet,
+    "---",
+    `Use replace_range with startLine=${candidate.startLine} endLine=${candidate.endLine} if this is intended.`,
+  );
+  return lines.join("\n");
+}
+
+function findClosestTextCandidate(content, oldText) {
+  const lines = content.split("\n");
+  const oldLineCount = Math.max(1, oldText.split("\n").length);
+  const windowSizes = [...new Set([oldLineCount - 1, oldLineCount, oldLineCount + 1])]
+    .filter((size) => size > 0 && size <= lines.length);
+  let best = null;
+  for (const size of windowSizes) {
+    for (let start = 0; start <= lines.length - size; start++) {
+      const snippet = lines.slice(start, start + size).join("\n");
+      const score = textSimilarity(oldText, snippet);
+      if (!best || score > best.score) {
+        best = { startLine: start + 1, endLine: start + size, score, snippet: truncateSnippet(snippet) };
+      }
+    }
+  }
+  return best?.score >= 0.2 ? best : null;
+}
+
+function textSimilarity(a, b) {
+  const aTokens = tokenizeForSimilarity(a);
+  const bTokens = tokenizeForSimilarity(b);
+  if (aTokens.length === 0 || bTokens.length === 0) return 0;
+  const counts = new Map();
+  for (const token of aTokens) counts.set(token, (counts.get(token) ?? 0) + 1);
+  let common = 0;
+  for (const token of bTokens) {
+    const count = counts.get(token) ?? 0;
+    if (count <= 0) continue;
+    common++;
+    counts.set(token, count - 1);
+  }
+  return (2 * common) / (aTokens.length + bTokens.length);
+}
+
+function tokenizeForSimilarity(text) {
+  const tokens = String(text).toLowerCase().match(/[a-z0-9_]+/g);
+  if (tokens?.length) return tokens;
+  return String(text).replace(/\s+/g, "").split("").filter(Boolean);
+}
+
+function truncateSnippet(text) {
+  const limit = 1200;
+  if (text.length <= limit) return text;
+  return `${text.slice(0, limit)}\n...(snippet truncated)`;
 }
 
 function prepareRangeEdit(content, edit, path) {

@@ -43,6 +43,22 @@ export async function runEditFileToolSmoke({ setupTmp, cleanup }) {
   assert.equal(result.details.error, undefined);
   assert.equal(readFileSync(file, "utf8"), "one\nTWO\nTHREE\nFOUR");
 
+  result = executeEditFile({
+    params: {
+      path: file,
+      mode: "patch",
+      edits: [{ type: "replace_text", oldText: "THREE\nfour", newText: "changed" }],
+    },
+    engine,
+    ui,
+    lspService,
+  });
+  const missingText = result.content[0].text;
+  assert.equal(result.details.error, true);
+  assert.ok(missingText.includes("Closest candidate:"));
+  assert.ok(missingText.includes("Use replace_range with startLine=3 endLine=4"));
+  assert.equal(readFileSync(file, "utf8"), "one\nTWO\nTHREE\nFOUR");
+
   const newFile = join(dir, "nested", "new.txt");
   result = executeEditFile({
     params: { path: newFile, mode: "write", content: "created" },
