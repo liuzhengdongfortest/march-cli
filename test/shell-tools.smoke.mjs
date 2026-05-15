@@ -24,7 +24,8 @@ export async function runShellToolsSmoke() {
   assert.deepEqual(createShellTools(null), []);
   assert.ok(byName.terminal_spawn);
   assert.ok(byName.terminal_send);
-  assert.ok(byName.terminal_send.parameters.properties.text.description.includes("Newlines"));
+  assert.ok(byName.terminal_send.parameters.properties.text.description.includes("Include a newline"));
+  assert.ok(byName.terminal_send.parameters.properties.wait_for_idle.description.includes("does not press Enter automatically"));
   assert.equal(byName.terminal_run, undefined);
   assert.ok(byName.terminal_list);
   assert.ok(byName.terminal_kill);
@@ -79,6 +80,32 @@ export async function runShellToolsSmoke() {
   assert.ok(exec.content[0].text.includes("seen:echo ok"));
   assert.ok(exec.details.screenDelta.includes("seen:echo ok"));
   assert.equal(writes.at(-1), "echo ok\r");
+
+  const deltaRuntime = createShellRuntime({
+    idFactory: () => "delta-sh",
+    createScreenBuffer: () => {
+      let plain = "";
+      return {
+        write: (text) => {
+          plain = `full-screen ${String(text).replace(/\r/g, "").trim()}`;
+        },
+        snapshot: () => ({ cols: 120, rows: 24, plain, ansi: plain }),
+        resize: () => {},
+        dispose: () => {},
+      };
+    },
+    createPty: ({ onData }) => ({
+      write: (text) => onData(text.includes("seed") ? "screen-before\n" : "screen-after\n"),
+      resize: () => {},
+      kill: () => {},
+    }),
+  });
+  deltaRuntime.spawnShell({ name: "delta" });
+  deltaRuntime.sendShell("delta-sh", "seed");
+  const deltaTools = Object.fromEntries(createShellTools(deltaRuntime).map((tool) => [tool.name, tool]));
+  const deltaExec = await deltaTools.terminal_send.execute("tc-delta", { shell_id: "delta-sh", text: "cmd\n", wait_for_idle: true, timeout_ms: 1000, idle_ms: 20 });
+  assert.equal(deltaExec.content[0].text, "screen-after");
+  assert.equal(deltaExec.details.screenDelta, "full-screen screen-after");
 
   const resize = await byName.terminal_resize.execute("tc-resize", { shell_id: "sh1", cols: 100, rows: 20 });
   assert.ok(resize.content[0].text.includes("100x20"));

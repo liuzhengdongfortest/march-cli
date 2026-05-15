@@ -43,7 +43,7 @@ export function executeFind({ cwd, pattern, path = ".", limit = DEFAULT_LIMIT })
   }
 
   if (matches.length === 0) return toolText("No files found matching pattern", { pattern: trimmedPattern, path: searchRoot, count: 0 });
-  const limitHint = matches.length >= max ? `\n\n[${max} results limit reached. Use limit=${max * 2} for more, or refine pattern]` : "";
+  const limitHint = matches.length >= max ? `\n\n[Results truncated to ${max}. Increase limit or refine pattern.]` : "";
   return toolText(`${matches.join("\n")}${limitHint}`, {
     pattern: trimmedPattern,
     path: searchRoot,

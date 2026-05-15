@@ -24,7 +24,7 @@ export function createShellRuntime({
   idFactory = () => randomUUID().slice(0, 8),
   defaultCommand = process.platform === "win32" ? "powershell.exe" : process.env.SHELL || "sh",
   defaultArgs = process.platform === "win32" ? ["-NoLogo", "-NoProfile"] : [],
-  defaultCols = 80,
+  defaultCols = 120,
   defaultRows = 24,
   createScreenBuffer = createTerminalScreenBuffer,
 } = {}) {

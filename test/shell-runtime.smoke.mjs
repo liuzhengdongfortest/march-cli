@@ -150,6 +150,7 @@ export async function runShellRuntimeSmoke() {
   const defaultShell = defaultRuntime.spawnShell();
   assert.equal(defaultShell.command, "pwsh");
   assert.deepEqual(defaultShell.args, ["-NoLogo"]);
+  assert.equal(defaultShell.cols, 120);
   assert.equal(defaultRuntime.dispose().length, 1);
   assert.equal(defaultRuntime.getShell("default").status, "killed");
 

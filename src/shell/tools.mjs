@@ -35,12 +35,12 @@ export function createShellTools(shellRuntime = null) {
   const terminalSend = defineTool({
     name: "terminal_send",
     label: "Terminal Send",
-    description: "Send text or control sequences to a running interactive terminal. Set wait_for_idle=true when sending a command and you need output.",
+    description: "Send text or control sequences to a running interactive terminal. Set wait_for_idle=true after sending Enter when you need output.",
     parameters: Type.Object({
       shell_id: Type.String({ description: "Shell id returned by terminal_spawn or terminal_list" }),
-      text: Type.Optional(Type.String({ description: "Text to send to the terminal. Newlines, \\n, and \\r are treated as Enter." })),
+      text: Type.Optional(Type.String({ description: "Text to type into the terminal. Include a newline (\\n/\\r) or use key:\"enter\" to execute a command." })),
       key: Type.Optional(Type.String({ description: "Named control key to send: enter, ctrl_c, ctrl_d, ctrl_z, tab, escape, backspace" })),
-      wait_for_idle: Type.Optional(Type.Boolean({ description: "Wait until terminal output becomes idle and return the output delta; default false" })),
+      wait_for_idle: Type.Optional(Type.Boolean({ description: "Wait until terminal output becomes idle and return the output delta; does not press Enter automatically; default false" })),
       timeout_ms: Type.Optional(Type.Number({ description: "Maximum wait time when wait_for_idle=true, default 10000" })),
       idle_ms: Type.Optional(Type.Number({ description: "Output idle time before returning when wait_for_idle=true, default 300" })),
     }),
@@ -54,7 +54,7 @@ export function createShellTools(shellRuntime = null) {
           timeoutMs: params.timeout_ms,
           idleMs: params.idle_ms,
         });
-        const output = idle.screenDelta || idle.delta || idle.snapshot.screen?.plain || idle.snapshot.plain || "(no output)";
+        const output = idle.delta || idle.screenDelta || idle.snapshot.screen?.plain || idle.snapshot.plain || "(no output)";
         return toolText(output, {
           shell: idle.shell,
           timedOut: idle.timedOut,
