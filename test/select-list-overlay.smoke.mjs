@@ -42,7 +42,7 @@ export async function runSelectListOverlaySmoke() {
   assert.equal(latestList.selectedIndex, 1);
   assert.equal(latestList.maxVisible, 4);
   assert.deepEqual(latestList.options, { minPrimaryColumnWidth: 18, maxPrimaryColumnWidth: 32 });
-  assert.deepEqual(calls[0][2], { width: 50, minWidth: 40, maxHeight: 5, anchor: "top-left", margin: 1 });
+  assert.deepEqual(calls[0][2], { width: 50, minWidth: 40, maxHeight: 5, anchor: "bottom-left", margin: 1 });
   latestList.onSelect({ value: "b" });
   latestList.onCancel();
   assert.deepEqual(await promise, { value: "b" });
@@ -51,7 +51,7 @@ export async function runSelectListOverlaySmoke() {
   const positionedPromise = showSelectListOverlay({
     tui,
     items: [{ value: "x" }],
-    anchor: "top-left",
+    anchor: "bottom-left",
     margin: { left: 2, bottom: 1 },
     offsetX: 1,
     offsetY: -1,
@@ -62,7 +62,7 @@ export async function runSelectListOverlaySmoke() {
     width: 64,
     minWidth: 40,
     maxHeight: 9,
-    anchor: "top-left",
+    anchor: "bottom-left",
     margin: { left: 2, bottom: 1 },
     offsetX: 1,
     offsetY: -1,

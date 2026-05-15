@@ -7,7 +7,7 @@ export function showSelectListOverlay({
   selectedIndex = 0,
   maxVisible = 8,
   width = 64,
-  anchor = "top-left",
+  anchor = "bottom-left",
   margin = 1,
   offsetX,
   offsetY,
