@@ -3,6 +3,7 @@ import { readdirSync } from "node:fs";
 import { CombinedAutocompleteProvider } from "@mariozechner/pi-tui";
 
 const MARCH_COMMANDS = [
+  { name: "new", description: "Start a new pi session" },
   { name: "exit", description: "Exit March" },
   { name: "quit", description: "Exit March" },
   { name: "help", description: "Show available commands" },

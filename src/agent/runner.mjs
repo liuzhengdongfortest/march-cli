@@ -167,7 +167,6 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       }
       return result;
     },
-
     getCurrentModel() {
       return sessionBinding.get().model;
     },
@@ -182,7 +181,6 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       });
       return activeSession.model;
     },
-
     getScopedModels() {
       return sessionBinding.get().scopedModels;
     },
@@ -192,34 +190,36 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       const available = (modelRegistry.getAvailable?.() ?? []).map((model) => model.provider);
       return [...new Set([...configured, ...available])];
     },
-
     getSessionStats() {
       return getRunnerSessionStats(sessionBinding.get(), runtimeHost);
     },
-
     setSessionName(name) {
       engine.setSessionName(name);
       syncCurrentPiSidecar();
       return engine.sessionName;
     },
-
     canSwitchPiSession() {
       return Boolean(runtimeHost);
     },
-
+    async startNewSession() {
+      if (!runtimeHost) throw new Error("pi runtime host is not enabled");
+      syncCurrentPiSidecar();
+      const result = await runtimeHost.newSession();
+      if (result?.cancelled) return { cancelled: true };
+      engine.restoreSession({}, [], { replace: true });
+      const stats = getRunnerSessionStats(sessionBinding.get(), runtimeHost);
+      return { sessionId: stats.sessionId, sessionFile: stats.sessionFile };
+    },
     getExtensionDiagnostics() {
       return runtimeHost?.getDiagnostics?.() ?? [];
     },
-
     getExtensionLifecycleState() {
       return lifecycleAdapter.getState();
     },
-
     async switchPiSession(sessionPath) {
       if (!runtimeHost) throw new Error("pi runtime host is not enabled");
       return runtimeHost.switchSession(sessionPath);
     },
-
     async clonePiSession() {
       return cloneCurrentPiSession({
         runtimeHost,
@@ -229,7 +229,6 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
         getSessionStats: getRunnerSessionStats,
       });
     },
-
     getPiForkCandidates() {
       if (!runtimeHost) throw new Error("pi runtime host is not enabled");
       return sessionBinding.get().getUserMessagesForForking();
@@ -246,17 +245,14 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
         getSessionStats: getRunnerSessionStats,
       });
     },
-
     cycleThinkingLevel() {
       const level = sessionBinding.get().cycleThinkingLevel();
       engine.setRuntimeState({ thinkingLevel: level });
       return level;
     },
-
     getThinkingLevel() {
       return sessionBinding.get().thinkingLevel;
     },
-
     setThinkingLevel(level) {
       const activeSession = sessionBinding.get();
       activeSession.setThinkingLevel(level);

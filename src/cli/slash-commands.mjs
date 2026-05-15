@@ -36,6 +36,24 @@ export async function handleSlashCommand(trimmed, {
     return { handled: true, exit: true };
   }
 
+  if (trimmed === "/new") {
+    if (!runner.canSwitchPiSession?.()) {
+      ui.writeln("Error: pi runtime host is not enabled");
+      return { handled: true };
+    }
+    try {
+      const result = await runner.startNewSession();
+      if (result?.cancelled) {
+        ui.writeln("New session cancelled");
+      } else {
+        ui.writeln(`Started new session: ${result.sessionId}`);
+      }
+    } catch (err) {
+      ui.writeln(`Error: ${err.message}`);
+    }
+    return { handled: true };
+  }
+
   if (trimmed === "/help") {
     for (const line of formatHelpLines()) ui.writeln(line);
     return { handled: true };
