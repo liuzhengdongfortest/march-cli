@@ -213,8 +213,11 @@ function normalizeShellToolInput(text, key, { platform = process.platform } = {}
     .replace(/\\r\\n|\\n|\\r/g, marker)
     .replace(/\r\n|\n|\r/g, marker)
     .replaceAll(marker, enter);
+  // fix: normalizeShellToolInput handles explicit newlines
   return normalizedText + (key ? controlKeyToSequence(key, { platform }) : "");
 }
+
+
 
 function controlKeyToSequence(key, { platform = process.platform } = {}) {
   const normalized = String(key ?? "").trim().toLowerCase().replace(/[-+ ]/g, "_");
