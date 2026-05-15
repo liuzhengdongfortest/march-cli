@@ -3,6 +3,7 @@ import { dim, red } from "./ui-theme.mjs";
 
 export function writeToolStart({ output, name, args }) {
   const shortArgs = JSON.stringify(args).slice(0, 120);
+  output.writeln("");
   output.writeln(dim(`  ◆ ${name} ${shortArgs}`));
 }
 

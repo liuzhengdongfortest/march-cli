@@ -7,8 +7,9 @@ export async function runToolRenderingSmoke() {
   const lines = [];
   const output = { writeln: (line) => lines.push(line) };
   writeToolStart({ output, name: "read", args: { path: "a".repeat(200) } });
-  assert.ok(lines[0].includes("read"));
-  assert.ok(lines[0].length < 150);
+  assert.equal(lines[0], "");
+  assert.ok(lines[1].includes("read"));
+  assert.ok(lines[1].length < 150);
 
   const rendered = writeToolEnd({
     output,
