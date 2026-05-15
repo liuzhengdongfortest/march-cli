@@ -6,6 +6,7 @@ import { parseCliArgs, showHelp } from "./cli/args.mjs";
 import { createUI } from "./cli/ui.mjs";
 import { createPermissionController, MODE } from "./cli/permissions.mjs";
 import { loadKeybindings } from "./cli/input/keybindings.mjs";
+import { createInputHistoryStore } from "./cli/input/history-store.mjs";
 import { loadPromptTemplates } from "./cli/input/prompt-templates.mjs";
 import { runInteractiveRepl, runSingleShotPrompt } from "./cli/repl-loop.mjs";
 import { createStatusLineUpdater } from "./cli/status-line-updater.mjs";
@@ -96,6 +97,7 @@ export async function run(argv) {
 
   const projectMarchDir = resolve(cwd, ".march");
   if (!existsSync(projectMarchDir)) mkdirSync(projectMarchDir, { recursive: true });
+  const inputHistoryStore = createInputHistoryStore({ path: join(projectMarchDir, "input-history.json") });
   const namespace = loadOrCreateProjectId(projectMarchDir);
   const memoryRoot = resolveMemoryRoot(config.memoryRoot, stateRoot);
   const memoryStore = new MarkdownMemoryStore({ root: memoryRoot });
@@ -152,6 +154,7 @@ export async function run(argv) {
     keybindings: keybindingConfig.keybindings,
     promptTemplates: promptTemplateConfig.templates,
     shellRuntime,
+    historyStore: inputHistoryStore,
   });
 
   ui.status(`Starting March session ${sessionState.sessionId} in ${cwd}`);

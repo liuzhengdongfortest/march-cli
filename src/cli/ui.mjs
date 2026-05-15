@@ -26,6 +26,7 @@ export function createTuiUI({
   keybindings,
   promptTemplates = [],
   shellRuntime = null,
+  historyStore = null,
   terminal = new ProcessTerminal(),
 } = {}) {
   const tui = new TUI(terminal);
@@ -39,6 +40,7 @@ export function createTuiUI({
   });
   const autocomplete = new MarchAutocompleteProvider(buildMarchCommands(skillPool, promptTemplates), cwd);
   editor.setAutocompleteProvider(autocomplete);
+  editor.history = historyStore?.load?.() ?? [];
 
   tui.addChild(shellSplitLayout);
   tui.setFocus(editor);
@@ -139,7 +141,7 @@ export function createTuiUI({
     retryStatus.end({ success, attempt, finalError });
   }
 
-  const inputController = createTuiInputController({ editor, requestRender });
+  const inputController = createTuiInputController({ editor, requestRender, historyStore });
 
   return {
     readline: (_prompt) => {
@@ -288,8 +290,8 @@ export function createTuiUI({
   };
 }
 
-export function createUI({ json, cwd = process.cwd(), skillPool = [], keybindings, promptTemplates = [], shellRuntime = null } = {}) {
+export function createUI({ json, cwd = process.cwd(), skillPool = [], keybindings, promptTemplates = [], shellRuntime = null, historyStore = null } = {}) {
   if (json) return createJsonUI();
   if (!stdout.isTTY) return createPlainUI();
-  return createTuiUI({ cwd, skillPool, keybindings, promptTemplates, shellRuntime });
+  return createTuiUI({ cwd, skillPool, keybindings, promptTemplates, shellRuntime, historyStore });
 }

@@ -1,6 +1,6 @@
 import { resolveAttachmentTokens, uniqueAttachmentToken, withLeadingSpace } from "../input/attachment-tokens.mjs";
 
-export function createTuiInputController({ editor, requestRender }) {
+export function createTuiInputController({ editor, requestRender, historyStore = null }) {
   let onSubmitResolve = null;
   const attachmentTokens = new Map();
 
@@ -11,7 +11,10 @@ export function createTuiInputController({ editor, requestRender }) {
         editor.disableSubmit = false;
         editor.onSubmit = (text) => {
           const resolvedText = resolveAttachmentTokens(text, attachmentTokens);
-          editor.addToHistory(text);
+          if (attachmentTokens.size === 0) {
+            editor.addToHistory(text);
+            saveHistory();
+          }
           clearSubmitState();
           attachmentTokens.clear();
           resolve(resolvedText);
@@ -48,5 +51,11 @@ export function createTuiInputController({ editor, requestRender }) {
     editor.disableSubmit = true;
     editor.onSubmit = undefined;
     onSubmitResolve = null;
+  }
+
+  function saveHistory() {
+    try {
+      historyStore?.save?.(editor.history);
+    } catch {}
   }
 }

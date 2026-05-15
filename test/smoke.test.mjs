@@ -19,6 +19,7 @@ import { runExtensionLifecycleAdapterSmoke } from "./extension-lifecycle-adapter
 import { runExtensionLifecycleManifestSmoke } from "./extension-lifecycle-manifest.smoke.mjs";
 import { runExternalEditorSmoke } from "./external-editor.smoke.mjs";
 import { runImageSmokeSuite } from "./image-smoke-suite.smoke.mjs";
+import { runInputHistorySmoke } from "./input-history.smoke.mjs";
 import { runKeybindingsSmoke } from "./keybindings.smoke.mjs";
 import { runLoginCommandSmoke } from "./login-command.smoke.mjs";
 import { runModelContextDumperSmoke } from "./model-context-dumper.smoke.mjs";
@@ -125,6 +126,7 @@ await runPromptTemplatesSmoke({ setupTmp, cleanup });
 await runSettingsCommandSmoke({ setupTmp, cleanup });
 await runProviderConfigCommandSmoke({ setupTmp, cleanup });
 await runModelContextDumperSmoke({ setupTmp, cleanup });
+await runInputHistorySmoke({ setupTmp, cleanup });
 await runSessionNameCommandSmoke({ setupTmp, cleanup });
 await runShellScreenBufferSmoke();
 await runShellRuntimeSmoke();
