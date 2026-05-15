@@ -22,7 +22,7 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   assert.ok(ctx.includes("[session_identity]"));
   assert.ok(ctx.includes("[workspace_status]"));
   assert.ok(ctx.includes("[diagnostics]"));
-  assert.ok(ctx.includes("[runtime_status]"));
+  assert.ok(!ctx.includes("[runtime_status]"));
   assert.ok(ctx.includes("[recent_chat]"));
   assert.ok(ctx.includes("(no prior turns)"));
   assert.ok(ctx.includes("Use edit_file for all file writes."));
@@ -76,11 +76,10 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
     },
   });
   const shellCtx = shellEngine.buildContext("check shell");
-  assert.ok(shellCtx.includes("[runtime_status]"));
   assert.ok(shellCtx.includes("[shells]"));
   assert.ok(shellCtx.includes("recent_output:\nready"));
   assert.ok(!shellCtx.includes("\x1b[32m"));
-  assert.ok(shellCtx.indexOf("[runtime_status]") < shellCtx.indexOf("[shells]"));
+  assert.ok(shellCtx.indexOf("[workspace_status]") < shellCtx.indexOf("[shells]"));
   assert.ok(shellCtx.indexOf("[shells]") < shellCtx.indexOf("[recent_chat]"));
 
   engine.setRuntimeState({ modelId: "other-model", provider: "test-provider", thinkingLevel: "high" });

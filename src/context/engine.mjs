@@ -1,6 +1,5 @@
 import { isAbsolute, resolve } from "node:path";
 import { readFileSync } from "node:fs";
-import { buildRuntimeStatus } from "./runtime-status.mjs";
 import { buildSessionIdentity, buildWorkspaceStatus } from "./session-status.mjs";
 import { buildShellLayers } from "./shell-layers.mjs";
 import { buildActiveSkills, buildSkillCatalog } from "./skill-layers.mjs";
@@ -78,7 +77,6 @@ export class ContextEngine {
     layers.push(
       { name: "diagnostics", text: this.#buildDiagnostics() },
       { name: "workspace_status", text: this.#buildWorkspaceStatus() },
-      { name: "runtime_status", text: this.#buildRuntimeStatus() },
       ...this.#buildShellLayers().map((text, index) => ({ name: index === 0 ? "shells" : `shells_${index + 1}`, text })),
       { name: "recent_chat", text: this.#buildRecentChat() },
     );
@@ -220,16 +218,6 @@ export class ContextEngine {
   // ── Layer 5: open_files ────────────────────────────────────────────
   #buildOpenFiles() {
     return buildOpenFilesLayer(this.openFiles);
-  }
-
-  // ── Layer 7: runtime_status ────────────────────────────────────────
-  #buildRuntimeStatus() {
-    return buildRuntimeStatus({
-      turns: this.turns,
-      sessionName: this.sessionName,
-      openFilesCount: this.openFiles.size,
-      pins: this.getPins(),
-    });
   }
 
   // ── Layer 8: shells ────────────────────────────────────────────────
