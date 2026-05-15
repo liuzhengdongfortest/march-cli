@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runTurnEventsSmoke() {
   console.log("--- smoke: runner turn event handling ---");
-  const { createTurnEventState, handleRunnerSessionEvent } = await import("../src/agent/turn-events.mjs");
+  const { createTurnEventState, handleRunnerSessionEvent } = await import("../src/agent/turn/turn-events.mjs");
 
   const calls = [];
   const ui = {

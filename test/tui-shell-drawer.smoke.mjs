@@ -54,8 +54,8 @@ export async function runTuiShellDrawerSmoke({ setupTmp, cleanup }) {
   await waitForRender();
   const rendered = stripAnsi(terminal.writes.join(""));
   assert.ok(rendered.includes("│"));
-  assert.ok(rendered.includes("dev"));
-  assert.ok(rendered.includes("focus:shell"));
+  assert.ok(rendered.includes("powershell.exe"));
+  assert.ok(rendered.includes("1/1"));
   assert.ok(rendered.includes("ready"));
   assert.equal(rendered.includes("● shell drawer: open"), false);
   assert.deepEqual(resizes.at(-1), ["sh1", { cols: 34, rows: 10 }]);

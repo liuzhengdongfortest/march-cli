@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runRunnerCleanupSmoke() {
   console.log("--- smoke: runner cleanup ---");
-  const { runRunnerCleanup } = await import("../src/agent/runner-cleanup.mjs");
+  const { runRunnerCleanup } = await import("../src/agent/runner/runner-cleanup.mjs");
 
   const calls = [];
   await runRunnerCleanup([

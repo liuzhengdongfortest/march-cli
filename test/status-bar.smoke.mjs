@@ -64,11 +64,16 @@ export async function runStatusBarSmoke() {
     sessionSource: "pi",
   });
   const statusLine = update();
+  const plainStatusLine = stripAnsi(statusLine);
   assert.equal(seen.length, 1);
   assert.equal(seen[0], statusLine);
-  assert.ok(statusLine.includes("pi:pi1"));
-  assert.ok(statusLine.includes("3in/5out"));
-  assert.ok(statusLine.includes(" | "));
-  assert.ok(statusLine.includes("git "));
+  assert.ok(plainStatusLine.includes("pi:pi1"));
+  assert.ok(plainStatusLine.includes("3in/5out"));
+  assert.ok(plainStatusLine.includes(" | "));
+  assert.ok(plainStatusLine.includes("git "));
   console.log("  PASS");
+}
+
+function stripAnsi(text) {
+  return String(text).replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "");
 }

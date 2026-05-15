@@ -98,10 +98,11 @@ export class ShellDrawer {
     const outputLines = this.getOutputLines(shell.id);
     const maxOffset = Math.max(0, outputLines.length - this.maxOutputLines);
     this.scrollOffset = clamp(this.scrollOffset, 0, maxOffset);
+    const shellIndexLabel = `${Math.max(1, shells.findIndex((s) => s.id === shell.id) + 1)}/${shells.length}`;
     const scrollLabel = this.scrollOffset === 0 ? "tail" : `-${this.scrollOffset}`;
     const focusLabel = this.isInputActive() ? `${ACTIVE}Alt+S:editor` : `${MUTED}Alt+S:shell`;
     const statusIcon = shell.status === "running" ? "●" : shell.status === "starting" ? "○" : "×";
-    lines.push(fit(`${HEADER}${statusIcon} ${shell.command}${args} ${MUTED}${scrollLabel}  ${focusLabel}${RESET}`, safeWidth));
+    lines.push(fit(`${HEADER}${statusIcon} ${shell.command}${args} ${MUTED}${shellIndexLabel} ${scrollLabel}  ${focusLabel}${RESET}`, safeWidth));
 
     if (outputLines.length === 0) {
       lines.push(fit(`${MUTED}(empty shell output)${RESET}`, safeWidth));
