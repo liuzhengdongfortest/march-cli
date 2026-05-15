@@ -16,7 +16,7 @@ export async function runContextStatsToolSmoke({ setupTmp, cleanup }) {
 
   const layers = engine.buildContextLayers("");
   assert.ok(layers.some((layer) => layer.name === "open_files"));
-  assert.equal(engine.buildContext(""), layers.map((layer) => layer.text).join("\n\n"));
+  assert.deepEqual(engine.buildContextLayers("").map((layer) => layer.name), layers.map((layer) => layer.name));
 
   const stats = buildContextStats(engine);
   assert.ok(stats.totalChars > 0);

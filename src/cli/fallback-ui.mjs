@@ -100,7 +100,7 @@ export function createPlainUI() {
     turnStart: () => {},
     turnEnd: () => {},
     summaryStart: () => {},
-    summaryDone: () => { stdout.write(`\n${brightBlack("● summary · done")}\n`); },
+    summaryDone: () => {},
     retryStart: ({ attempt, maxAttempts, delayMs, errorMessage }) => {
       stdout.write(`${yellow(`● retrying (${attempt}/${maxAttempts}) in ${Math.ceil(delayMs / 1000)}s: ${errorMessage || "Unknown error"}`)}\n`);
     },

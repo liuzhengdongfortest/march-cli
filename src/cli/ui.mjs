@@ -221,16 +221,9 @@ export function createTuiUI({
       spinnerStatus.stop();
     },
 
-    summaryStart: () => {
-      spinnerStatus.start("summarizing...");
-    },
+    summaryStart: () => {},
 
-    summaryDone: () => {
-      spinnerStatus.stop();
-      output.writeln("");
-      output.writeln(brightBlack(`● summary · done`));
-      requestRender();
-    },
+    summaryDone: () => {},
     retryStart,
     retryEnd,
 
