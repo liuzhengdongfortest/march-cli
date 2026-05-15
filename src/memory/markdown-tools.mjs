@@ -64,5 +64,25 @@ export function createMarkdownMemoryTools(store) {
         }
       },
     }),
+
+    defineTool({
+      name: "memory_delete",
+      label: "Memory Delete",
+      description: "Soft-delete a Markdown memory by id or path. This marks status as deleted so passive recall and memory_search exclude it; the file remains on disk for audit/recovery.",
+      parameters: Type.Object({
+        id: Type.Optional(Type.String({ description: "Memory id to delete, e.g. mem_..." })),
+        path: Type.Optional(Type.String({ description: "Memory file path to delete" })),
+      }),
+      execute: async (_toolCallId, params) => {
+        try {
+          const identifier = params.id || params.path;
+          const result = store.delete(identifier);
+          if (result.alreadyDeleted) return toolText(`Memory ${result.id} is already deleted.\npath: ${result.path}`, { memory: result });
+          return toolText(`Deleted ${result.id}\npath: ${result.path}`, { memory: result });
+        } catch (err) {
+          return toolText(`Error: ${err.message}`, { error: true });
+        }
+      },
+    }),
   ];
 }

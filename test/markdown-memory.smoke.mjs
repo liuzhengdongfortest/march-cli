@@ -47,6 +47,7 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   const search = tools.find((tool) => tool.name === "memory_search");
   const open = tools.find((tool) => tool.name === "memory_open");
   const save = tools.find((tool) => tool.name === "memory_save");
+  const del = tools.find((tool) => tool.name === "memory_delete");
 
   const searchResult = await search.execute("t1", { query: "explicitly", limit: 5 });
   assert.ok(searchResult.content[0].text.includes("explicitly"));
@@ -67,6 +68,22 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
 
   const saveResult = await save.execute("t3", { id: entry.id, tags: ["memory/passive-recall", "memory/window"] });
   assert.ok(saveResult.content[0].text.includes("memory/window"));
+
+  const deleteResult = await del.execute("t5", { id: entry.id });
+  assert.ok(deleteResult.content[0].text.includes(`Deleted ${entry.id}`));
+  assert.equal(deleteResult.details.memory.status, "deleted");
+  assert.ok(existsSync(entry.path));
+  assert.ok(readFileSync(entry.path, "utf8").includes("status: deleted"));
+  assert.equal(store.recallForAssistant("passive recall window", { currentProject: "march-cli" }).length, 0);
+  const deletedSearch = await search.execute("t6", { query: "Passive recall dedup", limit: 5 });
+  assert.ok(deletedSearch.content[0].text.includes("No memory files matched"));
+  const deletedOpen = await open.execute("t7", { id: entry.id });
+  assert.ok(deletedOpen.content[0].text.includes("status: deleted"));
+  const deleteAgain = await del.execute("t8", { path: entry.path });
+  assert.ok(deleteAgain.content[0].text.includes("already deleted"));
+  const deleteMissing = await del.execute("t9", {});
+  assert.equal(deleteMissing.details.error, true);
+  assert.ok(deleteMissing.content[0].text.includes("memory id or path is required"));
 
   store.close();
   const cachedStore = new MarkdownMemoryStore({ root: dir });

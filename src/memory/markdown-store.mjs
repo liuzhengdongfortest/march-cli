@@ -15,6 +15,7 @@ import {
 import { formatRecallHints, scoreEntry, toHint } from "./markdown/markdown-recall.mjs";
 import { clearMarkdownMemoryIndex, loadMarkdownMemoryIndex, openMarkdownMemoryIndex, queryMarkdownMemoryIndex, replaceMarkdownMemoryIndex } from "./markdown/sqlite-index.mjs";
 import { resolveRipgrepCommand } from "./markdown/ripgrep.mjs";
+import { softDeleteMemoryFile } from "./markdown/markdown-delete.mjs";
 
 export { formatRecallHints } from "./markdown/markdown-recall.mjs";
 export { normalizeTags } from "./markdown/markdown-format.mjs";
@@ -202,6 +203,17 @@ export class MarkdownMemoryStore {
     writeFileSync(nextPath, content, "utf8");
     this.scan({ force: true });
     return this.entries.get(nextId) ?? { id: nextId, path: nextPath, name: nextName, description: nextDescription, tags: nextTags };
+  }
+
+  delete(identifier) {
+    this.ensureFresh();
+    const raw = String(identifier ?? "").trim();
+    if (!raw) throw new Error("memory id or path is required");
+    const existing = this.entries.get(raw);
+    const path = existing ? existing.path : this.#resolveMemoryPath(raw);
+    const result = softDeleteMemoryFile({ path, entry: existing, now: this.now });
+    this.scan({ force: true });
+    return result;
   }
 
   #recall(text, { limit, excluded, currentProject }) {
