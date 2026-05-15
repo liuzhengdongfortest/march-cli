@@ -10,7 +10,7 @@ import { buildDiagnosticsLayer } from "./diagnostics.mjs";
 import { formatRecallHints } from "../memory/markdown-store.mjs";
 
 export class ContextEngine {
-  constructor({ cwd, modelId, provider = "deepseek", thinkingLevel = "medium", skills = [], skillPool = [], pins = [], namespace = "", shellRuntime = null, lspService = null, injections = [], maxTurns }) {
+  constructor({ cwd, modelId, provider = "deepseek", thinkingLevel = "medium", skills = [], skillPool = [], pins = [], namespace = "", shellRuntime = null, lspService = null, injections = [], maxTurns, trimBatch }) {
     this.cwd = cwd;
     this.modelId = modelId;
     this.provider = provider;
@@ -26,7 +26,8 @@ export class ContextEngine {
     this.shellRuntime = shellRuntime;
     this.lspService = lspService;
     this.injections = [...injections];
-    this.maxTurns = maxTurns ?? 10;
+    this.maxTurns = maxTurns ?? 15;
+    this.trimBatch = trimBatch ?? 5;
     this._cachedWorkspaceStatus = null;
     this.systemCorePromptKey = resolveSystemCorePromptKey({ modelId });
     this.systemCore = buildSystemCore({ modelId });
@@ -94,7 +95,8 @@ export class ContextEngine {
       assistantRecallHints,
     });
     if (this.turns.length > this.maxTurns) {
-      this.turns = this.turns.slice(-this.maxTurns);
+      const keep = Math.max(1, this.maxTurns - this.trimBatch);
+      this.turns = this.turns.slice(-keep);
     }
   }
 

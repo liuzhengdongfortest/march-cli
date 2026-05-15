@@ -195,6 +195,7 @@ export async function run(argv) {
     lifecycleDiagnostics: lifecycleManifests.diagnostics,
     authStorage: authConfig.authStorage,
     maxTurns: config.maxTurns ?? undefined,
+    trimBatch: config.trimBatch ?? undefined,
     permissionController,
     modelContextDumper,
     onModelPayload: ({ estimatedTokens }) => {

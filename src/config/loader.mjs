@@ -48,6 +48,7 @@ function mergeLayers(layers) {
     skills: [],
     pins: [],
     maxTurns: null,
+    trimBatch: null,
     memoryRoot: null,
   };
 
