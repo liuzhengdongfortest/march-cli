@@ -208,8 +208,7 @@ export function createTuiUI({
     },
 
     setStatusBar: (text) => {
-      statusBar.setText(text);
-      requestRender();
+      if (statusBar.setText(text)) requestRender();
     },
 
     turnStart: () => {

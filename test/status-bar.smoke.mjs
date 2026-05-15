@@ -26,7 +26,8 @@ export async function runStatusBarSmoke() {
   assert.equal(visibleWidth(line), 16);
   assert.ok(line.includes("\x1b[48;5;236m"));
 
-  statusBar.setText("Discuss | gpt-5.4·medium");
+  assert.equal(statusBar.setText("Discuss | gpt-5.4·medium"), true);
+  assert.equal(statusBar.setText("Discuss | gpt-5.4·medium"), false);
   const [narrow] = statusBar.render(40);
   assert.equal(visibleWidth(narrow), 40);
   assert.ok(narrow.includes("gpt-5.4"));

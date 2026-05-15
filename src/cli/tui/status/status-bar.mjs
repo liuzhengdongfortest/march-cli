@@ -10,7 +10,10 @@ export class StatusBar {
   }
 
   setText(text) {
-    this.text = normalizeStatusText(text);
+    const next = normalizeStatusText(text);
+    if (next === this.text) return false;
+    this.text = next;
+    return true;
   }
 
   invalidate() {}

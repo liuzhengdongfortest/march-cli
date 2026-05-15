@@ -25,8 +25,10 @@ export async function runSpinnerStatusSmoke() {
   assert.equal(intervals[0].ms, 80);
   assert.equal(controller.isRunning(), true);
   intervals[0].fn();
-  controller.stop();
-  controller.stop();
+  assert.equal(controller.stop(), true);
+  const renderCountAfterStop = calls.filter((call) => call[0] === "render").length;
+  assert.equal(controller.stop(), false);
+  assert.equal(calls.filter((call) => call[0] === "render").length, renderCountAfterStop);
 
   assert.deepEqual(calls[0], ["spinner", true, "Thinking..."]);
   assert.deepEqual(calls[2], ["spinner", true, "Still thinking..."]);

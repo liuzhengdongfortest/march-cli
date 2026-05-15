@@ -8,8 +8,10 @@ export function createSpinnerStatusController({
   clearIntervalImpl = clearInterval,
 } = {}) {
   let timer = null;
+  let spinning = false;
 
   function start(text) {
+    spinning = true;
     output.setSpinner(true, text);
     if (!timer) {
       timer = setIntervalImpl(() => {
@@ -21,17 +23,20 @@ export function createSpinnerStatusController({
   }
 
   function stop() {
+    if (!spinning && !timer) return false;
     if (timer) {
       clearIntervalImpl(timer);
       timer = null;
     }
+    spinning = false;
     output.setSpinner(false, "");
     requestRender();
+    return true;
   }
 
   return {
     start,
     stop,
-    isRunning: () => Boolean(timer),
+    isRunning: () => spinning,
   };
 }
