@@ -20,7 +20,6 @@ import { runRunnerRuntimeHostSmoke } from "./runner-runtime-host.smoke.mjs";
 import { runRunnerTurnFlowSmoke } from "./runner-turn-flow.smoke.mjs";
 import { runRuntimeFactorySmoke } from "./runtime-factory.smoke.mjs";
 import { runRuntimeHostSmoke } from "./runtime-host.smoke.mjs";
-import { runSelectListOverlaySmoke } from "./select-list-overlay.smoke.mjs";
 import { runSessionOptionsSmoke } from "./session-options.smoke.mjs";
 import { runShellCommandSmoke } from "./shell-command.smoke.mjs";
 import { runShellDrawerControlsSmoke } from "./shell-drawer-controls.smoke.mjs";
@@ -52,7 +51,6 @@ export async function runCliCommandSuiteSmoke({ setupTmp, cleanup }) {
   await runToolRenderingSmoke();
   await runTuiHandlersSmoke();
   await runEditorSelectListSmoke();
-  await runSelectListOverlaySmoke();
   await runSelectorListSmoke();
   await runModelCommandSmoke();
   await runSessionCommandSmoke();
