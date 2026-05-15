@@ -259,6 +259,10 @@ await runTuiAutocompleteEscSmoke({ setupTmp, cleanup });
   assert.ok(structuredPlain.includes("• 编辑体验"));
   assert.ok(structuredPlain.includes("维度"));
   assert.ok(structuredPlain.includes("工具覆盖度"));
+  assert.ok(structuredPlain.includes("┌"));
+  assert.ok(structuredPlain.includes("│"));
+  assert.ok(structuredPlain.includes("├"));
+  assert.ok(structuredPlain.includes("└"));
   assert.ok(!structuredPlain.includes("|------|"));
 
   const plain = new OutputBuffer();

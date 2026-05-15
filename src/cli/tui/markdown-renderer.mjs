@@ -2,7 +2,7 @@ import { marked } from "marked";
 import { visibleWidth } from "@mariozechner/pi-tui";
 import { R, brightBlack, dim, orange, softGreen, bold, cyan } from "./ui-theme.mjs";
 
-const TABLE_GAP = "  ";
+const TABLE_CELL_PADDING = 2;
 
 export function renderMarkdown(markdown, width) {
   const maxWidth = Math.max(1, width);
@@ -63,13 +63,15 @@ function renderTable(token, lines, width) {
   const cells = rows.map((row) => row.map((cell) => plainInline(cell.tokens ?? [{ type: "text", text: cell.text }])));
   const columnCount = Math.max(...cells.map((row) => row.length));
   const widths = Array.from({ length: columnCount }, (_, i) => Math.max(3, ...cells.map((row) => visibleWidth(row[i] ?? ""))));
-  const totalGap = TABLE_GAP.length * Math.max(0, columnCount - 1);
-  const maxTableWidth = Math.max(1, width - totalGap);
-  shrinkColumns(widths, maxTableWidth);
+  const borderWidth = columnCount + 1;
+  const paddingWidth = TABLE_CELL_PADDING * columnCount;
+  shrinkColumns(widths, Math.max(1, width - borderWidth - paddingWidth));
 
+  lines.push(formatTableBorder(widths, "┌", "┬", "┐"));
   lines.push(formatTableRow(cells[0], widths, true));
-  lines.push(brightBlack(widths.map((w) => "─".repeat(w)).join(TABLE_GAP)));
+  lines.push(formatTableBorder(widths, "├", "┼", "┤"));
   for (const row of cells.slice(1)) lines.push(formatTableRow(row, widths, false));
+  lines.push(formatTableBorder(widths, "└", "┴", "┘"));
 }
 
 function renderBlockquote(token, lines, width, depth) {
@@ -133,11 +135,16 @@ function plainInline(tokens) {
 }
 
 function formatTableRow(row, widths, header) {
-  return widths.map((width, i) => {
+  const cells = widths.map((width, i) => {
     const text = truncateCell(row[i] ?? "", width);
     const padded = text + " ".repeat(Math.max(0, width - visibleWidth(text)));
-    return header ? bold(padded) : padded;
-  }).join(TABLE_GAP);
+    return ` ${header ? bold(padded) : padded} `;
+  });
+  return `${brightBlack("│")}${cells.join(brightBlack("│"))}${brightBlack("│")}`;
+}
+
+function formatTableBorder(widths, left, join, right) {
+  return brightBlack(`${left}${widths.map((width) => "─".repeat(width + TABLE_CELL_PADDING)).join(join)}${right}`);
 }
 
 function shrinkColumns(widths, maxTotal) {
@@ -148,16 +155,20 @@ function shrinkColumns(widths, maxTotal) {
 }
 
 function truncateCell(text, width) {
-  let out = "";
+  const chars = [];
+  const sourceChars = Array.from(text);
   let used = 0;
-  for (const ch of text) {
+  for (const ch of sourceChars) {
     const w = visibleWidth(ch);
     if (used + w > width) break;
-    out += ch;
+    chars.push(ch);
     used += w;
   }
-  if (out.length < text.length && width > 1) return out.slice(0, Math.max(0, out.length - 1)) + "…";
-  return out;
+  if (chars.length < sourceChars.length && width > 1) {
+    while (chars.length && used + 1 > width) used -= visibleWidth(chars.pop());
+    return `${chars.join("")}…`;
+  }
+  return chars.join("");
 }
 
 function renderPlainMarkdownFallback(markdown, width) {
