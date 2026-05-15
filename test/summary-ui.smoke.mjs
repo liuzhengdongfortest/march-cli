@@ -16,6 +16,18 @@ export async function runSummaryUiSmoke({ setupTmp, cleanup }) {
   assert.equal(terminal.writes.join("").includes("summary"), false);
   await tui.close();
 
+  const redrawTerminal = new FakeTerminal();
+  redrawTerminal.rows = 10;
+  const redrawTui = createTuiUI({ cwd: dir, terminal: redrawTerminal });
+  for (let i = 0; i < 20; i += 1) redrawTui.writeln(`line ${i}`);
+  await new Promise(resolve => setTimeout(resolve, 20));
+  redrawTerminal.writes = [];
+  redrawTerminal.columns = 100;
+  redrawTui.setStatusBar("changed status");
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal(redrawTerminal.writes.join("").includes("\x1b[3J"), false);
+  await redrawTui.close();
+
   const writes = [];
   const originalWrite = stdout.write;
   stdout.write = (chunk, ...args) => {

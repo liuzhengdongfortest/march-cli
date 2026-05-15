@@ -29,7 +29,7 @@ export function createTuiUI({
   historyStore = null,
   terminal = new ProcessTerminal(),
 } = {}) {
-  const tui = new TUI(terminal);
+  const tui = new TUI(preserveTerminalScrollback(terminal));
   const output = new OutputBuffer();
   const shellDrawer = new ShellDrawer({ shellRuntime });
   const statusBar = new StatusBar();
@@ -278,6 +278,18 @@ export function createTuiUI({
       }
     },
   };
+}
+
+function preserveTerminalScrollback(terminal) {
+  return new Proxy(terminal, {
+    get(target, prop, receiver) {
+      if (prop === "write") {
+        return (data) => target.write(String(data).replaceAll("\x1b[3J", ""));
+      }
+      const value = Reflect.get(target, prop, receiver);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
 }
 
 export function createUI({ json, cwd = process.cwd(), skillPool = [], keybindings, promptTemplates = [], shellRuntime = null, historyStore = null } = {}) {
