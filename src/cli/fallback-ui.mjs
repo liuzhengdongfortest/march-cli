@@ -1,5 +1,6 @@
 import { stdout } from "node:process";
 import { extractToolOutput } from "./tool-output.mjs";
+import { formatToolStartLine } from "./tui/tool-rendering.mjs";
 import { brightBlack, dim, red, green, yellow } from "./tui/ui-theme.mjs";
 
 export function createJsonUI() {
@@ -80,8 +81,7 @@ export function createPlainUI() {
     },
     toggleLastThinking: () => {},
     toolStart: (name, args) => {
-      const shortArgs = JSON.stringify(args).slice(0, 120);
-      stdout.write(`\n${dim(`  ◆ ${name} ${shortArgs}`)}\n`);
+      stdout.write(`\n${dim(`  ${formatToolStartLine(name, args)}`)}\n`);
     },
     toolEnd: (name, isError, result) => {
       const out = extractToolOutput(result);

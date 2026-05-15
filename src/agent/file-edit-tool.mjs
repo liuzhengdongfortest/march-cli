@@ -91,7 +91,7 @@ function patchOpenFile({ absPath, edits, engine, ui, lspService }) {
     writeFileSync(absPath, newContent, "utf8");
     engine.openFile(absPath);
     lspService?.touchFile?.(absPath);
-    for (const edit of prepared.edits) ui.editDiff(absPath, formatDiff(edit.oldText, edit.newText));
+    for (const edit of prepared.edits) ui.editDiff(absPath, formatDiff(edit.oldText, edit.newText, { startLine: edit.startLine }));
     return toolText(`Edited ${absPath}`, { path: absPath, edits: prepared.edits.length });
   } catch (err) {
     return toolText(`Error writing ${absPath}: ${err.message}`, { error: true });
@@ -132,6 +132,7 @@ function prepareTextEdit(content, edit, path) {
       end: first + edit.oldText.length,
       oldText: edit.oldText,
       newText: edit.newText,
+      startLine: lineNumberForOffset(content, first),
     },
   };
 }
@@ -212,8 +213,15 @@ function prepareRangeEdit(content, edit, path) {
       end: offsetForLine(lines, startLine) + oldText.length,
       oldText,
       newText: edit.newText,
+      startLine,
     },
   };
+}
+
+function lineNumberForOffset(content, offset) {
+  let line = 1;
+  for (let i = 0; i < offset; i++) if (content[i] === "\n") line++;
+  return line;
 }
 
 function offsetForLine(lines, lineNumber) {
@@ -230,7 +238,7 @@ function applyPreparedEdits(content, edits) {
   return next;
 }
 
-export function formatDiff(oldText, newText) {
+export function formatDiff(oldText, newText, { startLine = 1 } = {}) {
   const oldLines = oldText.split("\n");
   const newLines = newText.split("\n");
 
@@ -249,16 +257,16 @@ export function formatDiff(oldText, newText) {
   const ctx = 3;
   const result = [];
   const ctxStart = Math.max(0, prefix - ctx);
-  for (let i = ctxStart; i < prefix; i++) result.push({ type: "ctx", text: oldLines[i], lineNum: i + 1 });
+  for (let i = ctxStart; i < prefix; i++) result.push({ type: "ctx", text: oldLines[i], lineNum: startLine + i });
 
   const oldEnd = oldLines.length - suffix;
-  for (let i = prefix; i < oldEnd; i++) result.push({ type: "del", text: oldLines[i], lineNum: i + 1 });
+  for (let i = prefix; i < oldEnd; i++) result.push({ type: "del", text: oldLines[i], lineNum: startLine + i });
 
   const newEnd = newLines.length - suffix;
-  for (let i = prefix; i < newEnd; i++) result.push({ type: "add", text: newLines[i], lineNum: i + 1 });
+  for (let i = prefix; i < newEnd; i++) result.push({ type: "add", text: newLines[i], lineNum: startLine + i });
 
   const postStart = oldLines.length - suffix;
   const postEnd = Math.min(oldLines.length, postStart + ctx);
-  for (let i = postStart; i < postEnd; i++) result.push({ type: "ctx", text: oldLines[i], lineNum: i + 1 });
+  for (let i = postStart; i < postEnd; i++) result.push({ type: "ctx", text: oldLines[i], lineNum: startLine + i });
   return result;
 }

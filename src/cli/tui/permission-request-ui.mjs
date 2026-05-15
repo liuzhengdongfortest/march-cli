@@ -1,11 +1,11 @@
 import { permissionLabel } from "../permissions.mjs";
+import { formatToolStartLine } from "./tool-rendering.mjs";
 import { brightBlack, yellow } from "./ui-theme.mjs";
 
 export async function requestToolPermission({ toolName, params, category, output, selectList, requestRender }) {
   const label = permissionLabel(category);
   output.writeln(yellow(`● ${toolName} needs ${label} permission`));
-  const shortArgs = JSON.stringify(params).slice(0, 100);
-  output.writeln(brightBlack(`  ${shortArgs}`));
+  output.writeln(brightBlack(`  ${formatToolStartLine(toolName, params)}`));
   requestRender();
   const choice = await selectList({
     items: [

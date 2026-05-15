@@ -8,11 +8,13 @@ export async function runToolRenderingSmoke() {
   const output = { writeln: (line) => lines.push(line) };
   writeToolStart({ output, name: "read", args: { path: "D:\\repo\\src\\agent\\runtime\\runner-runtime-host.mjs", offset: 1, limit: 2000 } });
   assert.equal(lines[0], "");
-  assert.ok(lines[1].includes("→ Read src\\agent\\runtime\\runner-runtime-host.mjs"));
-  assert.ok(lines[1].includes("offset=1"));
+  assert.ok(lines[1].includes("→ read · src\\agent\\runtime\\runner-runtime-host.mjs · lines 1-2000"));
   assert.ok(lines[1].length < 150);
-  assert.equal(formatToolStartLine("grep", { pattern: "onPayload|payload|agent", path: "test" }), "✱ Grep \"onPayload|payload|agent\" in test");
-  assert.equal(formatToolStartLine("find", { pattern: "**/*.mjs", path: "src" }), "✱ Find \"**/*.mjs\" in src");
+  assert.equal(formatToolStartLine("grep", { pattern: "onPayload|payload|agent", path: "test" }), "✱ grep · \"onPayload|payload|agent\" · test");
+  assert.equal(formatToolStartLine("find", { pattern: "**/*.mjs", path: "src" }), "✱ find · \"**/*.mjs\" · src");
+  assert.equal(formatToolStartLine("edit_file", { path: "test/session-name-command.smoke.mjs", edits: [{ newText: "very long\ntext" }] }), "◆ edit_file · test\\session-name-command.smoke.mjs · 1 edit");
+  assert.equal(formatToolStartLine("terminal_send", { shell_id: "test-shell", text: "npm test", key: "enter" }), "◆ terminal_send · test-shell · text+enter");
+  assert.equal(formatToolStartLine("unknown", { ok: true, deep: { noisy: "value" } }), "◆ unknown · ok=true");
 
   const collapsed = writeToolEnd({
     output,

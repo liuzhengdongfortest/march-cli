@@ -28,6 +28,7 @@ export async function runEditFileToolSmoke({ setupTmp, cleanup }) {
   assert.equal(result.details.error, undefined);
   assert.equal(readFileSync(file, "utf8"), "one\nTWO\nTHREE\nfour");
   assert.equal(diffs.length, 1);
+  assert.deepEqual(diffs[0].diff.map((line) => line.lineNum), [2, 3, 2, 3]);
   assert.deepEqual(touched, [file]);
 
   result = executeEditFile({
