@@ -1,4 +1,5 @@
 import { getProviderLabel } from "../../provider/presets.mjs";
+import { globalConfigJsonPath, upsertModelSelection } from "../../config/config-json.mjs";
 
 export function parseModelCommand(input) {
   if (input !== "/model" && !input.startsWith("/model ")) {
@@ -35,7 +36,7 @@ export function buildModelSelectItems({ current, scopedModels = [] }) {
   }));
 }
 
-export async function handleModelCommand(parsed, { runner, ui = null }) {
+export async function handleModelCommand(parsed, { runner, ui = null, configHomeDir } = {}) {
   if (parsed.type === "select-interactive") {
     const scopedModels = runner.getScopedModels?.() || [];
     if (!ui?.selectList || scopedModels.length === 0) return "Use Ctrl+L to choose a model.";
@@ -47,14 +48,25 @@ export async function handleModelCommand(parsed, { runner, ui = null }) {
       items: buildModelSelectItems({ current, scopedModels }),
       selectedIndex,
       width: 72,
+      anchor: "bottom-left",
     });
     if (!item) return "Model unchanged.";
     const model = await runner.setModel(item.model);
+    persistModelSelection(model, { configHomeDir });
     return `Model: ${model.name || model.id} (${model.provider})`;
   }
   if (parsed.type === "select") return selectModelByIndex(parsed.index, { runner });
   if (parsed.type === "error") return `Error: ${parsed.message}`;
   return "";
+}
+
+export function persistModelSelection(model, { configHomeDir } = {}) {
+  if (!model?.provider || !model?.id) return null;
+  return upsertModelSelection({
+    path: globalConfigJsonPath(configHomeDir),
+    provider: model.provider,
+    model: model.id,
+  });
 }
 
 export function formatModelsList({ current, scopedModels = [] }) {

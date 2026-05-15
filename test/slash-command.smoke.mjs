@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
@@ -169,9 +169,16 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   const indexedThinking = await handleSlashCommand("/thinking 2", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(indexedThinking.handled, true);
   assert.ok(output.join("\n").includes("thinking: medium"));
-  const model = await handleSlashCommand("/model", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
+  ui.selectList = async ({ items, anchor }) => {
+    assert.equal(anchor, "bottom-left");
+    return items[0];
+  };
+  const model = await handleSlashCommand("/model", { ui, runner, sessionState, sessionsRoot, projectMarchDir, configHomeDir: dir });
   assert.equal(model.handled, true);
-  assert.ok(output.join("\n").includes("Use Ctrl+L to choose a model."));
+  assert.ok(output.join("\n").includes("Model: Model One (test)"));
+  const modelConfig = JSON.parse(readFileSync(join(dir, ".march", "config.json"), "utf8"));
+  assert.equal(modelConfig.provider, "test");
+  assert.equal(modelConfig.model, "m1");
   const indexedModel = await handleSlashCommand("/model 1", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(indexedModel.handled, true);
   assert.ok(output.join("\n").includes("Use /model without arguments"));

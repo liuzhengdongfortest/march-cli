@@ -51,6 +51,7 @@ export async function runInteractiveRepl({
   refreshStatusBar,
   setTurnRunning,
   modeState = null,
+  configHomeDir,
 }) {
   let lastInlineShellCommand = "";
 
@@ -85,6 +86,7 @@ export async function runInteractiveRepl({
       promptTemplates: promptTemplateConfig.templates,
       promptTemplateDiagnostics: promptTemplateConfig.diagnostics,
       renderStartupBanner,
+      configHomeDir,
     });
     if (slashResult.exit) break;
     if (slashResult.handled) {

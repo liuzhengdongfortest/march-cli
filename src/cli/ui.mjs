@@ -124,9 +124,9 @@ export function createTuiUI({
     return toolsExpanded;
   }
 
-  function selectList({ items, selectedIndex = 0, maxVisible = 8, width = 64 }) {
+  function selectList({ items, selectedIndex = 0, maxVisible = 8, width = 64, anchor, margin, offsetX, offsetY }) {
     ensureStarted();
-    return showSelectListOverlay({ tui, items, selectedIndex, maxVisible, width, requestRender });
+    return showSelectListOverlay({ tui, items, selectedIndex, maxVisible, width, anchor, margin, offsetX, offsetY, requestRender });
   }
 
   function retryStart({ attempt, maxAttempts, delayMs, errorMessage }) {

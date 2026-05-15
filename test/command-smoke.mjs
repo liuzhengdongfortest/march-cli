@@ -1,4 +1,7 @@
 import { strict as assert } from "node:assert";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 export async function runSelectorListSmoke() {
   console.log("--- smoke: selector list formatting ---");
@@ -27,9 +30,11 @@ export async function runModelCommandSmoke() {
     formatModelsList,
     handleModelCommand,
     listModels,
+    persistModelSelection,
     parseModelCommand,
     selectModelByIndex,
   } = await import("../src/cli/commands/model-command.mjs");
+  const configHomeDir = mkdtempSync(join(tmpdir(), "march-model-command-"));
   const models = [
     { model: { id: "a", name: "Model A", provider: "test" } },
     { model: { id: "b", provider: "other" } },
@@ -68,8 +73,25 @@ export async function runModelCommandSmoke() {
   assert.equal(await selectModelByIndex(2, { runner }), "Model: b (other)");
   assert.equal(selectedModel.id, "b");
   assert.equal(await selectModelByIndex(3, { runner }), "Error: model index out of range: 3");
-  assert.equal(await handleModelCommand({ type: "select-interactive" }, { runner }), "Use Ctrl+L to choose a model.");
-  assert.equal(await handleModelCommand({ type: "select-interactive" }, { runner, ui: { selectList: async ({ items }) => items[1] } }), "Model: b (other)");
-  assert.ok(listModels({ runner }).join("\n").includes("Model A"));
+  try {
+    assert.equal(await handleModelCommand({ type: "select-interactive" }, { runner }), "Use Ctrl+L to choose a model.");
+    assert.equal(await handleModelCommand({ type: "select-interactive" }, { runner, ui: { selectList: async ({ items, anchor }) => {
+      assert.equal(anchor, "bottom-left");
+      return items[1];
+    } }, configHomeDir }), "Model: b (other)");
+    const configPath = join(configHomeDir, ".march", "config.json");
+    assert.deepEqual(JSON.parse(readFileSync(configPath, "utf8")), { provider: "other", model: "b" });
+
+    writeFileSync(configPath, JSON.stringify({ providers: { deepseek: { type: "deepseek" } }, webSearch: { provider: "brave" } }));
+    persistModelSelection(models[0].model, { configHomeDir });
+    const persisted = JSON.parse(readFileSync(configPath, "utf8"));
+    assert.equal(persisted.provider, "test");
+    assert.equal(persisted.model, "a");
+    assert.equal(persisted.providers.deepseek.type, "deepseek");
+    assert.equal(persisted.webSearch.provider, "brave");
+    assert.ok(listModels({ runner }).join("\n").includes("Model A"));
+  } finally {
+    if (existsSync(configHomeDir)) rmSync(configHomeDir, { recursive: true, force: true });
+  }
   console.log("  PASS");
 }

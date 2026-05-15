@@ -7,6 +7,10 @@ export function showSelectListOverlay({
   selectedIndex = 0,
   maxVisible = 8,
   width = 64,
+  anchor = "bottom-center",
+  margin = 1,
+  offsetX,
+  offsetY,
   requestRender,
   SelectListImpl = SelectList,
   theme = EDITOR_THEME.selectList,
@@ -33,8 +37,10 @@ export function showSelectListOverlay({
       width,
       minWidth: 40,
       maxHeight: maxVisible + 1,
-      anchor: "bottom-center",
-      margin: 1,
+      anchor,
+      margin,
+      ...(offsetX !== undefined ? { offsetX } : {}),
+      ...(offsetY !== undefined ? { offsetY } : {}),
     });
     requestRender();
   });

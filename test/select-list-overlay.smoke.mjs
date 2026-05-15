@@ -48,6 +48,28 @@ export async function runSelectListOverlaySmoke() {
   assert.deepEqual(await promise, { value: "b" });
   assert.equal(calls.filter(([type]) => type === "hide").length, 1);
 
+  const positionedPromise = showSelectListOverlay({
+    tui,
+    items: [{ value: "x" }],
+    anchor: "bottom-left",
+    margin: { left: 2, bottom: 1 },
+    offsetX: 1,
+    offsetY: -1,
+    requestRender,
+    SelectListImpl: FakeSelectList,
+  });
+  assert.deepEqual(calls.findLast(([type]) => type === "overlay")[2], {
+    width: 64,
+    minWidth: 40,
+    maxHeight: 9,
+    anchor: "bottom-left",
+    margin: { left: 2, bottom: 1 },
+    offsetX: 1,
+    offsetY: -1,
+  });
+  latestList.onCancel();
+  assert.equal(await positionedPromise, null);
+
   const cancelPromise = showSelectListOverlay({ tui, items: [{ value: "x" }], requestRender, SelectListImpl: FakeSelectList });
   latestList.onCancel();
   assert.equal(await cancelPromise, null);

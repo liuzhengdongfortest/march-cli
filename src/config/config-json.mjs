@@ -38,6 +38,14 @@ export function upsertProviderProfile({ path = globalConfigJsonPath(), id, type,
   return config;
 }
 
+export function upsertModelSelection({ path = globalConfigJsonPath(), provider, model }) {
+  const config = readConfigJson(path);
+  config.provider = provider;
+  config.model = model;
+  writeConfigJson(path, config);
+  return config;
+}
+
 export function upsertWebSearchProvider({ path = globalConfigJsonPath(), id, apiKey }) {
   const config = readConfigJson(path);
   const webSearch = config.webSearch && typeof config.webSearch === "object" && !Array.isArray(config.webSearch)

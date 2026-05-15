@@ -30,6 +30,7 @@ export async function handleSlashCommand(trimmed, {
   promptTemplateDiagnostics = [],
   renderStartupBanner = null,
   settingsHomeDir,
+  configHomeDir = settingsHomeDir,
   writeClipboard,
 }) {
   if (trimmed === "/exit" || trimmed === "/quit") {
@@ -169,7 +170,7 @@ export async function handleSlashCommand(trimmed, {
   const modelCommand = parseModelCommand(trimmed);
   if (modelCommand.type !== "none") {
     try {
-      ui.writeln(await handleModelCommand(modelCommand, { runner, ui }));
+      ui.writeln(await handleModelCommand(modelCommand, { runner, ui, configHomeDir }));
     } catch (err) {
       ui.writeln(`Error: ${err.message}`);
     }

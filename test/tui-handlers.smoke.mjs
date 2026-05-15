@@ -1,10 +1,14 @@
 import { strict as assert } from "node:assert";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 export async function runTuiHandlersSmoke() {
   console.log("--- smoke: TUI handler wiring ---");
   const { wireTuiHandlers } = await import("../src/cli/tui/tui-handlers.mjs");
 
   const calls = [];
+  const configHomeDir = mkdtempSync(join(tmpdir(), "march-tui-handlers-"));
   const handlers = {};
   const ui = {
     selectList: async () => null,
@@ -42,19 +46,21 @@ export async function runTuiHandlersSmoke() {
   };
   let refreshCount = 0;
   let pasteArgs = null;
-  wireTuiHandlers({
-    ui,
-    runner,
-    sessionState: { sessionId: "state-session" },
-    projectMarchDir: "D:/repo/.march",
-    refreshStatusBar: () => { refreshCount += 1; },
-    isTurnRunning: () => true,
-    modeState,
-    pasteClipboardImageImpl: (args) => {
-      pasteArgs = args;
-      return ["Attached image: @.march/attachments/s1/image.png"];
-    },
-  });
+  try {
+    wireTuiHandlers({
+      ui,
+      runner,
+      sessionState: { sessionId: "state-session" },
+      projectMarchDir: "D:/repo/.march",
+      refreshStatusBar: () => { refreshCount += 1; },
+      isTurnRunning: () => true,
+      modeState,
+      configHomeDir,
+      pasteClipboardImageImpl: (args) => {
+        pasteArgs = args;
+        return ["Attached image: @.march/attachments/s1/image.png"];
+      },
+    });
 
   handlers.escape();
   assert.deepEqual(calls[0], ["abort"]);
@@ -78,19 +84,30 @@ export async function runTuiHandlersSmoke() {
   assert.ok(calls.some(([type, line]) => type === "writeln" && line.includes("thinking: off")));
   assert.equal(refreshCount, 3);
 
-  ui.selectList = async ({ items }) => items[1];
+  ui.selectList = async ({ items, anchor }) => {
+    assert.equal(anchor, "bottom-left");
+    return items[1];
+  };
   await handlers.ctrlL();
   assert.ok(calls.some(([type, line]) => type === "writeln" && line.includes("model: b (p)")));
   assert.equal(refreshCount, 4);
+  const modelConfig = JSON.parse(readFileSync(join(configHomeDir, ".march", "config.json"), "utf8"));
+  assert.equal(modelConfig.provider, "p");
+  assert.equal(modelConfig.model, "b");
 
   runner.getScopedModels = () => [];
   await handlers.ctrlL();
   assert.ok(calls.some(([type, line]) => type === "writeln" && line.includes("model: fallback (p)")));
   assert.equal(refreshCount, 5);
+  const fallbackConfig = JSON.parse(readFileSync(join(configHomeDir, ".march", "config.json"), "utf8"));
+  assert.equal(fallbackConfig.model, "fallback");
 
   handlers.pasteImage();
   assert.equal(pasteArgs.projectMarchDir, "D:/repo/.march");
   assert.equal(pasteArgs.sessionId, "runner-session");
   assert.ok(calls.some(([type, line]) => type === "status" && line.includes("Attached image")));
+  } finally {
+    if (existsSync(configHomeDir)) rmSync(configHomeDir, { recursive: true, force: true });
+  }
   console.log("  PASS");
 }

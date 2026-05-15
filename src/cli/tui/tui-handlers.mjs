@@ -1,4 +1,4 @@
-import { buildModelSelectItems } from "../commands/model-command.mjs";
+import { buildModelSelectItems, persistModelSelection } from "../commands/model-command.mjs";
 import { pasteClipboardImage } from "../commands/paste-image-command.mjs";
 import { buildThinkingSelectItems } from "../commands/thinking-command.mjs";
 import { yellow, brightBlack } from "./ui-theme.mjs";
@@ -12,6 +12,7 @@ export function wireTuiHandlers({
   isTurnRunning = () => false,
   modeState = null,
   pasteClipboardImageImpl = pasteClipboardImage,
+  configHomeDir,
 } = {}) {
   ui.setEscapeHandler(() => {
     if (isTurnRunning()) {
@@ -79,12 +80,14 @@ export function wireTuiHandlers({
           items: buildModelSelectItems({ current, scopedModels }),
           selectedIndex,
           width: 72,
+          anchor: "bottom-left",
         });
         if (!item) {
           ui.writeln(brightBlack(`● model: unchanged`));
           return;
         }
         const model = await runner.setModel(item.model);
+        persistModelSelection(model, { configHomeDir });
         const name = model.name || model.id;
         ui.writeln(brightBlack(`● model: ${name} (${model.provider})`));
         refreshStatusBar();
@@ -92,6 +95,7 @@ export function wireTuiHandlers({
       }
       const result = await runner.cycleModel();
       if (result) {
+        persistModelSelection(result.model, { configHomeDir });
         const name = result.model.name || result.model.id;
         ui.writeln(brightBlack(`● model: ${name} (${result.model.provider})  thinking: ${result.thinkingLevel}`));
         refreshStatusBar();
