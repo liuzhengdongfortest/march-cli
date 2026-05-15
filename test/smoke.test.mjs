@@ -256,6 +256,16 @@ await runTuiAutocompleteEscSmoke({ setupTmp, cleanup });
   assert.ok(structuredPlain.includes("└"));
   assert.ok(!structuredPlain.includes("|------|"));
 
+  const codeMarkdown = new OutputBuffer();
+  codeMarkdown.writeMarkdown("```js\nif (this.turns.length > 10) {\n  return this.turns.slice(-10);\n}\n```");
+  const codeRendered = codeMarkdown.render(80).join("\n");
+  const codePlain = stripAnsi(codeRendered);
+  assert.ok(codePlain.includes("╭─ js"));
+  assert.ok(codePlain.includes("│ if (this.turns.length > 10)"));
+  assert.ok(codePlain.includes("╰"));
+  assert.ok(!codePlain.split("\n").includes("js"));
+  assert.ok(codeRendered.includes("\x1b[38;2;245;167;66mif\x1b[0m"));
+
   const plain = new OutputBuffer();
   plain.write("### plain `code`");
   assert.equal(plain.render(80).join("\n"), "### plain `code`");
