@@ -45,7 +45,7 @@ export function createShellTools(shellRuntime = null) {
       idle_ms: Type.Optional(Type.Number({ description: "Output idle time before returning when wait_for_idle=true, default 300" })),
     }),
     execute: async (_toolCallId, params) => {
-      const before = params.wait_for_idle ? shellRuntime.snapshotShell(params.shell_id).plain : null;
+      const before = params.wait_for_idle ? shellRuntime.snapshotShell(params.shell_id) : null;
       const text = normalizeShellToolInput(params.text, params.key);
       const result = shellRuntime.sendShell(params.shell_id, text);
       if (!result.ok) return toolText(`Error: ${result.error}`, { error: true, shell: result.shell });
@@ -54,11 +54,12 @@ export function createShellTools(shellRuntime = null) {
           timeoutMs: params.timeout_ms,
           idleMs: params.idle_ms,
         });
-        const output = idle.delta || idle.snapshot.plain || "(no output)";
+        const output = idle.screenDelta || idle.delta || idle.snapshot.screen?.plain || idle.snapshot.plain || "(no output)";
         return toolText(output, {
           shell: idle.shell,
           timedOut: idle.timedOut,
           delta: idle.delta,
+          screenDelta: idle.screenDelta,
           snapshot: idle.snapshot,
         });
       }
@@ -175,7 +176,12 @@ function normalizeNameConflict(value) {
 
 function normalizeShellToolInput(text, key) {
   if (key) return controlKeyToSequence(key);
-  return String(text ?? "").replace(/\r\n/g, "\r").replace(/\n/g, "\r");
+  return String(text ?? "")
+    .replace(/\\r\\n/g, "\r")
+    .replace(/\\n/g, "\r")
+    .replace(/\\r/g, "\r")
+    .replace(/\r\n/g, "\r")
+    .replace(/\n/g, "\r");
 }
 
 function controlKeyToSequence(key) {
@@ -194,11 +200,14 @@ function controlKeyToSequence(key) {
   return sequences[normalized];
 }
 
-async function waitForShellIdle(shellRuntime, shellId, beforePlain, { timeoutMs = 10000, idleMs = 300 } = {}) {
+async function waitForShellIdle(shellRuntime, shellId, beforeSnapshot, { timeoutMs = 10000, idleMs = 300 } = {}) {
   const timeout = Math.max(1, Number(timeoutMs) || 10000);
   const idle = Math.max(1, Number(idleMs) || 300);
+  const beforePlain = beforeSnapshot?.plain ?? "";
+  const beforeScreenPlain = beforeSnapshot?.screen?.plain ?? "";
   const started = Date.now();
   let lastPlain = beforePlain;
+  let lastScreenPlain = beforeScreenPlain;
   let lastChanged = Date.now();
   let snapshot = shellRuntime.snapshotShell(shellId);
 
@@ -206,17 +215,21 @@ async function waitForShellIdle(shellRuntime, shellId, beforePlain, { timeoutMs 
     await sleep(50);
     snapshot = shellRuntime.snapshotShell(shellId);
     const plain = snapshot.plain;
-    if (plain !== lastPlain) {
+    const screenPlain = snapshot.screen?.plain ?? "";
+    if (plain !== lastPlain || screenPlain !== lastScreenPlain) {
       lastPlain = plain;
+      lastScreenPlain = screenPlain;
       lastChanged = Date.now();
     }
     const timedOut = Date.now() - started >= timeout;
-    if (timedOut || (plain !== beforePlain && Date.now() - lastChanged >= idle)) {
+    if (timedOut || ((plain !== beforePlain || screenPlain !== beforeScreenPlain) && Date.now() - lastChanged >= idle)) {
       const delta = plain.startsWith(beforePlain) ? plain.slice(beforePlain.length).replace(/^\n/, "") : plain;
+      const screenDelta = screenPlain.startsWith(beforeScreenPlain) ? screenPlain.slice(beforeScreenPlain.length).replace(/^\n/, "") : screenPlain;
       return {
         shell: shellRuntime.getShell(shellId),
         snapshot,
         delta,
+        screenDelta,
         timedOut,
       };
     }

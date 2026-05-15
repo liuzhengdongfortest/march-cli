@@ -66,12 +66,17 @@ export async function runShellToolsSmoke() {
   assert.equal(writes.at(-1), "Get-ChildItem\r");
   assert.ok(runtime.snapshotShell("sh1").plain.includes("seen:Get-ChildItem"));
 
+  const sentLiteralEnter = await byName.terminal_send.execute("tc-literal-enter", { shell_id: "sh1", text: "pwd\\n" });
+  assert.ok(sentLiteralEnter.content[0].text.includes("Sent 4 chars"));
+  assert.equal(writes.at(-1), "pwd\r");
+
   const sentCtrlC = await byName.terminal_send.execute("tc-ctrl-c", { shell_id: "sh1", key: "ctrl_c" });
   assert.ok(sentCtrlC.content[0].text.includes("Sent 1 chars"));
   assert.equal(writes.at(-1), "\x03");
 
   const exec = await byName.terminal_send.execute("tc-exec", { shell_id: "sh1", text: "echo ok\n", wait_for_idle: true, timeout_ms: 1000, idle_ms: 20 });
   assert.ok(exec.content[0].text.includes("seen:echo ok"));
+  assert.ok(exec.details.screenDelta.includes("seen:echo ok"));
   assert.equal(writes.at(-1), "echo ok\r");
 
   const resize = await byName.terminal_resize.execute("tc-resize", { shell_id: "sh1", cols: 100, rows: 20 });
