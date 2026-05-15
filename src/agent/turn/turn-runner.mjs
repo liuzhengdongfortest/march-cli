@@ -39,7 +39,7 @@ export async function runRunnerTurn({
     }
 
     const assistantRecallHints = memoryStore
-      ? memoryStore.recallForAssistant(turnState.draft, { currentProject })
+      ? memoryStore.recallForAssistant(turnState.draft, { currentProject, excludedIds: engine.getRecentRecallMemoryIds?.() ?? [] })
       : [];
 
     engine.recordTurn({

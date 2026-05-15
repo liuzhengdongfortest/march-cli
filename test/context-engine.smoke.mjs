@@ -96,6 +96,7 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   });
   assert.equal(engine.turns.length, 1);
   assert.equal(engine.turns[0].index, 1);
+  assert.deepEqual([...engine.getRecentRecallMemoryIds()].sort(), ["mem_assistant", "mem_user"]);
 
   const ctx2 = engine.buildContext("装備を確認する");
   assert.ok(ctx2.includes("tested the engine"));
@@ -117,6 +118,7 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   assert.equal(engine.turns.length, 10);
   assert.equal(engine.turns[0].userMessage, "extra 5");
   assert.equal(engine.turns.at(-1).userMessage, "extra 14");
+  assert.deepEqual([...engine.getRecentRecallMemoryIds()], []);
 
   const testFile = join(dir, "test.txt");
   writeFileSync(testFile, "line1\nline2\nline3");

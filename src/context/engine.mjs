@@ -104,6 +104,15 @@ export class ContextEngine {
     }
   }
 
+  getRecentRecallMemoryIds() {
+    const ids = new Set();
+    for (const turn of this.turns) {
+      for (const hint of turn.userRecallHints ?? []) if (hint?.id) ids.add(hint.id);
+      for (const hint of turn.assistantRecallHints ?? []) if (hint?.id) ids.add(hint.id);
+    }
+    return ids;
+  }
+
   resolvePath(raw) {
     return isAbsolute(raw) ? raw : resolve(this.cwd, raw);
   }

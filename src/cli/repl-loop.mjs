@@ -17,7 +17,7 @@ export async function runSingleShotPrompt({
   modeState = null,
 }) {
   memoryStore.beginTurn();
-  const userRecallHints = memoryStore.recallForUser(prompt, { currentProject });
+  const userRecallHints = memoryStore.recallForUser(prompt, { currentProject, excludedIds: runner.engine.getRecentRecallMemoryIds?.() ?? [] });
   const recallBlock = formatRecallHints("user", userRecallHints);
   const modePrompt = appendModeReminder(prompt, modeState?.get?.());
   const fullPrompt = `${modePrompt}${recallBlock ? `\n\n${recallBlock}` : ""}`;
@@ -142,7 +142,7 @@ function handleSkillInvocation(trimmed, { skillPool, skillState, runner, ui }) {
 
 async function runReplTurn({ prompt, args, runner, memoryStore, currentProject, ui, refreshStatusBar, setTurnRunning, modeState = null }) {
   memoryStore.beginTurn();
-  const userRecallHints = memoryStore.recallForUser(prompt, { currentProject });
+  const userRecallHints = memoryStore.recallForUser(prompt, { currentProject, excludedIds: runner.engine.getRecentRecallMemoryIds?.() ?? [] });
   const recallBlock = formatRecallHints("user", userRecallHints);
   const modePrompt = appendModeReminder(prompt, modeState?.get?.());
   const fullPrompt = `${modePrompt}${recallBlock ? `\n\n${recallBlock}` : ""}`;

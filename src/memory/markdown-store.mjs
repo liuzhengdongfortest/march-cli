@@ -35,9 +35,7 @@ export class MarkdownMemoryStore {
     this.diagnostics = [];
     this.lastScanAt = 0;
     this.scanIntervalMs = DEFAULT_SCAN_INTERVAL_MS;
-    this.userRecallSuppression = new Map();
     this.turnSeenMemoryIds = new Set();
-    this.userTurnIndex = 0;
     this.scan();
   }
 
@@ -117,11 +115,6 @@ export class MarkdownMemoryStore {
   }
 
   endTurn() {
-    this.userTurnIndex += 1;
-    const cutoff = Math.max(0, this.userTurnIndex - 9);
-    for (const [id, lastSeenTurn] of this.userRecallSuppression) {
-      if (lastSeenTurn < cutoff) this.userRecallSuppression.delete(id);
-    }
     this.turnSeenMemoryIds = new Set();
   }
 
@@ -129,18 +122,18 @@ export class MarkdownMemoryStore {
     this.db.close?.();
   }
 
-  recallForUser(text, { limit = 3, currentProject = "" } = {}) {
-    const excluded = new Set([...this.turnSeenMemoryIds, ...this.userRecallSuppression.keys()]);
+  recallForUser(text, { limit = 3, currentProject = "", excludedIds = [] } = {}) {
+    const excluded = new Set([...excludedIds, ...this.turnSeenMemoryIds]);
     const hints = this.#recall(text, { limit, excluded, currentProject });
     for (const hint of hints) {
       this.turnSeenMemoryIds.add(hint.id);
-      this.userRecallSuppression.set(hint.id, this.userTurnIndex);
     }
     return hints;
   }
 
-  recallForAssistant(text, { limit = 2, currentProject = "" } = {}) {
-    const hints = this.#recall(text, { limit, excluded: this.turnSeenMemoryIds, currentProject });
+  recallForAssistant(text, { limit = 2, currentProject = "", excludedIds = [] } = {}) {
+    const excluded = new Set([...excludedIds, ...this.turnSeenMemoryIds]);
+    const hints = this.#recall(text, { limit, excluded, currentProject });
     for (const hint of hints) this.turnSeenMemoryIds.add(hint.id);
     return hints;
   }

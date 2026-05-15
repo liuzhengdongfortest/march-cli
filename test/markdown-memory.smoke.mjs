@@ -36,8 +36,10 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   store.endTurn();
 
   store.beginTurn();
-  const suppressed = store.recallForUser("passive recall", { currentProject: "march-cli" });
+  const suppressed = store.recallForUser("passive recall", { currentProject: "march-cli", excludedIds: [entry.id] });
   assert.equal(suppressed.length, 0);
+  const recalledAfterTurn = store.recallForUser("passive recall", { currentProject: "march-cli" });
+  assert.equal(recalledAfterTurn.length, 1);
   store.endTurn();
 
   const miss = store.recallForAssistant("completely unrelated text");
