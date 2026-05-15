@@ -10,8 +10,8 @@ import { createRetryStatusController } from "./tui/status/retry-status.mjs";
 import { createShellDrawerControls } from "./shell/shell-drawer-controls.mjs";
 import { ShellDrawer } from "./shell/shell-drawer.mjs";
 import { ShellSplitLayout } from "./shell/shell-split-layout.mjs";
-import { showSelectListOverlay } from "./tui/select-list-overlay.mjs";
 import { createSpinnerStatusController } from "./tui/status/spinner-status.mjs";
+import { showEditorSelectList } from "./tui/select/editor-select-list.mjs";
 import { StatusBar } from "./tui/status/status-bar.mjs";
 import { writeEditDiff } from "./tui/tui-diff-rendering.mjs";
 import { createTuiInputController } from "./tui/tui-input-controller.mjs";
@@ -124,9 +124,9 @@ export function createTuiUI({
     return toolsExpanded;
   }
 
-  function selectList({ items, selectedIndex = 0, maxVisible = 8, width = 64, anchor, margin, offsetX, offsetY }) {
+  function selectList({ items, selectedIndex = 0, maxVisible = 8 }) {
     ensureStarted();
-    return showSelectListOverlay({ tui, items, selectedIndex, maxVisible, width, anchor, margin, offsetX, offsetY, requestRender });
+    return showEditorSelectList({ tui, editor, items, selectedIndex, maxVisible, requestRender });
   }
 
   function retryStart({ attempt, maxAttempts, delayMs, errorMessage }) {

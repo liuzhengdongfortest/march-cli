@@ -27,6 +27,7 @@ import { runShellDrawerControlsSmoke } from "./shell-drawer-controls.smoke.mjs";
 import { runSlashCommandSmoke } from "./slash-command.smoke.mjs";
 import { runTurnEventsSmoke } from "./turn-events.smoke.mjs";
 import { runDefaultStartupFlowSmoke } from "./default-startup-flow.smoke.mjs";
+import { runEditorSelectListSmoke } from "./editor-select-list.smoke.mjs";
 import { runExportCommandSmoke } from "./export-command.smoke.mjs";
 import { runStatusBarSmoke } from "./status-bar.smoke.mjs";
 import { runStatusCommandSmoke } from "./status-command.smoke.mjs";
@@ -50,6 +51,7 @@ export async function runCliCommandSuiteSmoke({ setupTmp, cleanup }) {
   await runRetryStatusSmoke();
   await runToolRenderingSmoke();
   await runTuiHandlersSmoke();
+  await runEditorSelectListSmoke();
   await runSelectListOverlaySmoke();
   await runSelectorListSmoke();
   await runModelCommandSmoke();
