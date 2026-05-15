@@ -35,11 +35,11 @@ export function createShellTools(shellRuntime = null, { platform = process.platf
   const terminalSend = defineTool({
     name: "terminal_send",
     label: "Terminal Send",
-    description: "Send text or control sequences to a running interactive terminal. Set wait_for_idle=true after sending Enter when you need output. Enter is converted for the current platform; Windows PTYs use CRLF.",
+    description: "Send text and/or a control key to a running interactive terminal. If both text and key are provided, the key is appended after the text. Set wait_for_idle=true after sending Enter when you need output. Enter is converted for the current platform; Windows PTYs use CRLF.",
     parameters: Type.Object({
       shell_id: Type.String({ description: "Shell id returned by terminal_spawn or terminal_list" }),
-      text: Type.Optional(Type.String({ description: "Text to type into the terminal. Include a newline (\\n/\\r) or use key:\"enter\" to execute a command. Newlines are converted to the platform Enter sequence; Windows PTYs use CRLF." })),
-      key: Type.Optional(Type.String({ description: "Named control key to send: enter, ctrl_c, ctrl_d, ctrl_z, tab, escape, backspace" })),
+      text: Type.Optional(Type.String({ description: "Text to type into the terminal. Include a newline (\\n/\\r) or combine with key:\"enter\" to execute a command. Newlines are converted to the platform Enter sequence; Windows PTYs use CRLF." })),
+      key: Type.Optional(Type.String({ description: "Named control key to send after text when text is provided: enter, ctrl_c, ctrl_d, ctrl_z, tab, escape, backspace" })),
       wait_for_idle: Type.Optional(Type.Boolean({ description: "Wait until terminal output becomes idle and return the output delta; does not press Enter automatically; default false" })),
       timeout_ms: Type.Optional(Type.Number({ description: "Maximum wait time when wait_for_idle=true, default 10000" })),
       idle_ms: Type.Optional(Type.Number({ description: "Output idle time before returning when wait_for_idle=true, default 1000 after Enter, otherwise 300" })),
@@ -183,13 +183,13 @@ function normalizeNameConflict(value) {
 }
 
 function normalizeShellToolInput(text, key, { platform = process.platform } = {}) {
-  if (key) return controlKeyToSequence(key, { platform });
   const enter = enterSequenceForPlatform(platform);
   const marker = "\0MARCH_ENTER\0";
-  return String(text ?? "")
+  const normalizedText = String(text ?? "")
     .replace(/\\r\\n|\\n|\\r/g, marker)
     .replace(/\r\n|\n|\r/g, marker)
     .replaceAll(marker, enter);
+  return normalizedText + (key ? controlKeyToSequence(key, { platform }) : "");
 }
 
 function controlKeyToSequence(key, { platform = process.platform } = {}) {

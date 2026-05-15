@@ -77,6 +77,10 @@ export async function runShellToolsSmoke() {
   assert.ok(sentCtrlC.content[0].text.includes("Sent 1 chars"));
   assert.equal(writes.at(-1), "\x03");
 
+  const sentTextAndEnter = await byName.terminal_send.execute("tc-text-enter", { shell_id: "sh1", text: "pwd", key: "enter" });
+  assert.ok(sentTextAndEnter.content[0].text.includes("Sent 4 chars"));
+  assert.equal(writes.at(-1), "pwd\r");
+
   const windowsTools = Object.fromEntries(createShellTools(runtime, { platform: "win32" }).map((tool) => [tool.name, tool]));
   await windowsTools.terminal_send.execute("tc-win-enter", { shell_id: "sh1", text: "echo hello\n" });
   assert.equal(writes.at(-1), "echo hello\r\n");
@@ -84,6 +88,8 @@ export async function runShellToolsSmoke() {
   assert.equal(writes.at(-1), "echo hello\r\n");
   await windowsTools.terminal_send.execute("tc-win-key-enter", { shell_id: "sh1", key: "enter" });
   assert.equal(writes.at(-1), "\r\n");
+  await windowsTools.terminal_send.execute("tc-win-text-key-enter", { shell_id: "sh1", text: "pwd", key: "enter" });
+  assert.equal(writes.at(-1), "pwd\r\n");
 
   const exec = await byName.terminal_send.execute("tc-exec", { shell_id: "sh1", text: "echo ok\n", wait_for_idle: true, timeout_ms: 1000, idle_ms: 20 });
   assert.ok(exec.content[0].text.includes("seen:echo ok"));
