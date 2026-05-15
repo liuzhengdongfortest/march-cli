@@ -37,7 +37,7 @@ export function createShellTools(shellRuntime = null, { platform = process.platf
     label: "Terminal Send",
     description: "Send text and/or a control key to a running interactive terminal. If both text and key are provided, the key is appended after the text. Set wait_for_idle=true after sending Enter when you need output. Enter is converted for the current platform; Windows PTYs use CRLF.",
     parameters: Type.Object({
-      shell_id: Type.String({ description: "Shell id returned by terminal_spawn or terminal_list" }),
+      shell_id: Type.String({ description: "Shell id or name returned by terminal_spawn or terminal_list" }),
       text: Type.Optional(Type.String({ description: "Text to type into the terminal. Include a newline (\\n/\\r) or combine with key:\"enter\" to execute a command. Newlines are converted to the platform Enter sequence; Windows PTYs use CRLF." })),
       key: Type.Optional(Type.String({ description: "Named control key to send after text when text is provided: enter, ctrl_c, ctrl_d, ctrl_z, tab, escape, backspace" })),
       wait_for_idle: Type.Optional(Type.Boolean({ description: "Wait until terminal output becomes idle and return the output delta; does not press Enter automatically; default false" })),
@@ -45,13 +45,16 @@ export function createShellTools(shellRuntime = null, { platform = process.platf
       idle_ms: Type.Optional(Type.Number({ description: "Output idle time before returning when wait_for_idle=true, default 1000 after Enter, otherwise 300" })),
     }),
     execute: async (_toolCallId, params) => {
-      const before = params.wait_for_idle ? shellRuntime.snapshotShell(params.shell_id) : null;
+      const resolved = resolveShellId(shellRuntime, params.shell_id);
+      if (!resolved.ok) return toolText(`Error: ${resolved.error}`, { error: true });
+      const shellId = resolved.id;
+      const before = params.wait_for_idle ? shellRuntime.snapshotShell(shellId) : null;
       const text = normalizeShellToolInput(params.text, params.key, { platform });
-      const result = shellRuntime.sendShell(params.shell_id, text);
+      const result = shellRuntime.sendShell(shellId, text);
       if (!result.ok) return toolText(`Error: ${result.error}`, { error: true, shell: result.shell });
       if (params.wait_for_idle) {
         const submitted = text.includes("\r") || text.includes("\n");
-        const idle = await waitForShellIdle(shellRuntime, params.shell_id, before, {
+        const idle = await waitForShellIdle(shellRuntime, shellId, before, {
           timeoutMs: params.timeout_ms,
           idleMs: params.idle_ms ?? (submitted ? 1000 : 300),
           submittedText: submitted ? text : "",
@@ -86,10 +89,12 @@ export function createShellTools(shellRuntime = null, { platform = process.platf
     label: "Terminal Kill",
     description: "Terminate a running interactive terminal.",
     parameters: Type.Object({
-      shell_id: Type.String({ description: "Shell id returned by terminal_spawn or terminal_list" }),
+      shell_id: Type.String({ description: "Shell id or name returned by terminal_spawn or terminal_list" }),
     }),
     execute: async (_toolCallId, params) => {
-      const result = shellRuntime.killShell(params.shell_id);
+      const resolved = resolveShellId(shellRuntime, params.shell_id);
+      if (!resolved.ok) return toolText(`Error: ${resolved.error}`, { error: true });
+      const result = shellRuntime.killShell(resolved.id);
       if (!result.ok) return toolText(`Error: ${result.error}`, { error: true, shell: result.shell });
       return toolText(`Killed ${result.shell.name} (${result.shell.id}).`, { shell: result.shell });
     },
@@ -100,12 +105,14 @@ export function createShellTools(shellRuntime = null, { platform = process.platf
     label: "Terminal Resize",
     description: "Resize an interactive terminal PTY.",
     parameters: Type.Object({
-      shell_id: Type.String({ description: "Shell id returned by terminal_spawn or terminal_list" }),
+      shell_id: Type.String({ description: "Shell id or name returned by terminal_spawn or terminal_list" }),
       cols: Type.Number({ description: "Columns" }),
       rows: Type.Number({ description: "Rows" }),
     }),
     execute: async (_toolCallId, params) => {
-      const result = shellRuntime.resizeShell(params.shell_id, { cols: params.cols, rows: params.rows });
+      const resolved = resolveShellId(shellRuntime, params.shell_id);
+      if (!resolved.ok) return toolText(`Error: ${resolved.error}`, { error: true });
+      const result = shellRuntime.resizeShell(resolved.id, { cols: params.cols, rows: params.rows });
       if (!result.ok) return toolText(`Error: ${result.error}`, { error: true, shell: result.shell });
       return toolText(`Resized ${result.shell.name} (${result.shell.id}) to ${result.shell.cols}x${result.shell.rows}.`, result);
     },
@@ -116,12 +123,14 @@ export function createShellTools(shellRuntime = null, { platform = process.platf
     label: "Terminal Clear",
     description: "Clear March's captured scrollback and screen snapshot for a terminal without terminating the process.",
     parameters: Type.Object({
-      shell_id: Type.String({ description: "Shell id returned by terminal_spawn or terminal_list" }),
+      shell_id: Type.String({ description: "Shell id or name returned by terminal_spawn or terminal_list" }),
     }),
     execute: async (_toolCallId, params) => {
       let result;
       try {
-        result = shellRuntime.clearShell(params.shell_id);
+        const resolved = resolveShellId(shellRuntime, params.shell_id);
+        if (!resolved.ok) return toolText(`Error: ${resolved.error}`, { error: true });
+        result = shellRuntime.clearShell(resolved.id);
       } catch (error) {
         return toolText(`Error: ${error?.message ?? String(error)}`, { error: true });
       }
@@ -135,13 +144,15 @@ export function createShellTools(shellRuntime = null, { platform = process.platf
     label: "Terminal Search",
     description: "Search a terminal's plain-text output. Defaults to visible screen first, then captured scrollback, while filtering prompt-only noise.",
     parameters: Type.Object({
-      shell_id: Type.String({ description: "Shell id returned by terminal_spawn or terminal_list" }),
+      shell_id: Type.String({ description: "Shell id or name returned by terminal_spawn or terminal_list" }),
       pattern: Type.String({ description: "Plain text to search for" }),
       source: Type.Optional(Type.String({ description: "auto (default), screen, or scrollback" })),
       include_prompts: Type.Optional(Type.Boolean({ description: "Include shell prompt/echo lines in results; default false" })),
     }),
     execute: async (_toolCallId, params) => {
-      const result = shellRuntime.searchShell(params.shell_id, params.pattern, {
+      const resolved = resolveShellId(shellRuntime, params.shell_id);
+      if (!resolved.ok) return toolText(`Error: ${resolved.error}`, { error: true });
+      const result = shellRuntime.searchShell(resolved.id, params.pattern, {
         source: params.source,
         includePrompts: params.include_prompts,
       });
@@ -156,10 +167,12 @@ export function createShellTools(shellRuntime = null, { platform = process.platf
     label: "Terminal Snapshot",
     description: "Return the current terminal screen and scrollback as plain text and ANSI text for visual debugging.",
     parameters: Type.Object({
-      shell_id: Type.String({ description: "Shell id returned by terminal_spawn or terminal_list" }),
+      shell_id: Type.String({ description: "Shell id or name returned by terminal_spawn or terminal_list" }),
     }),
     execute: async (_toolCallId, params) => {
-      const snapshot = shellRuntime.snapshotShell(params.shell_id);
+      const resolved = resolveShellId(shellRuntime, params.shell_id);
+      if (!resolved.ok) return toolText(`Error: ${resolved.error}`, { error: true });
+      const snapshot = shellRuntime.snapshotShell(resolved.id);
       const text = snapshot.screen?.plain || snapshot.plain || "(empty shell output)";
       return toolText(text, snapshot);
     },
@@ -173,6 +186,17 @@ function formatShell(shell) {
   const lines = `${shell.visibleLineCount ?? 0} visible, ${shell.scrollbackLineCount ?? shell.lineCount ?? 0} captured`;
   const error = shell.error ? `  error: ${shell.error}` : "";
   return `${shell.id}  ${shell.name}  ${shell.status}  ${shell.command}${args}  ${lines}${error}`;
+}
+
+function resolveShellId(shellRuntime, ref) {
+  const value = String(ref ?? "").trim();
+  const shells = shellRuntime.listShells();
+  const shell = shells.find((shell) => shell.id === value || shell.name === value);
+  if (shell) return { ok: true, id: shell.id, shell };
+  const available = shells.length
+    ? ` Active shells: ${shells.map((shell) => `${shell.id} (${shell.name})`).join(", ")}.`
+    : " No active shells.";
+  return { ok: false, error: `shell not found: ${value}.${available}` };
 }
 
 function normalizeNameConflict(value) {

@@ -24,6 +24,7 @@ export async function runShellToolsSmoke() {
   assert.deepEqual(createShellTools(null), []);
   assert.ok(byName.terminal_spawn);
   assert.ok(byName.terminal_send);
+  assert.ok(byName.terminal_send.parameters.properties.shell_id.description.includes("id or name"));
   assert.ok(byName.terminal_send.parameters.properties.text.description.includes("Include a newline"));
   assert.ok(byName.terminal_send.parameters.properties.text.description.includes("Windows PTYs use CRLF"));
   assert.ok(byName.terminal_send.parameters.properties.wait_for_idle.description.includes("does not press Enter automatically"));
@@ -55,13 +56,17 @@ export async function runShellToolsSmoke() {
   assert.ok(sent.content[0].text.includes("Sent 5 chars"));
   assert.equal(runtime.snapshotShell("sh1").plain, "seen:hello");
 
+  const sentByName = await byName.terminal_send.execute("tc2-name", { shell_id: "dev", text: " by-name" });
+  assert.ok(sentByName.content[0].text.includes("Sent 8 chars"));
+  assert.equal(runtime.snapshotShell("sh1").plain, "seen:hello\nseen: by-name");
+
   const search = await byName.terminal_search.execute("tc-search", { shell_id: "sh1", pattern: "hello" });
   assert.ok(search.content[0].text.includes("seen:hello"));
   assert.equal(search.details.matches.length, 1);
 
-  const snapshot = await byName.terminal_snapshot.execute("tc-snapshot", { shell_id: "sh1" });
-  assert.equal(snapshot.content[0].text, "seen:hello");
-  assert.equal(snapshot.details.plain, "seen:hello");
+  const snapshot = await byName.terminal_snapshot.execute("tc-snapshot", { shell_id: "dev" });
+  assert.equal(snapshot.content[0].text, "seen:hello\nseen: by-name");
+  assert.equal(snapshot.details.plain, "seen:hello\nseen: by-name");
   assert.ok(snapshot.details.screen);
 
   const sentEnter = await byName.terminal_send.execute("tc-enter", { shell_id: "sh1", text: "Get-ChildItem\n" });
@@ -139,7 +144,7 @@ export async function runShellToolsSmoke() {
   assert.ok(delayedExec.content[0].text.includes("slow-command"));
   assert.ok(delayedExec.content[0].text.includes("delayed-output"));
 
-  const resize = await byName.terminal_resize.execute("tc-resize", { shell_id: "sh1", cols: 100, rows: 20 });
+  const resize = await byName.terminal_resize.execute("tc-resize", { shell_id: "dev", cols: 100, rows: 20 });
   assert.ok(resize.content[0].text.includes("100x20"));
   assert.equal(resize.details.shell.cols, 100);
   assert.equal(resize.details.shell.rows, 20);
@@ -148,11 +153,11 @@ export async function runShellToolsSmoke() {
   assert.ok(listed.content[0].text.includes("dev"));
   assert.equal(listed.details.shells.length, 1);
 
-  const cleared = await byName.terminal_clear.execute("tc-clear", { shell_id: "sh1" });
+  const cleared = await byName.terminal_clear.execute("tc-clear", { shell_id: "dev" });
   assert.ok(cleared.content[0].text.includes("Cleared dev"));
   assert.equal(runtime.snapshotShell("sh1").plain, "");
 
-  const killed = await byName.terminal_kill.execute("tc4", { shell_id: "sh1" });
+  const killed = await byName.terminal_kill.execute("tc4", { shell_id: "dev" });
   assert.ok(killed.content[0].text.includes("Killed dev"));
   assert.equal(killed.details.shell.status, "killed");
 
@@ -163,6 +168,7 @@ export async function runShellToolsSmoke() {
   const missingClear = await byName.terminal_clear.execute("tc-clear-missing", { shell_id: "missing" });
   assert.equal(missingClear.details.error, true);
   assert.ok(missingClear.content[0].text.includes("shell not found"));
+  assert.ok(missingClear.content[0].text.includes("Active shells:"));
 
   const defaultSpawned = await byName.terminal_spawn.execute("tc6", { name: "default" });
   assert.equal(defaultSpawned.details.shell.name, "default");
