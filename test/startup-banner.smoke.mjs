@@ -14,7 +14,8 @@ export async function runStartupBannerSmoke() {
   assert.ok(plain.includes("March"));
   assert.ok(plain.includes("deepseek-v4-flash · high"));
   assert.ok(plain.includes("D:/repo"));
-  assert.ok(plain.includes("Do · Tab to Discuss · /help"));
+  assert.ok(plain.includes("Tab to Discuss · /help"));
+  assert.equal(plain.includes("Do ·"), false);
   assert.equal(plain.includes("Starting March session"), false);
   assert.equal(plain.includes("March REPL. Type"), false);
 
@@ -25,7 +26,8 @@ export async function runStartupBannerSmoke() {
     mode: "discuss",
     dumpContextPath: ".march/context-dumps/session",
   }).join("\n"));
-  assert.ok(withDump.includes("Discuss · dumps: .march/context-dumps/session"));
+  assert.ok(withDump.includes("dumps: .march/context-dumps/session"));
+  assert.equal(withDump.includes("Discuss ·"), false);
   assert.equal(withDump.includes("Tab to"), false);
   console.log("  PASS");
 }
