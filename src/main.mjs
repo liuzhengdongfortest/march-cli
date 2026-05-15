@@ -130,7 +130,7 @@ export async function run(argv) {
   const webTools = createWebTools({ tavilyKey });
 
   // Permission controller
-  const permissionMode = args.permissionMode ?? MODE.DEFAULT;
+  const permissionMode = args.permissionMode ?? MODE.BYPASS;
   const permissionController = createPermissionController({ mode: permissionMode });
 
   // Session persistence

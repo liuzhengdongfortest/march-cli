@@ -91,6 +91,10 @@ function cleanup(dir) {
   assert.equal(defaults.prompt, "");
   assert.equal(defaults.command, null);
   assert.equal(defaults.shellRuntime, true);
+  assert.equal(defaults.permissionMode, "bypassPermissions");
+
+  const explicitPermissionMode = parseCliArgs(["--permission-mode", "default"]);
+  assert.equal(explicitPermissionMode.permissionMode, "default");
 
   const noShellRuntime = parseCliArgs(["--no-shell-runtime"]);
   assert.equal(noShellRuntime.shellRuntime, false);
