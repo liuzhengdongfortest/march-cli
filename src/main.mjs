@@ -133,11 +133,10 @@ export async function run(argv) {
   const permissionMode = args.permissionMode ?? MODE.BYPASS;
   const permissionController = createPermissionController({ mode: permissionMode });
 
-  // Session persistence
-  const usePiSessionDefaults = args.piSessionDefaults || !args.legacySessions;
-  const usePiSessions = args.piSessions || usePiSessionDefaults;
-  const usePiRuntimeHost = args.piRuntimeHost || usePiSessionDefaults;
-  const sessionSource = usePiSessionDefaults ? "pi" : "legacy";
+  // Session persistence — always pi mode
+  const usePiSessions = true;
+  const usePiRuntimeHost = true;
+  const sessionSource = "pi";
   const sessionsRoot = join(projectMarchDir, "sessions");
   const sessionState = {
     sessionId: args.resume ?? Date.now().toString(36),
@@ -228,7 +227,6 @@ export async function run(argv) {
   // Resume session
   await resumeStartupSession({
     resumeId: args.resume,
-    usePiSessionDefaults,
     runner,
     sessionState,
     projectMarchDir,
@@ -248,7 +246,6 @@ export async function run(argv) {
         currentProject,
         ui,
         sessionState,
-        usePiSessionDefaults,
         refreshStatusBar,
         modeState,
       });
@@ -279,7 +276,6 @@ export async function run(argv) {
     extensionPaths,
     keybindingConfig,
     promptTemplateConfig,
-    usePiSessionDefaults,
     refreshStatusBar,
     setTurnRunning: (value) => { turnRunning = value; },
     modeState,

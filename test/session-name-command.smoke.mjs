@@ -1,8 +1,7 @@
 import { strict as assert } from "node:assert";
-import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-export async function runSessionNameCommandSmoke({ setupTmp, cleanup }) {
+export async function runSessionNameCommandSmoke() {
   console.log("--- smoke: session name command ---");
   const {
     handleSessionNameCommand,
@@ -24,31 +23,7 @@ export async function runSessionNameCommandSmoke({ setupTmp, cleanup }) {
     },
   };
   assert.deepEqual(handleSessionNameCommand({ type: "show" }, { runner }), ["Session name: (unnamed)"]);
-  assert.deepEqual(handleSessionNameCommand(parseSessionNameCommand("/name Demo"), { runner, sessionSource: "pi" }), ["Session named: Demo"]);
+  assert.deepEqual(handleSessionNameCommand(parseSessionNameCommand("/name Demo"), { runner }), ["Session named: Demo"]);
   assert.deepEqual(calls, ["Demo"]);
-
-  const dir = setupTmp();
-  const sessionDir = join(dir, "sessions", "s1");
-  const legacyRunner = {
-    engine: {
-      cwd: dir,
-      modelId: "m",
-      provider: "p",
-      thinkingLevel: "medium",
-      turns: [],
-      pins: new Set(),
-      skills: [],
-      openFiles: new Map(),
-      setSessionName(name) { this.sessionName = name; },
-    },
-  };
-  assert.deepEqual(handleSessionNameCommand(parseSessionNameCommand("/name Legacy"), {
-    runner: legacyRunner,
-    sessionState: { sessionDir },
-    sessionSource: "legacy",
-  }), ["Session named: Legacy"]);
-  assert.equal(existsSync(join(sessionDir, "session.json")), true);
-  assert.equal(JSON.parse(readFileSync(join(sessionDir, "session.json"), "utf8")).sessionName, "Legacy");
-  cleanup(dir);
   console.log("  PASS");
 }

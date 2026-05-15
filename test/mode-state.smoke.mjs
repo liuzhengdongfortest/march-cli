@@ -33,7 +33,7 @@ export async function runModeStateSmoke() {
     currentProject: "project",
     ui: { writeln: (line) => uiLines.push(line) },
     sessionState: { sessionDir: "unused" },
-    usePiSessionDefaults: true,
+    refreshStatusBar() {},
     refreshStatusBar() {},
     modeState,
   });

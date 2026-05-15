@@ -5,7 +5,7 @@ import { accent, text, PREFIX, R } from "../tui/ui-theme.mjs";
 export function statusCommand({
   runner,
   sessionState,
-  sessionSource = "legacy",
+  sessionSource = "pi",
   extensionDiagnostics = [],
   lifecycleState = null,
   gitBranch = getGitBranch(runner.engine.cwd),
@@ -24,7 +24,7 @@ export function statusCommand({
 export function statusBarLine({
   runner,
   sessionState,
-  sessionSource = "legacy",
+  sessionSource = "pi",
   extensionDiagnostics = [],
   lifecycleState = null,
   gitBranch = getGitBranch(runner.engine.cwd),
@@ -48,7 +48,7 @@ export function formatStatusLine({
   engine,
   sessionState,
   sessionStats = null,
-  sessionSource = "legacy",
+  sessionSource = "pi",
   extensionDiagnostics = [],
   lifecycleState = null,
   gitBranch = null,

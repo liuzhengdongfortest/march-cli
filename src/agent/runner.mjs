@@ -27,7 +27,7 @@ export { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-s
 
 export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, skills, skillPool = [], pins, memoryStore = null, memoryTools = [], skillTools = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, modelContextDumper = null, onModelPayload = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices }) {
   if (!useRuntimeHost && extensionPaths.length > 0) {
-    throw new Error("--extension requires the default pi runtime host path; remove --legacy-sessions to load extensions");
+    throw new Error("--extension requires the default pi runtime host path");
   }
 
   const authConfig = authStorage

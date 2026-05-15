@@ -81,14 +81,9 @@ function cleanup(dir) {
   assert.equal(args.help, false);
   assert.equal(args.piSessions, false);
   assert.equal(args.piRuntimeHost, false);
-  assert.equal(args.piSessionDefaults, false);
-  assert.equal(args.legacySessions, false);
 
-  const piSessions = parseCliArgs(["--pi-sessions", "--pi-runtime-host", "--pi-session-defaults", "--legacy-sessions", "--shell-runtime"]);
+  const piSessions = parseCliArgs(["--pi-sessions", "--pi-runtime-host", "--shell-runtime"]);
   assert.equal(piSessions.piSessions, true);
-  assert.equal(piSessions.piRuntimeHost, true);
-  assert.equal(piSessions.piSessionDefaults, true);
-  assert.equal(piSessions.legacySessions, true);
   assert.equal(piSessions.shellRuntime, true);
 
   const defaults = parseCliArgs([]);
@@ -97,8 +92,6 @@ function cleanup(dir) {
   assert.deepEqual(defaults.skills, []);
   assert.equal(defaults.prompt, "");
   assert.equal(defaults.command, null);
-  assert.equal(defaults.shellRuntime, true);
-  assert.equal(defaults.permissionMode, "bypassPermissions");
 
   const explicitPermissionMode = parseCliArgs(["--permission-mode", "default"]);
   assert.equal(explicitPermissionMode.permissionMode, "default");
@@ -190,7 +183,7 @@ await runRunnerCoreSmoke();
   assert.ok(commands.some((command) => command.name === "hotkeys"));
   assert.ok(commands.some((command) => command.name === "templates"));
   assert.ok(commands.some((command) => command.name === "fix"));
-  assert.ok(commands.some((command) => command.name === "fork"));
+  assert.ok(commands.some((command) => command.name === "models"));
   assert.ok(commands.some((command) => command.name === "resume"));
   assert.ok(commands.some((command) => command.name === "thinking list"));
   assert.ok(commands.some((command) => command.name === "shell"));

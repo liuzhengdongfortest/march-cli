@@ -15,7 +15,7 @@ export function parseExportCommand(input) {
   return { type: args[0] };
 }
 
-export async function handleExportCommand(command, { runner, sessionState, sessionSource, projectMarchDir, now = new Date(), env = process.env, fetchImpl = globalThis.fetch } = {}) {
+export async function handleExportCommand(command, { runner, sessionState, sessionSource = "pi", projectMarchDir, now = new Date(), env = process.env, fetchImpl = globalThis.fetch } = {}) {
   if (command.type === "error") return [`Error: ${command.message}`];
   if (command.type !== "jsonl" && command.type !== "html" && command.type !== "gist") return [];
 
@@ -41,7 +41,7 @@ export async function handleExportCommand(command, { runner, sessionState, sessi
   return [`Exported ${command.type.toUpperCase()}: ${result.path} (${result.turnCount} turns)`];
 }
 
-export function exportSessionJsonl({ engine, sessionStats, sessionState, sessionSource = "legacy", projectMarchDir, now = new Date() }) {
+export function exportSessionJsonl({ engine, sessionStats, sessionState, sessionSource = "pi", projectMarchDir, now = new Date() }) {
   const exportDir = join(projectMarchDir ?? join(engine.cwd, ".march"), "exports");
   mkdirSync(exportDir, { recursive: true });
   const sessionId = sessionStats?.sessionId ?? sessionState?.sessionId ?? "session";
@@ -52,7 +52,7 @@ export function exportSessionJsonl({ engine, sessionStats, sessionState, session
   return { path, turnCount: engine.turns.length };
 }
 
-export function exportSessionHtml({ engine, sessionStats, sessionState, sessionSource = "legacy", projectMarchDir, now = new Date() }) {
+export function exportSessionHtml({ engine, sessionStats, sessionState, sessionSource = "pi", projectMarchDir, now = new Date() }) {
   const exportDir = join(projectMarchDir ?? join(engine.cwd, ".march"), "exports");
   mkdirSync(exportDir, { recursive: true });
   const sessionId = sessionStats?.sessionId ?? sessionState?.sessionId ?? "session";
@@ -63,7 +63,7 @@ export function exportSessionHtml({ engine, sessionStats, sessionState, sessionS
   return { path, turnCount: engine.turns.length };
 }
 
-export async function createSessionGist({ engine, sessionStats, sessionState, sessionSource = "legacy", now = new Date(), format = "html", env = process.env, fetchImpl = globalThis.fetch }) {
+export async function createSessionGist({ engine, sessionStats, sessionState, sessionSource = "pi", now = new Date(), format = "html", env = process.env, fetchImpl = globalThis.fetch }) {
   const token = env.GITHUB_TOKEN || env.GH_TOKEN;
   if (!token) throw new Error("GITHUB_TOKEN or GH_TOKEN is required for /export gist");
   if (typeof fetchImpl !== "function") throw new Error("fetch is not available for /export gist");
@@ -101,7 +101,7 @@ export async function createSessionGist({ engine, sessionStats, sessionState, se
   return { url: body.html_url, filename };
 }
 
-export function buildSessionJsonlRecords({ engine, sessionStats, sessionState, sessionSource = "legacy", now = new Date() }) {
+export function buildSessionJsonlRecords({ engine, sessionStats, sessionState, sessionSource = "pi", now = new Date() }) {
   const sessionId = sessionStats?.sessionId ?? sessionState?.sessionId ?? null;
   const records = [
     {

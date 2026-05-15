@@ -94,9 +94,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(output.join("\n").includes("/shell spawn [name]"));
   assert.ok(output.join("\n").includes("/copy"));
   assert.ok(output.join("\n").includes("/name"));
-  assert.ok(output.join("\n").includes("/sessions and /resume <id> use default pi JSONL sessions"));
-  assert.ok(output.join("\n").includes("/sessions pi and /resume-pi <id> are explicit pi aliases"));
-  assert.ok(output.join("\n").includes("legacy .march/sessions use /sessions legacy"));
+  assert.ok(output.join("\n").includes("Branches:"));
   assert.ok(output.join("\n").includes("/session entries and /fork-pi list in-file entry candidates"));
   const hotkeys = await handleSlashCommand("/hotkeys", {
     ui,

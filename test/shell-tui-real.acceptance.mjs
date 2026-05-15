@@ -18,9 +18,7 @@ const term = pty.spawn(process.execPath, [
   binPath,
   "--provider",
   "deepseek",
-  "--model",
   "deepseek-v4-pro",
-  "--legacy-sessions",
 ], {
   name: "xterm-color",
   cols: 100,

@@ -32,9 +32,8 @@ export async function runStartupResumeSmoke({ setupTmp, cleanup }) {
   };
   const result = await resumeStartupSession({
     resumeId: "pi",
-    usePiSessionDefaults: true,
     runner,
-    sessionState: { sessionId: "legacy", sessionDir: "unused" },
+    sessionState: { sessionId: "new", sessionDir: "unused" },
     projectMarchDir,
     ui,
     listPiSessions: async () => [{ id: "pi-start", path: "pi.jsonl" }],
@@ -44,23 +43,17 @@ export async function runStartupResumeSmoke({ setupTmp, cleanup }) {
   assert.equal(engine.turns[0].assistantMessage, "answer");
   assert.ok(statuses.includes("Resumed pi session: pi-start"));
 
-  const legacyEngine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: [], pins: [] });
-  let restoredLegacy = false;
-  legacyEngine.restoreSession = () => {
-    restoredLegacy = true;
-  };
-  const legacy = await resumeStartupSession({
-    resumeId: "old",
-    usePiSessionDefaults: false,
-    runner: { engine: legacyEngine },
-    sessionState: { sessionId: "old", sessionDir: "legacy-dir" },
+  // No resumeId case
+  const noop = await resumeStartupSession({
+    resumeId: null,
+    runner,
+    sessionState: { sessionId: "any", sessionDir: "unused" },
     projectMarchDir,
     ui,
-    loadLegacySession: () => ({ turns: [1, 2] }),
+    listPiSessions: async () => [],
   });
-  assert.equal(legacy.source, "legacy");
-  assert.equal(restoredLegacy, true);
-  assert.ok(statuses.includes("Resumed legacy session old (2 turns)"));
+  assert.equal(noop.source, "none");
+
   cleanup(dir);
   console.log("  PASS");
 }

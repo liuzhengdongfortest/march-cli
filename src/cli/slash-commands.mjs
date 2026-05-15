@@ -22,7 +22,7 @@ export async function handleSlashCommand(trimmed, {
   sessionsRoot,
   projectMarchDir,
   skillPool = [],
-  sessionSource = "legacy",
+  sessionSource = "pi",
   extensionPaths = [],
   keybindings,
   keybindingDiagnostics = [],

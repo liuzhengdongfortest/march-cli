@@ -23,7 +23,7 @@ export function formatPiSessionList(sessions) {
     const savedAt = session.savedAt?.slice(0, 19) ?? "?";
     return `  ${session.id}  ${session.turnCount}m  ${savedAt}  ${label}`;
   });
-  lines.push("(pi JSONL session files; /sessions tree shows file-level parentSessionPath only, not in-file entry branches; resume with /resume <id>; legacy sessions use /sessions legacy)");
+  lines.push("(pi JSONL session files; /sessions tree shows file-level parentSessionPath only, not in-file entry branches; resume with /resume <id>)");
   return lines;
 }
 

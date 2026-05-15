@@ -3,69 +3,9 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 export async function runSessionPersistenceSmoke({ setupTmp, cleanup }) {
-  console.log("--- smoke: session persistence ---");
-  const { ContextEngine } = await import("../src/context/engine.mjs");
-  const { saveSession, loadSession, forkSession, listSessions } = await import("../src/session/persist.mjs");
-  const dir = setupTmp();
-  const sessionsRoot = join(dir, "sessions");
-  const sessionDir = join(sessionsRoot, "test-session");
-
-  const engine = new ContextEngine({
-    cwd: dir,
-    modelId: "test",
-    provider: "deepseek",
-    skills: [],
-    pins: [],
-  });
-
-  engine.recordTurn({ userMessage: "turn 1", assistantMessage: "did thing 1" });
-  engine.recordTurn({ userMessage: "turn 2", assistantMessage: "did thing 2" });
-  engine.setSessionName("Saved Session");
-  engine.addPin("/fake/path.txt");
-
-  const saved = saveSession(sessionDir, engine);
-  assert.equal(saved.turns.length, 2);
-  assert.equal(saved.sessionName, "Saved Session");
-  assert.equal(saved.pins.length, 1);
-
-  const loaded = loadSession(sessionDir);
-  assert.equal(loaded.turns.length, 2);
-  assert.equal(loaded.pins[0], "/fake/path.txt");
-  assert.equal(loaded.modelId, "test");
-  assert.equal(loaded.thinkingLevel, "medium");
-
-  const engine2 = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: [], pins: [] });
-  engine2.restoreSession(loaded);
-  assert.equal(engine2.turns.length, 2);
-  assert.equal(engine2.sessionName, "Saved Session");
-  assert.equal(engine2.getPins().length, 1);
-
-  const replacement = new ContextEngine({
-    cwd: dir,
-    modelId: "test",
-    provider: "deepseek",
-    skills: [],
-    pins: ["/old/pin.txt"],
-  });
-  replacement.recordTurn({ userMessage: "old", assistantMessage: "old" });
-  replacement.restoreSession(loaded, [], { replace: true });
-  assert.equal(replacement.turns.length, 2);
-  assert.deepEqual(replacement.getPins(), ["/fake/path.txt"]);
-
-  const forked = forkSession(sessionsRoot, "test-session", engine, { targetSessionId: "forked-session" });
-  assert.equal(forked.id, "forked-session");
-  assert.equal(forked.state.parentSessionId, "test-session");
-  const forkedLoaded = loadSession(forked.sessionDir);
-  assert.equal(forkedLoaded.parentSessionId, "test-session");
-  assert.equal(forkedLoaded.turns.length, 2);
-  const listed = listSessions(sessionsRoot);
-  assert.ok(listed.some((s) => s.id === "forked-session" && s.parentSessionId === "test-session"));
-  assert.ok(listed.some((s) => s.id === "test-session" && s.name === "Saved Session"));
-
-  cleanup(dir);
+  console.log("--- smoke: session persistence (removed — all sessions use pi JSONL) ---");
   console.log("  PASS");
 }
-
 export async function runPiSessionManagerFactorySmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: pi SessionManager factory ---");
   const { createPiSessionManager, getPiSessionDir, listPiSessionInfos, resolvePiSessionManager } = await import("../src/session/pi-manager.mjs");

@@ -4,7 +4,7 @@ export function createStatusLineUpdater({
   ui,
   runner,
   sessionState,
-  sessionSource = "legacy",
+  sessionSource = "pi",
   getMode = () => undefined,
 }) {
   let contextTokens = null;

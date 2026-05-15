@@ -5,7 +5,6 @@ import { expandPromptTemplate } from "./input/prompt-templates.mjs";
 import { parseInlineShellInput, parseSkillInvocation, runInlineShellCommand } from "./repl-commands.mjs";
 import { formatRecallHints } from "../memory/markdown-store.mjs";
 import { formatMessageAttachmentsForDisplay } from "../session/attachment-display.mjs";
-import { saveSession } from "../session/persist.mjs";
 
 export async function runSingleShotPrompt({
   prompt,
@@ -14,7 +13,6 @@ export async function runSingleShotPrompt({
   currentProject,
   ui,
   sessionState,
-  usePiSessionDefaults,
   refreshStatusBar,
   modeState = null,
 }) {
@@ -30,7 +28,6 @@ export async function runSingleShotPrompt({
     memoryStore.endTurn();
   }
   refreshStatusBar();
-  if (!usePiSessionDefaults) saveSession(sessionState.sessionDir, runner.engine);
 }
 
 export async function runInteractiveRepl({
@@ -49,7 +46,6 @@ export async function runInteractiveRepl({
   extensionPaths,
   keybindingConfig,
   promptTemplateConfig,
-  usePiSessionDefaults,
   refreshStatusBar,
   setTurnRunning,
   modeState = null,
@@ -58,10 +54,7 @@ export async function runInteractiveRepl({
 
   for (;;) {
     const line = await ui.readline("> ");
-    if (line === null) {
-      if (!usePiSessionDefaults) saveSession(sessionState.sessionDir, runner.engine);
-      break;
-    }
+    if (line === null) break;
     let trimmed = line.trim();
     if (!trimmed) continue;
 

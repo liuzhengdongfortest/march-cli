@@ -1,15 +1,15 @@
 import { loadPiSessionSidecar } from "../../session/sidecar.mjs";
 
 export function parseResumePiCommand(input) {
-  if (input !== "/resume-pi" && !input.startsWith("/resume-pi ")) return { type: "none" };
-  const id = input.slice("/resume-pi".length).trim();
-  if (!id) return { type: "error", message: "Usage: /resume-pi <id>" };
+  const match = input.match(/^\/(?:resume|resume-pi)\s+(.+)$/) || input.match(/^\/(?:resume|resume-pi)$/);
+  if (!match) return { type: "none" };
+  const id = match[1]?.trim();
+  if (!id) return { type: "error", message: "Usage: /resume <id>" };
   if (id.includes("/") || id.includes("\\")) {
     return { type: "error", message: "pi session id must be an id prefix, not a path" };
   }
   return { type: "resume-pi", id };
 }
-
 export async function resumePiSessionById(id, { runner, sessions, projectMarchDir, skillPool = [] }) {
   if (!runner.canSwitchPiSession?.()) {
     return ["Error: pi session resume requires the pi runtime host"];
