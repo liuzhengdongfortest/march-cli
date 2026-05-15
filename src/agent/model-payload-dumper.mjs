@@ -80,6 +80,53 @@ export function replaceProviderSystemPrompt(payload, systemPrompt) {
   };
 }
 
+export function replaceProviderContextMessages(payload, providerContext) {
+  if (!payload || typeof payload !== "object" || !providerContext?.system) return payload;
+  if (payload.body && typeof payload.body === "object") {
+    const body = replaceProviderContextMessages(payload.body, providerContext);
+    return body === payload.body ? payload : { ...payload, body };
+  }
+  if (typeof payload.body === "string") {
+    try {
+      const body = JSON.parse(payload.body);
+      const replaced = replaceProviderContextMessages(body, providerContext);
+      return replaced === body ? payload : { ...payload, body: JSON.stringify(replaced) };
+    } catch {
+      return payload;
+    }
+  }
+  if (!Array.isArray(payload.messages)) return payload;
+  const originalUser = payload.messages.findLast?.((message) => message?.role === "user")
+    ?? [...payload.messages].reverse().find((message) => message?.role === "user");
+  const userMessages = (providerContext.userMessages ?? []).filter((message) => message?.content);
+  const contextMessages = userMessages.map((message, index) => ({
+    role: "user",
+    content: index === userMessages.length - 1 ? contentWithOriginalNonTextParts(message.content, originalUser) : message.content,
+  }));
+  return {
+    ...payload,
+    messages: [
+      { role: "system", content: providerContext.system },
+      ...contextMessages,
+      ...payload.messages.filter((message) => message?.role !== "system" && message?.role !== "user"),
+    ],
+  };
+}
+
+function contentWithOriginalNonTextParts(text, originalUser) {
+  const extraParts = nonTextContentParts(originalUser?.content);
+  return extraParts.length ? [{ type: "text", text }, ...extraParts] : text;
+}
+
+function nonTextContentParts(content) {
+  if (!Array.isArray(content)) return [];
+  return content.filter((part) => {
+    if (!part || typeof part !== "object") return false;
+    if (part.type === "text" || typeof part.text === "string") return false;
+    return true;
+  });
+}
+
 export function estimateProviderPayloadTokens(payload) {
   const request = normalizePayload(payload);
   let chars = 0;

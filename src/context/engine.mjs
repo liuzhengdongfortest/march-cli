@@ -38,6 +38,20 @@ export class ContextEngine {
     return this.buildContextLayers(userMessage).map((layer) => layer.text).join("\n\n");
   }
 
+  buildProviderContext(userMessage = "") {
+    const layers = this.buildContextLayers(userMessage);
+    const systemLayer = layers.find((layer) => layer.name === "system_core");
+    return {
+      system: systemLayer?.text ?? this.systemCore,
+      userMessages: layers
+        .filter((layer) => layer.name !== "system_core")
+        .map((layer) => ({
+          name: layer.name,
+          content: layer.name === "recent_chat" ? appendCurrentUser(layer.text, userMessage) : layer.text,
+        })),
+    };
+  }
+
   buildContextLayers(_userMessage = "") {
     this.#refreshOpenFiles();
     const layers = [
@@ -268,4 +282,9 @@ export class ContextEngine {
     if (text.length <= maxLen) return text;
     return text.slice(0, maxLen) + "\n...(truncated)";
   }
+}
+
+function appendCurrentUser(recentChat, userMessage) {
+  const currentUser = String(userMessage ?? "").trimEnd();
+  return `${recentChat}\n\n[current_user]\n${currentUser}`;
 }

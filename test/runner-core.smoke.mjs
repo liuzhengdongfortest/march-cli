@@ -3,7 +3,7 @@ import { strict as assert } from "node:assert";
 export async function runRunnerCoreSmoke() {
   console.log("--- smoke: March tool set ---");
   const { MARCH_BASE_TOOL_NAMES, createDefaultSessionManager, createRunner, installModelPayloadDumper, resolveRunnerSessionManager, syncEngineSessionState } = await import("../src/agent/runner.mjs");
-  const { estimateProviderPayloadTokens, replaceProviderSystemPrompt } = await import("../src/agent/model-payload-dumper.mjs");
+  const { estimateProviderPayloadTokens, replaceProviderContextMessages } = await import("../src/agent/model-payload-dumper.mjs");
   const { createSessionBinding } = await import("../src/agent/session/session-binding.mjs");
   const { ContextEngine } = await import("../src/context/engine.mjs");
 
@@ -96,7 +96,10 @@ export async function runRunnerCoreSmoke() {
   assert.equal(observerOnly.length, 1);
   assert.equal(observerOnly[0].estimatedTokens, 3);
   const transformedAgent = { onPayload: null };
-  installModelPayloadDumper({ agent: transformedAgent }, { enabled: false }, () => "user", null, (payload) => replaceProviderSystemPrompt(payload, "[system_core]\nMarch system"));
+  installModelPayloadDumper({ agent: transformedAgent }, { enabled: false }, () => "user", null, (payload) => replaceProviderContextMessages(payload, {
+    system: "[system_core]\nMarch system",
+    userMessages: [{ name: "recent_chat", content: "[recent_chat]\n(no prior turns)\n\n[current_user]\nhello" }],
+  }));
   const transformed = await transformedAgent.onPayload({
     messages: [
       { role: "system", content: "Pi system" },
@@ -106,7 +109,8 @@ export async function runRunnerCoreSmoke() {
   assert.equal(transformed.messages[0].role, "system");
   assert.equal(transformed.messages[0].content, "[system_core]\nMarch system");
   assert.equal(transformed.messages[1].role, "user");
-  assert.equal(transformed.messages[1].content[0].text, "hello");
+  assert.equal(transformed.messages[1].content, "[recent_chat]\n(no prior turns)\n\n[current_user]\nhello");
+  assert.equal(transformed.messages.length, 2);
   console.log("  PASS");
 
   console.log("--- smoke: runner missing credentials message ---");

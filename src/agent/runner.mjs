@@ -8,7 +8,7 @@ import { ContextEngine } from "../context/engine.mjs";
 import { createMarchLifecycleAdapter } from "../extensions/lifecycle-adapter.mjs";
 import { syncPiSessionSidecar } from "../session/sidecar-sync.mjs";
 import { LspService } from "../lsp/service.mjs";
-import { installModelPayloadDumper, replaceProviderSystemPrompt } from "./model-payload-dumper.mjs";
+import { installModelPayloadDumper, replaceProviderContextMessages } from "./model-payload-dumper.mjs";
 import { cloneCurrentPiSession } from "./pi-session/pi-session-clone.mjs";
 import { forkPiSessionWithResetContext } from "./pi-session/pi-session-fork-reset.mjs";
 import { resolveInitialModel, resolveRunnerSessionManager } from "./runner/runner-init.mjs";
@@ -51,7 +51,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   const resolvedSessionManager = resolveRunnerSessionManager(cwd, sessionManager);
   const sessionBinding = createSessionBinding(null);
   let currentModelCallKind = "model";
-  let currentUserMessageForContext = "";
+  let currentPromptForContext = "";
   let runtimeHost = null;
   let lifecycleAdapter = null;
 
@@ -135,7 +135,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     shellRuntime,
 
     async runTurn(prompt, userMessage, { userRecallHints = [], currentProject = "" } = {}) {
-      currentUserMessageForContext = userMessage ?? prompt;
+      currentPromptForContext = prompt;
       return runRunnerTurn({
         prompt,
         userMessage,
@@ -285,6 +285,6 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
 
   function injectMarchSystemContext(payload, { kind } = {}) {
     if (kind !== "user") return payload;
-    return replaceProviderSystemPrompt(payload, engine.buildContext(currentUserMessageForContext));
+    return replaceProviderContextMessages(payload, engine.buildProviderContext(currentPromptForContext));
   }
 }

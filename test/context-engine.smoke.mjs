@@ -33,6 +33,15 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   assert.ok(!ctx.includes("[memory]"));
   assert.ok(!ctx.includes("[session_status]"));
 
+  const providerCtx = engine.buildProviderContext("装備を確認する");
+  assert.ok(providerCtx.system.includes("[system_core]"));
+  assert.ok(!providerCtx.system.includes("[recent_chat]"));
+  assert.ok(!providerCtx.system.includes("[workspace_status]"));
+  assert.ok(providerCtx.userMessages.some((message) => message.name === "workspace_status" && message.content.includes("[workspace_status]")));
+  assert.equal(providerCtx.userMessages.at(-1).name, "recent_chat");
+  assert.ok(providerCtx.userMessages.at(-1).content.includes("[recent_chat]"));
+  assert.ok(providerCtx.userMessages.at(-1).content.includes("[current_user]\n装備を確認する"));
+
   const modelPromptEngine = new ContextEngine({
     cwd: dir,
     modelId: "deepseek-v4-pro",

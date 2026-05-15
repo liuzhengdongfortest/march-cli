@@ -102,20 +102,28 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.ok(!promptCalls[0].includes("[system_core]"));
   assert.equal(providerPayloads[0].messages[0].role, "system");
   assert.ok(providerPayloads[0].messages[0].content.includes("[system_core]"));
-  assert.ok(providerPayloads[0].messages[0].content.includes("[workspace_status]"));
+  assert.ok(!providerPayloads[0].messages[0].content.includes("[workspace_status]"));
+  assert.ok(!providerPayloads[0].messages[0].content.includes("[recent_chat]"));
   assert.equal(providerPayloads[0].messages[1].role, "user");
-  assert.ok(!providerPayloads[0].messages[1].content[0].text.includes("[system_core]"));
-  assert.ok(!providerPayloads[0].messages[1].content[0].text.includes("[workspace_status]"));
+  assert.ok(providerPayloads[0].messages.some((message) => message.role === "user" && message.content.includes("[workspace_status]")));
+  assert.ok(providerPayloads[0].messages.some((message) => message.role === "user" && message.content.includes("[runtime_status]")));
+  assert.ok(!providerPayloads[0].messages.some((message, index) => index > 0 && message.content.includes("[system_core]")));
   assert.ok(!providerPayloads[0].messages.some((message, index) => index > 0 && message.role === "system"));
+  assert.ok(providerPayloads[0].messages.at(-1).content.includes("[recent_chat]"));
+  assert.ok(providerPayloads[0].messages.at(-1).content.includes("[current_user]\nhello"));
+  assert.equal(countUserMessagesContaining(providerPayloads[0].messages, "hello"), 1);
   assert.equal(runner.engine.turns[0].assistantMessage, "draft text");
 
   await runner.runTurn("second", "second");
   assert.equal(promptCalls.length, 2);
   assert.ok(!promptCalls[1].includes("[system_core]"));
   assert.ok(providerPayloads[1].messages[0].content.includes("[system_core]"));
-  assert.ok(providerPayloads[1].messages[0].content.includes("[recent_chat]"));
+  assert.ok(!providerPayloads[1].messages[0].content.includes("[recent_chat]"));
+  assert.ok(providerPayloads[1].messages.at(-1).content.includes("[recent_chat]"));
+  assert.ok(providerPayloads[1].messages.at(-1).content.includes("draft text"));
+  assert.ok(providerPayloads[1].messages.at(-1).content.includes("[current_user]\nsecond"));
   assert.equal(countOccurrences(providerPayloads[1].messages[0].content, "[system_core]"), 1);
-  assert.ok(!providerPayloads[1].messages[1].content[0].text.includes("[system_core]"));
+  assert.ok(!providerPayloads[1].messages.some((message, index) => index > 0 && message.content.includes("[system_core]")));
   const sidecar = loadPiSessionSidecar({ projectMarchDir, sessionRef: "turn-flow.jsonl" });
   assert.equal(sidecar.state.turns[0].assistantMessage, "draft text");
   assert.ok(!("summary" in sidecar.state.turns[0]));
@@ -133,4 +141,8 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
 
 function countOccurrences(text, needle) {
   return String(text).split(needle).length - 1;
+}
+
+function countUserMessagesContaining(messages, text) {
+  return messages.filter((message) => message.role === "user" && String(message.content).includes(text)).length;
 }
