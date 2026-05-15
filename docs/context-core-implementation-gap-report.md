@@ -55,7 +55,6 @@
 | P1 | `workspace_status` 数据不完整 | 已有目录树 | 目录树、git 状态、最近变更 | AI 仍缺少当前工作区变更事实 |
 | P1 | 当前 turn 的 recall hint 不在 `[recent_chat]` | 拼在最终 prompt 的 `[user]` 后 | 跟随消息附加在 `[recent_chat]` 中 | 语义上可用，但与文档模型不一致 |
 | P2 | `shells` 按字符截断 | 2000 字符 | 最近 200 行纯文本 | 长行/短行场景下摘要边界不符合文档 |
-| P2 | skill 来源信息不足 | catalog 只有 name/description，active 只有 baseDir | catalog/active 包含来源位置摘要 | AI 和人都难以定位技能来源 |
 
 ## 分项说明
 
@@ -145,32 +144,6 @@ truncateText(snapshot.plain, 2000)
 1. 改为按行截取最后 200 行。
 2. 保留 ANSI 剥离后的 `plain` 作为输入。
 
-### 6. skill 层缺少来源位置
-
-当前实现位置：`src/context/skill-layers.mjs`、`src/skills/loader.mjs`
-
-当前 catalog 只包含：
-
-```text
-name
-description
-```
-
-active skill 包含：
-
-```text
-name
-baseDir
-body
-```
-
-文档要求包含来源位置摘要。
-
-处理建议：
-
-1. `[available_skills]` 增加 `location` 或 `path`。
-2. `[active_skills]` 增加 `source path`。
-
 ## 已基本一致的部分
 
 ### `system_core`
@@ -215,7 +188,6 @@ MCP tools 进入 [tools]
 2. 补齐 `[workspace_status]` 的 git 状态和最近变更摘要。
 3. 明确当前 turn recall 的归属。
 4. 将 `shells` 改为最近 200 行。
-5. 给 skill catalog 和 active skill 补来源路径。
 
 ## 风险判断
 
@@ -238,3 +210,7 @@ MCP tools 进入 [tools]
 ### `open_files` 已补行号和 stale 标记
 
 已将 `[open_files]` 内容改为逐行编号输出。文件刷新失败时会标记 `(stale)`，提示文件可能已移动或删除，并保留最后一次成功读取的快照；如果 AI 不再需要该文件，应主动 close。
+
+### skill 来源边界已确认
+
+`[available_skills]` 未激活时只需要名称、描述和触发条件，不需要路径；`[active_skills]` 激活后提供 `baseDir` 已足够定位技能资源。

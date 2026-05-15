@@ -15,7 +15,7 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], skil
     name: "open_file",
     label: "Open File",
     description:
-      "Add one or more files to your working set. File content appears only in [open_files], not in the tool result.",
+      "Add one or more files to your working set. File content appears only in [open_files], not in the tool result. Files stay open until explicitly closed — close them when no longer needed. For quick peeks use read() instead, which doesn't keep the file open.",
     parameters: Type.Object({
       path: Type.Optional(Type.String({ description: "Absolute or relative path to one file" })),
       paths: Type.Optional(Type.Array(Type.String(), { description: "Absolute or relative paths to multiple files" })),
@@ -33,7 +33,7 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], skil
     name: "close_file",
     label: "Close File",
     description:
-      "Remove one or more files from your working set. Pinned files cannot be closed.",
+      "Remove one or more files from your working set. Pinned files cannot be closed. Close files you no longer need — open files consume context space.",
     parameters: Type.Object({
       path: Type.Optional(Type.String({ description: "Absolute or relative path to one file" })),
       paths: Type.Optional(Type.Array(Type.String(), { description: "Absolute or relative paths to multiple files" })),

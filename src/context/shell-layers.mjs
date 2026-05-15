@@ -1,5 +1,5 @@
 export function buildShellLayers({ shellRuntime, truncateText = truncate } = {}) {
-  const shells = shellRuntime?.listShells?.() ?? [];
+  const shells = (shellRuntime?.listShells?.() ?? []).filter((s) => s.status !== "killed");
   if (!shells.length) return [];
   const blocks = shells.map((shell) => {
     const snapshot = shellRuntime.snapshotShell(shell.id);
