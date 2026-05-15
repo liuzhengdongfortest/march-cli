@@ -47,6 +47,7 @@ function mergeLayers(layers) {
     webSearch: { provider: null, providers: {} },
     skills: [],
     pins: [],
+    maxTurns: null,
     memoryRoot: null,
   };
 
