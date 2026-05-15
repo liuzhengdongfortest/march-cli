@@ -61,5 +61,7 @@ export async function createRunnerRuntimeHost({
     sessionManager,
   });
 
-  return createRuntimeHost({ runtime, sessionBinding, onRebind });
+  const host = createRuntimeHost({ runtime, sessionBinding, onRebind });
+  if (onRebind) await onRebind(runtime.session);
+  return host;
 }
