@@ -35,37 +35,41 @@ export class ContextEngine {
   // ── Public API ──────────────────────────────────────────────────────
 
   buildContext(userMessage = "") {
+    return this.buildContextLayers(userMessage).map((layer) => layer.text).join("\n\n");
+  }
+
+  buildContextLayers(_userMessage = "") {
     this.#refreshOpenFiles();
     const layers = [
-      this.systemCore,
+      { name: "system_core", text: this.systemCore },
     ];
 
     const injectionsLayer = buildInjectionsLayer(this.injections);
-    if (injectionsLayer) layers.push(injectionsLayer);
+    if (injectionsLayer) layers.push({ name: "injections", text: injectionsLayer });
 
-    layers.push(this.#buildSessionIdentity());
+    layers.push({ name: "session_identity", text: this.#buildSessionIdentity() });
 
     if (this.skillPool.length > 0) {
-      layers.push(this.#buildSkillCatalog());
+      layers.push({ name: "skill_catalog", text: this.#buildSkillCatalog() });
     }
 
     if (this.skills.length > 0) {
-      layers.push(this.#buildActiveSkills());
+      layers.push({ name: "active_skills", text: this.#buildActiveSkills() });
     }
 
     if (this.openFiles.size > 0) {
-      layers.push(this.#buildOpenFiles());
+      layers.push({ name: "open_files", text: this.#buildOpenFiles() });
     }
 
     layers.push(
-      this.#buildDiagnostics(),
-      this.#buildWorkspaceStatus(),
-      this.#buildRuntimeStatus(),
-      ...this.#buildShellLayers(),
-      this.#buildRecentChat(),
+      { name: "diagnostics", text: this.#buildDiagnostics() },
+      { name: "workspace_status", text: this.#buildWorkspaceStatus() },
+      { name: "runtime_status", text: this.#buildRuntimeStatus() },
+      ...this.#buildShellLayers().map((text, index) => ({ name: index === 0 ? "shells" : `shells_${index + 1}`, text })),
+      { name: "recent_chat", text: this.#buildRecentChat() },
     );
 
-    return layers.join("\n\n");
+    return layers;
   }
 
   recordCompaction(summary) {

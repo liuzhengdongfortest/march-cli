@@ -11,6 +11,7 @@ import { runCommandExecToolSmoke } from "./command-exec-tool.smoke.mjs";
 import { runConfigLoadingSmoke } from "./config-loading.smoke.mjs";
 import { runContextEngineSmoke } from "./context-engine.smoke.mjs";
 import { runCopyCommandSmoke } from "./copy-command.smoke.mjs";
+import { runContextStatsToolSmoke } from "./context-stats-tool.smoke.mjs";
 import { runEditFileToolSmoke } from "./edit-file-tool.smoke.mjs";
 import { runCliCommandSuiteSmoke } from "./cli-command-suite.smoke.mjs";
 import { runDiffAndUiSmoke, runMemorySystemSmoke } from "./memory-and-diff.smoke.mjs";
@@ -148,6 +149,7 @@ await runTuiShellDrawerSmoke({ setupTmp, cleanup });
 await runContextRuntimeStatusSmoke();
 await runContextSessionStatusSmoke();
 await runContextSkillLayersSmoke();
+await runContextStatsToolSmoke({ setupTmp, cleanup });
 
 await runConfigLoadingSmoke({ setupTmp, cleanup });
 await runMcpInjectionsSmoke();

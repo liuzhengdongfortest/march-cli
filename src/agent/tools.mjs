@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { defineTool } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
 import { createCommandExecTool } from "./command-exec-tool.mjs";
+import { createContextStatsTool } from "./context-stats-tool.mjs";
 import { createEditFileTool } from "./file-edit-tool.mjs";
 import { toolText } from "./tool-result.mjs";
 import { createShellTools } from "../shell/tools.mjs";
@@ -67,11 +68,13 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], skil
   }
 
   const commandExecTool = createCommandExecTool({ cwd });
+  const contextStatsTool = createContextStatsTool({ engine });
   const editFileTool = createEditFileTool({ engine, ui, lspService });
 
   const tools = [
     openFileTool,
     closeFileTool,
+    contextStatsTool,
     commandExecTool,
     editFileTool,
     ...createShellTools(shellRuntime),
