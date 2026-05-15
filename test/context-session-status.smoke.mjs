@@ -50,7 +50,7 @@ export async function runContextSessionStatusSmoke() {
   });
   assert.ok(status.includes("[workspace_status]"));
   assert.ok(status.includes("project: ~/repo"));
-  assert.ok(status.includes("Directory tree (top 1 levels):"));
+  assert.ok(status.includes("Directory tree (top 2 levels):"));
   assert.ok(!status.includes("[session_status]"));
   console.log("  PASS");
 }
