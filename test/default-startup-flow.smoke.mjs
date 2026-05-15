@@ -22,8 +22,6 @@ export async function runDefaultStartupFlowSmoke({ setupTmp, cleanup }) {
       thinkingEnd: (tokens) => calls.push(["thinkingEnd", tokens]),
       toolStart: (name) => calls.push(["toolStart", name]),
       toolEnd: (name) => calls.push(["toolEnd", name]),
-      summaryStart: () => calls.push(["summaryStart"]),
-      summaryDone: () => calls.push(["summaryDone"]),
       editDiff: () => {},
     };
   }
@@ -45,8 +43,7 @@ export async function runDefaultStartupFlowSmoke({ setupTmp, cleanup }) {
         };
       },
       async prompt(prompt) {
-        const delta = prompt.includes("Summarize the work") ? `summary ${id}` : `answer ${id}`;
-        subscriber?.({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta } });
+        subscriber?.({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: `answer ${id}` } });
       },
       getActiveToolNames: () => ["read", "write"],
       setActiveToolsByName(names) {
@@ -123,7 +120,8 @@ export async function runDefaultStartupFlowSmoke({ setupTmp, cleanup }) {
 
   const savedSidecar = loadPiSessionSidecar({ projectMarchDir, sessionRef: "default-a.jsonl" });
   assert.equal(savedSidecar.state.sessionId, "default-a");
-  assert.equal(savedSidecar.state.turns[0].summary, "summary default-a");
+  assert.equal(savedSidecar.state.turns[0].assistantMessage, "answer default-a");
+  assert.ok(!("summary" in savedSidecar.state.turns[0]));
 
   const secondCalls = [];
   const second = await createCandidateRunner({
@@ -137,13 +135,13 @@ export async function runDefaultStartupFlowSmoke({ setupTmp, cleanup }) {
     projectMarchDir,
   });
   assert.deepEqual(resumeLines, ["Resumed pi session: default-a"]);
-  assert.equal(second.engine.turns[0].summary, "summary default-a");
+  assert.equal(second.engine.turns[0].assistantMessage, "answer default-a");
 
   await second.runTurn("next", "next");
   const resumedSidecar = loadPiSessionSidecar({ projectMarchDir, sessionRef: "default-a.jsonl" });
   assert.equal(resumedSidecar.state.sessionId, "default-a");
   assert.equal(resumedSidecar.state.turns.length, 2);
-  assert.equal(resumedSidecar.state.turns[1].summary, "summary default-a");
+  assert.equal(resumedSidecar.state.turns[1].assistantMessage, "answer default-a");
   assert.ok(secondCalls.some((call) => call[0] === "turnStart"));
   second.dispose();
 

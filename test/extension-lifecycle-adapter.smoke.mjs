@@ -19,7 +19,6 @@ export async function runExtensionLifecycleAdapterSmoke() {
       thinkingLevel: "medium",
       namespace: "ns",
       turns: [{ index: 1 }],
-      _compactionSummary: "summary",
     },
     getSessionStats: () => ({
       sessionId: "s1",
@@ -52,7 +51,7 @@ export async function runExtensionLifecycleAdapterSmoke() {
   assert.equal(state.extensionPathCount, 1);
   assert.equal(state.facts.sessionId, "s1");
   assert.equal(state.facts.runtimeHost, true);
-  assert.equal(state.facts.summaryHash.length, 12);
+  assert.ok(!("summaryHash" in state.facts));
   assert.equal(state.layers.length, 3);
   assert.ok(state.policy.allowedEffects.includes("read-runtime-diagnostics"));
   assert.ok(state.policy.deniedEffects.includes("run-shell"));

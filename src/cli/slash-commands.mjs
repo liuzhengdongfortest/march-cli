@@ -2,7 +2,7 @@ import { listExtensionPathsCommand } from "./commands/extensions-command.mjs";
 import { handleExportCommand, parseExportCommand } from "./commands/export-command.mjs";
 import { handleModelCommand, listModels, parseModelCommand } from "./commands/model-command.mjs";
 import { formatHotkeysPanel } from "./repl-commands.mjs";
-import { compactSession, listSessionStats } from "./session/session-command.mjs";
+import { listSessionStats } from "./session/session-command.mjs";
 import { copyLastAssistantMessage } from "./commands/copy-command.mjs";
 import { handleSessionSourceCommand } from "./session/session-source-command.mjs";
 import { statusCommand } from "./commands/status-command.mjs";
@@ -153,11 +153,6 @@ export async function handleSlashCommand(trimmed, {
 
   if (trimmed === "/models") {
     for (const line of listModels({ runner })) ui.writeln(line);
-    return { handled: true };
-  }
-
-  if (trimmed === "/compact") {
-    for (const line of await compactSession({ runner })) ui.writeln(line);
     return { handled: true };
   }
 

@@ -82,7 +82,7 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
 
   engine.recordTurn({
     userMessage: "hello",
-    summary: "tested the engine",
+    assistantMessage: "tested the engine",
     userRecallHints: [{ id: "mem_user", name: "User hint", description: "User recall hint" }],
     assistantRecallHints: [{ id: "mem_assistant", name: "Assistant hint", description: "Assistant recall hint" }],
   });
@@ -91,12 +91,13 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
 
   const ctx2 = engine.buildContext("装備を確認する");
   assert.ok(ctx2.includes("tested the engine"));
+  assert.ok(!ctx2.includes("WorkSummary"));
   assert.ok(ctx2.includes('[passive_recall source="user"]'));
   assert.ok(ctx2.includes("mem_user | User hint | User recall hint"));
   assert.ok(ctx2.includes('[passive_recall source="assistant"]'));
 
   for (let i = 0; i < 10; i++) {
-    engine.recordTurn({ userMessage: `extra ${i}`, summary: `summary ${i}` });
+    engine.recordTurn({ userMessage: `extra ${i}`, assistantMessage: `answer ${i}` });
   }
   assert.equal(engine.turns.length, 10);
   assert.equal(engine.turns[0].userMessage, "extra 0");

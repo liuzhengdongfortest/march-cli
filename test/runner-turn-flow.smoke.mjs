@@ -35,10 +35,6 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
         emit({ type: "tool_execution_start", toolName: "read", args: { path: "a.txt" } });
         emit({ type: "tool_execution_end", toolName: "read", isError: false, result: "file body" });
         emit({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "draft text" } });
-        emit({ type: "compaction_end", aborted: false, result: { summary: "compact from event" } });
-      } else {
-        emit({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "summary text" } });
-        emit({ type: "tool_execution_start", toolName: "write", args: { path: "ignored.txt" } });
       }
     },
     getActiveToolNames: () => ["read", "write"],
@@ -74,8 +70,6 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
     thinkingEnd: (tokens) => calls.push(["thinkingEnd", tokens]),
     toolStart: (name, args) => calls.push(["toolStart", name, args]),
     toolEnd: (name, isError, result) => calls.push(["toolEnd", name, isError, result]),
-    summaryStart: () => calls.push(["summaryStart"]),
-    summaryDone: () => calls.push(["summaryDone"]),
   };
   const runner = await createRunner({
     cwd: dir,
@@ -92,17 +86,12 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
 
   const result = await runner.runTurn("hello", "hello");
   assert.equal(result.draft, "draft text");
-  assert.equal(result.summary, "summary text");
-  assert.equal(promptCalls.length, 2);
-  assert.ok(promptCalls[1].includes("Summarize the work"));
-  assert.equal(runner.engine.turns[0].summary, "summary text");
+  assert.equal(promptCalls.length, 1);
   assert.equal(runner.engine.turns[0].assistantMessage, "draft text");
-  assert.ok(runner.engine.buildContext("").includes("<CompactedHistory>\ncompact from event\n</CompactedHistory>"));
   const sidecar = loadPiSessionSidecar({ projectMarchDir, sessionRef: "turn-flow.jsonl" });
-  assert.equal(sidecar.state.compactionSummary, "compact from event");
-  assert.equal(sidecar.state.turns[0].summary, "summary text");
+  assert.equal(sidecar.state.turns[0].assistantMessage, "draft text");
+  assert.ok(!("summary" in sidecar.state.turns[0]));
   assert.ok(calls.some((call) => call[0] === "toolStart" && call[1] === "read"));
-  assert.ok(!calls.some((call) => call[0] === "toolStart" && call[1] === "write"));
   assert.deepEqual(calls.at(-1), ["turnEnd"]);
 
   if (previousKey === undefined) {

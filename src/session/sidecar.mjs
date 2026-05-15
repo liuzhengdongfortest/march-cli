@@ -23,7 +23,6 @@ export function captureContextSidecar(engine, metadata = {}) {
     thinkingLevel: engine.thinkingLevel,
     namespace: engine.namespace,
     turns: engine.turns,
-    compactionSummary: engine._compactionSummary ?? null,
     pins: [...engine.pins],
     skills: engine.skills.map((skill) => typeof skill === "string" ? skill : skill.name),
     openFiles: [...engine.openFiles.keys()],

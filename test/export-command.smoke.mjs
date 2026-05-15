@@ -22,10 +22,9 @@ export async function runExportCommandSmoke({ setupTmp, cleanup }) {
     modelId: "deepseek-chat",
     thinkingLevel: "medium",
     sessionName: "Sprint",
-    _compactionSummary: "older work",
     turns: [
-      { index: 1, userMessage: "hello", summary: "said hello", assistantMessage: "hi" },
-      { index: 2, userMessage: "ship", summary: "shipped", assistantMessage: "done" },
+      { index: 1, userMessage: "hello", assistantMessage: "hi" },
+      { index: 2, userMessage: "ship", assistantMessage: "done" },
     ],
   };
   const sessionStats = {
@@ -59,9 +58,8 @@ export async function runExportCommandSmoke({ setupTmp, cleanup }) {
   assert.equal(records[0].type, "session");
   assert.equal(records[0].sessionId, "s/1");
   assert.equal(records[0].sessionName, "Sprint");
-  assert.equal(records[1].type, "compaction");
-  assert.equal(records[2].type, "turn");
-  assert.equal(records[3].assistantMessage, "done");
+  assert.equal(records[1].type, "turn");
+  assert.equal(records[2].assistantMessage, "done");
 
   const exported = exportSessionJsonl({
     engine,
@@ -75,19 +73,18 @@ export async function runExportCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(exported.path.endsWith("2026-05-10T01-02-03-004Z_s_1.jsonl"));
   assert.ok(existsSync(exported.path));
   const lines = readFileSync(exported.path, "utf8").trim().split("\n").map((line) => JSON.parse(line));
-  assert.equal(lines.length, 4);
+  assert.equal(lines.length, 3);
   assert.equal(lines[0].source, "pi");
-  assert.equal(lines[2].userMessage, "hello");
+  assert.equal(lines[1].userMessage, "hello");
 
   const html = buildSessionHtml(records);
   assert.ok(html.includes("<!doctype html>"));
   assert.ok(html.includes("Sprint"));
-  assert.ok(html.includes("older work"));
   assert.ok(html.includes("Turn 2"));
-  const escapedHtml = buildSessionHtml([{ type: "session", sessionName: "<bad>" }, { type: "turn", index: 1, userMessage: "<u>", summary: "\"s\"", assistantMessage: "&a" }]);
+  assert.ok(!html.includes("Summary"));
+  const escapedHtml = buildSessionHtml([{ type: "session", sessionName: "<bad>" }, { type: "turn", index: 1, userMessage: "<u>", assistantMessage: "&a" }]);
   assert.ok(escapedHtml.includes("&lt;bad&gt;"));
   assert.ok(escapedHtml.includes("&lt;u&gt;"));
-  assert.ok(escapedHtml.includes("&quot;s&quot;"));
   assert.ok(escapedHtml.includes("&amp;a"));
 
   const exportedHtml = exportSessionHtml({

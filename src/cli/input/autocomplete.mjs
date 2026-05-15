@@ -8,7 +8,6 @@ const MARCH_COMMANDS = [
   { name: "help", description: "Show available commands" },
   { name: "model", description: "Cycle to next available model" },
   { name: "models", description: "List available models" },
-  { name: "compact", description: "Compact session context" },
   { name: "session", description: "Show session stats (tokens, cost, messages)" },
   { name: "sessions", description: "List default pi JSONL sessions" },
   { name: "sessions pi", description: "List pi JSONL sessions (alias)" },

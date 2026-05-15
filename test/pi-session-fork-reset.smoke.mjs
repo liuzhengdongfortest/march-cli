@@ -10,7 +10,7 @@ export async function runPiSessionForkResetSmoke({ setupTmp, cleanup }) {
   const dir = setupTmp();
   const projectMarchDir = `${dir}/.march`;
   const engine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", thinkingLevel: "high", skills: ["s1"], pins: ["pinned"], namespace: "ns" });
-  engine.recordTurn({ userMessage: "current", summary: "current" });
+  engine.recordTurn({ userMessage: "current", assistantMessage: "current" });
   let activeSession = {
     getUserMessagesForForking: () => [{ entryId: "u1", text: "old prompt" }],
     getSessionStats: () => ({ sessionId: "old", sessionFile: "old.jsonl" }),
@@ -62,7 +62,7 @@ export async function runPiSessionForkResetSmoke({ setupTmp, cleanup }) {
 
   let rolledBackTo = null;
   const rollbackEngine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: ["s1"], pins: ["pinned"], namespace: "ns" });
-  rollbackEngine.recordTurn({ userMessage: "current", summary: "current" });
+  rollbackEngine.recordTurn({ userMessage: "current", assistantMessage: "current" });
   const rollbackSource = {
     getUserMessagesForForking: () => [{ entryId: "u1", text: "old prompt" }],
     getSessionStats: () => ({ sessionId: "old-rollback", sessionFile: "old-rollback.jsonl" }),

@@ -81,7 +81,6 @@ function createResetSidecarState({ engine, sourceStats, entryId, savedAt }) {
     thinkingLevel: engine.thinkingLevel,
     namespace: engine.namespace,
     turns: [],
-    compactionSummary: null,
     pins: [],
     skills: [],
     openFiles: [],
@@ -89,8 +88,5 @@ function createResetSidecarState({ engine, sourceStats, entryId, savedAt }) {
 }
 
 function toContextSessionState(sidecarState) {
-  return {
-    ...sidecarState,
-    _compactionSummary: sidecarState.compactionSummary,
-  };
+  return { ...sidecarState };
 }

@@ -31,7 +31,7 @@ export async function runPiSessionCloneCommandSmoke({ setupTmp, cleanup }) {
   const dir = setupTmp();
   const projectMarchDir = `${dir}/.march`;
   const engine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: ["s1"], pins: ["pinned"], namespace: "ns" });
-  engine.recordTurn({ userMessage: "u", summary: "s" });
+  engine.recordTurn({ userMessage: "u", assistantMessage: "a" });
   let activeSession = {
     sessionManager: { getLeafId: () => "leaf-1" },
     getSessionStats: () => ({ sessionId: "old", sessionFile: "old.jsonl" }),
@@ -67,7 +67,7 @@ export async function runPiSessionCloneCommandSmoke({ setupTmp, cleanup }) {
   assert.equal(sidecar.state.derivedAt, "2026-05-10T00:00:00.000Z");
   assert.equal(sidecar.state.derivedFromPiSessionId, "old");
   assert.equal(sidecar.state.derivedFromPiSessionFile, "old.jsonl");
-  assert.equal(sidecar.state.turns[0].summary, "s");
+  assert.equal(sidecar.state.turns[0].assistantMessage, "a");
 
   let rolledBackTo = null;
   const rollbackSource = {

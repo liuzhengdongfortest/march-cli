@@ -47,7 +47,6 @@ import { runSourceDirectoryLimitSmoke } from "./source-directory-limit.smoke.mjs
 import { runSourceLineLimitSmoke } from "./source-line-limit.smoke.mjs";
 import { runStartupBannerSmoke } from "./startup-banner.smoke.mjs";
 import { runStartupResumeSmoke } from "./startup-resume.smoke.mjs";
-import { runSummaryUiSmoke } from "./summary-ui.smoke.mjs";
 import { runTuiAutocompleteEscSmoke } from "./tui-autocomplete-esc.smoke.mjs";
 import { runTuiShellDrawerSmoke } from "./tui-shell-drawer.smoke.mjs";
 import { runUserDisplayMessageSmoke } from "./user-display-message.smoke.mjs";
@@ -162,7 +161,6 @@ await runShellRuntimeSmoke();
 await runShellDrawerSmoke();
 await runShellSplitLayoutSmoke();
 await runShellToolsSmoke();
-await runSummaryUiSmoke({ setupTmp, cleanup });
 await runNodePtyAdapterSmoke();
 await runTuiShellDrawerSmoke({ setupTmp, cleanup });
 await runContextRuntimeStatusSmoke();

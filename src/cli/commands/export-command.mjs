@@ -126,19 +126,11 @@ export function buildSessionJsonlRecords({ engine, sessionStats, sessionState, s
     },
   ];
 
-  if (engine._compactionSummary) {
-    records.push({
-      type: "compaction",
-      summary: engine._compactionSummary,
-    });
-  }
-
   for (const turn of engine.turns) {
     records.push({
       type: "turn",
       index: turn.index,
       userMessage: turn.userMessage ?? "",
-      summary: turn.summary ?? "",
       assistantMessage: turn.assistantMessage ?? "",
     });
   }
@@ -148,7 +140,6 @@ export function buildSessionJsonlRecords({ engine, sessionStats, sessionState, s
 
 export function buildSessionHtml(records) {
   const session = records.find((record) => record.type === "session") ?? {};
-  const compaction = records.find((record) => record.type === "compaction");
   const turns = records.filter((record) => record.type === "turn");
   return `<!doctype html>
 <html lang="en">
@@ -171,7 +162,6 @@ export function buildSessionHtml(records) {
   <main>
     <h1>${escapeHtml(session.sessionName || "March session")}</h1>
     <div class="meta">${escapeHtml(formatSessionMeta(session))}</div>
-    ${compaction ? `<section class="turn"><div class="label">Compacted history</div><pre>${escapeHtml(compaction.summary)}</pre></section>` : ""}
     ${turns.map(formatTurnHtml).join("\n")}
   </main>
 </body>
@@ -184,8 +174,6 @@ function formatTurnHtml(turn) {
   <h2>Turn ${escapeHtml(String(turn.index))}</h2>
   <div class="label">User</div>
   <pre>${escapeHtml(turn.userMessage)}</pre>
-  <div class="label">Summary</div>
-  <pre>${escapeHtml(turn.summary || "(no summary)")}</pre>
   <div class="label">Assistant</div>
   <pre>${escapeHtml(turn.assistantMessage || "(no assistant message)")}</pre>
 </section>`;

@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runSessionCommandSmoke() {
   console.log("--- smoke: session command handling ---");
-  const { compactSession, formatSessionStats, listSessionStats } = await import("../src/cli/session/session-command.mjs");
+  const { formatSessionStats, listSessionStats } = await import("../src/cli/session/session-command.mjs");
   const stats = {
     sessionId: "s1",
     userMessages: 2,
@@ -38,10 +38,8 @@ export async function runSessionCommandSmoke() {
   assert.ok(formatSessionStats({ ...stats, runtimeHost: true, piSessionSwitching: true }).includes("/resume-pi: available"));
   assert.ok(formatSessionStats({ ...stats, persisted: true, sessionFile: "session.jsonl" }).includes("persistence: pi-jsonl (session.jsonl)"));
   const runner = {
-    compact: async () => ({ summary: "hello" }),
     getSessionStats: () => stats,
   };
-  assert.deepEqual(await compactSession({ runner }), ["Compacted: 5 char summary"]);
   assert.equal(listSessionStats({ runner })[0], "session: s1");
   console.log("  PASS");
 }
@@ -138,9 +136,9 @@ export async function runSessionSwitchCommandSmoke({ setupTmp, cleanup }) {
   mkdirSync(sessionsRoot, { recursive: true });
 
   const currentEngine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: [], pins: [] });
-  currentEngine.recordTurn({ userMessage: "current", summary: "current" });
+  currentEngine.recordTurn({ userMessage: "current", assistantMessage: "current" });
   const targetEngine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: [], pins: ["/target.txt"] });
-  targetEngine.recordTurn({ userMessage: "target", summary: "target" });
+  targetEngine.recordTurn({ userMessage: "target", assistantMessage: "target" });
   saveSession(join(sessionsRoot, "target"), targetEngine);
 
   const runner = { engine: currentEngine };
@@ -200,7 +198,7 @@ export async function runPiSessionSwitchCommandSmoke() {
     pins: ["/target.txt"],
     namespace: "ns",
   });
-  sourceEngine.recordTurn({ userMessage: "hello", summary: "summary" });
+  sourceEngine.recordTurn({ userMessage: "hello", assistantMessage: "answer" });
   savePiSessionSidecar({
     projectMarchDir,
     sessionRef: "abc.jsonl",
@@ -228,7 +226,7 @@ export async function runPiSessionSwitchCommandSmoke() {
   assert.deepEqual(engine.getPins(), ["/target.txt"]);
   assert.deepEqual(engine.skills, skillPool);
   assert.equal(engine.thinkingLevel, "high");
-  assert.equal(engine.turns[0].summary, "summary");
+  assert.equal(engine.turns[0].assistantMessage, "answer");
   assert.deepEqual(await resumePiSessionById("missing", { runner, sessions, projectMarchDir }), ["Error: pi session not found: missing"]);
   assert.deepEqual(await resumePiSessionById("a", { runner, sessions: [{ id: "aa", path: "1" }, { id: "ab", path: "2" }], projectMarchDir }), [
     "Error: pi session id is ambiguous: a (aa, ab)",

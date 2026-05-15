@@ -46,8 +46,6 @@ export async function runRunnerImageAttachmentsSmoke({ setupTmp, cleanup }) {
   const ui = {
     turnStart: () => {},
     turnEnd: () => {},
-    summaryStart: () => {},
-    summaryDone: () => {},
   };
   const runner = await createRunner({
     cwd: dir,
@@ -62,9 +60,8 @@ export async function runRunnerImageAttachmentsSmoke({ setupTmp, cleanup }) {
   });
 
   await runner.runTurn("ctx\n\n[user]\nsee @.march/attachments/s1/image.png", "see @.march/attachments/s1/image.png");
-  assert.equal(promptCalls.length, 2);
+  assert.equal(promptCalls.length, 1);
   assert.deepEqual(promptCalls[0].options.images, [{ type: "image", mimeType: "image/png", data: "AQID" }]);
-  assert.equal(promptCalls[1].options, undefined);
 
   if (previousKey === undefined) {
     delete process.env.DEEPSEEK_API_KEY;

@@ -65,7 +65,6 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
       }],
       snapshotShell: () => ({ plain: "ready", ansi: "\x1b[32mready\x1b[0m" }),
     },
-    compact: async () => ({ summary: "compact summary" }),
     getSessionStats: () => ({
       sessionId: "s1",
       userMessages: 1,
@@ -197,9 +196,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.deepEqual(copied, ["previous answer"]);
   assert.ok(output.join("\n").includes("Copied last assistant response"));
   assert.equal(existsSync(join(sessionState.sessionDir, "session.json")), false);
-  const compact = await handleSlashCommand("/compact", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
-  assert.equal(compact.handled, true);
-  assert.ok(output.join("\n").includes("Compacted: 15 char summary"));
+  assert.equal((await handleSlashCommand("/compact", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
   const unknown = await handleSlashCommand("/unknown", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(unknown.handled, false);
   cleanup(dir);

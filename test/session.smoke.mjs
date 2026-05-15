@@ -18,8 +18,8 @@ export async function runSessionPersistenceSmoke({ setupTmp, cleanup }) {
     pins: [],
   });
 
-  engine.recordTurn({ userMessage: "turn 1", summary: "did thing 1" });
-  engine.recordTurn({ userMessage: "turn 2", summary: "did thing 2" });
+  engine.recordTurn({ userMessage: "turn 1", assistantMessage: "did thing 1" });
+  engine.recordTurn({ userMessage: "turn 2", assistantMessage: "did thing 2" });
   engine.setSessionName("Saved Session");
   engine.addPin("/fake/path.txt");
 
@@ -47,7 +47,7 @@ export async function runSessionPersistenceSmoke({ setupTmp, cleanup }) {
     skills: [],
     pins: ["/old/pin.txt"],
   });
-  replacement.recordTurn({ userMessage: "old", summary: "old" });
+  replacement.recordTurn({ userMessage: "old", assistantMessage: "old" });
   replacement.restoreSession(loaded, [], { replace: true });
   assert.equal(replacement.turns.length, 2);
   assert.deepEqual(replacement.getPins(), ["/fake/path.txt"]);
@@ -125,7 +125,7 @@ export async function runPiSessionSidecarSmoke({ setupTmp, cleanup }) {
     pins: ["/pinned.txt"],
     namespace: "project-ns",
   });
-  engine.recordTurn({ userMessage: "hello", summary: "summary" });
+  engine.recordTurn({ userMessage: "hello", assistantMessage: "answer" });
   engine.setSessionName("Pi Sidecar");
 
   const saved = savePiSessionSidecar({
@@ -144,7 +144,7 @@ export async function runPiSessionSidecarSmoke({ setupTmp, cleanup }) {
 
   const loaded = loadPiSessionSidecar({ projectMarchDir, sessionRef: "2026-05-10T00-00-00-000Z_test" });
   assert.equal(loaded.path, saved.path);
-  assert.equal(loaded.state.turns[0].summary, "summary");
+  assert.equal(loaded.state.turns[0].assistantMessage, "answer");
   assert.equal(loadPiSessionSidecar({ projectMarchDir, sessionRef: "missing" }), null);
 
   const invalidPath = getPiSidecarPath(projectMarchDir, "invalid");
@@ -172,7 +172,7 @@ export async function runPiSessionSidecarSyncSmoke({ setupTmp, cleanup }) {
     pins: ["/pinned.txt"],
     namespace: "project-ns",
   });
-  engine.recordTurn({ userMessage: "hello", summary: "summary" });
+  engine.recordTurn({ userMessage: "hello", assistantMessage: "answer" });
 
   assert.equal(syncPiSessionSidecar({
     enabled: false,
@@ -203,7 +203,7 @@ export async function runPiSessionSidecarSyncSmoke({ setupTmp, cleanup }) {
   assert.equal(loaded.state.sessionId, "pi1");
   assert.equal(loaded.state.runtimeHost, true);
   assert.equal(loaded.state.thinkingLevel, "high");
-  assert.equal(loaded.state.turns[0].summary, "summary");
+  assert.equal(loaded.state.turns[0].assistantMessage, "answer");
 
   cleanup(dir);
   console.log("  PASS");

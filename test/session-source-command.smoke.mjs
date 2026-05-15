@@ -25,8 +25,7 @@ export async function runSessionSourceCommandSmoke({ setupTmp, cleanup }) {
       modelId: "test-model",
       provider: "deepseek",
       namespace: "ns",
-      turns: [{ index: 1, userMessage: "slash pi", summary: "summary" }],
-      _compactionSummary: null,
+      turns: [{ index: 1, userMessage: "slash pi", assistantMessage: "ok" }],
       pins: new Set(),
       skills: [],
       openFiles: new Map(),
@@ -44,7 +43,6 @@ export async function runSessionSourceCommandSmoke({ setupTmp, cleanup }) {
       provider: "deepseek",
       namespace: "ns",
       turns: [],
-      _compactionSummary: null,
       pins: new Set(),
       openFiles: new Map(),
       skills: [],
@@ -80,7 +78,7 @@ export async function runSessionSourceCommandSmoke({ setupTmp, cleanup }) {
   const resumePi = await handleSessionSourceCommand("/resume-pi pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(resumePi.handled, true);
   assert.ok(output.join("\n").includes("Resumed pi session: pi-slash"));
-  assert.equal(restored.turns[0].summary, "summary");
+  assert.equal(restored.turns[0].assistantMessage, "ok");
   const defaultResumePi = await handleSessionSourceCommand("/resume pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir, sessionSource: "pi" });
   assert.equal(defaultResumePi.handled, true);
   assert.ok(output.join("\n").includes("Resumed session: pi-slash"));

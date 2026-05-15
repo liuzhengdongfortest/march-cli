@@ -47,8 +47,5 @@ export async function resumePiSessionById(id, { runner, sessions, projectMarchDi
 }
 
 function toContextSessionState(sidecarState) {
-  return {
-    ...sidecarState,
-    _compactionSummary: sidecarState.compactionSummary,
-  };
+  return { ...sidecarState };
 }

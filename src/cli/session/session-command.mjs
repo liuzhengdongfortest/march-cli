@@ -1,13 +1,3 @@
-export async function compactSession({ runner }) {
-  try {
-    const result = await runner.compact();
-    if (result) return [`Compacted: ${result.summary?.length ?? 0} char summary`];
-    return ["Compaction complete (nothing to compact)"];
-  } catch (err) {
-    return [`Error: ${err.message}`];
-  }
-}
-
 export function formatSessionStats(stats) {
   const lines = [
     `session: ${stats.sessionId}`,

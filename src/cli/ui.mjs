@@ -220,9 +220,6 @@ export function createTuiUI({
       spinnerStatus.stop();
     },
 
-    summaryStart: () => {},
-
-    summaryDone: () => {},
     retryStart,
     retryEnd,
 

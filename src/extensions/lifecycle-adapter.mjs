@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 export const MARCH_LIFECYCLE_LAYERS = Object.freeze([
   {
     name: "pi-agent-turn",
@@ -27,7 +25,6 @@ export const DEFAULT_MARCH_HOOK_POLICY = Object.freeze({
     "read-workspace-ref",
     "read-session-ref",
     "read-sidecar-metadata",
-    "read-summary-hash",
     "read-diff-metadata",
     "read-runtime-diagnostics",
     "write-diagnostics",
@@ -158,13 +155,8 @@ export function evaluateMarchHookEffect(effect) {
   };
 }
 
-function hashSummary(summary) {
-  return createHash("sha256").update(summary).digest("hex").slice(0, 12);
-}
-
 function buildFacts({ cwd, projectMarchDir, engine, getSessionStats }) {
   const stats = getSessionStats?.();
-  const summary = engine?._compactionSummary ?? "";
   return {
     cwd,
     projectMarchDir,
@@ -177,7 +169,6 @@ function buildFacts({ cwd, projectMarchDir, engine, getSessionStats }) {
     thinkingLevel: engine?.thinkingLevel ?? null,
     namespace: engine?.namespace ?? null,
     turnCount: engine?.turns?.length ?? 0,
-    summaryHash: summary ? hashSummary(summary) : null,
   };
 }
 

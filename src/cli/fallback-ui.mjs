@@ -33,8 +33,6 @@ export function createJsonUI() {
     setStatusBar: () => {},
     turnStart: () => {},
     turnEnd: () => {},
-    summaryStart: () => {},
-    summaryDone: () => {},
     retryStart: (event) => {
       stdout.write(JSON.stringify({ type: "retry_start", ...event }) + "\n");
     },
@@ -99,8 +97,6 @@ export function createPlainUI() {
     setStatusBar: () => {},
     turnStart: () => {},
     turnEnd: () => {},
-    summaryStart: () => {},
-    summaryDone: () => {},
     retryStart: ({ attempt, maxAttempts, delayMs, errorMessage }) => {
       stdout.write(`${yellow(`● retrying (${attempt}/${maxAttempts}) in ${Math.ceil(delayMs / 1000)}s: ${errorMessage || "Unknown error"}`)}\n`);
     },

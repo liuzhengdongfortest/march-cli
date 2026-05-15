@@ -42,7 +42,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   provider = selectedModel.provider;
   modelId = selectedModel.id;
   const settingsManager = SettingsManager.inMemory({
-    compaction: { enabled: true, reserveTokens: 262144, keepRecentTokens: 32768 },
+    compaction: { enabled: false },
     retry: { enabled: true, maxRetries: 3, baseDelayMs: 2000 },
   });
 
@@ -189,15 +189,6 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       const configured = Object.values(providers ?? {}).map((profile) => profile?.type).filter(Boolean);
       const available = (modelRegistry.getAvailable?.() ?? []).map((model) => model.provider);
       return [...new Set([...configured, ...available])];
-    },
-
-    async compact() {
-      const result = await sessionBinding.get().compact();
-      if (result?.summary) {
-        engine.recordCompaction(result.summary);
-        syncCurrentPiSidecar();
-      }
-      return result;
     },
 
     getSessionStats() {

@@ -15,10 +15,7 @@ export async function runTurnEventsSmoke() {
     retryStart: (event) => calls.push(["retryStart", event.attempt, event.maxAttempts, event.delayMs, event.errorMessage]),
     retryEnd: (event) => calls.push(["retryEnd", event.success, event.attempt, event.finalError]),
   };
-  const compactions = [];
-  const engine = {
-    recordCompaction: (summary) => compactions.push(summary),
-  };
+  const engine = {};
   const state = createTurnEventState();
 
   handleRunnerSessionEvent(textDelta("hello"), { ui, engine, state });
@@ -29,12 +26,9 @@ export async function runTurnEventsSmoke() {
   handleRunnerSessionEvent({ type: "tool_execution_end", toolName: "read", isError: false, result: "ok" }, { ui, engine, state });
   handleRunnerSessionEvent({ type: "auto_retry_start", attempt: 1, maxAttempts: 3, delayMs: 2000, errorMessage: "rate" }, { ui, engine, state });
   handleRunnerSessionEvent({ type: "auto_retry_end", success: true, attempt: 1, finalError: null }, { ui, engine, state });
-  handleRunnerSessionEvent({ type: "compaction_end", aborted: false, result: { summary: "compact summary" } }, { ui, engine, state });
-  handleRunnerSessionEvent({ type: "compaction_end", aborted: true, result: { summary: "ignored" } }, { ui, engine, state });
 
   assert.equal(state.draft, "hello");
   assert.equal(state.thinkingText, "");
-  assert.deepEqual(compactions, ["compact summary"]);
   assert.deepEqual(calls, [
     ["text", "hello"],
     ["thinkingStart"],
@@ -46,17 +40,6 @@ export async function runTurnEventsSmoke() {
     ["retryEnd", true, 1, null],
   ]);
 
-  state.summarizing = true;
-  handleRunnerSessionEvent(textDelta("summary"), { ui, engine, state });
-  handleRunnerSessionEvent({ type: "message_update", assistantMessageEvent: { type: "thinking_start" } }, { ui, engine, state });
-  handleRunnerSessionEvent({ type: "tool_execution_start", toolName: "write", args: {} }, { ui, engine, state });
-  handleRunnerSessionEvent({ type: "auto_retry_start", attempt: 2, maxAttempts: 3, delayMs: 4000, errorMessage: "again" }, { ui, engine, state });
-  handleRunnerSessionEvent({ type: "compaction_end", aborted: false, result: { summary: "summary compaction" } }, { ui, engine, state });
-
-  assert.equal(state.draft, "hello");
-  assert.equal(state.summaryDraft, "summary");
-  assert.deepEqual(compactions, ["compact summary", "summary compaction"]);
-  assert.equal(calls.length, 8);
   console.log("  PASS");
 }
 

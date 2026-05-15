@@ -36,7 +36,6 @@ export async function runSessionNameCommandSmoke({ setupTmp, cleanup }) {
       provider: "p",
       thinkingLevel: "medium",
       turns: [],
-      _compactionSummary: null,
       pins: new Set(),
       skills: [],
       openFiles: new Map(),

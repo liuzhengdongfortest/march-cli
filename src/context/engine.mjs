@@ -27,7 +27,7 @@ export class ContextEngine {
     this.shellRuntime = shellRuntime;
     this.lspService = lspService;
     this.injections = [...injections];
-    this._compactionSummary = null;
+    this._cachedWorkspaceStatus = null;
     this.systemCorePromptKey = resolveSystemCorePromptKey({ modelId });
     this.systemCore = buildSystemCore({ modelId });
   }
@@ -72,15 +72,10 @@ export class ContextEngine {
     return layers;
   }
 
-  recordCompaction(summary) {
-    this._compactionSummary = summary;
-  }
-
-  recordTurn({ userMessage, summary, assistantMessage, userRecallHints = [], assistantRecallHints = [] }) {
+  recordTurn({ userMessage, assistantMessage, userRecallHints = [], assistantRecallHints = [] }) {
     this.turns.push({
       index: this.turns.length + 1,
       userMessage,
-      summary,
       assistantMessage: assistantMessage ?? "",
       userRecallHints,
       assistantRecallHints,
@@ -155,11 +150,9 @@ export class ContextEngine {
       this.openFiles = new Map();
       this.pins = new Set();
       this.skills = [];
-      this._compactionSummary = null;
     }
     if (data.turns) this.turns = data.turns;
     if (typeof data.sessionName === "string") this.sessionName = data.sessionName;
-    if (data._compactionSummary) this._compactionSummary = data._compactionSummary;
     this.setRuntimeState(data);
     if (data.pins) {
       for (const p of data.pins) {
@@ -186,9 +179,11 @@ export class ContextEngine {
     return buildSessionIdentity({ cwd: this.cwd, workspaceRoot: this.cwd });
   }
 
-  // ── Layer 7: workspace_status ──────────────────────────────────────
   #buildWorkspaceStatus() {
-    return buildWorkspaceStatus({ cwd: this.cwd });
+    if (!this._cachedWorkspaceStatus) {
+      this._cachedWorkspaceStatus = buildWorkspaceStatus({ cwd: this.cwd });
+    }
+    return this._cachedWorkspaceStatus;
   }
 
   #buildDiagnostics() {
@@ -233,23 +228,16 @@ export class ContextEngine {
 
   // ── Layer 9: recent_chat ───────────────────────────────────────────
   #buildRecentChat() {
-    const entries = [];
-    if (this._compactionSummary) {
-      entries.push(`<CompactedHistory>\n${this._compactionSummary}\n</CompactedHistory>`);
-    }
     if (this.turns.length === 0) {
-      if (entries.length === 0) {
-        return `[recent_chat]\n(no prior turns)`;
-      }
-      return `[recent_chat]\n${entries.join("\n\n")}`;
+      return `[recent_chat]\n(no prior turns)`;
     }
+    const entries = [];
     for (const turn of this.turns) {
       let block = `## Turn ${turn.index}\n` +
         `[user]\n${this.#truncate(turn.userMessage, 2000)}\n`;
       const userRecall = formatRecallHints("user", turn.userRecallHints ?? []);
       if (userRecall) block += `\n${userRecall}\n`;
-      block += `\n[March]\n` +
-        `<WorkSummary>${turn.summary || "(no summary)"}</WorkSummary>\n`;
+      block += `\n[March]\n`;
       if (turn.assistantMessage) {
         block += `\n${this.#truncate(turn.assistantMessage, 2000)}\n`;
       }

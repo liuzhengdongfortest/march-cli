@@ -14,7 +14,7 @@ export async function runStartupResumeSmoke({ setupTmp, cleanup }) {
   const ui = { status: (line) => statuses.push(line) };
   const engine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: [], pins: [] });
   const sourceEngine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: [], pins: ["pinned"] });
-  sourceEngine.recordTurn({ userMessage: "hello", summary: "summary" });
+  sourceEngine.recordTurn({ userMessage: "hello", assistantMessage: "answer" });
   savePiSessionSidecar({
     projectMarchDir,
     sessionRef: "pi.jsonl",
@@ -41,7 +41,7 @@ export async function runStartupResumeSmoke({ setupTmp, cleanup }) {
   });
   assert.equal(result.source, "pi");
   assert.equal(switchedPath, "pi.jsonl");
-  assert.equal(engine.turns[0].summary, "summary");
+  assert.equal(engine.turns[0].assistantMessage, "answer");
   assert.ok(statuses.includes("Resumed pi session: pi-start"));
 
   const legacyEngine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: [], pins: [] });
