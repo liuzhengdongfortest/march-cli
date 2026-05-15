@@ -6,6 +6,7 @@ import { buildActiveSkills, buildSkillCatalog } from "./skill-layers.mjs";
 import { buildOpenFilesLayer } from "./open-files-layer.mjs";
 import { buildSystemCore, resolveSystemCorePromptKey } from "./system-core.mjs";
 import { buildInjectionsLayer } from "./injections.mjs";
+import { buildProjectContext } from "./project-context.mjs";
 import { buildDiagnosticsLayer } from "./diagnostics.mjs";
 import { formatRecallHints } from "../memory/markdown-store.mjs";
 
@@ -63,6 +64,9 @@ export class ContextEngine {
     if (injectionsLayer) layers.push({ name: "injections", text: injectionsLayer });
 
     layers.push({ name: "session_identity", text: this.#buildSessionIdentity() });
+
+    const projectCtx = buildProjectContext(this.cwd);
+    if (projectCtx) layers.push({ name: "project_context", text: projectCtx });
 
     if (this.skillPool.length > 0) {
       layers.push({ name: "skill_catalog", text: this.#buildSkillCatalog() });

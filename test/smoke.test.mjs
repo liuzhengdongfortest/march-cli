@@ -9,6 +9,7 @@ import { runContextSkillLayersSmoke } from "./context-skill-layers.smoke.mjs";
 import { runCommandExecToolSmoke } from "./command-exec-tool.smoke.mjs";
 import { runConfigLoadingSmoke } from "./config-loading.smoke.mjs";
 import { runContextEngineSmoke } from "./context-engine.smoke.mjs";
+import { runProjectContextSmoke } from "./context-project-context.smoke.mjs";
 import { runCopyCommandSmoke } from "./copy-command.smoke.mjs";
 import { runContextStatsToolSmoke } from "./context-stats-tool.smoke.mjs";
 import { runEditFileToolSmoke } from "./edit-file-tool.smoke.mjs";
@@ -164,6 +165,7 @@ await runMcpInjectionsSmoke();
 await runMarkdownMemorySmoke({ setupTmp, cleanup });
 
 await runContextEngineSmoke({ setupTmp, cleanup });
+await runProjectContextSmoke({ setupTmp, cleanup });
 
 await runRunnerCoreSmoke();
 
