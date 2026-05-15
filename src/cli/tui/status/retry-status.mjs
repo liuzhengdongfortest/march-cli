@@ -24,11 +24,16 @@ export function createRetryStatusController({
   now = () => Date.now(),
 }) {
   let retryTimer = null;
+  let retrySpinnerActive = false;
 
   function stop() {
     if (retryTimer) {
       clearIntervalImpl(retryTimer);
       retryTimer = null;
+    }
+    if (retrySpinnerActive) {
+      output.setSpinner(false, "");
+      retrySpinnerActive = false;
     }
   }
 
@@ -43,6 +48,7 @@ export function createRetryStatusController({
     });
     output.writeln(formatRetryStartLine(errorMessage));
     output.setSpinner(true, message());
+    retrySpinnerActive = true;
     retryTimer = setIntervalImpl(() => {
       output.setSpinner(true, message());
       output.tick();
@@ -53,7 +59,6 @@ export function createRetryStatusController({
 
   function end({ success, attempt, finalError }) {
     stop();
-    stopSpinner();
     output.writeln(formatRetryEndLine({ success, attempt, finalError }));
     requestRender();
   }

@@ -160,8 +160,7 @@ export function createTuiUI({
     },
 
     thinkingStart: () => {
-      output.startThinking();
-      requestRender();
+      retryStatus.stop(); output.startThinking(); requestRender();
     },
 
     thinkingDelta: (delta) => {
@@ -175,15 +174,13 @@ export function createTuiUI({
     },
 
     thinkingBlock: (tokens, content) => {
-      output.addThinkingBlock(tokens, content);
-      requestRender();
+      retryStatus.stop(); output.addThinkingBlock(tokens, content); requestRender();
     },
 
     toggleLastThinking: () => false,
 
     toolStart: (name, args) => {
-      ensureStarted();
-      spinnerStatus.stop();
+      ensureStarted(); retryStatus.stop(); spinnerStatus.stop();
       writeToolStart({ output, name, args });
       requestRender();
     },
@@ -195,18 +192,17 @@ export function createTuiUI({
     },
 
     textDelta: (delta) => {
-      ensureStarted();
-      spinnerStatus.stop();
+      ensureStarted(); retryStatus.stop(); spinnerStatus.stop();
       output.writeMarkdown(delta);
       requestRender();
     },
 
     status: (text) => {
-      ensureStarted(); spinnerStatus.stop(); output.writeln(brightBlack(`● ${text}`)); requestRender();
+      ensureStarted(); retryStatus.stop(); spinnerStatus.stop(); output.writeln(brightBlack(`● ${text}`)); requestRender();
     },
 
     passiveRecall: ({ hints }) => {
-      ensureStarted(); spinnerStatus.stop(); writePassiveRecall({ output, hints }); requestRender();
+      ensureStarted(); retryStatus.stop(); spinnerStatus.stop(); writePassiveRecall({ output, hints }); requestRender();
     },
 
     clearOutput: () => {

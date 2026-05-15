@@ -47,6 +47,11 @@ export async function runRetryStatusSmoke() {
   assert.ok(calls.some((call) => call[0] === "spinner" && call[2].includes("in 1s")));
   controller.end({ success: false, attempt: 1, finalError: "rate" });
   assert.ok(calls.some((call) => call[0] === "clear" && call[1] === "timer-1"));
+  assert.ok(calls.some((call) => call[0] === "spinner" && call[1] === false && call[2] === ""));
   assert.ok(calls.some((call) => call[0] === "writeln" && call[1].includes("retry stopped")));
+  calls.length = 0;
+  controller.start({ attempt: 2, maxAttempts: 3, delayMs: 1000, errorMessage: "rate" });
+  controller.stop();
+  assert.ok(calls.some((call) => call[0] === "spinner" && call[1] === false && call[2] === ""));
   console.log("  PASS");
 }
