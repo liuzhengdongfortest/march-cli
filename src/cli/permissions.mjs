@@ -33,7 +33,6 @@ const DEFAULT_CATEGORIES = {
   command_exec: PERM.COMMAND_EXEC,
   terminal_spawn: PERM.COMMAND_EXEC,
   terminal_send: PERM.COMMAND_EXEC,
-  terminal_run: PERM.COMMAND_EXEC,
   terminal_list: PERM.COMMAND_EXEC,
   terminal_kill: PERM.COMMAND_EXEC,
   terminal_resize: PERM.COMMAND_EXEC,

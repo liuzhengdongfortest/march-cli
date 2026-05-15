@@ -34,50 +34,34 @@ export function createShellTools(shellRuntime = null) {
   const terminalSend = defineTool({
     name: "terminal_send",
     label: "Terminal Send",
-    description: "Send text or control sequences to a running interactive terminal. To execute a command, end the text with \\r or \\n; line feeds are normalized to terminal Enter.",
+    description: "Send text or control sequences to a running interactive terminal. Set wait_for_idle=true when sending a command and you need output.",
     parameters: Type.Object({
       shell_id: Type.String({ description: "Shell id returned by terminal_spawn or terminal_list" }),
       text: Type.Optional(Type.String({ description: "Text to send to the terminal. Use \\r or \\n for Enter." })),
       key: Type.Optional(Type.String({ description: "Named control key to send: enter, ctrl_c, ctrl_d, ctrl_z, tab, escape, backspace" })),
+      wait_for_idle: Type.Optional(Type.Boolean({ description: "Wait until terminal output becomes idle and return the output delta; default false" })),
+      timeout_ms: Type.Optional(Type.Number({ description: "Maximum wait time when wait_for_idle=true, default 10000" })),
+      idle_ms: Type.Optional(Type.Number({ description: "Output idle time before returning when wait_for_idle=true, default 300" })),
     }),
     execute: async (_toolCallId, params) => {
+      const before = params.wait_for_idle ? shellRuntime.snapshotShell(params.shell_id).plain : null;
       const text = normalizeShellToolInput(params.text, params.key);
       const result = shellRuntime.sendShell(params.shell_id, text);
       if (!result.ok) return toolText(`Error: ${result.error}`, { error: true, shell: result.shell });
+      if (params.wait_for_idle) {
+        const idle = await waitForShellIdle(shellRuntime, params.shell_id, before, {
+          timeoutMs: params.timeout_ms,
+          idleMs: params.idle_ms,
+        });
+        const output = idle.delta || idle.snapshot.plain || "(no output)";
+        return toolText(output, {
+          shell: idle.shell,
+          timedOut: idle.timedOut,
+          delta: idle.delta,
+          snapshot: idle.snapshot,
+        });
+      }
       return toolText(`Sent ${text.length} chars to ${result.shell.name} (${result.shell.id}).`, { shell: result.shell });
-    },
-  });
-
-  const terminalRun = defineTool({
-    name: "terminal_run",
-    label: "Terminal Run",
-    description: "Run one command inside an interactive terminal and wait until output becomes idle. If shell_id is omitted, starts the default terminal first.",
-    parameters: Type.Object({
-      shell_id: Type.Optional(Type.String({ description: "Existing terminal id; omitted starts the default terminal" })),
-      command: Type.String({ description: "Command to execute" }),
-      name: Type.Optional(Type.String({ description: "Name for a newly spawned terminal when shell_id is omitted" })),
-      timeout_ms: Type.Optional(Type.Number({ description: "Maximum wait time, default 10000" })),
-      idle_ms: Type.Optional(Type.Number({ description: "Output idle time before returning, default 300" })),
-    }),
-    execute: async (_toolCallId, params) => {
-      const shell = params.shell_id
-        ? shellRuntime.getShell(params.shell_id)
-        : shellRuntime.spawnShell({ name: params.name || "exec" });
-      if (!shell) return toolText(`Error: shell not found: ${params.shell_id}`, { error: true });
-      const before = shellRuntime.snapshotShell(shell.id).plain;
-      const sent = shellRuntime.sendShell(shell.id, normalizeShellToolInput(`${params.command}\n`));
-      if (!sent.ok) return toolText(`Error: ${sent.error}`, { error: true, shell: sent.shell });
-      const result = await waitForShellIdle(shellRuntime, shell.id, before, {
-        timeoutMs: params.timeout_ms,
-        idleMs: params.idle_ms,
-      });
-      const text = result.delta || result.snapshot.plain || "(no output)";
-      return toolText(text, {
-        shell: result.shell,
-        timedOut: result.timedOut,
-        delta: result.delta,
-        snapshot: result.snapshot,
-      });
     },
   });
 
@@ -171,7 +155,7 @@ export function createShellTools(shellRuntime = null) {
     },
   });
 
-  return [terminalSpawn, terminalSend, terminalRun, terminalList, terminalKill, terminalResize, terminalClear, terminalSearch, terminalSnapshot];
+  return [terminalSpawn, terminalSend, terminalList, terminalKill, terminalResize, terminalClear, terminalSearch, terminalSnapshot];
 }
 
 function formatShell(shell) {

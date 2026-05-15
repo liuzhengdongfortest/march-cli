@@ -24,7 +24,7 @@ export async function runShellToolsSmoke() {
   assert.deepEqual(createShellTools(null), []);
   assert.ok(byName.terminal_spawn);
   assert.ok(byName.terminal_send);
-  assert.ok(byName.terminal_run);
+  assert.equal(byName.terminal_run, undefined);
   assert.ok(byName.terminal_list);
   assert.ok(byName.terminal_kill);
   assert.ok(byName.terminal_resize);
@@ -70,7 +70,7 @@ export async function runShellToolsSmoke() {
   assert.ok(sentCtrlC.content[0].text.includes("Sent 1 chars"));
   assert.equal(writes.at(-1), "\x03");
 
-  const exec = await byName.terminal_run.execute("tc-exec", { shell_id: "sh1", command: "echo ok", timeout_ms: 1000, idle_ms: 20 });
+  const exec = await byName.terminal_send.execute("tc-exec", { shell_id: "sh1", text: "echo ok\n", wait_for_idle: true, timeout_ms: 1000, idle_ms: 20 });
   assert.ok(exec.content[0].text.includes("seen:echo ok"));
   assert.equal(writes.at(-1), "echo ok\r");
 
