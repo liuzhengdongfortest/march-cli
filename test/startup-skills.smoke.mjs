@@ -37,16 +37,26 @@ export async function runStartupSkillsSmoke({ setupTmp, cleanup }) {
   assert.ok(skillPool.some(skill => skill.name === "project"));
   assert.ok(skillTools.some(tool => tool.name === "activate_skill"));
 
+  const byName = Object.fromEntries(skillTools.map((tool) => [tool.name, tool]));
+  const listResult = await byName.list_skills.execute("tc-list", {});
+  assert.deepEqual(listResult.details, {});
+  assert.ok(listResult.content[0].text.includes("Available skills"));
+
   const applied = [];
   const engine = { setSkills: (skills) => applied.push(skills.map(skill => skill.name)) };
+  skillState.engine = engine;
+  const activatedResult = await byName.activate_skill.execute("tc-activate", { name: "project" });
+  assert.deepEqual(activatedResult.details, {});
+  assert.ok(activatedResult.content[0].text.includes("Activated skill: project"));
+
   const active = activateStartupSkills({
     skillState,
     skillPool,
     skillNames: ["review", "missing", "review"],
     engine,
   });
-  assert.deepEqual(active.map(skill => skill.name), ["review"]);
-  assert.deepEqual(applied, [["review"]]);
+  assert.deepEqual(active.map(skill => skill.name), ["project", "review"]);
+  assert.deepEqual(applied, [["project"], ["project", "review"]]);
 
   cleanup(dir);
   console.log("  PASS");

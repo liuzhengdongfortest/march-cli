@@ -1,5 +1,6 @@
 import { defineTool } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
+import { toolText } from "../agent/tool-result.mjs";
 
 /**
  * Create skill management tools.
@@ -20,7 +21,7 @@ export function createSkillTools(state, pool) {
         const marker = activeNames.includes(name) ? "[active]" : "[inactive]";
         lines.push(`  ${marker} ${name}`);
       }
-      return { content: [{ type: "text", text: lines.join("\n") }] };
+      return toolText(lines.join("\n"));
     },
   });
 
@@ -35,14 +36,14 @@ export function createSkillTools(state, pool) {
     execute: async (_toolCallId, params) => {
       const skill = pool.find(s => s.name === params.name);
       if (!skill) {
-        return { content: [{ type: "text", text: `Skill "${params.name}" not found in pool. Use list_skills to see available skills.` }] };
+        return toolText(`Skill "${params.name}" not found in pool. Use list_skills to see available skills.`);
       }
       if (state.active.find(s => s.name === params.name)) {
-        return { content: [{ type: "text", text: `Skill "${params.name}" is already active.` }] };
+        return toolText(`Skill "${params.name}" is already active.`);
       }
       state.active.push(skill);
       if (state.engine) state.engine.setSkills([...state.active]);
-      return { content: [{ type: "text", text: `Activated skill: ${params.name}` }] };
+      return toolText(`Activated skill: ${params.name}`);
     },
   });
 
@@ -56,11 +57,11 @@ export function createSkillTools(state, pool) {
     execute: async (_toolCallId, params) => {
       const idx = state.active.findIndex(s => s.name === params.name);
       if (idx === -1) {
-        return { content: [{ type: "text", text: `Skill "${params.name}" is not active.` }] };
+        return toolText(`Skill "${params.name}" is not active.`);
       }
       state.active.splice(idx, 1);
       if (state.engine) state.engine.setSkills([...state.active]);
-      return { content: [{ type: "text", text: `Deactivated skill: ${params.name}` }] };
+      return toolText(`Deactivated skill: ${params.name}`);
     },
   });
 
