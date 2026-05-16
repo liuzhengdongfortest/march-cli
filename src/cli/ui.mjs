@@ -74,17 +74,44 @@ export function createTuiUI({
       nextShell: () => shellDrawerControls.selectNext(),
       shellScrollUp: () => shellDrawerControls.scroll(-1),
       shellScrollDown: () => shellDrawerControls.scroll(1),
+      outputScrollUp: () => { output.scroll(-1); requestRender(); },
+      outputScrollDown: () => { output.scroll(1); requestRender(); },
       pasteImage: () => onPasteImageHandler?.(),
     },
     isAutocompleteOpen: () => editor.isShowingAutocomplete(),
     hasOverlay: () => tui.hasOverlay(),
   });
 
+  function parseMouseScroll(data) {
+    // SGR extended (1006) mouse scroll: \x1b[<64;col;rowM (up), \x1b[<65;col;rowM (down)
+    const match = data.match(/^\x1b\[<(\d+);\d+;\d+[Mm]$/);
+    if (!match) return null;
+    const btn = parseInt(match[1], 10);
+    if (btn === 64) return -1;  // wheel up
+    if (btn === 65) return 1;   // wheel down
+    return null;
+  }
+
   function ensureStarted() {
     if (!started) {
       tui.addInputListener((data) => {
+        // Mouse wheel scroll when mouse tracking is on
+        if (mouseOn) {
+          const scrollDelta = parseMouseScroll(data);
+          if (scrollDelta) {
+            output.scroll(scrollDelta);
+            requestRender();
+            return { consume: true };
+          }
+        }
         const dispatched = keybindingDispatcher.dispatch(data);
         if (dispatched) return dispatched;
+        // When output is scrolled up, the next render has fewer lines.
+        // On new input, reset scroll to tail so the editor stays at bottom.
+        if (output.scrollOffset > 0) {
+          output.resetScroll();
+          requestRender();
+        }
         if (shellDrawer.isInputActive()) {
           shellDrawer.sendInput(data);
           requestRender();
@@ -96,6 +123,7 @@ export function createTuiUI({
       started = true;
     }
   }
+
 
   function openExternalEditor() {
     const editorCommand = getExternalEditorCommand();

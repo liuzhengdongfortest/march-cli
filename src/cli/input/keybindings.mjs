@@ -14,6 +14,8 @@ export const DEFAULT_KEYBINDINGS = Object.freeze({
   nextShell: "Alt+N",
   shellScrollUp: "Alt+K",
   shellScrollDown: "Alt+J",
+  outputScrollUp: "PageUp",
+  outputScrollDown: "PageDown",
   pasteImage: "Alt+V",
 });
 
@@ -30,6 +32,8 @@ export const KEYBINDING_ACTIONS = Object.freeze({
   nextShell: "Select next shell in pane",
   shellScrollUp: "Scroll shell pane up",
   shellScrollDown: "Scroll shell pane down",
+  outputScrollUp: "Scroll output buffer up",
+  outputScrollDown: "Scroll output buffer down",
   pasteImage: "Paste clipboard image as attachment",
 });
 
@@ -84,7 +88,7 @@ export function formatKeybindingLines(keybindings = DEFAULT_KEYBINDINGS) {
 }
 
 function isSupportedKey(key) {
-  return typeof key === "string" && /^(Esc|Tab|Shift\+Tab|Ctrl\+[A-Z]|Alt\+[A-Z])$/.test(key);
+  return typeof key === "string" && /^(Esc|Tab|Shift\+Tab|Ctrl\+[A-Z]|Alt\+[A-Z]|PageUp|PageDown)$/.test(key);
 }
 
 function padKey(key) {

@@ -7,6 +7,7 @@ const HOTKEY_GROUPS = Object.freeze([
   ["Model and thinking", ["cycleThinking", "thinkingSelector", "modelSelector"]],
   ["Editor and output", ["externalEditor", "toggleToolOutput", "pasteImage"]],
   ["Shell pane", ["toggleShellDrawer", "nextShell", "shellScrollUp", "shellScrollDown"]],
+  ["Output scroll", ["outputScrollUp", "outputScrollDown"]],
 ]);
 
 export function parseInlineShellInput(input, lastCommand = "") {

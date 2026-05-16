@@ -110,6 +110,8 @@ export class OutputBuffer {
     this.spinnerIdx = 0;
     this._activeThinking = null;
     this.overlayStatus = null;
+    this.scrollOffset = 0;
+    this._windowSize = null;
   }
 
   clear() {
@@ -121,6 +123,8 @@ export class OutputBuffer {
     this.spinnerIdx = 0;
     this._activeThinking = null;
     this.overlayStatus = null;
+    this.scrollOffset = 0;
+    this._windowSize = null;
   }
 
   write(text) {
@@ -222,9 +226,50 @@ export class OutputBuffer {
     this.spinnerIdx = (this.spinnerIdx + 1) % SPINNER_FRAMES.length;
   }
 
+  scroll(delta) {
+    // delta < 0 = scroll up (increase offset to see earlier lines)
+    // delta > 0 = scroll down (decrease offset toward tail)
+    const maxOffset = this.getMaxScrollOffset();
+    this.scrollOffset = clamp(this.scrollOffset + (delta < 0 ? 1 : -1), 0, maxOffset);
+    return {
+      offset: this.scrollOffset,
+      maxOffset,
+      atTail: this.scrollOffset === 0,
+    };
+  }
+
+  getMaxScrollOffset() {
+    const total = this._cachedTotalLines || 0;
+    const win = this._windowSize || (process.stdout.rows || 30) - 2;
+    return Math.max(0, total - win);
+  }
+
+  resetScroll() {
+    this.scrollOffset = 0;
+  }
+
   invalidate() {}
 
   render(width) {
+    const allLines = this._computeLines(width);
+    this._cachedTotalLines = allLines.length;
+
+    if (this.scrollOffset === 0) {
+      // Track natural rendered count as window size for when scrolling starts
+      if (this._windowSize === null || allLines.length > 0) {
+        this._windowSize = Math.max(this._windowSize || 0, allLines.length);
+      }
+      return allLines;
+    }
+
+    // Scrolled up: show a window
+    const winSize = this._windowSize || (process.stdout.rows || 30) - 2;
+    const end = Math.max(0, allLines.length - this.scrollOffset);
+    const start = Math.max(0, end - winSize);
+    return allLines.slice(start, end);
+  }
+
+  _computeLines(width) {
     const lines = [];
     for (const seg of this.segments) {
       for (const line of renderBlock(seg, width)) lines.push(line);
@@ -241,4 +286,8 @@ export class OutputBuffer {
     }
     return lines;
   }
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
 }
