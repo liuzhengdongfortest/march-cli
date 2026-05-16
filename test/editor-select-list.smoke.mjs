@@ -34,5 +34,25 @@ export async function runEditorSelectListSmoke() {
   assert.equal(editor.autocompleteList, undefined);
   assert.ok(calls.includes("cancelAutocomplete"));
   assert.ok(calls.includes("removeInputListener"));
+
+  calls.length = 0;
+  inputListener = null;
+  let resolved = false;
+  const suppressedPromise = showEditorSelectList({
+    tui,
+    editor,
+    items: [{ value: "a", label: "A" }, { value: "b", label: "B" }],
+    requestRender: () => calls.push("render"),
+    suppressInitialLineFeed: true,
+  }).then((item) => {
+    resolved = true;
+    return item;
+  });
+
+  assert.deepEqual(inputListener("\n"), { consume: true });
+  await Promise.resolve();
+  assert.equal(resolved, false);
+  assert.deepEqual(inputListener("\r"), { consume: true });
+  assert.deepEqual(await suppressedPromise, { value: "a", label: "A" });
   console.log("  PASS");
 }

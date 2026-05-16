@@ -1,7 +1,7 @@
 import { SelectList } from "@mariozechner/pi-tui";
 import { EDITOR_THEME } from "../ui-theme.mjs";
 
-export function showEditorSelectList({ tui, editor, items, selectedIndex = 0, maxVisible = 8, requestRender }) {
+export function showEditorSelectList({ tui, editor, items, selectedIndex = 0, maxVisible = 8, requestRender, suppressInitialLineFeed = false }) {
   if (!Array.isArray(items) || items.length === 0) return Promise.resolve(null);
   return new Promise((resolve) => {
     editor.cancelAutocomplete?.();
@@ -25,7 +25,14 @@ export function showEditorSelectList({ tui, editor, items, selectedIndex = 0, ma
     list.onCancel = () => finish(null);
     editor.autocompleteState = "force";
     editor.autocompleteList = list;
+    let isFirstInput = true;
     removeInputListener = tui.addInputListener((data) => {
+      if (isFirstInput && suppressInitialLineFeed && data === "\n") {
+        isFirstInput = false;
+        requestRender();
+        return { consume: true };
+      }
+      isFirstInput = false;
       list.handleInput(data);
       requestRender();
       return { consume: true };

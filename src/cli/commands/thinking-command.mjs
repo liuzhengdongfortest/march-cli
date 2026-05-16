@@ -73,6 +73,7 @@ async function selectThinkingInteractively({ runner, ui }) {
     items: buildThinkingSelectItems(levels, current),
     selectedIndex,
     width: 48,
+    suppressInitialLineFeed: true,
   });
   if (!item) return "thinking: unchanged";
   return `thinking: ${runner.setThinkingLevel(item.level)}`;
