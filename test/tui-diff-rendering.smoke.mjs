@@ -23,8 +23,8 @@ export async function runTuiDiffRenderingSmoke() {
   assert.ok(lines[1].includes("same"));
   assert.ok(stripAnsi(lines[2]).includes("- old"));
   assert.ok(stripAnsi(lines[3]).includes("+ new"));
-  assert.ok(lines[2].includes("48;5;52"));
-  assert.ok(lines[3].includes("48;5;22"));
+  assert.ok(lines[2].includes("48;2;55;34;44"));
+  assert.ok(lines[3].includes("48;2;32;48;59"));
 
   const blocks = [];
   writeEditDiff({ output: { addBlock: (block) => blocks.push(block) }, path: "a.js", diffLines: [] });
@@ -57,8 +57,8 @@ export async function runTuiDiffRenderingSmoke() {
   assert.ok(splitPlain.some((line) => line.includes("return oldValue") && line.includes("return newValue")));
   assert.ok(splitPlain.some((line) => line.includes("validate()")));
   for (const line of splitPlain.slice(1)) assert.equal(visibleWidth(line), 140);
-  assert.ok(split.some((line) => line.includes("48;5;52")));
-  assert.ok(split.some((line) => line.includes("48;5;22")));
+  assert.ok(split.some((line) => line.includes("48;2;55;34;44")));
+  assert.ok(split.some((line) => line.includes("48;2;32;48;59")));
   assert.ok(split.some((line) => line.includes("38;5;117")));
 
   const addOnly = formatEditDiffLines({

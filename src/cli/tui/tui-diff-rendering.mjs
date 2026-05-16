@@ -3,8 +3,8 @@ import { bold, dim, red, green, brightBlack } from "./ui-theme.mjs";
 import { highlightCodeLine, styleSyntax } from "./syntax/highlighting.mjs";
 
 const SPLIT_DIFF_MIN_WIDTH = 121;
-const BG_DEL = "48;5;52";
-const BG_ADD = "48;5;22";
+const BG_DEL = "48;2;55;34;44";
+const BG_ADD = "48;2;32;48;59";
 const BG_CTX = "";
 
 export function writeEditDiff({ output, path, diffLines }) {
