@@ -5,6 +5,7 @@ export async function runTuiSelectionSmoke() {
   console.log("--- smoke: TUI mouse selection copy ---");
   const { createTuiUI } = await import("../src/cli/ui.mjs");
   const { parseMouseEvent } = await import("../src/cli/tui/input/mouse-tracking.mjs");
+  const { createMouseSelectionController } = await import("../src/cli/tui/input/mouse-selection-controller.mjs");
   const { ScreenSelection } = await import("../src/cli/tui/selection-screen.mjs");
 
   assert.deepEqual(parseMouseEvent("\x1b[<64;10;2M"), { type: "scroll", delta: -1, col: 10, row: 2 });
@@ -57,9 +58,28 @@ export async function runTuiSelectionSmoke() {
 
   await ui.close();
   assert.ok(terminal.writes.join("").includes("\x1b[?1002l\x1b[?1006l"));
+
+  const statusLines = [];
+  const controller = createMouseSelectionController({
+    terminal: { columns: 40 },
+    output: { setOverlayStatus: (lines) => statusLines.push(lines) },
+    shellDrawer: { isVisible: () => false },
+    shellDrawerControls: { scroll: () => {} },
+    selection: { finish: () => "abc" },
+    writeClipboard: () => ({ ok: false, message: "ExternalException\n  + FullyQualifiedErrorId : System.Runtime.InteropServices.ExternalException" }),
+    requestRender: () => {},
+  });
+  controller.handleMouseInput("\x1b[<0;1;1m", true);
+  const plainStatus = stripAnsi(statusLines.at(-1)[0]);
+  assert.ok(!plainStatus.includes("\n"));
+  assert.ok(plainStatus.includes("ExternalException + FullyQualifiedErrorId"));
   console.log("  PASS");
 }
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function stripAnsi(text) {
+  return String(text).replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "");
 }

@@ -331,6 +331,10 @@ await runTuiAutocompleteEscSmoke({ setupTmp, cleanup });
   assert.equal(structuredBlock.segments[0].type, "tool");
   assert.ok(structuredBlock.render(80).join("\n").includes("tool line"));
 
+  const multilineStatus = new OutputBuffer();
+  multilineStatus.setOverlayStatus(["first\nsecond"]);
+  assert.deepEqual(stripAnsi(multilineStatus.render(80).join("\n")).split("\n"), ["", "first", "second"]);
+
   const overlay = new OutputBuffer();
   overlay.setOverlayStatus(["loading"]);
   assert.ok(overlay.render(80).join("\n").includes("loading"));

@@ -15,7 +15,7 @@ export function createMouseSelectionController({
     const result = writeClipboard(text);
     output.setOverlayStatus([
       result?.ok === false
-        ? brightBlack(`● selection copy failed: ${result.message}`)
+        ? brightBlack(`● selection copy failed: ${compactStatusMessage(result.message)}`)
         : brightBlack(`● copied selection (${text.length} chars)`),
     ]);
     requestRender();
@@ -63,4 +63,9 @@ export function createMouseSelectionController({
       return { consume: true };
     },
   };
+}
+
+function compactStatusMessage(message) {
+  const text = String(message || "unknown error").replace(/\s+/g, " ").trim();
+  return text.length > 80 ? `${text.slice(0, 79)}…` : text;
 }

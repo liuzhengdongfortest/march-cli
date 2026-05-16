@@ -47,7 +47,9 @@ function updateActiveSgr(activeSgr, seq) {
 
 function appendTextLines(lines, textLines, width) {
   for (const line of textLines) {
-    for (const wrapped of wrapLine(line, width)) lines.push(wrapped);
+    for (const part of String(line ?? "").split(/\r?\n/)) {
+      for (const wrapped of wrapLine(part, width)) lines.push(wrapped);
+    }
   }
 }
 
