@@ -20,11 +20,20 @@ export async function runReadFileToolSmoke({ setupTmp, cleanup }) {
 
   const nestedDir = join(dir, "nested");
   mkdirSync(nestedDir);
+  mkdirSync(join(nestedDir, "child-dir"));
+  writeFileSync(join(nestedDir, "child.txt"), "child", "utf8");
   const directoryResult = readFileSlice({ engine, path: nestedDir });
-  assert.equal(directoryResult.details.error, true);
+  assert.equal(directoryResult.details.error, undefined);
   assert.equal(directoryResult.details.isDirectory, true);
-  assert.ok(directoryResult.content[0].text.includes("this is a directory"));
-  assert.ok(directoryResult.content[0].text.includes("Use ls(path) or find(pattern, path)"));
+  assert.equal(directoryResult.details.entryCount, 2);
+  assert.ok(directoryResult.content[0].text.includes("child-dir/"));
+  assert.ok(directoryResult.content[0].text.includes("child.txt"));
+
+  const emptyDir = join(dir, "empty");
+  mkdirSync(emptyDir);
+  const emptyDirectoryResult = readFileSlice({ engine, path: emptyDir });
+  assert.ok(emptyDirectoryResult.content[0].text.includes("0 entries"));
+  assert.ok(emptyDirectoryResult.content[0].text.includes("(empty directory)"));
 
   cleanup(dir);
   console.log("  PASS");

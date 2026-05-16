@@ -1,9 +1,11 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { resolve } from "node:path";
 import { defineTool } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
 import { toolText } from "./tool-result.mjs";
 
 const DEFAULT_LIMIT = 30;
+const DEFAULT_DIRECTORY_LIMIT = 200;
 const MAX_LIMIT = 2000;
 
 export function createReadFileTool({ engine }) {
@@ -22,6 +24,14 @@ export function createReadFileTool({ engine }) {
 
 export function readFileSlice({ engine, path, offset = 1, limit = DEFAULT_LIMIT }) {
   const absPath = engine.resolvePath(path);
+  let stat;
+  try {
+    stat = statSync(absPath);
+  } catch (err) {
+    return toolText(`Error reading ${absPath}: ${err.message}`, { error: true, path: absPath });
+  }
+  if (stat.isDirectory()) return readDirectoryListing({ path: absPath, offset, limit });
+
   let content;
   try {
     content = readFileSync(absPath, "utf8");
@@ -48,6 +58,44 @@ export function readFileSlice({ engine, path, offset = 1, limit = DEFAULT_LIMIT 
     totalLines: lines.length,
     endLine: end,
     truncated: remaining > 0,
+  });
+}
+
+function readDirectoryListing({ path, offset = 1, limit }) {
+  let entries;
+  try {
+    entries = readdirSync(path, { withFileTypes: true })
+      .map((entry) => ({
+        name: entry.name,
+        label: entry.isDirectory() ? `${entry.name}/` : entry.name,
+        isDirectory: entry.isDirectory(),
+      }))
+      .sort((a, b) => Number(b.isDirectory) - Number(a.isDirectory) || a.name.localeCompare(b.name));
+  } catch (err) {
+    return toolText(`Error reading ${path}: ${err.message}`, { error: true, path });
+  }
+
+  const start = entries.length === 0 ? 0 : clampLine(offset, entries.length);
+  const count = clampLimit(limit ?? DEFAULT_DIRECTORY_LIMIT);
+  const selected = start === 0 ? [] : entries.slice(start - 1, start - 1 + count);
+  const end = start + selected.length - 1;
+  const remaining = start === 0 ? 0 : entries.length - end;
+  const range = entries.length === 0 ? "0 entries" : `entries ${start}-${end} of ${entries.length}`;
+  const header = `--- ${path} (directory, ${range}) ---`;
+  const footer = remaining > 0 ? `\n\n[${remaining} more entries in directory. Use offset=${end + 1} to continue, or find(pattern, path) to search recursively.]` : "";
+  return toolText(`${header}\n${selected.map((entry) => entry.label).join("\n") || "(empty directory)"}${footer}`, {
+    path,
+    isDirectory: true,
+    entryCount: entries.length,
+    offset: start,
+    limit: count,
+    endEntry: end,
+    truncated: remaining > 0,
+    entries: selected.map((entry) => ({
+      name: entry.name,
+      path: resolve(path, entry.name),
+      isDirectory: entry.isDirectory,
+    })),
   });
 }
 
