@@ -23,7 +23,7 @@ parse frontmatter: id / name / description / tags / status
         ↓
 derived FTS5 tag index
         ↓
-passive recall: id + name + short_description
+memory hint: id + name + short_description
         ↓
 memory_open(id) reads Markdown body when needed
 ```
@@ -189,7 +189,7 @@ CREATE TABLE memory_index (
 
 ```yaml
 tags:
-  - memory/passive-recall
+  - memory/memory-hint
   - memory/dedup
   - context/cache
   - project/march-cli
@@ -198,7 +198,7 @@ tags:
 展开成：
 
 ```text
-memory/passive-recall memory passive recall
+memory/memory-hint memory memory hint
 memory/dedup memory dedup
 context/cache context cache
 project/march-cli project march cli
@@ -314,14 +314,14 @@ assistant 输出触发：
 [user]
 我们继续讨论 memory 召回。
 
-[passive_recall source="user"]
+[memory_hint source="user"]
 - mem_01hx_context_cache | Context cache ordering | 高频变化层不能放在大块稳定上下文前面
 - mem_01hx_recall_dedup | Passive recall dedup | 用户召回按最近 10 个 turn 做滚动抑制
 
 [assistant]
 这里要分用户触发和 assistant 输出触发两种召回...
 
-[passive_recall source="assistant"]
+[memory_hint source="assistant"]
 - mem_01hx_turn_seen | Turn seen set | 同一 turn 内 user/assistant recall 不重复
 ```
 
@@ -378,7 +378,7 @@ scan / watch
         ↓
 derived FTS5 tag index
         ↓
-passive recall
+memory hint
 ```
 
 AI 工具层的 `memory_search` 使用 ripgrep 直接搜索 Markdown 文件，不依赖 FTS5 tag index。即使 FTS5 index 暂时过期，主动 ripgrep 搜索也能看到文件系统上的当前内容。
@@ -427,7 +427,7 @@ file renamed      → 旧 path 删除 + 新 path 创建
 
 ## 搜索前 dirty check
 
-每次 search 或 passive recall 前，March 保证索引不是明显过期的。
+每次 search 或 memory hint 前，March 保证索引不是明显过期的。
 
 可以用节流策略：
 
@@ -507,7 +507,7 @@ memory_open(id) 返回冲突列表，让用户修正
 
 ```text
 可以进入 diagnostics
-不参与 passive recall
+不参与 memory hint
 ```
 
 ## Obsidian 兼容性
@@ -551,6 +551,6 @@ SQLite memories 表
 ```text
 Markdown 是真相
 index 是缓存
-passive recall 只给线索
+memory hint 只给线索
 memory_open 才读原文
 ```

@@ -1,6 +1,6 @@
 import { stdout } from "node:process";
 import { extractToolOutput } from "./tool-output.mjs";
-import { formatPassiveRecallLines } from "./tui/recall-rendering.mjs";
+import { formatMemoryHintLines } from "./tui/recall-rendering.mjs";
 import { formatToolStartLine } from "./tui/tool-rendering.mjs";
 import { brightBlack, dim, red, green, yellow } from "./tui/ui-theme.mjs";
 
@@ -32,7 +32,7 @@ export function createJsonUI() {
       stdout.write(delta);
     },
     status: () => {},
-    passiveRecall: () => {},
+    memoryHint: () => {},
     clearOutput: () => {},
     setStatusBar: () => {},
     turnStart: () => {},
@@ -110,9 +110,9 @@ export function createPlainUI() {
     },
     textDelta: writeText,
     status: (text) => { ensureNewline(); stdout.write(`${brightBlack(`● ${text}`)}\n`); },
-    passiveRecall: ({ hints }) => {
+    memoryHint: ({ hints }) => {
       ensureNewline();
-      for (const line of formatPassiveRecallLines(hints)) stdout.write(`${brightBlack(line)}\n`);
+      for (const line of formatMemoryHintLines(hints)) stdout.write(`${brightBlack(line)}\n`);
     },
     clearOutput: () => {},
     setStatusBar: () => {},

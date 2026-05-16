@@ -133,7 +133,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.ok(providerPayloads[0].messages.at(-1).content.includes("[current_user]\nhello"));
   assert.equal(countUserMessagesContaining(providerPayloads[0].messages, "hello"), 1);
   assert.equal(providerPayloads[1].messages.at(-1).role, "user");
-  assert.ok(providerPayloads[1].messages.at(-1).content.includes("[passive_recall source=\"assistant\"]"));
+  assert.ok(providerPayloads[1].messages.at(-1).content.includes("[memory_hint source=\"assistant\"]"));
   assert.ok(providerPayloads[1].messages.at(-1).content.includes("mem_thinking | Thinking memory | Matched from thinking text."));
   assert.equal(runner.engine.turns[0].assistantRecallHints.length, 1);
   assert.equal(runner.engine.turns[0].assistantRecallHints[0].id, "mem_thinking");

@@ -9,7 +9,7 @@ export function createMarkdownMemoryTools(store) {
       name: "memory_search",
       label: "Memory Search",
       description:
-        "Search the Markdown memory vault using ripgrep. This is literal text search over memory Markdown files, not semantic search and not March's internal tags-only passive recall. Use it when passive recall hints are insufficient or you need to find a memory by phrase, term, or detail.",
+        "Search the Markdown memory vault using ripgrep. This is literal text search over memory Markdown files, not semantic search and not March's internal tags-only memory hint recall. Use it when memory hints are insufficient or you need to find a memory by phrase, term, or detail.",
       parameters: Type.Object({
         query: Type.String({ description: "Ripgrep query to search in Markdown memory files" }),
         limit: Type.Optional(Type.Number({ description: "Maximum matching lines to return. Default: 20" })),
@@ -24,9 +24,9 @@ export function createMarkdownMemoryTools(store) {
     defineTool({
       name: "memory_open",
       label: "Memory Open",
-      description: "Open a Markdown memory by id or by path. Use this after passive recall or memory_search when you need the full memory body.",
+      description: "Open a Markdown memory by id or by path. Use this after memory hint or memory_search when you need the full memory body.",
       parameters: Type.Object({
-        id: Type.Optional(Type.String({ description: "Memory id from passive recall, e.g. mem_..." })),
+        id: Type.Optional(Type.String({ description: "Memory id from memory hint, e.g. mem_..." })),
         path: Type.Optional(Type.String({ description: "Path returned by memory_search" })),
       }),
       execute: async (_toolCallId, params) => {
@@ -44,13 +44,13 @@ export function createMarkdownMemoryTools(store) {
       name: "memory_save",
       label: "Memory Save",
       description:
-        "Create or update a Markdown memory. New memories require name, description, body, and at least one tag because passive recall only uses tags. When updating by id, omitted fields keep their existing values; passing tags replaces the full tag list.",
+        "Create or update a Markdown memory. New memories require name, description, body, and at least one tag because memory hints only use tags. When updating by id, omitted fields keep their existing values; passing tags replaces the full tag list.",
       parameters: Type.Object({
         id: Type.Optional(Type.String({ description: "Existing memory id to update. Omit to create a new memory." })),
         name: Type.Optional(Type.String({ description: "Memory name. Required when creating." })),
-        description: Type.Optional(Type.String({ description: "Short natural-language summary shown in passive recall. Required when creating." })),
+        description: Type.Optional(Type.String({ description: "Short natural-language summary shown in memory hint. Required when creating." })),
         body: Type.Optional(Type.String({ description: "Markdown memory body. Required when creating." })),
-        tags: Type.Optional(Type.Array(Type.String(), { description: "Tags used for passive recall. Required and non-empty when creating; replaces tags when updating. Prefer stable retrieval keys: project name, technology, feature/domain, user/person, and decision topic. Use lowercase kebab-case when possible. Examples: ['march-cli', 'tooling', 'permissions'], ['memory', 'sqlite-index']." })),
+        tags: Type.Optional(Type.Array(Type.String(), { description: "Tags used for memory hint. Required and non-empty when creating; replaces tags when updating. Prefer stable retrieval keys: project name, technology, feature/domain, user/person, and decision topic. Use lowercase kebab-case when possible. Examples: ['march-cli', 'tooling', 'permissions'], ['memory', 'sqlite-index']." })),
       }),
       execute: async (_toolCallId, params) => {
         try {
@@ -68,7 +68,7 @@ export function createMarkdownMemoryTools(store) {
     defineTool({
       name: "memory_delete",
       label: "Memory Delete",
-      description: "Soft-delete a Markdown memory by id or path. This marks status as deleted so passive recall and memory_search exclude it; the file remains on disk for audit/recovery.",
+      description: "Soft-delete a Markdown memory by id or path. This marks status as deleted so memory hint and memory_search exclude it; the file remains on disk for audit/recovery.",
       parameters: Type.Object({
         id: Type.Optional(Type.String({ description: "Memory id to delete, e.g. mem_..." })),
         path: Type.Optional(Type.String({ description: "Memory file path to delete" })),
@@ -91,7 +91,7 @@ function formatMemorySearchMiss(query) {
   const text = String(query ?? "");
   const lines = [
     `No memory files matched "${text}".`,
-    "memory_search is literal ripgrep over Markdown files; it is not semantic search and does not use passive-recall hints.",
+    "memory_search is literal ripgrep over Markdown files; it is not semantic search and does not use memory-hint hints.",
   ];
   if (/^mem_[a-z0-9_\-]+$/i.test(text.trim())) {
     lines.push("This looks like a memory id. Use memory_open({ id }) to open it directly.");

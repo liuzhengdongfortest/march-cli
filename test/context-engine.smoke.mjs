@@ -96,9 +96,9 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   const ctx2 = engine.buildContext("装備を確認する");
   assert.ok(ctx2.includes("tested the engine"));
   assert.ok(!ctx2.includes("WorkSummary"));
-  assert.ok(ctx2.includes('[passive_recall source="user"]'));
+  assert.ok(ctx2.includes('[memory_hint source="user"]'));
   assert.ok(ctx2.includes("mem_user | User hint | User recall hint"));
-  assert.ok(ctx2.includes('[passive_recall source="assistant"]'));
+  assert.ok(ctx2.includes('[memory_hint source="assistant"]'));
 
   const longUserTail = "user-tail-keep";
   const longMarchTail = "march-tail-keep";

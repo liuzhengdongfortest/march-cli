@@ -118,7 +118,7 @@ MCP tools 进入 [tools]
 
 ### skills 已迁移到 memory
 
-已移除 `[available_skills]`、`[active_skills]`、skill 启动扫描、skill CLI 入口和 skill 管理工具。原技能类方法论应保存为 memory 文档，由 passive recall 提示线索，再通过 `memory_open` 主动读取正文。
+已移除 `[available_skills]`、`[active_skills]`、skill 启动扫描、skill CLI 入口和 skill 管理工具。原技能类方法论应保存为 memory 文档，由 memory hint 提示线索，再通过 `memory_open` 主动读取正文。
 
 ## 建议推进顺序
 
@@ -133,7 +133,7 @@ MCP tools 进入 [tools]
 
 ### 旧 `[memory]` 上下文层已移除
 
-已删除 `src/context/memory-layer.mjs`，并停止在 `ContextEngine.buildContext()` 中注入 `[memory]`。记忆系统只保留 passive recall hints 和主动 memory 工具，符合 `docs/context-core.md` 的边界。
+已删除 `src/context/memory-layer.mjs`，并停止在 `ContextEngine.buildContext()` 中注入 `[memory]`。记忆系统只保留 memory hints 和主动 memory 工具，符合 `docs/context-core.md` 的边界。
 
 ### `session_status` 已拆分
 
@@ -153,7 +153,7 @@ MCP tools 进入 [tools]
 
 ### `recent_chat` 保留窗口已改为 10
 
-已将 `ContextEngine.recordTurn()` 的历史 turn 保留窗口从 20 改为 10，和 `docs/context-core.md` 以及 passive recall 的 rolling suppression window 对齐。
+已将 `ContextEngine.recordTurn()` 的历史 turn 保留窗口从 20 改为 10，和 `docs/context-core.md` 以及 memory hint 的 rolling suppression window 对齐。
 
 ### 常驻文件正文层已移除
 

@@ -24,7 +24,7 @@ export async function runSingleShotPrompt({
   const modePrompt = appendModeReminder(prompt, modeState?.get?.());
   const fullPrompt = appendPromptBlocks(modePrompt, recallBlock, shellHints);
   ui.writeln(formatUserDisplayMessage(prompt));
-  ui.passiveRecall?.({ source: "user", hints: userRecallHints });
+  ui.memoryHint?.({ source: "user", hints: userRecallHints });
   refreshStatusBar.startWorking?.();
   try {
     await runner.runTurn(fullPrompt, prompt, { userRecallHints, currentProject });
@@ -133,7 +133,7 @@ async function runReplTurn({ prompt, args, runner, memoryStore, currentProject, 
   const fullPrompt = appendPromptBlocks(modePrompt, recallBlock, shellHints);
   try {
     ui.writeln(formatUserDisplayMessage(prompt));
-    ui.passiveRecall?.({ source: "user", hints: userRecallHints });
+    ui.memoryHint?.({ source: "user", hints: userRecallHints });
     setTurnRunning(true);
     refreshStatusBar.startWorking?.();
     await runner.runTurn(fullPrompt, prompt, { userRecallHints, currentProject });

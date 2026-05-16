@@ -2,7 +2,7 @@ import { expandTags, normalizeText } from "./markdown-format.mjs";
 
 export function formatRecallHints(source, hints = []) {
   if (!hints.length) return "";
-  const lines = [`[passive_recall source="${source}"]`];
+  const lines = [`[memory_hint source="${source}"]`];
   for (const hint of hints) {
     lines.push(`- ${hint.id} | ${hint.name} | ${hint.description}`);
   }

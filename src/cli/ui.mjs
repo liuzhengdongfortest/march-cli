@@ -15,7 +15,7 @@ import { showEditorSelectList } from "./tui/select/editor-select-list.mjs";
 import { StatusBar } from "./tui/status/status-bar.mjs";
 import { writeEditDiff } from "./tui/tui-diff-rendering.mjs";
 import { createTuiInputController } from "./tui/tui-input-controller.mjs";
-import { writePassiveRecall } from "./tui/recall-rendering.mjs";
+import { writeMemoryHint } from "./tui/recall-rendering.mjs";
 import { writeToolEnd, writeToolStart } from "./tui/tool-rendering.mjs";
 import { EDITOR_THEME, yellow, brightBlack } from "./tui/ui-theme.mjs";
 
@@ -201,8 +201,8 @@ export function createTuiUI({
     status: (text) => {
       ensureStarted(); retryStatus.stop(); spinnerStatus.stop(); output.setOverlayStatus([brightBlack(`● ${text}`)]); requestRender();
     },
-    passiveRecall: ({ hints }) => {
-      ensureStarted(); retryStatus.stop(); spinnerStatus.stop(); output.ensureNewline(); writePassiveRecall({ output, hints }); requestRender();
+    memoryHint: ({ hints }) => {
+      ensureStarted(); retryStatus.stop(); spinnerStatus.stop(); output.ensureNewline(); writeMemoryHint({ output, hints }); requestRender();
     },
 
     clearOutput: () => {

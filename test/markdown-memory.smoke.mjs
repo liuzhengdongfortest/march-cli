@@ -5,7 +5,7 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: markdown memory system ---");
   const { MarkdownMemoryStore, formatRecallHints } = await import("../src/memory/markdown-store.mjs");
   const { createMarkdownMemoryTools } = await import("../src/memory/markdown-tools.mjs");
-  const { formatPassiveRecallLines } = await import("../src/cli/tui/recall-rendering.mjs");
+  const { formatMemoryHintLines } = await import("../src/cli/tui/recall-rendering.mjs");
   const dir = setupTmp();
 
   const store = new MarkdownMemoryStore({
@@ -16,36 +16,36 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   assert.throws(() => store.save({ name: "No tags", description: "Missing tags", body: "Body" }), /tags are required/);
 
   const entry = store.save({
-    name: "Passive recall dedup",
+    name: "Memory hint dedup",
     description: "User recall uses a rolling suppression window.",
-    body: "# Passive recall dedup\n\nThe body is only opened explicitly.",
-    tags: ["memory/passive-recall", "memory/dedup", "Project/March CLI"],
+    body: "# Memory hint dedup\n\nThe body is only opened explicitly.",
+    tags: ["memory/memory-hint", "memory/dedup", "Project/March CLI"],
   });
 
   assert.ok(entry.id.startsWith("mem_"));
-  assert.deepEqual(entry.tags, ["memory/passive-recall", "memory/dedup", "project/march-cli"]);
+  assert.deepEqual(entry.tags, ["memory/memory-hint", "memory/dedup", "project/march-cli"]);
   assert.ok(existsSync(store.indexPath));
 
   store.beginTurn();
-  const userHints = store.recallForUser("我们继续讨论 passive recall 的去重", { currentProject: "march-cli" });
+  const userHints = store.recallForUser("我们继续讨论 memory hint 的去重", { currentProject: "march-cli" });
   assert.equal(userHints.length, 1);
   assert.equal(userHints[0].id, entry.id);
-  assert.ok(formatRecallHints("user", userHints).includes("[passive_recall source=\"user\"]"));
-  assert.deepEqual(formatPassiveRecallLines(userHints), [`◈ passive recall: ${entry.id} Passive recall dedup`]);
-  assert.deepEqual(formatPassiveRecallLines([userHints[0], { id: "mem_other", name: "Other memory" }]), [
-    "◈ passive recall: 2 memories",
-    `  ${entry.id} Passive recall dedup`,
+  assert.ok(formatRecallHints("user", userHints).includes("[memory_hint source=\"user\"]"));
+  assert.deepEqual(formatMemoryHintLines(userHints), [`◈ memory hint: ${entry.id} Memory hint dedup`]);
+  assert.deepEqual(formatMemoryHintLines([userHints[0], { id: "mem_other", name: "Other memory" }]), [
+    "◈ memory hint: 2 memories",
+    `  ${entry.id} Memory hint dedup`,
     "  mem_other Other memory",
   ]);
 
-  const assistantHints = store.recallForAssistant("passive recall dedup again", { currentProject: "march-cli" });
+  const assistantHints = store.recallForAssistant("memory hint dedup again", { currentProject: "march-cli" });
   assert.equal(assistantHints.length, 0);
   store.endTurn();
 
   store.beginTurn();
-  const suppressed = store.recallForUser("passive recall", { currentProject: "march-cli", excludedIds: [entry.id] });
+  const suppressed = store.recallForUser("memory hint", { currentProject: "march-cli", excludedIds: [entry.id] });
   assert.equal(suppressed.length, 0);
-  const recalledAfterTurn = store.recallForUser("passive recall", { currentProject: "march-cli" });
+  const recalledAfterTurn = store.recallForUser("memory hint", { currentProject: "march-cli" });
   assert.equal(recalledAfterTurn.length, 1);
   store.endTurn();
 
@@ -77,9 +77,9 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   assert.ok(deprecatedSearch.content[0].text.includes("No memory files matched"));
 
   const openResult = await open.execute("t2", { id: entry.id });
-  assert.ok(openResult.content[0].text.includes("# Passive recall dedup"));
+  assert.ok(openResult.content[0].text.includes("# Memory hint dedup"));
 
-  const saveResult = await save.execute("t3", { id: entry.id, tags: ["memory/passive-recall", "memory/window"] });
+  const saveResult = await save.execute("t3", { id: entry.id, tags: ["memory/memory-hint", "memory/window"] });
   assert.ok(saveResult.content[0].text.includes("memory/window"));
 
   const deleteResult = await del.execute("t5", { id: entry.id });
@@ -87,8 +87,8 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   assert.equal(deleteResult.details.memory.status, "deleted");
   assert.ok(existsSync(entry.path));
   assert.ok(readFileSync(entry.path, "utf8").includes("status: deleted"));
-  assert.equal(store.recallForAssistant("passive recall window", { currentProject: "march-cli" }).length, 0);
-  const deletedSearch = await search.execute("t6", { query: "Passive recall dedup", limit: 5 });
+  assert.equal(store.recallForAssistant("memory hint window", { currentProject: "march-cli" }).length, 0);
+  const deletedSearch = await search.execute("t6", { query: "Memory hint dedup", limit: 5 });
   assert.ok(deletedSearch.content[0].text.includes("No memory files matched"));
   const deletedOpen = await open.execute("t7", { id: entry.id });
   assert.ok(deletedOpen.content[0].text.includes("status: deleted"));
@@ -100,7 +100,7 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
 
   store.close();
   const cachedStore = new MarkdownMemoryStore({ root: dir });
-  assert.equal(cachedStore.entries.get(entry.id).name, "Passive recall dedup");
+  assert.equal(cachedStore.entries.get(entry.id).name, "Memory hint dedup");
   cachedStore.close();
 
   cleanup(dir);

@@ -27,7 +27,7 @@ export async function runRunnerTurn({
       if (hints.length > 0) {
         midTurnRecallHints.push(...hints);
         onMidTurnRecallHints?.(hints);
-        ui.passiveRecall?.({ source: "assistant", hints });
+        ui.memoryHint?.({ source: "assistant", hints });
       }
     }
   });
@@ -50,7 +50,7 @@ export async function runRunnerTurn({
 
     closeAssistantReply({ ui, state: turnState });
     const assistantRecallHints = recallForAssistantState({ memoryStore, engine, turnState, currentProject });
-    ui.passiveRecall?.({ source: "assistant", hints: assistantRecallHints });
+    ui.memoryHint?.({ source: "assistant", hints: assistantRecallHints });
     const recordedAssistantRecallHints = uniqueHints([...midTurnRecallHints, ...assistantRecallHints]);
 
     engine.recordTurn({
