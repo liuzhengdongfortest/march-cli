@@ -1,6 +1,7 @@
 import { marked } from "marked";
 import { visibleWidth } from "@earendil-works/pi-tui";
 import { R, brightBlack, dim, orange, softGreen, bold, cyan } from "./ui-theme.mjs";
+import { highlightCodeLines } from "./syntax/highlighting.mjs";
 const TABLE_CELL_PADDING = 2;
 export function renderMarkdown(markdown, width) {
   return renderMarkdownText(markdown, Math.max(1, width));
@@ -117,8 +118,8 @@ function renderBlockquote(token, lines, width, depth) {
 function renderCode(token, lines, width) {
   const innerWidth = Math.max(1, width - 4);
   lines.push(formatCodeBorder("╭", token.lang ? ` ${token.lang} ` : "", "╮", width));
-  for (const line of String(token.text ?? "").split("\n")) {
-    for (const wrapped of wrapAnsi(highlightCodeLine(line, token.lang), innerWidth)) {
+  for (const line of highlightCodeLines(String(token.text ?? ""), token.lang)) {
+    for (const wrapped of wrapAnsi(line, innerWidth)) {
       lines.push(formatCodeLine(wrapped, width));
     }
   }
@@ -134,36 +135,6 @@ function formatCodeBorder(left, label, right, width) {
 function formatCodeLine(content, width) {
   const padding = " ".repeat(Math.max(0, width - visibleWidth(stripAnsi(content)) - 4));
   return `${brightBlack("│")} ${content}${padding} ${brightBlack("│")}`;
-}
-
-function highlightCodeLine(line, lang = "") {
-  const normalized = String(lang ?? "").toLowerCase();
-  if (["js", "jsx", "ts", "tsx", "mjs", "cjs", "javascript", "typescript"].includes(normalized)) {
-    return highlightTokens(line, /\/\/.*|"(?:\\.|[^"])*"|'(?:\\.|[^'])*'|`(?:\\.|[^`])*`|\b(?:async|await|break|case|catch|class|const|continue|default|else|export|for|from|function|if|import|let|new|null|return|throw|try|undefined|while)\b|\b\d+(?:\.\d+)?\b/g);
-  }
-  if (normalized === "json") return highlightTokens(line, /"(?:\\.|[^"])*"|\b(?:true|false|null)\b|\b\d+(?:\.\d+)?\b/g);
-  if (["bash", "sh", "zsh", "powershell", "ps1"].includes(normalized)) {
-    return highlightTokens(line, /#.*|"(?:\\.|[^"])*"|'(?:\\.|[^'])*'|\b(?:cd|cp|echo|exit|git|grep|ls|mkdir|mv|npm|node|pnpm|rm|yarn)\b|\b\d+(?:\.\d+)?\b/g);
-  }
-  return softGreen(line);
-}
-
-function highlightTokens(line, pattern) {
-  let out = "";
-  let index = 0;
-  for (const match of String(line).matchAll(pattern)) {
-    out += softGreen(line.slice(index, match.index));
-    out += styleCodeToken(match[0]);
-    index = match.index + match[0].length;
-  }
-  return out + softGreen(line.slice(index));
-}
-
-function styleCodeToken(token) {
-  if (token.startsWith("//") || token.startsWith("#")) return dim(token);
-  if (/^["'`]/.test(token)) return softGreen(token);
-  if (/^\d/.test(token)) return cyan(token);
-  return orange(token);
 }
 
 function inlineRuns(tokens, forcedStyle = null) {

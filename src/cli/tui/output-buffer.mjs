@@ -1,6 +1,7 @@
 import { visibleWidth } from "@earendil-works/pi-tui";
 import { R, brightBlack, dim } from "./ui-theme.mjs";
 import { renderMarkdown, renderStreamingMarkdown } from "./markdown-renderer.mjs";
+import { renderEditDiffBlock } from "./tui-diff-rendering.mjs";
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
@@ -67,7 +68,8 @@ function currentTextToBlocks(textLines, sealed, cache = null) {
 }
 
 function renderBlock(block, width) {
-  if (block.type === "plain" || block.type === "tool" || block.type === "diff" || block.type === "status") return renderPlainBlock(block, width);
+  if (block.type === "diff") return renderEditDiffBlock(block, width);
+  if (block.type === "plain" || block.type === "tool" || block.type === "status") return renderPlainBlock(block, width);
   if (block.type === "markdown") return renderMarkdownBlock(block, width);
   if (block.type === "thinking") return renderThinkingBlock(block, width);
   return [];
