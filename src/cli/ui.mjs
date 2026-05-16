@@ -15,6 +15,7 @@ import { createSpinnerStatusController } from "./tui/status/spinner-status.mjs";
 import { showEditorSelectList } from "./tui/select/editor-select-list.mjs";
 import { StatusBar } from "./tui/status/status-bar.mjs";
 import { MainPaneLayout } from "./tui/layout/main-pane-layout.mjs";
+import { SafeRenderBoundary } from "./tui/layout/safe-render-boundary.mjs";
 import { createMouseSelectionController } from "./tui/input/mouse-selection-controller.mjs";
 import { ScreenSelection } from "./tui/selection-screen.mjs";
 import { writeEditDiff } from "./tui/tui-diff-rendering.mjs";
@@ -50,7 +51,7 @@ export function createTuiUI({
   editor.setAutocompleteProvider(autocomplete);
   editor.history = historyStore?.load?.() ?? [];
 
-  tui.addChild(shellSplitLayout);
+  tui.addChild(new SafeRenderBoundary(shellSplitLayout));
   tui.setFocus(editor);
 
   let started = false;

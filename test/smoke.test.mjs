@@ -255,7 +255,10 @@ await runTuiAutocompleteEscSmoke({ setupTmp, cleanup });
 
 {
   console.log("--- smoke: output buffer rendering ---");
+  const { visibleWidth } = await import("@earendil-works/pi-tui");
   const { OutputBuffer } = await import("../src/cli/tui/output-buffer.mjs");
+  const { renderMarkdown } = await import("../src/cli/tui/markdown-renderer.mjs");
+  const { SafeRenderBoundary } = await import("../src/cli/tui/layout/safe-render-boundary.mjs");
   const buffer = new OutputBuffer();
   buffer.write("hello");
   buffer.startThinking();
@@ -294,6 +297,9 @@ await runTuiAutocompleteEscSmoke({ setupTmp, cleanup });
   assert.ok(structuredPlain.includes("├"));
   assert.ok(structuredPlain.includes("└"));
   assert.ok(!structuredPlain.includes("|------|"));
+
+  const warningTableLines = renderMarkdown("| # | 结果 |\n|---|------|\n| 6 | ⚠️ 再次翻车 — 文本删除比预期少了，导致 addTask 签名重复、执行逻辑双份 |", 139);
+  assert.ok(warningTableLines.every((line) => visibleWidth(line) <= 139));
 
   const codeMarkdown = new OutputBuffer();
   codeMarkdown.writeMarkdown("```js\nif (this.turns.length > 10) {\n  return this.turns.slice(-10);\n}\n```");
@@ -334,6 +340,15 @@ await runTuiAutocompleteEscSmoke({ setupTmp, cleanup });
   const multilineStatus = new OutputBuffer();
   multilineStatus.setOverlayStatus(["first\nsecond"]);
   assert.deepEqual(stripAnsi(multilineStatus.render(80).join("\n")).split("\n"), ["", "first", "second"]);
+
+  const safeBoundary = new SafeRenderBoundary({ render: () => ["one\ntwo", "x".repeat(20)] });
+  const safeLines = safeBoundary.render(5);
+  assert.deepEqual(safeLines.slice(0, 2), ["one", "two"]);
+  assert.ok(safeLines.every((line) => visibleWidth(line) <= 5));
+
+  const recoveredLines = new SafeRenderBoundary({ render: () => { throw new Error("bad render"); } }).render(20);
+  assert.ok(stripAnsi(recoveredLines.join("\n")).includes("March UI recovered"));
+  assert.ok(recoveredLines.every((line) => visibleWidth(line) <= 20));
 
   const overlay = new OutputBuffer();
   overlay.setOverlayStatus(["loading"]);

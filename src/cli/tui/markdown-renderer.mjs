@@ -1,5 +1,5 @@
 import { marked } from "marked";
-import { visibleWidth } from "@earendil-works/pi-tui";
+import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { R, brightBlack, dim, orange, softGreen, bold, cyan } from "./ui-theme.mjs";
 import { highlightCodeLines } from "./syntax/highlighting.mjs";
 const TABLE_CELL_PADDING = 2;
@@ -31,7 +31,17 @@ function renderMarkdownText(markdown, maxWidth) {
   }
   const lines = [];
   for (const token of tokens) renderBlock(token, lines, maxWidth, 0);
-  return lines.length ? lines : [""];
+  return clampRenderedLines(lines.length ? lines : [""], maxWidth);
+}
+
+function clampRenderedLines(lines, width) {
+  return lines.flatMap((line) => String(line ?? "").split(/\r?\n/).map((part) => fitMarkdownLine(part, width)));
+}
+
+function fitMarkdownLine(line, width) {
+  if (visibleWidth(line) <= width) return line;
+  const truncated = truncateToWidth(line, width, "…");
+  return visibleWidth(truncated) <= width ? truncated : "";
 }
 
 function splitStableMarkdown(text) {
