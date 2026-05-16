@@ -74,6 +74,12 @@ export async function runStatusBarSmoke() {
   assert.equal(plainStatusLine.includes("git "), false);
   assert.equal(plainStatusLine.includes("pi:"), false);
   assert.ok(stripAnsi(update()).includes("11.3K"));
+  const workingLine = update.startWorking();
+  assert.ok(stripAnsi(workingLine).includes("Working"));
+  assert.ok(stripAnsi(seen.at(-1)).includes("Working"));
+  const stoppedLine = update.stopWorking();
+  assert.equal(stripAnsi(stoppedLine).includes("Working"), false);
+  assert.equal(stripAnsi(seen.at(-1)).includes("Working"), false);
   console.log("  PASS");
 }
 

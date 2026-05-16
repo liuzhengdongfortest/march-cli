@@ -30,6 +30,7 @@ export function statusBarLine({
   gitBranch = getGitBranch(runner.engine.cwd),
   mode = MODES.DO,
   contextTokens = null,
+  activity = null,
 }) {
   return formatStatusBarLine({
     engine: runner.engine,
@@ -41,6 +42,7 @@ export function statusBarLine({
     gitBranch,
     mode,
     contextTokens,
+    activity,
   });
 }
 
@@ -77,6 +79,7 @@ export function formatStatusBarLine({
   engine,
   mode = MODES.DO,
   contextTokens = null,
+  activity = null,
 }) {
   const model = engine.modelId || "model?";
   const thinking = engine.thinkingLevel || "thinking?";
@@ -88,11 +91,20 @@ export function formatStatusBarLine({
   const modeSegment = `${mode === MODES.DISCUSS ? WARN : OK}${formatModeLabel(mode)}`;
   const runtime = `${C.cyan}${model}${DIM}·${thinking}`;
   const segments = [modeSegment, runtime];
+  const activityText = formatActivitySegment(activity);
+  if (activityText) segments.push(`${C.fg250}${activityText}`);
   const compactTokens = formatCompactTokenCount(contextTokens);
   if (compactTokens) segments.push(`${C.fg250}${compactTokens}`);
 
   const inner = segments.join(` ${DIM}|${C.fg250} `);
   return `${inner}${R}`;
+}
+
+function formatActivitySegment(activity) {
+  if (!activity) return "";
+  const label = String(activity.label ?? "").trim();
+  const frame = String(activity.frame ?? "").trim();
+  return [frame, label].filter(Boolean).join(" ");
 }
 
 export function formatCompactTokenCount(tokens) {

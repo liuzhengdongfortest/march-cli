@@ -23,9 +23,11 @@ export async function runSingleShotPrompt({
   const fullPrompt = `${modePrompt}${recallBlock ? `\n\n${recallBlock}` : ""}`;
   ui.writeln(formatUserDisplayMessage(prompt));
   ui.passiveRecall?.({ source: "user", hints: userRecallHints });
+  refreshStatusBar.startWorking?.();
   try {
     await runner.runTurn(fullPrompt, prompt, { userRecallHints, currentProject });
   } finally {
+    refreshStatusBar.stopWorking?.();
     memoryStore.endTurn();
   }
   refreshStatusBar();
@@ -153,16 +155,16 @@ async function runReplTurn({ prompt, args, runner, memoryStore, currentProject, 
     ui.writeln(formatUserDisplayMessage(prompt));
     ui.passiveRecall?.({ source: "user", hints: userRecallHints });
     setTurnRunning(true);
+    refreshStatusBar.startWorking?.();
     await runner.runTurn(fullPrompt, prompt, { userRecallHints, currentProject });
-    setTurnRunning(false);
-    memoryStore.endTurn();
-    refreshStatusBar();
     ui.writeln("");
   } catch (err) {
+    ui.writeln(`Error: ${err.message}`);
+  } finally {
     setTurnRunning(false);
+    refreshStatusBar.stopWorking?.();
     memoryStore.endTurn();
     refreshStatusBar();
-    ui.writeln(`Error: ${err.message}`);
   }
 }
 
