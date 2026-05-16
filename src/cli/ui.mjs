@@ -91,6 +91,7 @@ export function createTuiUI({
           return { consume: true };
         }
       });
+      terminal.write("\x1b[?1049h");
       tui.start();
       started = true;
     }
@@ -104,6 +105,7 @@ export function createTuiUI({
       return;
     }
     try {
+      terminal.write("\x1b[?1049l");
       tui.stop();
       if (mouseOn) terminal.write("\x1b[?1002l\x1b[?1006l");
       const result = openTextInExternalEditor({ text: editor.getText(), editorCommand });
@@ -111,6 +113,7 @@ export function createTuiUI({
       else output.writeln(yellow(`● ${result.error}`));
     } finally {
       tui.start();
+      terminal.write("\x1b[?1049h");
       if (mouseOn) terminal.write("\x1b[?1002h\x1b[?1006h");
       tui.requestRender(true);
     }
@@ -274,6 +277,7 @@ export function createTuiUI({
         await terminal.drainInput?.();
         if (mouseOn) terminal.write("\x1b[?1002l\x1b[?1006l");
         tui.stop();
+        terminal.write("\x1b[?1049l");
       }
     },
   };
