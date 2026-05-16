@@ -65,7 +65,8 @@ export function persistModelSelection(model, { configHomeDir } = {}) {
   return upsertModelSelection({
     path: globalConfigJsonPath(configHomeDir),
     provider: model.provider,
-    model: model.id,
+    model: model.__isFast ? model.__baseId : model.id,
+    serviceTier: model.__isFast ? "priority" : undefined,
   });
 }
 

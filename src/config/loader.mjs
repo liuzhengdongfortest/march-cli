@@ -43,6 +43,7 @@ function mergeLayers(layers) {
   const result = {
     model: null,
     provider: null,
+    serviceTier: null,
     providers: {},
     webSearch: { provider: null, providers: {} },
     maxTurns: null,
@@ -54,6 +55,7 @@ function mergeLayers(layers) {
     if (!layer) continue;
     if (layer.model != null) result.model = layer.model;
     if (layer.provider) result.provider = layer.provider;
+    if (layer.serviceTier) result.serviceTier = layer.serviceTier;
     if (layer.providers && typeof layer.providers === "object" && !Array.isArray(layer.providers)) {
       result.providers = mergeProviders(result.providers, layer.providers);
     }

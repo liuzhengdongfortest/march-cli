@@ -38,10 +38,15 @@ export function upsertProviderProfile({ path = globalConfigJsonPath(), id, type,
   return config;
 }
 
-export function upsertModelSelection({ path = globalConfigJsonPath(), provider, model }) {
+export function upsertModelSelection({ path = globalConfigJsonPath(), provider, model, serviceTier }) {
   const config = readConfigJson(path);
   config.provider = provider;
   config.model = model;
+  if (serviceTier) {
+    config.serviceTier = serviceTier;
+  } else {
+    delete config.serviceTier;
+  }
   writeConfigJson(path, config);
   return config;
 }

@@ -81,6 +81,7 @@ export async function run(argv) {
   // Load config (CLI args override config file values)
   const config = loadConfig(cwd);
   const provider = args.provider ?? config.provider ?? null;
+  const serviceTier = config.serviceTier ?? null;
   const model = args.model ?? config.model ?? null;
   const extensionPaths = [
     ...discoverProjectExtensionPaths(cwd),
@@ -158,6 +159,8 @@ export async function run(argv) {
     cwd,
     modelId: model,
     provider,
+    serviceTier,
+
     providers: config.providers,
     stateRoot,
     ui,
