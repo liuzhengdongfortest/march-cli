@@ -282,6 +282,15 @@ await runTuiAutocompleteEscSmoke({ setupTmp, cleanup });
   assert.ok(dimmedLines[0].endsWith("\x1b[0m"));
   assert.ok(dimmedLines[1].startsWith("\x1b[2m"));
   assert.ok(dimmedLines[1].endsWith("\x1b[0m"));
+  const sealed = new OutputBuffer();
+  sealed.writeMarkdown("**done**");
+  assert.equal(sealed.segments.length, 0);
+  assert.equal(sealed.sealCurrentText(), true);
+  assert.equal(sealed.segments.length, 1);
+  assert.equal(sealed.segments[0].type, "markdown");
+  assert.equal(sealed.segments[0].sealed, true);
+  assert.ok(stripAnsi(sealed.render(80).join("\n")).includes("done"));
+
   console.log("  PASS");
 }
 

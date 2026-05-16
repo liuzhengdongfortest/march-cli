@@ -48,21 +48,54 @@ function appendText(lines, text, width) {
   for (const wrapped of wrapLine(text, width)) lines.push(wrapped);
 }
 
-function appendSegmentLines(lines, segmentLines, width) {
-  for (let i = 0; i < segmentLines.length;) {
-    const line = segmentLines[i];
-    if (!line.markdown) {
-      appendText(lines, line.text, width);
-      i += 1;
-      continue;
-    }
+function appendTextLines(lines, textLines, width) {
+  for (const line of textLines) appendText(lines, line, width);
+}
+
+function currentTextToBlocks(textLines, sealed) {
+  const blocks = [];
+  for (let i = 0; i < textLines.length;) {
+    const markdown = textLines[i].markdown;
     const batch = [];
-    while (i < segmentLines.length && segmentLines[i].markdown) {
-      batch.push(segmentLines[i].text);
+    while (i < textLines.length && textLines[i].markdown === markdown) {
+      batch.push(textLines[i].text);
       i += 1;
     }
-    for (const rendered of renderMarkdown(batch.join("\n"), width)) lines.push(rendered);
+    blocks.push(markdown
+      ? { type: "markdown", text: batch.join("\n"), sealed, cache: new Map() }
+      : { type: "plain", lines: batch });
   }
+  return blocks;
+}
+
+function renderBlock(block, width) {
+  if (block.type === "plain") {
+    const lines = [];
+    appendTextLines(lines, block.lines, width);
+    return lines;
+  }
+  if (block.type === "markdown") return renderMarkdownBlock(block, width);
+  if (block.type === "thinking") return renderThinkingBlock(block, width);
+  return [];
+}
+
+function renderMarkdownBlock(block, width) {
+  if (!block.sealed) return renderMarkdown(block.text, width);
+  const cached = block.cache.get(width);
+  if (cached) return cached;
+  const rendered = renderMarkdown(block.text, width);
+  block.cache.set(width, rendered);
+  return rendered;
+}
+
+function renderThinkingBlock(block, width) {
+  const lines = [dim(`· thinking (${block.tokens} tokens)`)];
+  const indent = width > 40 ? width - 40 : width - 2;
+  const maxContentWidth = Math.max(20, indent);
+  for (const line of block.content) {
+    for (const w of wrapLine(line, maxContentWidth)) lines.push(dim(`  ${w}`));
+  }
+  return lines;
 }
 
 export class OutputBuffer {
@@ -117,6 +150,7 @@ export class OutputBuffer {
     this.currentText.push({ text: "", markdown: false });
     return true;
   }
+
   startThinking() {
     this._flushText();
     const seg = { type: "thinking", tokens: 0, content: [] };
@@ -154,11 +188,15 @@ export class OutputBuffer {
     });
   }
 
+  sealCurrentText() {
+    return this._flushText();
+  }
+
   _flushText() {
-    if (this.currentText.length > 1 || this.currentText[0].text !== "") {
-      this.segments.push({ type: "text", lines: [...this.currentText] });
-      this.currentText = [{ text: "", markdown: false }];
-    }
+    if (this.currentText.length <= 1 && this.currentText[0].text === "") return false;
+    this.segments.push(...currentTextToBlocks(this.currentText, true));
+    this.currentText = [{ text: "", markdown: false }];
+    return true;
   }
 
   setSpinner(on, text) {
@@ -175,20 +213,11 @@ export class OutputBuffer {
   render(width) {
     const lines = [];
     for (const seg of this.segments) {
-      if (seg.type === "text") {
-        appendSegmentLines(lines, seg.lines, width);
-      } else if (seg.type === "thinking") {
-        lines.push(dim(`· thinking (${seg.tokens} tokens)`));
-        const indent = width > 40 ? width - 40 : width - 2;
-        const maxContentWidth = Math.max(20, indent);
-        for (const line of seg.content) {
-          for (const w of wrapLine(line, maxContentWidth)) {
-            lines.push(dim(`  ${w}`));
-          }
-        }
-      }
+      for (const line of renderBlock(seg, width)) lines.push(line);
     }
-    appendSegmentLines(lines, this.currentText, width);
+    for (const block of currentTextToBlocks(this.currentText, false)) {
+      for (const line of renderBlock(block, width)) lines.push(line);
+    }
     if (this.spinning) {
       const frame = SPINNER_FRAMES[this.spinnerIdx];
       lines.push(brightBlack(`${frame} ${this.spinnerText}`));

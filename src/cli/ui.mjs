@@ -194,7 +194,11 @@ export function createTuiUI({
       output.writeMarkdown(delta);
       requestRender();
     },
-    assistantReplyEnd: () => { ensureStarted(); if (output.ensureNewline()) requestRender(); },
+    assistantReplyEnd: () => {
+      ensureStarted();
+      const changed = output.ensureNewline();
+      if (output.sealCurrentText() || changed) requestRender();
+    },
     status: (text) => {
       ensureStarted(); retryStatus.stop(); spinnerStatus.stop(); output.writeln(brightBlack(`● ${text}`)); requestRender();
     },
@@ -215,7 +219,8 @@ export function createTuiUI({
     },
 
     turnEnd: () => {
-      if (output.ensureNewline()) requestRender();
+      const changed = output.ensureNewline();
+      if (output.sealCurrentText() || changed) requestRender();
     },
 
     retryStart,
