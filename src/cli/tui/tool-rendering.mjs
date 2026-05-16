@@ -2,7 +2,8 @@ import { extractToolOutput } from "../tool-output.mjs";
 import { dim, red } from "./ui-theme.mjs";
 
 export function writeToolStart({ output, name, args }) {
-  output.writeln(dim(`  ${formatToolStartLine(name, args)}`));
+  const lines = [dim(`  ${formatToolStartLine(name, args)}`)];
+  writeStructuredLines(output, { type: "tool", lines });
 }
 
 export function writeToolEnd({
@@ -13,31 +14,9 @@ export function writeToolEnd({
   toolsExpanded = false,
   extractToolOutputImpl = extractToolOutput,
 }) {
-  if (isError) {
-    const errText = extractToolOutputImpl(result);
-    output.writeln(red(`  ◆ ${name} failed`));
-    if (errText) {
-      for (const line of errText.split("\n").slice(0, 6)) {
-        output.writeln(red(`    ${line.slice(0, 120)}`));
-      }
-    }
-    return true;
-  }
-
-  const out = extractToolOutputImpl(result);
-  if (!toolsExpanded) {
-    const summary = formatToolSuccessSummary(name, result, out);
-    if (summary) output.writeln(dim(`    ${summary}`));
-    return Boolean(summary);
-  }
-  if (!out) return false;
-  const lines = out.split("\n");
-  const limit = toolsExpanded ? 40 : 4;
-  const show = lines.slice(0, limit);
-  for (const line of show) {
-    output.writeln(dim(`    ${line.slice(0, 120)}`));
-  }
-  if (lines.length > limit) output.writeln(dim(`    … (${lines.length - limit} more lines)`));
+  const lines = formatToolEndLines({ name, isError, result, toolsExpanded, extractToolOutputImpl });
+  if (!lines.length) return false;
+  writeStructuredLines(output, { type: "tool", lines });
   return true;
 }
 
@@ -89,6 +68,29 @@ export function formatToolSuccessSummary(name, result, out = "") {
     return `${matches} file${matches === 1 ? "" : "s"}`;
   }
   return "";
+}
+
+function formatToolEndLines({ name, isError, result, toolsExpanded, extractToolOutputImpl }) {
+  if (isError) {
+    const errText = extractToolOutputImpl(result);
+    return [
+      red(`  ◆ ${name} failed`),
+      ...errText.split("\n").filter(Boolean).slice(0, 6).map((line) => red(`    ${line.slice(0, 120)}`)),
+    ];
+  }
+
+  const out = extractToolOutputImpl(result);
+  if (!toolsExpanded) {
+    const summary = formatToolSuccessSummary(name, result, out);
+    return summary ? [dim(`    ${summary}`)] : [];
+  }
+  if (!out) return [];
+  return out.split("\n").slice(0, 40).map((line) => dim(`    ${line.slice(0, 120)}`));
+}
+
+function writeStructuredLines(output, block) {
+  if (typeof output.addBlock === "function") output.addBlock(block);
+  else for (const line of block.lines) output.writeln(line);
 }
 
 function joinToolParts(icon, name, parts) {

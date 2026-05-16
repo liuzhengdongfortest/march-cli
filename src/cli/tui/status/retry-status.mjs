@@ -46,7 +46,7 @@ export function createRetryStatusController({
       maxAttempts,
       remainingMs: delayMs - (now() - startedAt),
     });
-    output.writeln(formatRetryStartLine(errorMessage));
+    writeStatusLine(output, formatRetryStartLine(errorMessage));
     output.setSpinner(true, message());
     retrySpinnerActive = true;
     retryTimer = setIntervalImpl(() => {
@@ -59,9 +59,14 @@ export function createRetryStatusController({
 
   function end({ success, attempt, finalError }) {
     stop();
-    output.writeln(formatRetryEndLine({ success, attempt, finalError }));
+    writeStatusLine(output, formatRetryEndLine({ success, attempt, finalError }));
     requestRender();
   }
 
   return { start, end, stop };
+}
+
+function writeStatusLine(output, line) {
+  if (typeof output.setOverlayStatus === "function") output.setOverlayStatus([line]);
+  else output.writeln(line);
 }

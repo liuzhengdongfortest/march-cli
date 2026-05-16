@@ -1,6 +1,6 @@
 import { visibleWidth } from "@mariozechner/pi-tui";
 import { R, brightBlack, dim } from "./ui-theme.mjs";
-import { renderMarkdown } from "./markdown-renderer.mjs";
+import { renderMarkdown, renderStreamingMarkdown } from "./markdown-renderer.mjs";
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
@@ -44,15 +44,13 @@ function updateActiveSgr(activeSgr, seq) {
   return seq;
 }
 
-function appendText(lines, text, width) {
-  for (const wrapped of wrapLine(text, width)) lines.push(wrapped);
-}
-
 function appendTextLines(lines, textLines, width) {
-  for (const line of textLines) appendText(lines, line, width);
+  for (const line of textLines) {
+    for (const wrapped of wrapLine(line, width)) lines.push(wrapped);
+  }
 }
 
-function currentTextToBlocks(textLines, sealed) {
+function currentTextToBlocks(textLines, sealed, cache = null) {
   const blocks = [];
   for (let i = 0; i < textLines.length;) {
     const markdown = textLines[i].markdown;
@@ -62,25 +60,27 @@ function currentTextToBlocks(textLines, sealed) {
       i += 1;
     }
     blocks.push(markdown
-      ? { type: "markdown", text: batch.join("\n"), sealed, cache: new Map() }
+      ? { type: "markdown", text: batch.join("\n"), sealed, cache: sealed ? new Map() : (cache ?? new Map()) }
       : { type: "plain", lines: batch });
   }
   return blocks;
 }
 
 function renderBlock(block, width) {
-  if (block.type === "plain") {
-    const lines = [];
-    appendTextLines(lines, block.lines, width);
-    return lines;
-  }
+  if (block.type === "plain" || block.type === "tool" || block.type === "diff" || block.type === "status") return renderPlainBlock(block, width);
   if (block.type === "markdown") return renderMarkdownBlock(block, width);
   if (block.type === "thinking") return renderThinkingBlock(block, width);
   return [];
 }
 
+function renderPlainBlock(block, width) {
+  const lines = [];
+  appendTextLines(lines, block.lines, width);
+  return lines;
+}
+
 function renderMarkdownBlock(block, width) {
-  if (!block.sealed) return renderMarkdown(block.text, width);
+  if (!block.sealed) return renderStreamingMarkdown(block.text, width, block.cache);
   const cached = block.cache.get(width);
   if (cached) return cached;
   const rendered = renderMarkdown(block.text, width);
@@ -102,19 +102,23 @@ export class OutputBuffer {
   constructor() {
     this.segments = [];
     this.currentText = [{ text: "", markdown: false }];
+    this.currentTextCache = new Map();
     this.spinning = false;
     this.spinnerText = "";
     this.spinnerIdx = 0;
     this._activeThinking = null;
+    this.overlayStatus = null;
   }
 
   clear() {
     this.segments = [];
     this.currentText = [{ text: "", markdown: false }];
+    this.currentTextCache = new Map();
     this.spinning = false;
     this.spinnerText = "";
     this.spinnerIdx = 0;
     this._activeThinking = null;
+    this.overlayStatus = null;
   }
 
   write(text) {
@@ -126,6 +130,7 @@ export class OutputBuffer {
   }
 
   _writeText(text, markdown) {
+    this.overlayStatus = null;
     const current = this.currentText.at(-1);
     if (current.markdown !== markdown && current.text !== "") {
       this.currentText.push({ text: "", markdown });
@@ -134,12 +139,11 @@ export class OutputBuffer {
     }
     const parts = text.split("\n");
     this.currentText[this.currentText.length - 1].text += parts[0];
-    for (let i = 1; i < parts.length; i++) {
-      this.currentText.push({ text: parts[i], markdown });
-    }
+    for (let i = 1; i < parts.length; i++) this.currentText.push({ text: parts[i], markdown });
   }
 
   writeln(text) {
+    this.overlayStatus = null;
     this.currentText[this.currentText.length - 1].text += text;
     this.currentText.push({ text: "", markdown: false });
   }
@@ -152,6 +156,7 @@ export class OutputBuffer {
   }
 
   startThinking() {
+    this.overlayStatus = null;
     this._flushText();
     const seg = { type: "thinking", tokens: 0, content: [] };
     this.segments.push(seg);
@@ -162,14 +167,9 @@ export class OutputBuffer {
     if (!this._activeThinking) this.startThinking();
     const parts = text.split("\n");
     const lastIdx = this._activeThinking.content.length - 1;
-    if (lastIdx >= 0) {
-      this._activeThinking.content[lastIdx] += parts[0];
-    } else {
-      this._activeThinking.content.push(parts[0]);
-    }
-    for (let i = 1; i < parts.length; i++) {
-      this._activeThinking.content.push(parts[i]);
-    }
+    if (lastIdx >= 0) this._activeThinking.content[lastIdx] += parts[0];
+    else this._activeThinking.content.push(parts[0]);
+    for (let i = 1; i < parts.length; i++) this._activeThinking.content.push(parts[i]);
   }
 
   endThinking(tokens) {
@@ -180,12 +180,23 @@ export class OutputBuffer {
   }
 
   addThinkingBlock(tokens, content) {
+    this.overlayStatus = null;
     this._flushText();
-    this.segments.push({
-      type: "thinking",
-      tokens,
-      content: content.split("\n"),
-    });
+    this.segments.push({ type: "thinking", tokens, content: content.split("\n") });
+  }
+
+  addBlock(block) {
+    this.overlayStatus = null;
+    this._flushText();
+    this.segments.push(block);
+  }
+
+  setOverlayStatus(lines) {
+    this.overlayStatus = Array.isArray(lines) ? { type: "status", lines } : null;
+  }
+
+  clearOverlayStatus() {
+    this.overlayStatus = null;
   }
 
   sealCurrentText() {
@@ -196,6 +207,7 @@ export class OutputBuffer {
     if (this.currentText.length <= 1 && this.currentText[0].text === "") return false;
     this.segments.push(...currentTextToBlocks(this.currentText, true));
     this.currentText = [{ text: "", markdown: false }];
+    this.currentTextCache = new Map();
     return true;
   }
 
@@ -215,8 +227,11 @@ export class OutputBuffer {
     for (const seg of this.segments) {
       for (const line of renderBlock(seg, width)) lines.push(line);
     }
-    for (const block of currentTextToBlocks(this.currentText, false)) {
+    for (const block of currentTextToBlocks(this.currentText, false, this.currentTextCache)) {
       for (const line of renderBlock(block, width)) lines.push(line);
+    }
+    if (this.overlayStatus) {
+      for (const line of renderBlock(this.overlayStatus, width)) lines.push(line);
     }
     if (this.spinning) {
       const frame = SPINNER_FRAMES[this.spinnerIdx];

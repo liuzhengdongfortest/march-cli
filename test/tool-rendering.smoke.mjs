@@ -74,5 +74,10 @@ export async function runToolRenderingSmoke() {
   });
   assert.ok(lines.some((line) => line.includes("grep failed")));
   assert.equal(lines.filter((line) => line.includes("err")).length, 6);
+
+  const blocks = [];
+  writeToolStart({ output: { addBlock: (block) => blocks.push(block) }, name: "read", args: { path: "a.js" } });
+  assert.equal(blocks[0].type, "tool");
+  assert.ok(blocks[0].lines[0].includes("read"));
   console.log("  PASS");
 }

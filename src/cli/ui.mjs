@@ -200,7 +200,7 @@ export function createTuiUI({
       if (output.sealCurrentText() || changed) requestRender();
     },
     status: (text) => {
-      ensureStarted(); retryStatus.stop(); spinnerStatus.stop(); output.writeln(brightBlack(`● ${text}`)); requestRender();
+      ensureStarted(); retryStatus.stop(); spinnerStatus.stop(); output.setOverlayStatus([brightBlack(`● ${text}`)]); requestRender();
     },
     passiveRecall: ({ hints }) => {
       ensureStarted(); retryStatus.stop(); spinnerStatus.stop(); output.ensureNewline(); writePassiveRecall({ output, hints }); requestRender();

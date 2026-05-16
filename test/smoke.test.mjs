@@ -209,7 +209,6 @@ await runRunnerCoreSmoke();
   });
   assert.ok(shellSuggestions.items.some((item) => item.value === "shell"));
   assert.ok(shellSuggestions.items.some((item) => item.value === "shell spawn"));
-
   cleanup(dir);
   console.log("  PASS");
 }
@@ -291,6 +290,22 @@ await runTuiAutocompleteEscSmoke({ setupTmp, cleanup });
   assert.equal(sealed.segments[0].sealed, true);
   assert.ok(stripAnsi(sealed.render(80).join("\n")).includes("done"));
 
+  const structuredBlock = new OutputBuffer();
+  structuredBlock.addBlock({ type: "tool", lines: ["tool line"] });
+  assert.equal(structuredBlock.segments[0].type, "tool");
+  assert.ok(structuredBlock.render(80).join("\n").includes("tool line"));
+
+  const overlay = new OutputBuffer();
+  overlay.setOverlayStatus(["loading"]);
+  assert.ok(overlay.render(80).join("\n").includes("loading"));
+  overlay.write("done");
+  assert.ok(!overlay.render(80).join("\n").includes("loading"));
+
+  const streaming = new OutputBuffer();
+  streaming.writeMarkdown("first paragraph\n\n```js\nconst a = 1;\n```");
+  const streamingPlain = stripAnsi(streaming.render(80).join("\n"));
+  assert.ok(streamingPlain.includes("first paragraph"));
+  assert.ok(streamingPlain.includes("const a = 1"));
   console.log("  PASS");
 }
 

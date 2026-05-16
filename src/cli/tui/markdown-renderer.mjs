@@ -1,11 +1,27 @@
 import { marked } from "marked";
 import { visibleWidth } from "@mariozechner/pi-tui";
 import { R, brightBlack, dim, orange, softGreen, bold, cyan } from "./ui-theme.mjs";
-
 const TABLE_CELL_PADDING = 2;
-
 export function renderMarkdown(markdown, width) {
+  return renderMarkdownText(markdown, Math.max(1, width));
+}
+export function renderStreamingMarkdown(markdown, width, cache = new Map()) {
+  const text = String(markdown ?? "");
   const maxWidth = Math.max(1, width);
+  const split = splitStableMarkdown(text);
+  if (!split.prefix) return renderMarkdownText(split.tail, maxWidth);
+
+  const key = `${maxWidth}\0${split.prefix}`;
+  let prefixLines = cache.get(key);
+  if (!prefixLines) {
+    prefixLines = renderMarkdownText(split.prefix, maxWidth);
+    cache.set(key, prefixLines);
+  }
+  const tailLines = split.tail ? renderMarkdownText(split.tail, maxWidth) : [];
+  return tailLines.length ? [...prefixLines, ...tailLines] : prefixLines;
+}
+
+function renderMarkdownText(markdown, maxWidth) {
   let tokens;
   try {
     tokens = marked.lexer(String(markdown ?? ""));
@@ -15,6 +31,24 @@ export function renderMarkdown(markdown, width) {
   const lines = [];
   for (const token of tokens) renderBlock(token, lines, maxWidth, 0);
   return lines.length ? lines : [""];
+}
+
+function splitStableMarkdown(text) {
+  const lines = text.split("\n");
+  let offset = 0;
+  let stableOffset = 0;
+  let inFence = false;
+  for (const line of lines) {
+    const nextOffset = offset + line.length + 1;
+    if (/^\s*```/.test(line)) {
+      inFence = !inFence;
+      if (!inFence) stableOffset = Math.min(text.length, nextOffset);
+    } else if (!inFence && line.trim() === "") {
+      stableOffset = Math.min(text.length, nextOffset);
+    }
+    offset = nextOffset;
+  }
+  return { prefix: text.slice(0, stableOffset), tail: text.slice(stableOffset) };
 }
 
 function renderBlock(token, lines, width, depth) {
