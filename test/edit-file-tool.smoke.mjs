@@ -34,6 +34,18 @@ export async function runEditFileToolSmoke({ setupTmp, cleanup }) {
   result = executeEditFile({
     params: {
       path: file,
+      edits: [{ type: "replace_range", startLine: 2, endLine: 3, newText: "TWO\nTHREE\n" }],
+    },
+    engine,
+    ui,
+    lspService,
+  });
+  assert.equal(result.details.error, undefined);
+  assert.equal(readFileSync(file, "utf8"), "one\nTWO\nTHREE\nfour");
+
+  result = executeEditFile({
+    params: {
+      path: file,
       mode: "patch",
       edits: [{ type: "replace_text", oldText: "four", newText: "FOUR" }],
     },

@@ -18,7 +18,7 @@ const replaceRangeEditSchema = Type.Object({
   type: Type.Literal("replace_range"),
   startLine: Type.Number({ description: "1-based inclusive start line" }),
   endLine: Type.Number({ description: "1-based inclusive end line" }),
-  newText: Type.String({ description: "Replacement text" }),
+  newText: Type.String({ description: "Replacement text. Omit a trailing newline unless intentionally adding a blank line." }),
 });
 
 export function createEditFileTool({ engine, ui, lspService = null }) {
@@ -207,15 +207,21 @@ function prepareRangeEdit(content, edit, path) {
     return { error: `Error: line range ${startLine}-${endLine} out of bounds (file has ${lines.length} lines)` };
   }
   const oldText = lines.slice(startLine - 1, endLine).join("\n");
+  const newText = normalizeRangeNewText(edit.newText, endLine, lines.length);
   return {
     edit: {
       start: offsetForLine(lines, startLine),
       end: offsetForLine(lines, startLine) + oldText.length,
       oldText,
-      newText: edit.newText,
+      newText,
       startLine,
     },
   };
+}
+
+function normalizeRangeNewText(newText, endLine, lineCount) {
+  if (endLine < lineCount && /\r?\n$/.test(newText)) return newText.replace(/\r?\n$/, "");
+  return newText;
 }
 
 function lineNumberForOffset(content, offset) {
