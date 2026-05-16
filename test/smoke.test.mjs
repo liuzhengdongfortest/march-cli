@@ -323,6 +323,17 @@ await runTuiAutocompleteEscSmoke({ setupTmp, cleanup });
   const streamingPlain = stripAnsi(streaming.render(80).join("\n"));
   assert.ok(streamingPlain.includes("first paragraph"));
   assert.ok(streamingPlain.includes("const a = 1"));
+
+  const scrollable = new OutputBuffer();
+  for (let i = 1; i <= 12; i += 1) scrollable.writeln(`line${i}`);
+  scrollable.setViewportHeight(4);
+  assert.deepEqual(stripAnsi(scrollable.render(80).join("\n")).split("\n"), ["line10", "line11", "line12", ""]);
+  scrollable.scroll(-1);
+  scrollable.scroll(-1);
+  assert.equal(scrollable.scrollOffset, 2);
+  assert.deepEqual(stripAnsi(scrollable.render(80).join("\n")).split("\n"), ["line8", "line9", "line10", "line11"]);
+  scrollable.scroll(1);
+  assert.equal(scrollable.scrollOffset, 1);
   console.log("  PASS");
 }
 

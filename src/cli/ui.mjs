@@ -1,11 +1,11 @@
 import { stdout } from "node:process";
 import { Editor, ProcessTerminal, TUI } from "@earendil-works/pi-tui";
 import { buildMarchCommands, MarchAutocompleteProvider } from "./input/autocomplete.mjs";
-import { getExternalEditorCommand, openTextInExternalEditor } from "./input/external-editor.mjs";
 import { createJsonUI, createPlainUI } from "./fallback-ui.mjs";
 import { createKeybindingDispatcher } from "./input/keybinding-dispatch.mjs";
 import { OutputBuffer } from "./tui/output-buffer.mjs";
 import { requestToolPermission } from "./tui/permission-request-ui.mjs";
+import { runTuiExternalEditor } from "./tui/editor/external-editor-runner.mjs";
 import { createRetryStatusController } from "./tui/status/retry-status.mjs";
 import { createShellDrawerControls } from "./shell/shell-drawer-controls.mjs";
 import { ShellDrawer } from "./shell/shell-drawer.mjs";
@@ -13,11 +13,13 @@ import { ShellSplitLayout } from "./shell/shell-split-layout.mjs";
 import { createSpinnerStatusController } from "./tui/status/spinner-status.mjs";
 import { showEditorSelectList } from "./tui/select/editor-select-list.mjs";
 import { StatusBar } from "./tui/status/status-bar.mjs";
+import { MainPaneLayout } from "./tui/layout/main-pane-layout.mjs";
+import { parseMouseScroll } from "./tui/input/mouse-tracking.mjs";
 import { writeEditDiff } from "./tui/tui-diff-rendering.mjs";
 import { createTuiInputController } from "./tui/tui-input-controller.mjs";
 import { writeMemoryHint } from "./tui/recall-rendering.mjs";
 import { writeToolEnd, writeToolStart } from "./tui/tool-rendering.mjs";
-import { EDITOR_THEME, yellow, brightBlack } from "./tui/ui-theme.mjs";
+import { EDITOR_THEME, brightBlack } from "./tui/ui-theme.mjs";
 
 export { buildMarchCommands, MarchAutocompleteProvider } from "./input/autocomplete.mjs";
 
@@ -34,8 +36,9 @@ export function createTuiUI({
   const shellDrawer = new ShellDrawer({ shellRuntime });
   const statusBar = new StatusBar();
   const editor = new Editor(tui, EDITOR_THEME, { paddingX: 1 });
+  const mainPane = new MainPaneLayout({ output, statusBar, editor, terminal });
   const shellSplitLayout = new ShellSplitLayout({
-    mainChildren: [output, statusBar, editor],
+    mainChildren: [mainPane],
     shellPane: shellDrawer,
   });
   const autocomplete = new MarchAutocompleteProvider(buildMarchCommands(promptTemplates), cwd);
@@ -46,7 +49,7 @@ export function createTuiUI({
   tui.setFocus(editor);
 
   let started = false;
-  let mouseOn = false;
+  let mouseOn = true;
   let toolsExpanded = false;
 
   function requestRender() {
@@ -82,16 +85,6 @@ export function createTuiUI({
     hasOverlay: () => tui.hasOverlay(),
   });
 
-  function parseMouseScroll(data) {
-    // SGR extended (1006) mouse scroll: \x1b[<64;col;rowM (up), \x1b[<65;col;rowM (down)
-    const match = data.match(/^\x1b\[<(\d+);\d+;\d+[Mm]$/);
-    if (!match) return null;
-    const btn = parseInt(match[1], 10);
-    if (btn === 64) return -1;  // wheel up
-    if (btn === 65) return 1;   // wheel down
-    return null;
-  }
-
   function ensureStarted() {
     if (!started) {
       tui.addInputListener((data) => {
@@ -119,32 +112,14 @@ export function createTuiUI({
         }
       });
       terminal.write("\x1b[?1049h");
+      terminal.write("\x1b[?1000h\x1b[?1006h");
       tui.start();
       started = true;
     }
   }
 
-
   function openExternalEditor() {
-    const editorCommand = getExternalEditorCommand();
-    if (!editorCommand) {
-      output.writeln(yellow(`● No editor configured. Set $VISUAL or $EDITOR.`));
-      requestRender();
-      return;
-    }
-    try {
-      terminal.write("\x1b[?1049l");
-      tui.stop();
-      if (mouseOn) terminal.write("\x1b[?1002l\x1b[?1006l");
-      const result = openTextInExternalEditor({ text: editor.getText(), editorCommand });
-      if (result.ok) editor.setText(result.text);
-      else output.writeln(yellow(`● ${result.error}`));
-    } finally {
-      tui.start();
-      terminal.write("\x1b[?1049h");
-      if (mouseOn) terminal.write("\x1b[?1002h\x1b[?1006h");
-      tui.requestRender(true);
-    }
+    runTuiExternalEditor({ terminal, tui, editor, output, requestRender, mouseOn: () => mouseOn });
   }
 
   function toggleToolOutput() {
@@ -265,11 +240,11 @@ export function createTuiUI({
 
     toggleMouse: () => {
       if (mouseOn) {
-        terminal.write("\x1b[?1002l\x1b[?1006l");
+        terminal.write("\x1b[?1000l\x1b[?1006l");
         mouseOn = false;
         return false;
       } else {
-        terminal.write("\x1b[?1002h\x1b[?1006h");
+        terminal.write("\x1b[?1000h\x1b[?1006h");
         mouseOn = true;
         return true;
       }
@@ -303,7 +278,7 @@ export function createTuiUI({
       retryStatus.stop();
       if (started) {
         await terminal.drainInput?.();
-        if (mouseOn) terminal.write("\x1b[?1002l\x1b[?1006l");
+        if (mouseOn) terminal.write("\x1b[?1000l\x1b[?1006l");
         tui.stop();
         terminal.write("\x1b[?1049l");
       }

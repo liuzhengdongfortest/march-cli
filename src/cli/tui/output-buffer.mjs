@@ -111,7 +111,7 @@ export class OutputBuffer {
     this._activeThinking = null;
     this.overlayStatus = null;
     this.scrollOffset = 0;
-    this._windowSize = null;
+    this.viewportHeight = null;
   }
 
   clear() {
@@ -124,7 +124,7 @@ export class OutputBuffer {
     this._activeThinking = null;
     this.overlayStatus = null;
     this.scrollOffset = 0;
-    this._windowSize = null;
+    this.viewportHeight = null;
   }
 
   write(text) {
@@ -240,8 +240,13 @@ export class OutputBuffer {
 
   getMaxScrollOffset() {
     const total = this._cachedTotalLines || 0;
-    const win = this._windowSize || (process.stdout.rows || 30) - 2;
+    const win = this.viewportHeight || (process.stdout.rows || 30) - 2;
     return Math.max(0, total - win);
+  }
+
+  setViewportHeight(height) {
+    this.viewportHeight = Math.max(1, Math.trunc(height));
+    this.scrollOffset = clamp(this.scrollOffset, 0, this.getMaxScrollOffset());
   }
 
   resetScroll() {
@@ -253,17 +258,10 @@ export class OutputBuffer {
   render(width) {
     const allLines = this._computeLines(width);
     this._cachedTotalLines = allLines.length;
+    if (this.viewportHeight === null) return allLines;
 
-    if (this.scrollOffset === 0) {
-      // Track natural rendered count as window size for when scrolling starts
-      if (this._windowSize === null || allLines.length > 0) {
-        this._windowSize = Math.max(this._windowSize || 0, allLines.length);
-      }
-      return allLines;
-    }
-
-    // Scrolled up: show a window
-    const winSize = this._windowSize || (process.stdout.rows || 30) - 2;
+    this.scrollOffset = clamp(this.scrollOffset, 0, this.getMaxScrollOffset());
+    const winSize = this.viewportHeight;
     const end = Math.max(0, allLines.length - this.scrollOffset);
     const start = Math.max(0, end - winSize);
     return allLines.slice(start, end);
