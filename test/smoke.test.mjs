@@ -47,6 +47,7 @@ import { runStartupBannerSmoke } from "./startup-banner.smoke.mjs";
 import { runStartupResumeSmoke } from "./startup-resume.smoke.mjs";
 import { runSyntaxHighlightingSmoke } from "./syntax-highlighting.smoke.mjs";
 import { runTuiAutocompleteEscSmoke } from "./tui-autocomplete-esc.smoke.mjs";
+import { runTuiSelectionSmoke } from "./tui-selection.smoke.mjs";
 import { runTuiShellDrawerSmoke } from "./tui-shell-drawer.smoke.mjs";
 import { runUserDisplayMessageSmoke } from "./user-display-message.smoke.mjs";
 import { runWebSearchConfigCommandSmoke } from "./websearch-config-command.smoke.mjs";
@@ -54,6 +55,23 @@ import { runWebToolsSmoke } from "./web-tools.smoke.mjs";
 import { FakeTerminal } from "./helpers/fake-terminal.mjs";
 
 // Minimal mocks for smoke testing without DEEPSEEK_API_KEY
+
+const verboseSmoke = process.env.MARCH_SMOKE_VERBOSE === "1";
+const originalLog = console.log.bind(console);
+const smokeLog = [];
+
+if (!verboseSmoke) {
+  console.log = (...args) => {
+    smokeLog.push(args.map(String).join(" "));
+  };
+  const dumpSmokeLog = () => {
+    if (smokeLog.length === 0) return;
+    originalLog("\nSmoke log before failure:");
+    for (const line of smokeLog) originalLog(line);
+  };
+  process.once("uncaughtException", dumpSmokeLog);
+  process.once("unhandledRejection", dumpSmokeLog);
+}
 
 function setupTmp() {
   const dir = resolve(tmpdir(), `march-smoke-${randomUUID().slice(0, 8)}`);
@@ -158,6 +176,7 @@ await runShellSplitLayoutSmoke();
 await runShellToolsSmoke();
 await runNodePtyAdapterSmoke();
 await runTuiShellDrawerSmoke({ setupTmp, cleanup });
+await runTuiSelectionSmoke();
 
 {
   console.log("--- smoke: TUI resize clears scrollback ---");
@@ -413,4 +432,4 @@ await runSessionTreeSmoke();
 await runMemorySystemSmoke({ setupTmp, cleanup });
 await runDiffAndUiSmoke();
 
-console.log("\nAll smoke tests passed.");
+originalLog("All smoke tests passed.");

@@ -10,15 +10,18 @@ const MAX_SHELL_WIDTH = 72;
 const SHELL_WIDTH_RATIO = 0.36;
 
 export class ShellSplitLayout {
-  constructor({ mainChildren = [], shellPane }) {
+  constructor({ mainChildren = [], shellPane, selection = null }) {
     this.mainChildren = mainChildren;
     this.shellPane = shellPane;
+    this.selection = selection;
   }
 
   render(width) {
     const safeWidth = Math.max(1, Math.trunc(width));
     if (!this.shellPane?.isVisible?.() || safeWidth < 3) {
-      return renderStack(this.mainChildren, safeWidth);
+      const lines = renderStack(this.mainChildren, safeWidth);
+      this.selection?.setLines(lines);
+      return this.selection?.apply(lines) ?? lines;
     }
 
     const shellWidth = computeShellWidth(safeWidth);
@@ -33,7 +36,8 @@ export class ShellSplitLayout {
       const right = padToWidth(shellLines[i] ?? "", shellWidth);
       lines.push(`${left}${SEPARATOR}${right}`);
     }
-    return lines;
+    this.selection?.setLines(lines);
+    return this.selection?.apply(lines) ?? lines;
   }
 
   invalidate() {

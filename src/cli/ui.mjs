@@ -1,5 +1,6 @@
 import { stdout } from "node:process";
 import { Editor, ProcessTerminal, TUI } from "@earendil-works/pi-tui";
+import { writeSystemClipboard } from "./commands/copy-command.mjs";
 import { buildMarchCommands, MarchAutocompleteProvider } from "./input/autocomplete.mjs";
 import { createJsonUI, createPlainUI } from "./fallback-ui.mjs";
 import { createKeybindingDispatcher } from "./input/keybinding-dispatch.mjs";
@@ -14,7 +15,8 @@ import { createSpinnerStatusController } from "./tui/status/spinner-status.mjs";
 import { showEditorSelectList } from "./tui/select/editor-select-list.mjs";
 import { StatusBar } from "./tui/status/status-bar.mjs";
 import { MainPaneLayout } from "./tui/layout/main-pane-layout.mjs";
-import { parseMouseScroll } from "./tui/input/mouse-tracking.mjs";
+import { createMouseSelectionController } from "./tui/input/mouse-selection-controller.mjs";
+import { ScreenSelection } from "./tui/selection-screen.mjs";
 import { writeEditDiff } from "./tui/tui-diff-rendering.mjs";
 import { createTuiInputController } from "./tui/tui-input-controller.mjs";
 import { writeMemoryHint } from "./tui/recall-rendering.mjs";
@@ -30,16 +32,19 @@ export function createTuiUI({
   shellRuntime = null,
   historyStore = null,
   terminal = new ProcessTerminal(),
+  writeClipboard = writeSystemClipboard,
 } = {}) {
   const tui = new TUI(terminal);
   const output = new OutputBuffer();
   const shellDrawer = new ShellDrawer({ shellRuntime });
   const statusBar = new StatusBar();
   const editor = new Editor(tui, EDITOR_THEME, { paddingX: 1 });
+  const selection = new ScreenSelection();
   const mainPane = new MainPaneLayout({ output, statusBar, editor, terminal });
   const shellSplitLayout = new ShellSplitLayout({
     mainChildren: [mainPane],
     shellPane: shellDrawer,
+    selection,
   });
   const autocomplete = new MarchAutocompleteProvider(buildMarchCommands(promptTemplates), cwd);
   editor.setAutocompleteProvider(autocomplete);
@@ -59,6 +64,7 @@ export function createTuiUI({
   const spinnerStatus = createSpinnerStatusController({ output, requestRender });
   const retryStatus = createRetryStatusController({ output, requestRender, stopSpinner: spinnerStatus.stop });
   const shellDrawerControls = createShellDrawerControls({ shellDrawer, output, requestRender });
+  const mouseSelectionController = createMouseSelectionController({ terminal, output, shellDrawer, shellDrawerControls, selection, writeClipboard, requestRender });
 
   let onEscapeHandler = null, onCtrlCHandler = null, onShiftTabHandler = null;
   let onCtrlTHandler = null, onCtrlLHandler = null, onPasteImageHandler = null, onToggleModeHandler = null;
@@ -88,15 +94,10 @@ export function createTuiUI({
   function ensureStarted() {
     if (!started) {
       tui.addInputListener((data) => {
-        // Mouse wheel scroll when mouse tracking is on
-        if (mouseOn) {
-          const scrollDelta = parseMouseScroll(data);
-          if (scrollDelta) {
-            output.scroll(scrollDelta);
-            requestRender();
-            return { consume: true };
-          }
-        }
+        const mouseResult = mouseSelectionController.handleMouseInput(data, mouseOn);
+        if (mouseResult) return mouseResult;
+        const copyKeyResult = mouseSelectionController.handleCopyKey(data);
+        if (copyKeyResult) return copyKeyResult;
         const dispatched = keybindingDispatcher.dispatch(data);
         if (dispatched) return dispatched;
         // When output is scrolled up, the next render has fewer lines.
@@ -112,7 +113,7 @@ export function createTuiUI({
         }
       });
       terminal.write("\x1b[?1049h");
-      terminal.write("\x1b[?1000h\x1b[?1006h");
+      terminal.write("\x1b[?1002h\x1b[?1006h");
       tui.start();
       started = true;
     }
@@ -151,19 +152,16 @@ export function createTuiUI({
       ensureStarted();
       return inputController.readline();
     },
-
     write: (text) => {
       ensureStarted();
       output.write(text);
       requestRender();
     },
-
     writeln: (text) => {
       ensureStarted();
       output.writeln(text);
       requestRender();
     },
-
     thinkingStart: () => {
       retryStatus.stop(); output.startThinking(); requestRender();
     },
@@ -240,11 +238,11 @@ export function createTuiUI({
 
     toggleMouse: () => {
       if (mouseOn) {
-        terminal.write("\x1b[?1000l\x1b[?1006l");
+        terminal.write("\x1b[?1002l\x1b[?1006l");
         mouseOn = false;
         return false;
       } else {
-        terminal.write("\x1b[?1000h\x1b[?1006h");
+        terminal.write("\x1b[?1002h\x1b[?1006h");
         mouseOn = true;
         return true;
       }
@@ -278,7 +276,7 @@ export function createTuiUI({
       retryStatus.stop();
       if (started) {
         await terminal.drainInput?.();
-        if (mouseOn) terminal.write("\x1b[?1000l\x1b[?1006l");
+        if (mouseOn) terminal.write("\x1b[?1002l\x1b[?1006l");
         tui.stop();
         terminal.write("\x1b[?1049l");
       }

@@ -106,7 +106,7 @@ export async function handleSlashCommand(trimmed, {
 
   if (trimmed === "/mouse") {
     const on = ui.toggleMouse();
-    ui.writeln(on ? "Mouse tracking: ON (click-to-expand enabled, text selection disabled)" : "Mouse tracking: OFF (text selection enabled)");
+    ui.writeln(on ? "Mouse tracking: ON (wheel scroll and TUI selection copy enabled)" : "Mouse tracking: OFF (native terminal selection enabled)");
     return { handled: true };
   }
 
