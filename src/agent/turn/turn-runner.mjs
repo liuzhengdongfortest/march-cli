@@ -1,5 +1,5 @@
 import { resolveImageAttachmentReferences } from "../../session/attachment-references.mjs";
-import { createTurnEventState, handleRunnerSessionEvent } from "./turn-events.mjs";
+import { closeAssistantReply, createTurnEventState, handleRunnerSessionEvent } from "./turn-events.mjs";
 
 export async function runRunnerTurn({
   prompt,
@@ -38,6 +38,7 @@ export async function runRunnerTurn({
       setModelCallKind("model");
     }
 
+    closeAssistantReply({ ui, state: turnState });
     const assistantRecallHints = memoryStore
       ? memoryStore.recallForAssistant(turnState.draft, { currentProject, excludedIds: engine.getRecentRecallMemoryIds?.() ?? [] })
       : [];

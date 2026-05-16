@@ -180,9 +180,7 @@ export function createTuiUI({
     toggleLastThinking: () => false,
 
     toolStart: (name, args) => {
-      ensureStarted(); retryStatus.stop(); spinnerStatus.stop(); output.ensureNewline();
-      writeToolStart({ output, name, args });
-      requestRender();
+      ensureStarted(); retryStatus.stop(); spinnerStatus.stop(); writeToolStart({ output, name, args }); requestRender();
     },
 
     toolEnd: (name, isError, result) => {
@@ -196,11 +194,10 @@ export function createTuiUI({
       output.writeMarkdown(delta);
       requestRender();
     },
-
+    assistantReplyEnd: () => { ensureStarted(); if (output.ensureNewline()) requestRender(); },
     status: (text) => {
       ensureStarted(); retryStatus.stop(); spinnerStatus.stop(); output.writeln(brightBlack(`● ${text}`)); requestRender();
     },
-
     passiveRecall: ({ hints }) => {
       ensureStarted(); retryStatus.stop(); spinnerStatus.stop(); output.ensureNewline(); writePassiveRecall({ output, hints }); requestRender();
     },

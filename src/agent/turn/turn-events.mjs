@@ -2,6 +2,7 @@ export function createTurnEventState() {
   return {
     draft: "",
     thinkingText: "",
+    assistantReplyOpen: false,
   };
 }
 
@@ -10,6 +11,7 @@ export function handleRunnerSessionEvent(event, { ui, engine, state }) {
     handleAssistantMessageEvent(event.assistantMessageEvent, { ui, state });
   }
   if (event.type === "tool_execution_start") {
+    closeAssistantReply({ ui, state });
     ui.toolStart(event.toolName, event.args);
   }
   if (event.type === "tool_execution_end") {
@@ -32,9 +34,16 @@ export function handleRunnerSessionEvent(event, { ui, engine, state }) {
   }
 }
 
+export function closeAssistantReply({ ui, state }) {
+  if (!state.assistantReplyOpen) return;
+  ui.assistantReplyEnd?.();
+  state.assistantReplyOpen = false;
+}
+
 function handleAssistantMessageEvent(event, { ui, state }) {
   if (event.type === "text_delta") {
     state.draft += event.delta;
+    state.assistantReplyOpen = true;
     ui.textDelta(event.delta);
   }
   if (event.type === "thinking_start") {

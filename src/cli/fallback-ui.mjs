@@ -36,6 +36,7 @@ export function createJsonUI() {
     clearOutput: () => {},
     setStatusBar: () => {},
     turnStart: () => {},
+    assistantReplyEnd: () => {},
     turnEnd: () => {},
     retryStart: (event) => {
       stdout.write(JSON.stringify({ type: "retry_start", ...event }) + "\n");
@@ -95,7 +96,6 @@ export function createPlainUI() {
     },
     toggleLastThinking: () => {},
     toolStart: (name, args) => {
-      ensureNewline();
       stdout.write(`${dim(`  ${formatToolStartLine(name, args)}`)}\n`);
     },
     toolEnd: (name, isError, result) => {
@@ -117,6 +117,7 @@ export function createPlainUI() {
     clearOutput: () => {},
     setStatusBar: () => {},
     turnStart: () => {},
+    assistantReplyEnd: ensureNewline,
     turnEnd: ensureNewline,
     retryStart: ({ attempt, maxAttempts, delayMs, errorMessage }) => {
       ensureNewline();
