@@ -1,4 +1,5 @@
 import { strict as assert } from "node:assert";
+import { visibleWidth } from "@earendil-works/pi-tui";
 
 export async function runTuiDiffRenderingSmoke() {
   console.log("--- smoke: TUI diff rendering ---");
@@ -55,6 +56,7 @@ export async function runTuiDiffRenderingSmoke() {
   const splitPlain = split.map(stripAnsi);
   assert.ok(splitPlain.some((line) => line.includes("return oldValue") && line.includes("return newValue")));
   assert.ok(splitPlain.some((line) => line.includes("validate()")));
+  for (const line of splitPlain.slice(1)) assert.equal(visibleWidth(line), 140);
   assert.ok(split.some((line) => line.includes("48;5;52")));
   assert.ok(split.some((line) => line.includes("48;5;22")));
   assert.ok(split.some((line) => line.includes("38;5;117")));
@@ -65,10 +67,21 @@ export async function runTuiDiffRenderingSmoke() {
     diffLines: [{ type: "add", text: "const added = true;", lineNum: 8 }],
   }).map(stripAnsi);
   const addOnlyLine = addOnly[1];
-  assert.equal(addOnlyLine.length, 140);
-  assert.ok(separatorPositions(addOnlyLine).includes(68));
+  assert.equal(visibleWidth(addOnlyLine), 140);
+  assert.ok(separatorVisualPositions(addOnlyLine).includes(68));
   assert.ok(addOnlyLine.slice(0, 68).includes(" │ "));
   assert.ok(addOnlyLine.slice(71).includes("+ const added = true;"));
+
+  const wideChars = formatEditDiffLines({
+    path: "src/app.ts",
+    width: 140,
+    diffLines: [
+      { type: "del", text: "const oldTitle = `你好世界🙂🙂🙂🙂🙂`;", lineNum: 9 },
+      { type: "add", text: "const newTitle = `你好世界🙂🙂🙂🙂🙂🙂`;", lineNum: 9 },
+    ],
+  }).map(stripAnsi);
+  assert.equal(visibleWidth(wideChars[1]), 140);
+  assert.ok(separatorVisualPositions(wideChars[1]).includes(68));
   console.log("  PASS");
 }
 
@@ -76,11 +89,11 @@ function stripAnsi(text) {
   return String(text ?? "").replace(/\x1b(?:\][^\x07]*(?:\x07|\x1b\\)|[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, "");
 }
 
-function separatorPositions(text) {
+function separatorVisualPositions(text) {
   const positions = [];
   let index = text.indexOf(" │ ");
   while (index >= 0) {
-    positions.push(index);
+    positions.push(visibleWidth(text.slice(0, index)));
     index = text.indexOf(" │ ", index + 1);
   }
   return positions;

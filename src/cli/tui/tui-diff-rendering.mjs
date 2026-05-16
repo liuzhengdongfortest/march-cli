@@ -1,3 +1,4 @@
+import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { bold, dim, red, green, brightBlack } from "./ui-theme.mjs";
 import { highlightCodeLine, styleSyntax } from "./syntax/highlighting.mjs";
 
@@ -73,28 +74,26 @@ function formatSplitSide({ side, sideWidth, gutterWidth, path, fallbackType }) {
   const sign = type === "del" ? "-" : type === "add" ? "+" : " ";
   const signScope = type === "del" ? "comment" : type === "add" ? "string" : "default";
   const num = side.lineNum != null ? String(side.lineNum).padStart(gutterWidth) : " ".repeat(gutterWidth);
-  const prefixWidth = gutterWidth + 5;
-  const textWidth = Math.max(1, sideWidth - prefixWidth);
-  const clipped = clipPlain(side.text ?? "", textWidth);
-  const code = highlightCodeLine(clipped, path, { bg });
-  const plainCodeWidth = visiblePlainWidth(clipped);
-  const padding = Math.max(0, textWidth - plainCodeWidth);
-  return [
+  const line = [
     stylePlain(`${num} │ `, "90", bg),
     styleSyntax(`${sign} `, signScope, bg),
-    code,
-    stylePlain(" ".repeat(padding), "", bg),
+    highlightCodeLine(side.text ?? "", path, { bg }),
   ].join("");
+  return fitAnsiToWidth(line, sideWidth, bg);
 }
 
 function formatEmptySplitSide({ sideWidth, gutterWidth }) {
-  const prefixWidth = gutterWidth + 5;
-  const textWidth = Math.max(1, sideWidth - prefixWidth);
-  return [
+  const line = [
     stylePlain(`${" ".repeat(gutterWidth)} │ `, "90", ""),
     styleSyntax("  ", "default", ""),
-    " ".repeat(textWidth),
   ].join("");
+  return fitAnsiToWidth(line, sideWidth, "");
+}
+
+function fitAnsiToWidth(text, width, bg = "") {
+  const fitted = truncateToWidth(String(text ?? ""), width, "…", false);
+  const padding = Math.max(0, width - visibleWidth(fitted));
+  return `${fitted}${stylePlain(" ".repeat(padding), "", bg)}`;
 }
 
 function pairDiffRows(lines) {
@@ -151,29 +150,6 @@ function stylePlain(text, fg = "", bg = "") {
   if (fg) codes.push(fg);
   if (bg) codes.push(bg);
   return codes.length ? `\x1b[${codes.join(";")}m${plain}\x1b[0m` : plain;
-}
-
-function clipPlain(text, width) {
-  const chars = Array.from(String(text ?? ""));
-  let used = 0;
-  let out = "";
-  for (const ch of chars) {
-    const w = visiblePlainWidth(ch);
-    if (used + w > width) break;
-    out += ch;
-    used += w;
-  }
-  if (out.length < String(text ?? "").length && width > 1) {
-    while (out && visiblePlainWidth(`${out}…`) > width) out = Array.from(out).slice(0, -1).join("");
-    return `${out}…`;
-  }
-  return out;
-}
-
-function visiblePlainWidth(text) {
-  let width = 0;
-  for (const ch of Array.from(stripAnsi(String(text ?? "")))) width += /[\u1100-\u115f\u2329\u232a\u2e80-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe10-\ufe19\ufe30-\ufe6f\uff00-\uff60\uffe0-\uffe6]/.test(ch) ? 2 : 1;
-  return width;
 }
 
 function stripAnsi(text) {
