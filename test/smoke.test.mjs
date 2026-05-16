@@ -45,6 +45,7 @@ import { runSourceDirectoryLimitSmoke } from "./source-directory-limit.smoke.mjs
 import { runSourceLineLimitSmoke } from "./source-line-limit.smoke.mjs";
 import { runStartupBannerSmoke } from "./startup-banner.smoke.mjs";
 import { runStartupResumeSmoke } from "./startup-resume.smoke.mjs";
+import { runSyntaxHighlightingSmoke } from "./syntax-highlighting.smoke.mjs";
 import { runTuiAutocompleteEscSmoke } from "./tui-autocomplete-esc.smoke.mjs";
 import { runTuiShellDrawerSmoke } from "./tui-shell-drawer.smoke.mjs";
 import { runUserDisplayMessageSmoke } from "./user-display-message.smoke.mjs";
@@ -299,6 +300,8 @@ await runTuiAutocompleteEscSmoke({ setupTmp, cleanup });
 function stripAnsi(text) {
   return String(text).replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "");
 }
+
+await runSyntaxHighlightingSmoke();
 
 // ── 3f. Tool output extraction ──────────────────────────────────────
 
