@@ -3,7 +3,10 @@ import { dirname } from "node:path";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { toolText } from "./tool-result.mjs";
+import { formatAppliedDiff, formatDiff } from "./editing/diff-format.mjs";
 import { buildDiagnosticsForPath } from "../context/diagnostics.mjs";
+
+export { formatDiff } from "./editing/diff-format.mjs";
 
 const PATCH_MODE = "patch";
 const WRITE_MODE = "write";
@@ -18,7 +21,7 @@ const replaceTextEditSchema = Type.Object({
 const replaceRangeEditSchema = Type.Object({
   type: Type.Literal("replace_range"),
   startLine: Type.Number({ description: "1-based inclusive start line" }),
-  endLine: Type.Number({ description: "1-based inclusive end line" }),
+  endLine: Type.Number({ description: "1-based inclusive end line. This line is deleted too; keep it out of the range or include it in newText if it should remain." }),
   newText: Type.String({ description: "Replacement text. Omit a trailing newline unless intentionally adding a blank line." }),
 });
 
@@ -37,7 +40,7 @@ export function createEditFileTool({ engine, ui, lspService = null }) {
         Type.Literal(OVERWRITE_MODE),
       ], { description: "patch (default), write, or overwrite" })),
       edits: Type.Optional(Type.Array(Type.Union([replaceTextEditSchema, replaceRangeEditSchema]), {
-        description: "Patch edits. replace_text uses exact text; replace_range uses 1-based inclusive line numbers.",
+        description: "Patch edits. replace_text uses exact text; replace_range uses 1-based inclusive line numbers and deletes the endLine content too.",
       })),
       content: Type.Optional(Type.String({ description: "Full file content for mode=write or mode=overwrite" })),
     }),
@@ -92,7 +95,7 @@ async function patchFile({ absPath, path, edits, engine, ui, lspService }) {
     writeFileSync(absPath, newContent, "utf8");
     lspService?.touchFile?.(absPath);
     ui.editDiff(absPath, prepared.edits.flatMap((edit) => formatDiff(edit.oldText, edit.newText, { startLine: edit.startLine })));
-    return await toolTextWithDiagnostics(`Edited ${absPath}`, { path: absPath, edits: prepared.edits.length }, { lspService, path: absPath });
+    return await toolTextWithDiagnostics(`Edited ${absPath}\n\n${formatAppliedDiff(prepared.edits)}`, { path: absPath, edits: prepared.edits.length }, { lspService, path: absPath });
   } catch (err) {
     return toolText(`Error writing ${absPath}: ${err.message}`, { error: true });
   }
@@ -263,37 +266,4 @@ function applyPreparedEdits(content, edits) {
     next = next.slice(0, edit.start) + edit.newText + next.slice(edit.end);
   }
   return next;
-}
-
-export function formatDiff(oldText, newText, { startLine = 1 } = {}) {
-  const oldLines = oldText.split("\n");
-  const newLines = newText.split("\n");
-
-  let prefix = 0;
-  while (prefix < oldLines.length && prefix < newLines.length && oldLines[prefix] === newLines[prefix]) prefix++;
-
-  let suffix = 0;
-  while (
-    suffix < oldLines.length - prefix &&
-    suffix < newLines.length - prefix &&
-    oldLines[oldLines.length - 1 - suffix] === newLines[newLines.length - 1 - suffix]
-  ) {
-    suffix++;
-  }
-
-  const ctx = 3;
-  const result = [];
-  const ctxStart = Math.max(0, prefix - ctx);
-  for (let i = ctxStart; i < prefix; i++) result.push({ type: "ctx", text: oldLines[i], lineNum: startLine + i });
-
-  const oldEnd = oldLines.length - suffix;
-  for (let i = prefix; i < oldEnd; i++) result.push({ type: "del", text: oldLines[i], lineNum: startLine + i });
-
-  const newEnd = newLines.length - suffix;
-  for (let i = prefix; i < newEnd; i++) result.push({ type: "add", text: newLines[i], lineNum: startLine + i });
-
-  const postStart = oldLines.length - suffix;
-  const postEnd = Math.min(oldLines.length, postStart + ctx);
-  for (let i = postStart; i < postEnd; i++) result.push({ type: "ctx", text: oldLines[i], lineNum: startLine + i });
-  return result;
 }

@@ -48,6 +48,10 @@ export async function runEditFileToolSmoke({ setupTmp, cleanup }) {
     lspService,
   });
   assert.equal(result.details.error, undefined);
+  assert.ok(result.content[0].text.includes("[diff]"));
+  assert.ok(result.content[0].text.includes("@@ lines 2-3 @@"));
+  assert.ok(result.content[0].text.includes("-2: two"));
+  assert.ok(result.content[0].text.includes("+2: TWO"));
   assert.ok(result.content[0].text.includes("[diagnostics]"));
   assert.ok(result.content[0].text.includes("Current file diagnostic"));
   assert.ok(!result.content[0].text.includes("Other file diagnostic"));
