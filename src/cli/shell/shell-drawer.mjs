@@ -1,4 +1,4 @@
-import { truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
+import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { PREFIX, R } from "../tui/ui-theme.mjs";
 
 const CONTROL_RE = /\x1b(?:\][^\x07]*(?:\x07|\x1b\\)|\[(?![0-9;]*m)[0-?]*[ -/]*[@-~]|[@-Z\\-_])/g;

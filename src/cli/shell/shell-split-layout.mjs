@@ -1,4 +1,4 @@
-import { truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
+import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { PREFIX, R } from "../tui/ui-theme.mjs";
 
 const BORDER_PREFIX = PREFIX.fg238;

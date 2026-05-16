@@ -1,4 +1,4 @@
-import { defineTool } from "@mariozechner/pi-coding-agent";
+import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { toolText } from "../agent/tool-result.mjs";
 import { searchWeb } from "./search.mjs";

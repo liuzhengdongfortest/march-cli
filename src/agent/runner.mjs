@@ -2,7 +2,7 @@ import {
   createAgentSession,
   ModelRegistry,
   SettingsManager,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 import { createMarchAuthStorage } from "../auth/storage.mjs";
 import { ContextEngine } from "../context/engine.mjs";
 import { createMarchLifecycleAdapter } from "../extensions/lifecycle-adapter.mjs";

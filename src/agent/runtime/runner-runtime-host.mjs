@@ -1,4 +1,4 @@
-import { createAgentSessionRuntime } from "@mariozechner/pi-coding-agent";
+import { createAgentSessionRuntime } from "@earendil-works/pi-coding-agent";
 import { createMarchRuntimeFactory } from "./runtime-factory.mjs";
 import { createRuntimeHost } from "./runtime-host.mjs";
 import { resolveRunnerSessionOptions } from "../session/session-options.mjs";

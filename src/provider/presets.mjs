@@ -1,5 +1,5 @@
-import { getProviders } from "@mariozechner/pi-ai";
-import { getOAuthProviders } from "@mariozechner/pi-ai/oauth";
+import { getProviders } from "@earendil-works/pi-ai";
+import { getOAuthProviders } from "@earendil-works/pi-ai/oauth";
 
 const PROVIDER_LABELS = {
   anthropic: "Anthropic",

@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 import { resolve } from "node:path";
-import { AuthStorage } from "@mariozechner/pi-coding-agent";
+import { AuthStorage } from "@earendil-works/pi-coding-agent";
 
 export function getMarchAuthPath(homeDir = homedir()) {
   return resolve(homeDir, ".march", "auth.json");

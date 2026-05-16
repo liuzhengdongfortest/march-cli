@@ -1,4 +1,4 @@
-import { matchesKey } from "@mariozechner/pi-tui";
+import { matchesKey } from "@earendil-works/pi-tui";
 import { DEFAULT_KEYBINDINGS, KEYBINDING_ACTIONS } from "./keybindings.mjs";
 
 export const TERMINAL_KEY_SEQUENCES = Object.freeze({

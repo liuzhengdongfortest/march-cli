@@ -1,5 +1,5 @@
 import { createInterface } from "node:readline";
-import { AuthStorage } from "@mariozechner/pi-coding-agent";
+import { AuthStorage } from "@earendil-works/pi-coding-agent";
 import { globalConfigJsonPath, upsertProviderProfile } from "../config/config-json.mjs";
 import { getMarchAuthPath } from "../auth/storage.mjs";
 import { selectWithKeyboard } from "../cli/input/select-with-keyboard.mjs";

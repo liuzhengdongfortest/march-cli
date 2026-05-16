@@ -1,5 +1,5 @@
 import { marked } from "marked";
-import { visibleWidth } from "@mariozechner/pi-tui";
+import { visibleWidth } from "@earendil-works/pi-tui";
 import { R, brightBlack, dim, orange, softGreen, bold, cyan } from "./ui-theme.mjs";
 const TABLE_CELL_PADDING = 2;
 export function renderMarkdown(markdown, width) {

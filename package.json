@@ -21,9 +21,9 @@
     "context": "cd .. && node march-cli/bin/march.mjs --dump-context"
   },
   "dependencies": {
-    "@mariozechner/pi-ai": "^0.73.0",
-    "@mariozechner/pi-coding-agent": "^0.73.0",
-    "@mariozechner/pi-tui": "^0.73.0",
+    "@earendil-works/pi-ai": "^0.74.0",
+    "@earendil-works/pi-coding-agent": "^0.74.0",
+    "@earendil-works/pi-tui": "^0.74.0",
     "@xterm/headless": "^5.5.0",
     "marked": "^18.0.3",
     "node-pty": "^1.1.0",

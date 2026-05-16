@@ -1,4 +1,4 @@
-import { loadProjectContextFiles } from "@mariozechner/pi-coding-agent";
+import { loadProjectContextFiles } from "@earendil-works/pi-coding-agent";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 

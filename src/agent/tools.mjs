@@ -1,4 +1,4 @@
-import { defineTool } from "@mariozechner/pi-coding-agent";
+import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { createCommandExecTool } from "./command-exec-tool.mjs";
 import { createContextStatsTool } from "./context-stats-tool.mjs";

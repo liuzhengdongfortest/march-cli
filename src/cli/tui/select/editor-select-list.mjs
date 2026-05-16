@@ -1,4 +1,4 @@
-import { SelectList, fuzzyFilter, matchesKey } from "@mariozechner/pi-tui";
+import { SelectList, fuzzyFilter, matchesKey } from "@earendil-works/pi-tui";
 import { EDITOR_THEME } from "../ui-theme.mjs";
 
 export function showEditorSelectList({

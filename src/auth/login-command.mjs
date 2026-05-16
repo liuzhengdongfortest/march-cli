@@ -1,6 +1,6 @@
 import { createInterface } from "node:readline";
 import { homedir } from "node:os";
-import { AuthStorage } from "@mariozechner/pi-coding-agent";
+import { AuthStorage } from "@earendil-works/pi-coding-agent";
 import { getMarchAuthPath } from "./storage.mjs";
 
 export async function runLoginCommand({

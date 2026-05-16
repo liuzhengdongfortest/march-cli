@@ -1,4 +1,4 @@
-import { getModel } from "@mariozechner/pi-ai";
+import { getModel } from "@earendil-works/pi-ai";
 import { MARCH_BASE_TOOL_NAMES } from "../tool-names.mjs";
 import { createMarchCustomTools } from "../tools.mjs";
 

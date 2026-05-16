@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { readdirSync } from "node:fs";
-import { CombinedAutocompleteProvider } from "@mariozechner/pi-tui";
+import { CombinedAutocompleteProvider } from "@earendil-works/pi-tui";
 
 const MARCH_COMMANDS = [
   { name: "new", description: "Start a new pi session" },

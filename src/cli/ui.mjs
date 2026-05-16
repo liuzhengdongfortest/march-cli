@@ -1,5 +1,5 @@
 import { stdout } from "node:process";
-import { Editor, ProcessTerminal, TUI } from "@mariozechner/pi-tui";
+import { Editor, ProcessTerminal, TUI } from "@earendil-works/pi-tui";
 import { buildMarchCommands, MarchAutocompleteProvider } from "./input/autocomplete.mjs";
 import { getExternalEditorCommand, openTextInExternalEditor } from "./input/external-editor.mjs";
 import { createJsonUI, createPlainUI } from "./fallback-ui.mjs";

@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { visibleWidth } from "@mariozechner/pi-tui";
+import { visibleWidth } from "@earendil-works/pi-tui";
 
 export async function runStatusBarSmoke() {
   console.log("--- smoke: status bar ---");

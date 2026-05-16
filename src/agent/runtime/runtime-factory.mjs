@@ -1,7 +1,7 @@
 import {
   createAgentSessionFromServices,
   createAgentSessionServices,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 
 export function createMarchRuntimeFactory({
   agentDir,

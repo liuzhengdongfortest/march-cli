@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { Editor, TUI } from "@mariozechner/pi-tui";
+import { Editor, TUI } from "@earendil-works/pi-tui";
 import { FakeTerminal } from "./helpers/fake-terminal.mjs";
 
 export async function runTuiAutocompleteEscSmoke({ setupTmp, cleanup }) {

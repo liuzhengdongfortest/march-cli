@@ -1,4 +1,4 @@
-import { visibleWidth } from "@mariozechner/pi-tui";
+import { visibleWidth } from "@earendil-works/pi-tui";
 import { R, brightBlack, dim } from "./ui-theme.mjs";
 import { renderMarkdown, renderStreamingMarkdown } from "./markdown-renderer.mjs";
 

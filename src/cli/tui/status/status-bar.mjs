@@ -1,4 +1,4 @@
-import { visibleWidth } from "@mariozechner/pi-tui";
+import { visibleWidth } from "@earendil-works/pi-tui";
 import { statusBar, R } from "../ui-theme.mjs";
 
 const ANSI_RE = /\x1b\[[0-?]*[ -/]*[@-~]/g;
