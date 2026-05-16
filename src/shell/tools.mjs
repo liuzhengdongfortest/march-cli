@@ -1,6 +1,7 @@
 import { defineTool } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
 import { toolText } from "../agent/tool-result.mjs";
+import { createTerminalReadTool } from "./tool-read.mjs";
 
 export function createShellTools(shellRuntime = null, { platform = process.platform } = {}) {
   if (!shellRuntime) return [];
@@ -162,6 +163,8 @@ export function createShellTools(shellRuntime = null, { platform = process.platf
     },
   });
 
+  const terminalRead = createTerminalReadTool(shellRuntime);
+
   const terminalSnapshot = defineTool({
     name: "terminal_snapshot",
     label: "Terminal Snapshot",
@@ -178,7 +181,7 @@ export function createShellTools(shellRuntime = null, { platform = process.platf
     },
   });
 
-  return [terminalSpawn, terminalSend, terminalList, terminalKill, terminalResize, terminalClear, terminalSearch, terminalSnapshot];
+  return [terminalSpawn, terminalSend, terminalList, terminalKill, terminalResize, terminalClear, terminalSearch, terminalRead, terminalSnapshot];
 }
 
 function formatShell(shell) {
@@ -213,11 +216,8 @@ function normalizeShellToolInput(text, key, { platform = process.platform } = {}
     .replace(/\\r\\n|\\n|\\r/g, marker)
     .replace(/\r\n|\n|\r/g, marker)
     .replaceAll(marker, enter);
-  // fix: normalizeShellToolInput handles explicit newlines
   return normalizedText + (key ? controlKeyToSequence(key, { platform }) : "");
 }
-
-
 
 function controlKeyToSequence(key, { platform = process.platform } = {}) {
   const normalized = String(key ?? "").trim().toLowerCase().replace(/[-+ ]/g, "_");

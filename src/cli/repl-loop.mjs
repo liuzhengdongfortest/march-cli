@@ -5,6 +5,7 @@ import { expandPromptTemplate } from "./input/prompt-templates.mjs";
 import { parseInlineShellInput, runInlineShellCommand } from "./repl-commands.mjs";
 import { formatRecallHints } from "../memory/markdown-store.mjs";
 import { formatMessageAttachmentsForDisplay } from "../session/attachment-display.mjs";
+import { formatShellHints } from "../shell/hints.mjs";
 
 export async function runSingleShotPrompt({
   prompt,
@@ -19,8 +20,9 @@ export async function runSingleShotPrompt({
   memoryStore.beginTurn();
   const userRecallHints = memoryStore.recallForUser(prompt, { currentProject, excludedIds: runner.engine.getRecentRecallMemoryIds?.() ?? [] });
   const recallBlock = formatRecallHints("user", userRecallHints);
+  const shellHints = formatShellHints(runner.shellRuntime);
   const modePrompt = appendModeReminder(prompt, modeState?.get?.());
-  const fullPrompt = `${modePrompt}${recallBlock ? `\n\n${recallBlock}` : ""}`;
+  const fullPrompt = appendPromptBlocks(modePrompt, recallBlock, shellHints);
   ui.writeln(formatUserDisplayMessage(prompt));
   ui.passiveRecall?.({ source: "user", hints: userRecallHints });
   refreshStatusBar.startWorking?.();
@@ -126,8 +128,9 @@ async function runReplTurn({ prompt, args, runner, memoryStore, currentProject, 
   memoryStore.beginTurn();
   const userRecallHints = memoryStore.recallForUser(prompt, { currentProject, excludedIds: runner.engine.getRecentRecallMemoryIds?.() ?? [] });
   const recallBlock = formatRecallHints("user", userRecallHints);
+  const shellHints = formatShellHints(runner.shellRuntime);
   const modePrompt = appendModeReminder(prompt, modeState?.get?.());
-  const fullPrompt = `${modePrompt}${recallBlock ? `\n\n${recallBlock}` : ""}`;
+  const fullPrompt = appendPromptBlocks(modePrompt, recallBlock, shellHints);
   try {
     ui.writeln(formatUserDisplayMessage(prompt));
     ui.passiveRecall?.({ source: "user", hints: userRecallHints });
@@ -147,4 +150,8 @@ async function runReplTurn({ prompt, args, runner, memoryStore, currentProject, 
 
 export function formatUserDisplayMessage(prompt) {
   return `${inverse(" USER ")} ${formatMessageAttachmentsForDisplay(prompt)}`;
+}
+
+function appendPromptBlocks(prompt, ...blocks) {
+  return [prompt, ...blocks.filter(Boolean)].join("\n\n");
 }

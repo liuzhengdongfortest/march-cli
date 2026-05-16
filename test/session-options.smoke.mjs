@@ -30,6 +30,7 @@ export async function runSessionOptionsSmoke() {
   assert.ok(options.tools.includes("command_exec"));
   assert.ok(options.tools.includes("edit_file"));
   assert.ok(options.tools.includes("terminal_spawn"));
+  assert.ok(options.tools.includes("terminal_read"));
   assert.ok(options.tools.includes("terminal_snapshot"));
   assert.ok(options.tools.includes("remember"));
 

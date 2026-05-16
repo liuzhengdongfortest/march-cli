@@ -147,6 +147,10 @@ MCP tools 进入 [tools]
 
 `[diagnostics]` 和 `[shells]` 不再由 `ContextEngine.buildContextLayers()` 注入。LSP 服务、shell runtime、shell pane、`/shell` 命令和 terminal tools 仍保留；AI 需要时按需通过工具或 UI 反馈获取这些事实。
 
+### Shell 线索改为用户消息尾部提示
+
+用户消息会附加极短 `[shell_hints]`，只列 shell id/name/status/command/cwd/line count，不包含输出。AI 需要内容时通过 `terminal_read` 读取；`terminal_snapshot` 保留给视觉/ANSI 调试。
+
 ### `recent_chat` 保留窗口已改为 10
 
 已将 `ContextEngine.recordTurn()` 的历史 turn 保留窗口从 20 改为 10，和 `docs/context-core.md` 以及 passive recall 的 rolling suppression window 对齐。

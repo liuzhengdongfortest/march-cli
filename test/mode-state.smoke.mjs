@@ -20,6 +20,17 @@ export async function runModeStateSmoke() {
     prompt: "please inspect",
     runner: {
       engine: { buildContext: () => "[system]\nctx" },
+      shellRuntime: {
+        listShells: () => [{
+          id: "sh1",
+          name: "dev",
+          status: "running",
+          command: "npm",
+          args: ["run", "dev"],
+          cwd: "D:/repo",
+          scrollbackLineCount: 42,
+        }],
+      },
       runTurn: async (fullPrompt, userMessage) => {
         prompts.push(fullPrompt);
         userMessages.push(userMessage);
@@ -42,6 +53,9 @@ export async function runModeStateSmoke() {
   assert.ok(prompts[0].startsWith("please inspect\n\n<mode>"));
   assert.ok(!prompts[0].includes("[system]"));
   assert.ok(prompts[0].includes("You are in discuss mode"));
+  assert.ok(prompts[0].includes("[shell_hints]"));
+  assert.ok(prompts[0].includes("sh1 dev running command: npm run dev cwd: D:/repo lines: 42"));
+  assert.ok(prompts[0].includes("Use terminal_read or terminal_snapshot"));
   assert.ok(!userMessages[0].includes("<mode>"));
   assert.ok(uiLines.join("\n").includes("please inspect"));
   console.log("  PASS");

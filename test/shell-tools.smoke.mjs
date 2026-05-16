@@ -34,6 +34,7 @@ export async function runShellToolsSmoke() {
   assert.ok(byName.terminal_resize);
   assert.ok(byName.terminal_clear);
   assert.ok(byName.terminal_search);
+  assert.ok(byName.terminal_read);
   assert.ok(byName.terminal_snapshot);
 
   const spawned = await byName.terminal_spawn.execute("tc1", {
@@ -68,6 +69,18 @@ export async function runShellToolsSmoke() {
   assert.equal(snapshot.content[0].text, "seen:hello\nseen: by-name");
   assert.equal(snapshot.details.plain, "seen:hello\nseen: by-name");
   assert.ok(snapshot.details.screen);
+
+  const readScrollback = await byName.terminal_read.execute("tc-read-scrollback", { shell_id: "dev", source: "scrollback", lines: 1 });
+  assert.ok(readScrollback.content[0].text.includes("## dev (sh1)"));
+  assert.ok(readScrollback.content[0].text.includes("source: scrollback"));
+  assert.ok(readScrollback.content[0].text.includes("seen: by-name"));
+  assert.ok(!readScrollback.content[0].text.includes("seen:hello"));
+  assert.equal(readScrollback.details.source, "scrollback");
+
+  const readBoth = await byName.terminal_read.execute("tc-read-both", { shell_id: "dev", source: "both", lines: 2 });
+  assert.ok(readBoth.content[0].text.includes("-- screen --"));
+  assert.ok(readBoth.content[0].text.includes("-- scrollback --"));
+  assert.ok(readBoth.content[0].text.includes("seen:hello"));
 
   const sentEnter = await byName.terminal_send.execute("tc-enter", { shell_id: "sh1", text: "Get-ChildItem\n" });
   assert.ok(sentEnter.content[0].text.includes("Sent 14 chars"));
