@@ -9,6 +9,7 @@ export function showEditorSelectList({
   maxVisible = 8,
   requestRender,
   suppressInitialLineFeed = false,
+  suppressInitialConfirm = false,
   searchable = false,
   getSearchText = defaultSearchText,
 }) {
@@ -39,7 +40,7 @@ export function showEditorSelectList({
     editor.autocompleteList = list;
     let isFirstInput = true;
     removeInputListener = tui.addInputListener((data) => {
-      if (isFirstInput && suppressInitialLineFeed && data === "\n") {
+      if (isFirstInput && (suppressInitialConfirm || suppressInitialLineFeed) && isConfirmInput(data)) {
         isFirstInput = false;
         requestRender();
         return { consume: true };
@@ -83,6 +84,10 @@ function defaultSearchText(item) {
 
 function isBackspace(data) {
   return data === "\x7f" || data === "\b" || matchesKey(data, "backspace");
+}
+
+function isConfirmInput(data) {
+  return data === "\r" || data === "\n" || matchesKey(data, "enter") || matchesKey(data, "return");
 }
 
 function decodeSinglePrintable(data) {

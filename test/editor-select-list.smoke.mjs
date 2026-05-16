@@ -41,7 +41,7 @@ export async function runEditorSelectListSmoke() {
   calls.length = 0;
   inputListener = null;
   let resolved = false;
-  const suppressedPromise = showEditorSelectList({
+  const suppressedLfPromise = showEditorSelectList({
     tui,
     editor,
     items: [{ value: "a", label: "A" }, { value: "b", label: "B" }],
@@ -56,7 +56,27 @@ export async function runEditorSelectListSmoke() {
   await Promise.resolve();
   assert.equal(resolved, false);
   assert.deepEqual(inputListener("\r"), { consume: true });
-  assert.deepEqual(await suppressedPromise, { value: "a", label: "A" });
+  assert.deepEqual(await suppressedLfPromise, { value: "a", label: "A" });
+
+  calls.length = 0;
+  inputListener = null;
+  resolved = false;
+  const suppressedConfirmPromise = showEditorSelectList({
+    tui,
+    editor,
+    items: [{ value: "a", label: "A" }, { value: "b", label: "B" }],
+    requestRender: () => calls.push("render"),
+    suppressInitialConfirm: true,
+  }).then((item) => {
+    resolved = true;
+    return item;
+  });
+
+  assert.deepEqual(inputListener("\r"), { consume: true });
+  await Promise.resolve();
+  assert.equal(resolved, false);
+  assert.deepEqual(inputListener("\r"), { consume: true });
+  assert.deepEqual(await suppressedConfirmPromise, { value: "a", label: "A" });
 
   calls.length = 0;
   inputListener = null;
@@ -66,6 +86,7 @@ export async function runEditorSelectListSmoke() {
     editor,
     items: [{ value: "alpha", label: "Alpha" }, { value: "beta", label: "Beta" }],
     requestRender: () => calls.push("render"),
+    suppressInitialConfirm: true,
     searchable: true,
     getSearchText: (item) => item.label,
   }).then((item) => {
@@ -73,6 +94,9 @@ export async function runEditorSelectListSmoke() {
     return item;
   });
 
+  assert.deepEqual(inputListener("\r"), { consume: true });
+  await Promise.resolve();
+  assert.equal(resolved, false);
   assert.deepEqual(inputListener("z"), { consume: true });
   assert.equal(editor.getText(), "z");
   assert.equal(editor.autocompleteList.filteredItems.length, 0);

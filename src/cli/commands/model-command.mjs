@@ -41,7 +41,7 @@ export async function handleModelCommand(parsed, { runner, ui = null, configHome
       items: buildModelSelectItems({ current, scopedModels }),
       selectedIndex,
       width: 72,
-      suppressInitialLineFeed: true,
+      suppressInitialConfirm: true,
       searchable: true,
       getSearchText: modelSelectSearchText,
     });
