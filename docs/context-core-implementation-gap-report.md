@@ -46,7 +46,7 @@
 | 优先级 | 差异 | 当前代码 | 文档要求 | 影响 |
 |---|---|---|---|---|
 | P0 | `diagnostics` 缺失 | 无上下文诊断层 | 独立 `[diagnostics]` | AI 不能从上下文看到当前编译、LSP、lint 问题 |
-| P1 | `workspace_status` 数据不完整 | 已有目录树 | 目录树、git 状态、最近变更 | AI 仍缺少当前工作区变更事实 |
+| P1 | `workspace_status` 数据不完整 | 已有项目路径 | 项目路径、git 状态、最近变更 | AI 仍缺少当前工作区变更事实 |
 | P1 | 当前 turn 的 recall hint 不在 `[recent_chat]` | 拼在最终 prompt 的 `[user]` 后 | 跟随消息附加在 `[recent_chat]` 中 | 语义上可用，但与文档模型不一致 |
 | P2 | `shells` 按字符截断 | 2000 字符 | 最近 200 行纯文本 | 长行/短行场景下摘要边界不符合文档 |
 
@@ -82,7 +82,6 @@ related information
 
 ```text
 project
-Directory tree
 ```
 
 文档还要求：
@@ -199,7 +198,11 @@ MCP tools 进入 [tools]
 
 ### `session_status` 已拆分
 
-已将旧 `[session_status]` 拆成 `[session_identity]` 和 `[workspace_status]`。`[session_identity]` 保留 cwd、workspace root、平台、shell；目录树迁移到 `[workspace_status]`。
+已将旧 `[session_status]` 拆成 `[session_identity]` 和 `[workspace_status]`。`[session_identity]` 保留 cwd、workspace root、平台、shell；`[workspace_status]` 保留项目路径。
+
+### 常驻目录树已移除
+
+`[workspace_status]` 不再注入 `Directory tree`。需要导航时由 AI 通过 `glob` / `grep` 按需查询，避免每次 model call 常驻低信噪比目录摘要。
 
 ### `recent_chat` 保留窗口已改为 10
 
