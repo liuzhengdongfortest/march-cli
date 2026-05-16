@@ -51,6 +51,7 @@ import { runTuiShellDrawerSmoke } from "./tui-shell-drawer.smoke.mjs";
 import { runUserDisplayMessageSmoke } from "./user-display-message.smoke.mjs";
 import { runWebSearchConfigCommandSmoke } from "./websearch-config-command.smoke.mjs";
 import { runWebToolsSmoke } from "./web-tools.smoke.mjs";
+import { FakeTerminal } from "./helpers/fake-terminal.mjs";
 
 // Minimal mocks for smoke testing without DEEPSEEK_API_KEY
 
@@ -62,6 +63,10 @@ function setupTmp() {
 
 function cleanup(dir) {
   try { rmSync(dir, { recursive: true, force: true }); } catch {}
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // ── 1. CLI args parsing ──────────────────────────────────────────────
@@ -153,6 +158,30 @@ await runShellSplitLayoutSmoke();
 await runShellToolsSmoke();
 await runNodePtyAdapterSmoke();
 await runTuiShellDrawerSmoke({ setupTmp, cleanup });
+
+{
+  console.log("--- smoke: TUI resize clears scrollback ---");
+  const { createTuiUI } = await import("../src/cli/ui.mjs");
+  const terminal = new FakeTerminal();
+  terminal.columns = 40;
+  terminal.rows = 6;
+  const ui = createTuiUI({ terminal });
+  ui.writeln("line1");
+  ui.writeln("line2");
+  ui.writeln("line3");
+  ui.writeln("line4");
+  ui.writeln("line5");
+  ui.writeln("line6");
+  await delay(50);
+  terminal.writes = [];
+  terminal.rows = 5;
+  terminal.onResize?.();
+  await delay(100);
+  assert.ok(terminal.writes.join("").includes("\x1b[3J"));
+  await ui.close();
+  console.log("  PASS");
+}
+
 await runContextSessionStatusSmoke();
 await runContextStatsToolSmoke({ setupTmp, cleanup });
 
