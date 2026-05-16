@@ -3,6 +3,7 @@ import { dirname } from "node:path";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { toolText } from "./tool-result.mjs";
+import { applyReplaceTextPatch, applyReplaceRangePatch } from "./editing/diff-apply.mjs";
 import { formatAppliedDiff, formatDiff } from "./editing/diff-format.mjs";
 import { buildDiagnosticsForPath } from "../context/diagnostics.mjs";
 
@@ -83,6 +84,9 @@ async function patchFile({ absPath, path, edits, engine, ui, lspService }) {
   }
   if (!Array.isArray(edits) || edits.length === 0) {
     return toolText("Error: mode=patch requires at least one edit", { error: true });
+  }
+  if (edits.length > 50) {
+    return toolText("Error: maximum 50 edits per call", { error: true });
   }
 
   const content = readFileSync(absPath, "utf8");

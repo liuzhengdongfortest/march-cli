@@ -31,6 +31,15 @@ export function formatDiff(oldText, newText, { startLine = 1 } = {}) {
   return result;
 }
 
+export function countDiffChanges(diffLines) {
+  let adds = 0, dels = 0;
+  for (const line of diffLines) {
+    if (line.type === "add") adds++;
+    if (line.type === "del") dels++;
+  }
+  return { adds, dels };
+}
+
 export function formatAppliedDiff(edits) {
   const lines = ["[diff]"];
   for (const edit of edits) {

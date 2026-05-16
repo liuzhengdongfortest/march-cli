@@ -35,7 +35,11 @@ export function executeCommand({ cwd, command, shell = "auto", timeout = 60, spa
     windowsHide: true,
     maxBuffer: OUTPUT_LIMIT,
   });
-  if (result.error) return toolText(`Error: ${result.error.message}`, { error: true });
+  if (result.error) {
+    const isTimeout = result.error.code === "ETIMEDOUT" || result.signal === "SIGTERM";
+    const detail = isTimeout ? ` (timed out after ${timeout}s)` : "";
+    return toolText(`Error: ${result.error.message}${detail}`, { error: true });
+  }
   const stdout = stripAnsi(result.stdout ?? "");
   const stderr = stripAnsi(result.stderr ?? "");
   const output = formatCommandOutput({ stdout, stderr, status: result.status });
