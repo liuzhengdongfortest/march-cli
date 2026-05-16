@@ -61,6 +61,10 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   const searchResult = await search.execute("t1", { query: "explicitly", limit: 5 });
   assert.ok(searchResult.content[0].text.includes("explicitly"));
 
+  const idMiss = await search.execute("t1b", { query: "mem_missing", limit: 5 });
+  assert.ok(idMiss.content[0].text.includes("literal ripgrep"));
+  assert.ok(idMiss.content[0].text.includes("Use memory_open({ id })"));
+
   const deprecated = store.save({
     name: "Deprecated memory",
     description: "Deprecated memories are excluded from search.",

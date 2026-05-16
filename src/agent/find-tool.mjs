@@ -11,7 +11,7 @@ export function createFindTool({ cwd }) {
   return defineTool({
     name: "find",
     label: "Find Files",
-    description: "Find files by glob pattern. Pattern is matched relative to the search directory, so find('src/**/*.mjs') and find('**/*.mjs', path:'src') both work.",
+    description: "Find files by glob pattern. Pattern is matched relative to the search directory. Basename-only patterns like '*.mjs' search recursively, so find('*.mjs', path:'src') and find('src/**/*.mjs') both work.",
     parameters: Type.Object({
       pattern: Type.String({ description: "Glob pattern to match files, e.g. '*.mjs', '**/*.json', or 'src/**/*.test.mjs'" }),
       path: Type.Optional(Type.String({ description: "Directory to search in (default: current directory)" })),
@@ -25,6 +25,7 @@ export function executeFind({ cwd, pattern, path = ".", limit = DEFAULT_LIMIT })
   const searchRoot = resolveSearchRoot(cwd, path);
   const trimmedPattern = String(pattern ?? "").trim().replaceAll("\\", "/");
   if (!trimmedPattern) return toolText("Error: pattern is required", { error: true });
+  const effectivePattern = normalizePattern(trimmedPattern);
 
   const max = Math.max(1, Number(limit) || DEFAULT_LIMIT);
   let files;
@@ -37,19 +38,25 @@ export function executeFind({ cwd, pattern, path = ".", limit = DEFAULT_LIMIT })
   const matches = [];
   for (const file of files) {
     const rel = toPosix(relative(searchRoot, file));
-    if (!matchesGlob(trimmedPattern, rel)) continue;
+    if (!matchesGlob(effectivePattern, rel)) continue;
     matches.push(rel);
     if (matches.length >= max) break;
   }
 
-  if (matches.length === 0) return toolText("No files found matching pattern", { pattern: trimmedPattern, path: searchRoot, count: 0 });
+  if (matches.length === 0) return toolText("No files found matching pattern", { pattern: trimmedPattern, effectivePattern, path: searchRoot, count: 0 });
   const limitHint = matches.length >= max ? `\n\n[Results truncated to ${max}. Increase limit or refine pattern.]` : "";
   return toolText(`${matches.join("\n")}${limitHint}`, {
     pattern: trimmedPattern,
+    effectivePattern: effectivePattern === trimmedPattern ? undefined : effectivePattern,
     path: searchRoot,
     count: matches.length,
     resultLimitReached: matches.length >= max ? max : undefined,
   });
+}
+
+function normalizePattern(pattern) {
+  if (pattern.includes("/") || pattern.includes("**")) return pattern;
+  return `**/${pattern}`;
 }
 
 function resolveSearchRoot(cwd, path) {

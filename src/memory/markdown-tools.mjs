@@ -16,7 +16,7 @@ export function createMarkdownMemoryTools(store) {
       }),
       execute: async (_toolCallId, params) => {
         const results = store.searchRipgrep(params.query, { limit: params.limit ?? 20 });
-        if (results.length === 0) return toolText(`No memory files matched "${params.query}".`);
+        if (results.length === 0) return toolText(formatMemorySearchMiss(params.query));
         return toolText(results.map((result) => result.line).join("\n"), { results });
       },
     }),
@@ -85,4 +85,16 @@ export function createMarkdownMemoryTools(store) {
       },
     }),
   ];
+}
+
+function formatMemorySearchMiss(query) {
+  const text = String(query ?? "");
+  const lines = [
+    `No memory files matched "${text}".`,
+    "memory_search is literal ripgrep over Markdown files; it is not semantic search and does not use passive-recall hints.",
+  ];
+  if (/^mem_[a-z0-9_\-]+$/i.test(text.trim())) {
+    lines.push("This looks like a memory id. Use memory_open({ id }) to open it directly.");
+  }
+  return lines.join("\n");
 }

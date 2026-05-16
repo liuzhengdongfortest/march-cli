@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 export async function runReadFileToolSmoke({ setupTmp, cleanup }) {
@@ -17,6 +17,15 @@ export async function runReadFileToolSmoke({ setupTmp, cleanup }) {
   assert.ok(result.content[0].text.includes("Use offset=4 to continue"));
   assert.equal(result.details.totalLines, 4);
   assert.equal(result.details.truncated, true);
+
+  const nestedDir = join(dir, "nested");
+  mkdirSync(nestedDir);
+  const directoryResult = readFileSlice({ engine, path: nestedDir });
+  assert.equal(directoryResult.details.error, true);
+  assert.equal(directoryResult.details.isDirectory, true);
+  assert.ok(directoryResult.content[0].text.includes("this is a directory"));
+  assert.ok(directoryResult.content[0].text.includes("Use ls(path) or find(pattern, path)"));
+
   cleanup(dir);
   console.log("  PASS");
 }

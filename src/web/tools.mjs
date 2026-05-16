@@ -20,6 +20,13 @@ export function createWebTools({ tavilyKey, braveKey } = {}) {
       ),
     }),
     execute: async (_toolCallId, params) => {
+      if (!tavilyKey && !braveKey) {
+        return toolText(
+          "Search unavailable: no Tavily or Brave API key is configured in this March environment. Run: march websearch --config",
+          { error: true, unavailable: true, reason: "missing_api_key" },
+        );
+      }
+
       try {
         const { results, provider } = await searchWeb(params.query, {
           tavilyKey,
@@ -68,6 +75,12 @@ export function createWebTools({ tavilyKey, braveKey } = {}) {
           { url: result.url, length: result.length, truncated: result.truncated },
         );
       } catch (err) {
+        if (isNetworkUnavailableError(err)) {
+          return toolText(
+            `Fetch unavailable: this March environment cannot reach the network (${err.message}).`,
+            { error: true, unavailable: true, reason: "network_unavailable" },
+          );
+        }
         return toolText(`Fetch failed: ${err.message}`, { error: true });
       }
     },
@@ -82,4 +95,13 @@ export function createWebToolsFromConfig(config = {}) {
     tavilyKey: providers.tavily?.apiKey ?? "",
     braveKey: providers.brave?.apiKey ?? "",
   });
+}
+
+function isNetworkUnavailableError(err) {
+  const code = String(err?.code ?? err?.cause?.code ?? "");
+  const name = String(err?.name ?? "");
+  const message = String(err?.message ?? "");
+  return name === "AbortError"
+    || ["ENOTFOUND", "ECONNREFUSED", "ECONNRESET", "ETIMEDOUT", "EAI_AGAIN"].includes(code)
+    || /fetch failed|getaddrinfo|network|timeout|timed out/i.test(message);
 }

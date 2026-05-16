@@ -23,6 +23,11 @@ export async function runFindToolSmoke({ setupTmp, cleanup }) {
   assert.ok(result.content[0].text.includes("main.mjs"));
   assert.ok(result.content[0].text.includes("nested/child.mjs"));
 
+  result = executeFind({ cwd: dir, pattern: "*.mjs", path: "src" });
+  assert.equal(result.details.effectivePattern, "**/*.mjs");
+  assert.ok(result.content[0].text.includes("main.mjs"));
+  assert.ok(result.content[0].text.includes("nested/child.mjs"));
+
   result = executeFind({ cwd: dir, pattern: "**/*.mjs", limit: 1 });
   assert.equal(result.details.resultLimitReached, 1);
   assert.ok(result.content[0].text.includes("Results truncated to 1"));

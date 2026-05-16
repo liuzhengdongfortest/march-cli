@@ -26,6 +26,9 @@ export function readFileSlice({ engine, path, offset = 1, limit = DEFAULT_LIMIT 
   try {
     content = readFileSync(absPath, "utf8");
   } catch (err) {
+    if (err?.code === "EISDIR") {
+      return toolText(`Error reading ${absPath}: this is a directory. Use ls(path) or find(pattern, path) to inspect it.`, { error: true, path: absPath, isDirectory: true });
+    }
     return toolText(`Error reading ${absPath}: ${err.message}`, { error: true, path: absPath });
   }
 
