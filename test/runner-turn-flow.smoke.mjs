@@ -46,6 +46,13 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
         emit({ type: "message_update", assistantMessageEvent: { type: "thinking_end" } });
         emit({ type: "tool_execution_start", toolName: "read", args: { path: "a.txt" } });
         emit({ type: "tool_execution_end", toolName: "read", isError: false, result: "file body" });
+        providerPayloads.push(await this.agent.onPayload({
+          messages: [
+            { role: "system", content: "Pi system" },
+            { role: "assistant", content: null, tool_calls: [{ id: "call_1", type: "function", function: { name: "read", arguments: '{"path":"a.txt"}' } }] },
+            { role: "tool", content: "file body", tool_call_id: "call_1" },
+          ],
+        }, this.model));
         emit({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "draft text" } });
       }
     },
@@ -73,6 +80,18 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   }
 
   const calls = [];
+  let recallCalls = 0;
+  const memoryStore = {
+    recallForAssistant(text, options) {
+      if (!text) return [];
+      recallCalls += 1;
+      assert.ok(text.includes("12345678"));
+      if (recallCalls === 1) assert.deepEqual([...options.excludedIds], []);
+      return recallCalls === 1
+        ? [{ id: "mem_thinking", name: "Thinking memory", description: "Matched from thinking text." }]
+        : [];
+    },
+  };
   const ui = {
     turnStart: () => calls.push(["turnStart"]),
     turnEnd: () => calls.push(["turnEnd"]),
@@ -82,6 +101,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
     thinkingEnd: (tokens) => calls.push(["thinkingEnd", tokens]),
     toolStart: (name, args) => calls.push(["toolStart", name, args]),
     toolEnd: (name, isError, result) => calls.push(["toolEnd", name, isError, result]),
+    passiveRecall: ({ source, hints }) => calls.push(["passiveRecall", source, hints.map((hint) => hint.id)]),
   };
   const runner = await createRunner({
     cwd: dir,
@@ -89,6 +109,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
     provider: "deepseek",
     stateRoot: join(dir, ".state"),
     ui,
+    memoryStore,
     projectMarchDir,
     syncPiSidecar: true,
     createAgentSessionImpl: async () => ({ session }),
@@ -97,6 +118,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   const result = await runner.runTurn("hello", "hello");
   assert.equal(result.draft, "draft text");
   assert.equal(promptCalls.length, 1);
+  assert.equal(providerPayloads.length, 2);
   assert.ok(!promptCalls[0].includes("[system_core]"));
   assert.equal(providerPayloads[0].messages[0].role, "system");
   assert.ok(providerPayloads[0].messages[0].content.includes("[system_core]"));
@@ -110,18 +132,23 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.ok(providerPayloads[0].messages.at(-1).content.includes("[recent_chat]"));
   assert.ok(providerPayloads[0].messages.at(-1).content.includes("[current_user]\nhello"));
   assert.equal(countUserMessagesContaining(providerPayloads[0].messages, "hello"), 1);
+  assert.equal(providerPayloads[1].messages.at(-1).role, "user");
+  assert.ok(providerPayloads[1].messages.at(-1).content.includes("[passive_recall source=\"assistant\"]"));
+  assert.ok(providerPayloads[1].messages.at(-1).content.includes("mem_thinking | Thinking memory | Matched from thinking text."));
+  assert.equal(runner.engine.turns[0].assistantRecallHints.length, 1);
+  assert.equal(runner.engine.turns[0].assistantRecallHints[0].id, "mem_thinking");
   assert.equal(runner.engine.turns[0].assistantMessage, "draft text");
 
   await runner.runTurn("second", "second");
   assert.equal(promptCalls.length, 2);
   assert.ok(!promptCalls[1].includes("[system_core]"));
-  assert.ok(providerPayloads[1].messages[0].content.includes("[system_core]"));
-  assert.ok(!providerPayloads[1].messages[0].content.includes("[recent_chat]"));
-  assert.ok(providerPayloads[1].messages.at(-1).content.includes("[recent_chat]"));
-  assert.ok(providerPayloads[1].messages.at(-1).content.includes("draft text"));
-  assert.ok(providerPayloads[1].messages.at(-1).content.includes("[current_user]\nsecond"));
-  assert.equal(countOccurrences(providerPayloads[1].messages[0].content, "[system_core]"), 1);
-  assert.ok(!providerPayloads[1].messages.some((message, index) => index > 0 && message.content.includes("[system_core]")));
+  assert.ok(providerPayloads[2].messages[0].content.includes("[system_core]"));
+  assert.ok(!providerPayloads[2].messages[0].content.includes("[recent_chat]"));
+  assert.ok(providerPayloads[2].messages.at(-1).content.includes("[recent_chat]"));
+  assert.ok(providerPayloads[2].messages.at(-1).content.includes("draft text"));
+  assert.ok(providerPayloads[2].messages.at(-1).content.includes("[current_user]\nsecond"));
+  assert.equal(countOccurrences(providerPayloads[2].messages[0].content, "[system_core]"), 1);
+  assert.ok(!providerPayloads[2].messages.some((message, index) => index > 0 && message.content.includes("[system_core]")));
   const sidecar = loadPiSessionSidecar({ projectMarchDir, sessionRef: "turn-flow.jsonl" });
   assert.equal(sidecar.state.turns[0].assistantMessage, "draft text");
   assert.ok(!("summary" in sidecar.state.turns[0]));

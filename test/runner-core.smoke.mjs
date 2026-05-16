@@ -3,7 +3,7 @@ import { strict as assert } from "node:assert";
 export async function runRunnerCoreSmoke() {
   console.log("--- smoke: March tool set ---");
   const { MARCH_BASE_TOOL_NAMES, createDefaultSessionManager, createRunner, installModelPayloadDumper, resolveRunnerSessionManager, syncEngineSessionState } = await import("../src/agent/runner.mjs");
-  const { estimateProviderPayloadTokens, replaceProviderContextMessages } = await import("../src/agent/model-payload-dumper.mjs");
+  const { appendProviderUserMessage, estimateProviderPayloadTokens, replaceProviderContextMessages } = await import("../src/agent/model-payload-dumper.mjs");
   const { createSessionBinding } = await import("../src/agent/session/session-binding.mjs");
   const { ContextEngine } = await import("../src/context/engine.mjs");
 
@@ -139,6 +139,10 @@ export async function runRunnerCoreSmoke() {
     { type: "function_call", call_id: "call_1", name: "read", arguments: "{}" },
     { type: "function_call_output", call_id: "call_1", output: "ok" },
   ]);
+  const appendedChat = appendProviderUserMessage({ messages: [{ role: "tool", content: "ok" }] }, "[passive_recall source=\"assistant\"]");
+  assert.deepEqual(appendedChat.messages.at(-1), { role: "user", content: "[passive_recall source=\"assistant\"]" });
+  const appendedResponses = appendProviderUserMessage({ instructions: "sys", input: [{ type: "function_call_output", call_id: "call_1", output: "ok" }] }, "recall block");
+  assert.deepEqual(appendedResponses.input.at(-1), { role: "user", content: [{ type: "input_text", text: "recall block" }] });
   console.log("  PASS");
 
   console.log("--- smoke: runner missing credentials message ---");

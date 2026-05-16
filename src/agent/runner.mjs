@@ -8,7 +8,8 @@ import { ContextEngine } from "../context/engine.mjs";
 import { createMarchLifecycleAdapter } from "../extensions/lifecycle-adapter.mjs";
 import { syncPiSessionSidecar } from "../session/sidecar-sync.mjs";
 import { LspService } from "../lsp/service.mjs";
-import { installModelPayloadDumper, replaceProviderContextMessages } from "./model-payload-dumper.mjs";
+import { formatRecallHints } from "../memory/markdown-store.mjs";
+import { appendProviderUserMessage, installModelPayloadDumper, replaceProviderContextMessages } from "./model-payload-dumper.mjs";
 import { cloneCurrentPiSession } from "./pi-session/pi-session-clone.mjs";
 import { forkPiSessionWithResetContext } from "./pi-session/pi-session-fork-reset.mjs";
 import { resolveInitialModel, resolveRunnerSessionManager } from "./runner/runner-init.mjs";
@@ -52,6 +53,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   const sessionBinding = createSessionBinding(null);
   let currentModelCallKind = "model";
   let currentPromptForContext = "";
+  let pendingMidTurnRecallHints = [];
   let runtimeHost = null;
   let lifecycleAdapter = null;
 
@@ -134,6 +136,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
 
     async runTurn(prompt, userMessage, { userRecallHints = [], currentProject = "" } = {}) {
       currentPromptForContext = prompt;
+      pendingMidTurnRecallHints = [];
       return runRunnerTurn({
         prompt,
         userMessage,
@@ -144,6 +147,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
         projectMarchDir,
         memoryStore,
         setModelCallKind: (kind) => { currentModelCallKind = kind; },
+        onMidTurnRecallHints: (hints) => { pendingMidTurnRecallHints.push(...hints); },
         syncCurrentPiSidecar,
       });
     },
@@ -283,6 +287,11 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
 
   function injectMarchSystemContext(payload, { kind } = {}) {
     if (kind !== "user") return payload;
-    return replaceProviderContextMessages(payload, engine.buildProviderContext(currentPromptForContext));
+    let nextPayload = replaceProviderContextMessages(payload, engine.buildProviderContext(currentPromptForContext));
+    if (pendingMidTurnRecallHints.length > 0) {
+      nextPayload = appendProviderUserMessage(nextPayload, formatRecallHints("assistant", pendingMidTurnRecallHints));
+      pendingMidTurnRecallHints = [];
+    }
+    return nextPayload;
   }
 }

@@ -2,6 +2,7 @@ export function createTurnEventState() {
   return {
     draft: "",
     thinkingText: "",
+    thinkingAccumulator: "",
     assistantReplyOpen: false,
   };
 }
@@ -57,6 +58,7 @@ function handleAssistantMessageEvent(event, { ui, state }) {
   if (event.type === "thinking_end" && state.thinkingText) {
     const tokens = Math.round(state.thinkingText.length / 4);
     ui.thinkingEnd(tokens);
+    state.thinkingAccumulator += state.thinkingText;
     state.thinkingText = "";
   }
 }

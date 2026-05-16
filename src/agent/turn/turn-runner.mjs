@@ -11,15 +11,25 @@ export async function runRunnerTurn({
   projectMarchDir,
   memoryStore,
   setModelCallKind,
+  onMidTurnRecallHints,
   syncCurrentPiSidecar,
 }) {
   const { userRecallHints = [], currentProject = "" } = options;
   const activeSession = sessionBinding.get();
   const turnState = createTurnEventState();
+  const midTurnRecallHints = [];
   ui.turnStart();
 
   const unsubscribe = activeSession.subscribe((event) => {
     handleRunnerSessionEvent(event, { ui, engine, state: turnState });
+    if (event.type === "tool_execution_end") {
+      const hints = recallForAssistantState({ memoryStore, engine, turnState, currentProject });
+      if (hints.length > 0) {
+        midTurnRecallHints.push(...hints);
+        onMidTurnRecallHints?.(hints);
+        ui.passiveRecall?.({ source: "assistant", hints });
+      }
+    }
   });
 
   try {
@@ -39,16 +49,15 @@ export async function runRunnerTurn({
     }
 
     closeAssistantReply({ ui, state: turnState });
-    const assistantRecallHints = memoryStore
-      ? memoryStore.recallForAssistant(turnState.draft, { currentProject, excludedIds: engine.getRecentRecallMemoryIds?.() ?? [] })
-      : [];
+    const assistantRecallHints = recallForAssistantState({ memoryStore, engine, turnState, currentProject });
     ui.passiveRecall?.({ source: "assistant", hints: assistantRecallHints });
+    const recordedAssistantRecallHints = uniqueHints([...midTurnRecallHints, ...assistantRecallHints]);
 
     engine.recordTurn({
       userMessage: userMessage ?? prompt.slice(0, 300),
       assistantMessage: turnState.draft,
       userRecallHints,
-      assistantRecallHints,
+      assistantRecallHints: recordedAssistantRecallHints,
     });
 
     syncCurrentPiSidecar();
@@ -57,6 +66,31 @@ export async function runRunnerTurn({
     ui.turnEnd();
     unsubscribe();
   }
+}
+
+function recallForAssistantState({ memoryStore, engine, turnState, currentProject }) {
+  if (!memoryStore) return [];
+  return memoryStore.recallForAssistant(assistantRecallText(turnState), {
+    currentProject,
+    excludedIds: engine.getRecentRecallMemoryIds?.() ?? [],
+  });
+}
+
+function assistantRecallText(turnState) {
+  return [turnState.draft, turnState.thinkingAccumulator, turnState.thinkingText]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function uniqueHints(hints) {
+  const seen = new Set();
+  const unique = [];
+  for (const hint of hints) {
+    if (!hint?.id || seen.has(hint.id)) continue;
+    seen.add(hint.id);
+    unique.push(hint);
+  }
+  return unique;
 }
 
 function resetPiMessageHistory(session) {

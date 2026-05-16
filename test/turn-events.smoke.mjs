@@ -29,6 +29,7 @@ export async function runTurnEventsSmoke() {
 
   assert.equal(state.draft, "hello");
   assert.equal(state.thinkingText, "");
+  assert.equal(state.thinkingAccumulator, "12345678");
   assert.deepEqual(calls, [
     ["text", "hello"],
     ["thinkingStart"],
