@@ -53,7 +53,6 @@ export async function runRunnerImageAttachmentsSmoke({ setupTmp, cleanup }) {
     provider: "deepseek",
     stateRoot: join(dir, ".state"),
     ui,
-    skills: [],
     projectMarchDir,
     createAgentSessionImpl: async () => ({ session }),
   });

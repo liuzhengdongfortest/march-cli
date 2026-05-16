@@ -25,7 +25,7 @@ export { installModelPayloadDumper } from "./model-payload-dumper.mjs";
 export { createDefaultSessionManager, resolveRunnerSessionManager } from "./runner/runner-init.mjs";
 export { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
 
-export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, skills, skillPool = [], memoryStore = null, memoryTools = [], skillTools = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, modelContextDumper = null, onModelPayload = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices, maxTurns, trimBatch }) {
+export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, memoryStore = null, memoryTools = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, modelContextDumper = null, onModelPayload = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices, maxTurns, trimBatch }) {
   if (!useRuntimeHost && extensionPaths.length > 0) {
     throw new Error("--extension requires the default pi runtime host path");
   }
@@ -47,7 +47,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   });
 
   const lspService = new LspService({ cwd });
-  const engine = new ContextEngine({ cwd, modelId, provider, skills, skillPool, namespace, shellRuntime, lspService, injections: mcpInjections, maxTurns, trimBatch });
+  const engine = new ContextEngine({ cwd, modelId, provider, namespace, shellRuntime, lspService, injections: mcpInjections, maxTurns, trimBatch });
   const resolvedSessionManager = resolveRunnerSessionManager(cwd, sessionManager);
   const sessionBinding = createSessionBinding(null);
   let currentModelCallKind = "model";
@@ -70,7 +70,6 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       ui,
       memoryTools,
       memoryStore,
-      skillTools,
       shellRuntime,
       lspService,
       mcpTools,
@@ -94,7 +93,6 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       engine,
       ui,
       memoryTools,
-      skillTools,
       shellRuntime,
       lspService,
       mcpTools,
@@ -241,7 +239,6 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
         sessionBinding,
         engine,
         projectMarchDir,
-        skillPool,
         entryId,
         getSessionStats: getRunnerSessionStats,
       });

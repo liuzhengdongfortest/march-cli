@@ -69,7 +69,7 @@ export async function runPiSessionForkCommandSmoke() {
     },
   }), [
     "Forked pi session: new (from: old, entry: u1)",
-    "ContextEngine reset: turns/skills were not inherited.",
+    "ContextEngine reset: turns were not inherited.",
     "Selected prompt: hello world",
   ]);
   assert.deepEqual(await forkPiSessionResetContext("u1", {

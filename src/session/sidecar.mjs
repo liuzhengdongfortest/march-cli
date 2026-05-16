@@ -23,7 +23,6 @@ export function captureContextSidecar(engine, metadata = {}) {
     thinkingLevel: engine.thinkingLevel,
     namespace: engine.namespace,
     turns: engine.turns,
-    skills: engine.skills.map((skill) => typeof skill === "string" ? skill : skill.name),
   };
 }
 

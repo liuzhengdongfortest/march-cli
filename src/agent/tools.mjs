@@ -8,7 +8,7 @@ import { createReadFileTool } from "./read-file-tool.mjs";
 import { toolText } from "./tool-result.mjs";
 import { createShellTools } from "../shell/tools.mjs";
 import { createWebTools } from "../web/tools.mjs";
-export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], skillTools = [], shellRuntime = null, lspService = null, mcpTools = [], webTools = [], permissionController = null }) {
+export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], shellRuntime = null, lspService = null, mcpTools = [], webTools = [], permissionController = null }) {
   const commandExecTool = createCommandExecTool({ cwd });
   const contextStatsTool = createContextStatsTool({ engine });
   const editFileTool = createEditFileTool({ engine, ui, lspService });
@@ -23,7 +23,6 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], skil
     findTool,
     ...createShellTools(shellRuntime),
     ...memoryTools,
-    ...skillTools,
     ...mcpTools,
     ...webTools,
   ];

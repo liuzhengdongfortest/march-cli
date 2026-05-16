@@ -13,15 +13,14 @@ export async function runConfigLoadingSmoke({ setupTmp, cleanup }) {
   assert.deepEqual(empty.providers, {});
   assert.equal(empty.memoryRoot, null);
   assert.deepEqual(empty.webSearch, { provider: null, providers: {} });
-  assert.deepEqual(empty.skills, []);
 
-  writeFileSync(join(dir, ".marchrc"), JSON.stringify({ model: "test-model", memoryRoot: "D:/vault/March Memories", skills: ["s1"], webSearch: { provider: "tavily", providers: { tavily: { apiKey: "tvly" } } } }));
+  writeFileSync(join(dir, ".marchrc"), JSON.stringify({ model: "test-model", memoryRoot: "D:/vault/March Memories", skills: ["ignored-legacy-skill"], webSearch: { provider: "tavily", providers: { tavily: { apiKey: "tvly" } } } }));
   const withRc = loadConfig(dir, { homeDir: dir });
   assert.equal(withRc.model, "test-model");
   assert.equal(withRc.memoryRoot, "D:/vault/March Memories");
   assert.equal(withRc.webSearch.provider, "tavily");
   assert.equal(withRc.webSearch.providers.tavily.apiKey, "tvly");
-  assert.deepEqual(withRc.skills, ["s1"]);
+  assert.equal(Object.hasOwn(withRc, "skills"), false);
 
   const marchDir = join(dir, ".march");
   mkdirSync(marchDir, { recursive: true });

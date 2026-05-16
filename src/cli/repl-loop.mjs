@@ -2,7 +2,7 @@ import { brightBlack, inverse } from "./tui/ui-theme.mjs";
 import { handleSlashCommand } from "./slash-commands.mjs";
 import { appendModeReminder } from "./input/mode-state.mjs";
 import { expandPromptTemplate } from "./input/prompt-templates.mjs";
-import { parseInlineShellInput, parseSkillInvocation, runInlineShellCommand } from "./repl-commands.mjs";
+import { parseInlineShellInput, runInlineShellCommand } from "./repl-commands.mjs";
 import { formatRecallHints } from "../memory/markdown-store.mjs";
 import { formatMessageAttachmentsForDisplay } from "../session/attachment-display.mjs";
 
@@ -43,8 +43,6 @@ export async function runInteractiveRepl({
   sessionState,
   sessionsRoot,
   projectMarchDir,
-  skillPool,
-  skillState,
   sessionSource,
   extensionPaths,
   keybindingConfig,
@@ -70,17 +68,12 @@ export async function runInteractiveRepl({
     }
     if (handledInline.type === "error") continue;
 
-    const skillResult = handleSkillInvocation(trimmed, { skillPool, skillState, runner, ui });
-    if (skillResult.type === "handled") continue;
-    trimmed = skillResult.prompt;
-
     const slashResult = await handleSlashCommand(trimmed, {
       ui,
       runner,
       sessionState,
       sessionsRoot,
       projectMarchDir,
-      skillPool,
       sessionSource,
       extensionPaths,
       keybindings: keybindingConfig.keybindings,
@@ -127,22 +120,6 @@ function handleInlineCommand(trimmed, { cwd, ui, lastInlineShellCommand }) {
     return { type: "handled", lastInlineShellCommand: inlineShell.command };
   }
   return { type: "none" };
-}
-
-function handleSkillInvocation(trimmed, { skillPool, skillState, runner, ui }) {
-  const skillInvocation = parseSkillInvocation(trimmed);
-  if (skillInvocation.type !== "skill") return { type: "none", prompt: trimmed };
-  const skill = skillPool.find(s => s.name === skillInvocation.name);
-  if (!skill) {
-    ui.writeln(`Error: skill not found: ${skillInvocation.name}`);
-    return { type: "handled" };
-  }
-  if (!skillState.active.find(s => s.name === skill.name)) {
-    skillState.active.push(skill);
-    runner.engine.setSkills([...skillState.active]);
-  }
-  ui.writeln(`Activated skill: ${skill.name}`);
-  return skillInvocation.prompt ? { type: "none", prompt: skillInvocation.prompt } : { type: "handled" };
 }
 
 async function runReplTurn({ prompt, args, runner, memoryStore, currentProject, ui, refreshStatusBar, setTurnRunning, modeState = null }) {

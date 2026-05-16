@@ -77,7 +77,6 @@ export async function runDefaultStartupFlowSmoke({ setupTmp, cleanup }) {
       provider: "deepseek",
       stateRoot: join(dir, ".state"),
       ui: makeUi(calls),
-      skills: [],
       projectMarchDir,
       sessionManager,
       useRuntimeHost: true,

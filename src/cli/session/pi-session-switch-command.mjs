@@ -10,7 +10,7 @@ export function parseResumePiCommand(input) {
   }
   return { type: "resume-pi", id };
 }
-export async function resumePiSessionById(id, { runner, sessions, projectMarchDir, skillPool = [] }) {
+export async function resumePiSessionById(id, { runner, sessions, projectMarchDir }) {
   if (!runner.canSwitchPiSession?.()) {
     return ["Error: pi session resume requires the pi runtime host"];
   }
@@ -42,7 +42,7 @@ export async function resumePiSessionById(id, { runner, sessions, projectMarchDi
     return [`Error: failed to switch pi session ${session.id}: ${err.message}`];
   }
   if (result?.cancelled) return [`Resume pi session cancelled: ${session.id}`];
-  runner.engine.restoreSession(toContextSessionState(sidecar.state), skillPool, { replace: true });
+  runner.engine.restoreSession(toContextSessionState(sidecar.state), null, { replace: true });
   return [`Resumed pi session: ${session.id}`];
 }
 

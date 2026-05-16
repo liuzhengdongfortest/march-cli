@@ -27,7 +27,6 @@ export async function runProjectContextSmoke({ setupTmp, cleanup }) {
     cwd: dir3,
     modelId: "test",
     provider: "deepseek",
-    skills: [],
   });
   const ctx = engine.buildContext("test");
   console.log(`  engine context includes project_context: ${ctx.includes("[project_context]") ? "✓" : "FAIL"}`);

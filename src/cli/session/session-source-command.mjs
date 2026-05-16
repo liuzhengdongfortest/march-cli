@@ -10,7 +10,6 @@ export async function handleSessionSourceCommand(trimmed, {
   sessionState,
   sessionsRoot,
   projectMarchDir,
-  skillPool = [],
 }) {
   if (trimmed === "/save") {
     const stats = runner.getSessionStats?.();
@@ -62,7 +61,6 @@ export async function handleSessionSourceCommand(trimmed, {
         runner,
         sessions,
         projectMarchDir,
-        skillPool,
       })) {
         ui.writeln(line);
       }

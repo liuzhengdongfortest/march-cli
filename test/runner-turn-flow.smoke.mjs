@@ -89,7 +89,6 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
     provider: "deepseek",
     stateRoot: join(dir, ".state"),
     ui,
-    skills: [],
     projectMarchDir,
     syncPiSidecar: true,
     createAgentSessionImpl: async () => ({ session }),

@@ -11,7 +11,6 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
     cwd: dir,
     modelId: "test",
     provider: "deepseek",
-    skills: [],
   });
 
   const ctx = engine.buildContext("装備を確認する");
@@ -45,7 +44,6 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
     cwd: dir,
     modelId: "deepseek-v4-pro",
     provider: "other-provider",
-    skills: [],
   });
   assert.ok(modelPromptEngine.buildContext("").includes("Build context from current project facts before editing."));
 

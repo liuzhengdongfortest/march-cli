@@ -26,7 +26,6 @@ export async function runSessionSourceCommandSmoke({ setupTmp, cleanup }) {
       provider: "deepseek",
       namespace: "ns",
       turns: [{ index: 1, userMessage: "slash pi", assistantMessage: "ok" }],
-      skills: [],
     },
   });
 
@@ -40,7 +39,6 @@ export async function runSessionSourceCommandSmoke({ setupTmp, cleanup }) {
       provider: "deepseek",
       namespace: "ns",
       turns: [],
-      skills: [],
       restoreSession: (state) => {
         restored = state;
       },

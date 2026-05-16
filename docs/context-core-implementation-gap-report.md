@@ -19,10 +19,8 @@
 ```text
 [system_core]
 [injections]
-[tools]
 [session_identity]
-[available_skills]
-[active_skills]
+[project_context]
 [diagnostics]
 [workspace_status]
 [shells]
@@ -36,10 +34,9 @@
 [injections]
 [tools]
 [session_identity]
-[available_skills]
-[active_skills]
 [diagnostics]
 [workspace_status]
+[runtime_status]
 [shells]
 [recent_chat]
 ```
@@ -179,6 +176,10 @@ MCP tools 进入 [tools]
 完整 schema 留在 runtime tool registry
 ```
 
+### skills 已迁移到 memory
+
+已移除 `[available_skills]`、`[active_skills]`、skill 启动扫描、skill CLI 入口和 skill 管理工具。原技能类方法论应保存为 memory 文档，由 passive recall 提示线索，再通过 `memory_open` 主动读取正文。
+
 ## 建议推进顺序
 
 1. 新增 `[diagnostics]` 层，先实现稳定空层或命令型诊断 adapter。
@@ -207,7 +208,3 @@ MCP tools 进入 [tools]
 ### 常驻文件正文层已移除
 
 文件正文不再作为常驻上下文层注入。AI 需要文件内容时通过 `read` 读取当前磁盘内容；修改文件时通过 `edit_file` 在工具执行阶段读取磁盘并应用 patch。
-
-### skill 来源边界已确认
-
-`[available_skills]` 未激活时只需要名称、描述和触发条件，不需要路径；`[active_skills]` 激活后提供 `baseDir` 已足够定位技能资源。

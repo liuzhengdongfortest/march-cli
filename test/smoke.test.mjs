@@ -6,7 +6,6 @@ import { randomUUID } from "node:crypto";
 import { runAuthStorageSmoke } from "./auth-storage.smoke.mjs";
 import { runCliCommandSuiteSmoke } from "./cli-command-suite.smoke.mjs";
 import { runContextSessionStatusSmoke } from "./context-session-status.smoke.mjs";
-import { runContextSkillLayersSmoke } from "./context-skill-layers.smoke.mjs";
 import { runCommandExecToolSmoke } from "./command-exec-tool.smoke.mjs";
 import { runConfigLoadingSmoke } from "./config-loading.smoke.mjs";
 import { runContextEngineSmoke } from "./context-engine.smoke.mjs";
@@ -87,7 +86,6 @@ function cleanup(dir) {
   const defaults = parseCliArgs([]);
   assert.equal(defaults.model, null);
   assert.equal(defaults.json, false);
-  assert.deepEqual(defaults.skills, []);
   assert.equal(defaults.prompt, "");
   assert.equal(defaults.command, null);
 
@@ -155,7 +153,6 @@ await runShellToolsSmoke();
 await runNodePtyAdapterSmoke();
 await runTuiShellDrawerSmoke({ setupTmp, cleanup });
 await runContextSessionStatusSmoke();
-await runContextSkillLayersSmoke();
 await runContextStatsToolSmoke({ setupTmp, cleanup });
 
 await runConfigLoadingSmoke({ setupTmp, cleanup });
@@ -175,9 +172,7 @@ await runRunnerCoreSmoke();
   const dir = setupTmp();
   writeFileSync(join(dir, "sample-file.txt"), "data");
 
-  const commands = buildMarchCommands([
-    { name: "review", description: "Review code" },
-  ], [{ name: "fix" }]);
+  const commands = buildMarchCommands([{ name: "fix" }]);
   assert.ok(commands.some((command) => command.name === "hotkeys"));
   assert.ok(commands.some((command) => command.name === "templates"));
   assert.ok(commands.some((command) => command.name === "fix"));
@@ -186,7 +181,6 @@ await runRunnerCoreSmoke();
   assert.ok(commands.some((command) => command.name === "thinking list"));
   assert.ok(commands.some((command) => command.name === "shell"));
   assert.ok(commands.some((command) => command.name === "shell spawn"));
-  assert.ok(commands.some((command) => command.name === "skill:review"));
   assert.equal(commands.find((command) => command.name === "sessions").description, "List default pi JSONL sessions");
   assert.equal(commands.find((command) => command.name === "resume").description, "Resume a pi session by id");
   assert.equal(commands.find((command) => command.name === "save").description, "Show auto-save status");
@@ -196,11 +190,6 @@ await runRunnerCoreSmoke();
     signal: new AbortController().signal,
   });
   assert.ok(fileSuggestions.items.some((item) => item.label.includes("sample-file.txt")));
-
-  const skillSuggestions = await provider.getSuggestions(["/skill:rev"], 0, 10, {
-    signal: new AbortController().signal,
-  });
-  assert.ok(skillSuggestions.items.some((item) => item.value === "skill:review"));
 
   const shellSuggestions = await provider.getSuggestions(["/sh"], 0, 3, {
     signal: new AbortController().signal,
@@ -354,17 +343,6 @@ function stripAnsi(text) {
   assert.ok(panel.includes("bad key"));
   assert.ok(panel.includes("!!"));
   assert.ok(panel.includes("@"));
-  console.log("  PASS");
-}
-
-// ── 3i. Skill invocation parsing ────────────────────────────────────
-
-{
-  console.log("--- smoke: skill invocation parsing ---");
-  const { parseSkillInvocation } = await import("../src/cli/repl-commands.mjs");
-  assert.deepEqual(parseSkillInvocation("hello"), { type: "none" });
-  assert.deepEqual(parseSkillInvocation("/skill:review"), { type: "skill", name: "review", prompt: "" });
-  assert.deepEqual(parseSkillInvocation("/skill:review check this"), { type: "skill", name: "review", prompt: "check this" });
   console.log("  PASS");
 }
 

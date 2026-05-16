@@ -20,7 +20,6 @@ export async function handleSlashCommand(trimmed, {
   sessionState,
   sessionsRoot,
   projectMarchDir,
-  skillPool = [],
   sessionSource = "pi",
   extensionPaths = [],
   keybindings,
@@ -145,7 +144,6 @@ export async function handleSlashCommand(trimmed, {
     sessionState,
     sessionsRoot,
     projectMarchDir,
-    skillPool,
     sessionSource,
   });
   if (sessionSourceCommand.handled) return sessionSourceCommand;

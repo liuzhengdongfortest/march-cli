@@ -24,7 +24,6 @@ import { loadProjectLifecycleHookManifests } from "./extensions/lifecycle-manife
 import { resolvePiSessionManager } from "./session/pi-manager.mjs";
 import { loadOrCreateProjectId, resumeStartupSession } from "./cli/startup/startup-session.mjs";
 import { formatStartupBanner } from "./cli/startup/startup-banner.mjs";
-import { activateStartupSkills, createStartupSkillRuntime } from "./cli/startup/startup-skills.mjs";
 import { initializeMcp } from "./mcp/index.mjs";
 import { createWebToolsFromConfig } from "./web/tools.mjs";
 import { createModelContextDumper } from "./debug/model-context-dumper.mjs";
@@ -83,7 +82,6 @@ export async function run(argv) {
   const config = loadConfig(cwd);
   const provider = args.provider ?? config.provider ?? null;
   const model = args.model ?? config.model ?? null;
-  const skills = [...config.skills, ...args.skills];
   const extensionPaths = [
     ...discoverProjectExtensionPaths(cwd),
     ...args.extensions.map((extensionPath) => resolve(cwd, extensionPath)),
@@ -108,11 +106,6 @@ export async function run(argv) {
   const memoryTools = createMarkdownMemoryTools(memoryStore);
   const currentProject = basename(cwd);
 
-  const { skillPool, skillState, skillTools } = createStartupSkillRuntime({
-    cwd,
-    configuredSkills: config.skills,
-    cliSkills: args.skills,
-  });
   const shellRuntime = args.shellRuntime ? createCliShellRuntime({ cwd }) : null;
 
   // MCP: connect to configured MCP servers
@@ -151,7 +144,6 @@ export async function run(argv) {
   const ui = createUI({
     json: args.json,
     cwd,
-    skillPool,
     keybindings: keybindingConfig.keybindings,
     promptTemplates: promptTemplateConfig.templates,
     shellRuntime,
@@ -169,11 +161,8 @@ export async function run(argv) {
     providers: config.providers,
     stateRoot,
     ui,
-    skills: skills,
-    skillPool,
     memoryStore,
     memoryTools,
-    skillTools,
     shellRuntime,
     mcpTools,
     mcpInjections,
@@ -220,17 +209,12 @@ export async function run(argv) {
     modeState,
   });
 
-  // Wire back-reference for skill tools → engine
-  skillState.engine = runner.engine;
-  activateStartupSkills({ skillState, skillPool, skillNames: args.skills, engine: runner.engine });
-
   // Resume session
   await resumeStartupSession({
     resumeId: args.resume,
     runner,
     sessionState,
     projectMarchDir,
-    skillPool,
     ui,
   });
   refreshStatusBar();
@@ -270,8 +254,6 @@ export async function run(argv) {
     sessionState,
     sessionsRoot,
     projectMarchDir,
-    skillPool,
-    skillState,
     sessionSource,
     extensionPaths,
     keybindingConfig,

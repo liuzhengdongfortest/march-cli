@@ -9,7 +9,7 @@ import { homedir } from "node:os";
  *   3. <cwd>/.marchrc — legacy project overrides
  *   4. <cwd>/.march/config — legacy project dir overrides
  *   5. <cwd>/.march/config.json — project config
- * Scalar values override. Array values (skills) concatenate.
+ * Scalar values override.
  */
 export function loadConfig(cwd, { homeDir = homedir() } = {}) {
   const layers = [];
@@ -45,7 +45,6 @@ function mergeLayers(layers) {
     provider: null,
     providers: {},
     webSearch: { provider: null, providers: {} },
-    skills: [],
     maxTurns: null,
     trimBatch: null,
     memoryRoot: null,
@@ -62,11 +61,6 @@ function mergeLayers(layers) {
       result.webSearch = mergeWebSearch(result.webSearch, layer.webSearch);
     }
     if (layer.memoryRoot) result.memoryRoot = layer.memoryRoot;
-    if (Array.isArray(layer.skills)) {
-      for (const s of layer.skills) {
-        if (!result.skills.includes(s)) result.skills.push(s);
-      }
-    }
   }
 
   return result;

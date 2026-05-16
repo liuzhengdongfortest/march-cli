@@ -30,20 +30,14 @@ const MARCH_COMMANDS = [
   { name: "shell spawn", description: "Start a default PTY shell" },
 ];
 
-export function buildMarchCommands(skillPool = [], promptTemplates = []) {
-  const skillCommands = skillPool
-    .map((skill) => ({
-      name: `skill:${typeof skill === "string" ? skill : skill.name}`,
-      description: typeof skill === "string" ? "Activate skill" : (skill.description || "Activate skill"),
-    }))
-    .filter((command) => command.name !== "skill:undefined");
+export function buildMarchCommands(promptTemplates = []) {
   const templateCommands = promptTemplates
     .map((template) => ({
       name: typeof template === "string" ? template : template.name,
       description: "Expand prompt template",
     }))
     .filter((command) => command.name && !command.name.startsWith("/"));
-  return [...MARCH_COMMANDS, ...skillCommands, ...templateCommands];
+  return [...MARCH_COMMANDS, ...templateCommands];
 }
 
 export class MarchAutocompleteProvider {

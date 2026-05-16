@@ -20,16 +20,6 @@ export function parseInlineShellInput(input, lastCommand = "") {
   return { type: "command", command, repeated: false };
 }
 
-export function parseSkillInvocation(input) {
-  const match = input.match(/^\/skill:([^\s]+)(?:\s+([\s\S]+))?$/);
-  if (!match) return { type: "none" };
-  return {
-    type: "skill",
-    name: match[1],
-    prompt: (match[2] || "").trim(),
-  };
-}
-
 export function runInlineShellCommand(command, { cwd = process.cwd(), ui } = {}) {
   const shell = process.platform === "win32"
     ? { bin: "powershell.exe", args: ["-NoProfile", "-Command", command] }

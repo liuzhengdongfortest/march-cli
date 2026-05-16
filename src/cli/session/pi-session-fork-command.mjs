@@ -63,7 +63,7 @@ export async function forkPiSessionResetContext(entryId, { runner }) {
 
   const lines = [
     `Forked pi session: ${result.sessionId} (from: ${result.sourceSessionId}, entry: ${result.entryId})`,
-    "ContextEngine reset: turns/skills were not inherited.",
+    "ContextEngine reset: turns were not inherited.",
   ];
   if (result.selectedText) {
     lines.push(`Selected prompt: ${singleLine(result.selectedText).slice(0, 120)}`);

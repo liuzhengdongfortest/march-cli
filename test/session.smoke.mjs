@@ -61,7 +61,6 @@ export async function runPiSessionSidecarSmoke({ setupTmp, cleanup }) {
     modelId: "model",
     provider: "deepseek",
     thinkingLevel: "high",
-    skills: ["review"],
     namespace: "project-ns",
   });
   engine.recordTurn({ userMessage: "hello", assistantMessage: "answer" });
@@ -78,7 +77,7 @@ export async function runPiSessionSidecarSmoke({ setupTmp, cleanup }) {
   assert.equal(saved.state.namespace, "project-ns");
   assert.equal(saved.state.thinkingLevel, "high");
   assert.equal(saved.state.sessionName, "Pi Sidecar");
-  assert.deepEqual(saved.state.skills, ["review"]);
+  assert.equal(Object.hasOwn(saved.state, "skills"), false);
 
   const loaded = loadPiSessionSidecar({ projectMarchDir, sessionRef: "2026-05-10T00-00-00-000Z_test" });
   assert.equal(loaded.path, saved.path);
@@ -106,7 +105,6 @@ export async function runPiSessionSidecarSyncSmoke({ setupTmp, cleanup }) {
     modelId: "model",
     provider: "deepseek",
     thinkingLevel: "high",
-    skills: ["review"],
     namespace: "project-ns",
   });
   engine.recordTurn({ userMessage: "hello", assistantMessage: "answer" });

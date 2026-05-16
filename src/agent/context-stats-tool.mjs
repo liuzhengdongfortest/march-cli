@@ -26,8 +26,6 @@ export function buildContextStats(engine) {
     layers: layerStats,
     runtime: {
       turns: engine.turns?.length ?? 0,
-      activeSkills: engine.skills?.length ?? 0,
-      skillCatalog: engine.skillPool?.length ?? 0,
       toolDefs: engine.toolDefs?.length ?? 0,
     },
   };
@@ -49,8 +47,6 @@ function formatContextStats(engine) {
     "",
     "Runtime:",
     `- turns: ${stats.runtime.turns}`,
-    `- active_skills: ${stats.runtime.activeSkills}`,
-    `- skill_catalog: ${stats.runtime.skillCatalog}`,
     `- tool_defs: ${stats.runtime.toolDefs}`,
   );
   return lines.join("\n");

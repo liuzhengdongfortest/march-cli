@@ -149,7 +149,6 @@ export async function runRunnerCoreSmoke() {
       provider: "missing-provider-smoke",
       stateRoot: process.cwd(),
       ui: {},
-      skills: [],
     }),
   );
   console.log("  PASS");

@@ -6,7 +6,6 @@ export async function forkPiSessionWithResetContext({
   sessionBinding,
   engine,
   projectMarchDir,
-  skillPool = [],
   entryId,
   getSessionStats,
   now = () => new Date(),
@@ -52,7 +51,7 @@ export async function forkPiSessionWithResetContext({
       cause: err,
     });
   }
-  engine.restoreSession(toContextSessionState(resetState), skillPool, { replace: true });
+  engine.restoreSession(toContextSessionState(resetState), null, { replace: true });
 
   return {
     cancelled: false,
@@ -81,7 +80,6 @@ function createResetSidecarState({ engine, sourceStats, entryId, savedAt }) {
     thinkingLevel: engine.thinkingLevel,
     namespace: engine.namespace,
     turns: [],
-    skills: [],
   };
 }
 

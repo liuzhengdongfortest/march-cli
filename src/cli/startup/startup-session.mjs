@@ -20,7 +20,6 @@ export async function resumeStartupSession({
   runner,
   sessionState,
   projectMarchDir,
-  skillPool = [],
   ui,
   listPiSessions = listPiSessionInfos,
 }) {
@@ -34,7 +33,6 @@ export async function resumeStartupSession({
     runner,
     sessions,
     projectMarchDir,
-    skillPool,
   });
   for (const line of lines) ui.status(line);
   return { source: "pi", lines };

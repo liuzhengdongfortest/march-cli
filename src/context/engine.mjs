@@ -1,7 +1,6 @@
 import { resolve } from "node:path";
 import { buildSessionIdentity, buildWorkspaceStatus } from "./session-status.mjs";
 import { buildShellLayers } from "./shell-layers.mjs";
-import { buildActiveSkills, buildSkillCatalog } from "./skill-layers.mjs";
 import { buildSystemCore, resolveSystemCorePromptKey } from "./system-core.mjs";
 import { buildInjectionsLayer } from "./injections.mjs";
 import { buildProjectContext } from "./project-context.mjs";
@@ -9,13 +8,11 @@ import { buildDiagnosticsLayer } from "./diagnostics.mjs";
 import { formatRecallHints } from "../memory/markdown-store.mjs";
 
 export class ContextEngine {
-  constructor({ cwd, modelId, provider = "deepseek", thinkingLevel = "medium", skills = [], skillPool = [], namespace = "", shellRuntime = null, lspService = null, injections = [], maxTurns, trimBatch }) {
+  constructor({ cwd, modelId, provider = "deepseek", thinkingLevel = "medium", namespace = "", shellRuntime = null, lspService = null, injections = [], maxTurns, trimBatch }) {
     this.cwd = cwd;
     this.modelId = modelId;
     this.provider = provider;
     this.thinkingLevel = thinkingLevel;
-    this.skills = [...skills];
-    this.skillPool = skillPool;
     this.turns = [];
     this.sessionName = "";
     this.toolDefs = [];
@@ -63,14 +60,6 @@ export class ContextEngine {
     const projectCtx = buildProjectContext(this.cwd);
     if (projectCtx) layers.push({ name: "project_context", text: projectCtx });
 
-    if (this.skillPool.length > 0) {
-      layers.push({ name: "skill_catalog", text: this.#buildSkillCatalog() });
-    }
-
-    if (this.skills.length > 0) {
-      layers.push({ name: "active_skills", text: this.#buildActiveSkills() });
-    }
-
     layers.push(
       { name: "diagnostics", text: this.#buildDiagnostics() },
       { name: "workspace_status", text: this.#buildWorkspaceStatus() },
@@ -108,7 +97,6 @@ export class ContextEngine {
     return resolve(this.cwd, raw);
   }
 
-  setSkills(skills) { this.skills = skills; }
   setInjections(injections = []) { this.injections = [...injections]; }
   setToolDefs(defs) { this.toolDefs = defs; }
   setRuntimeState({ modelId, provider, thinkingLevel } = {}) {
@@ -123,23 +111,14 @@ export class ContextEngine {
   }
   setSessionName(name) { this.sessionName = String(name || "").trim(); }
 
-  restoreSession(data, pool, { replace = false } = {}) {
+  restoreSession(data, _pool, { replace = false } = {}) {
     if (replace) {
       this.turns = [];
       this.sessionName = "";
-      this.skills = [];
     }
     if (data.turns) this.turns = data.turns;
     if (typeof data.sessionName === "string") this.sessionName = data.sessionName;
     this.setRuntimeState(data);
-    if (data.skills && pool) {
-      const found = [];
-      for (const name of data.skills) {
-        const s = pool.find((sk) => sk.name === name);
-        if (s) found.push(s);
-      }
-      if (found.length > 0) this.skills = found;
-    }
   }
 
   // ── Private layers ──────────────────────────────────────────────────
@@ -159,14 +138,6 @@ export class ContextEngine {
     return buildDiagnosticsLayer({
       snapshot: this.lspService?.snapshot?.() ?? { diagnostics: [] },
     });
-  }
-
-  #buildSkillCatalog() {
-    return buildSkillCatalog(this.skillPool);
-  }
-
-  #buildActiveSkills() {
-    return buildActiveSkills(this.skills);
   }
 
   #buildShellLayers() {

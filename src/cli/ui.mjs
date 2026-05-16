@@ -23,7 +23,6 @@ export { buildMarchCommands, MarchAutocompleteProvider } from "./input/autocompl
 
 export function createTuiUI({
   cwd = process.cwd(),
-  skillPool = [],
   keybindings,
   promptTemplates = [],
   shellRuntime = null,
@@ -39,7 +38,7 @@ export function createTuiUI({
     mainChildren: [output, statusBar, editor],
     shellPane: shellDrawer,
   });
-  const autocomplete = new MarchAutocompleteProvider(buildMarchCommands(skillPool, promptTemplates), cwd);
+  const autocomplete = new MarchAutocompleteProvider(buildMarchCommands(promptTemplates), cwd);
   editor.setAutocompleteProvider(autocomplete);
   editor.history = historyStore?.load?.() ?? [];
 
@@ -292,8 +291,8 @@ function preserveTerminalScrollback(terminal) {
   });
 }
 
-export function createUI({ json, cwd = process.cwd(), skillPool = [], keybindings, promptTemplates = [], shellRuntime = null, historyStore = null } = {}) {
+export function createUI({ json, cwd = process.cwd(), keybindings, promptTemplates = [], shellRuntime = null, historyStore = null } = {}) {
   if (json) return createJsonUI();
   if (!stdout.isTTY) return createPlainUI();
-  return createTuiUI({ cwd, skillPool, keybindings, promptTemplates, shellRuntime, historyStore });
+  return createTuiUI({ cwd, keybindings, promptTemplates, shellRuntime, historyStore });
 }

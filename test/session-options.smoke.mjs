@@ -13,7 +13,6 @@ export async function runSessionOptionsSmoke() {
     engine: { cwd: "D:/repo" },
     ui: { editDiff: () => {} },
     memoryTools: [{ name: "remember" }],
-    skillTools: [{ name: "skill_lookup" }],
     shellRuntime: { listShells: () => [] },
   });
 
@@ -33,7 +32,6 @@ export async function runSessionOptionsSmoke() {
   assert.ok(options.tools.includes("terminal_spawn"));
   assert.ok(options.tools.includes("terminal_snapshot"));
   assert.ok(options.tools.includes("remember"));
-  assert.ok(options.tools.includes("skill_lookup"));
 
   assert.throws(
     () => resolveRunnerSessionOptions({

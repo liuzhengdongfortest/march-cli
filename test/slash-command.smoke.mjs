@@ -18,7 +18,6 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
       thinkingLevel: "medium",
       turns: [{ assistantMessage: "previous answer" }],
       sessionName: "",
-      skills: [],
       setSessionName(name) { this.sessionName = name; },
     },
     getAvailableThinkingLevels: () => ["off", "medium", "high"],

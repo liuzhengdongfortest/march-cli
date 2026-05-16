@@ -154,7 +154,7 @@ export async function runPiSessionSwitchCommandSmoke() {
   }), ["Error: pi session sidecar not found for abc123; refusing partial resume"]);
 
   let switchedPath = null;
-  const engine = new ContextEngine({ cwd: "D:/repo", modelId: "test", provider: "deepseek", skills: [] });
+  const engine = new ContextEngine({ cwd: "D:/repo", modelId: "test", provider: "deepseek" });
   const sidecarDir = join(projectMarchDir, "pi-sidecars");
   mkdirSync(sidecarDir, { recursive: true });
   const sourceEngine = new ContextEngine({
@@ -162,7 +162,6 @@ export async function runPiSessionSwitchCommandSmoke() {
     modelId: "test",
     provider: "deepseek",
     thinkingLevel: "high",
-    skills: ["review"],
     namespace: "ns",
   });
   sourceEngine.recordTurn({ userMessage: "hello", assistantMessage: "answer" });
@@ -187,10 +186,8 @@ export async function runPiSessionSwitchCommandSmoke() {
       return { cancelled: false };
     },
   };
-  const skillPool = [{ name: "review", body: "review body" }];
-  assert.deepEqual(await resumePiSessionById("abc", { runner, sessions, projectMarchDir, skillPool }), ["Resumed pi session: abc123"]);
+  assert.deepEqual(await resumePiSessionById("abc", { runner, sessions, projectMarchDir }), ["Resumed pi session: abc123"]);
   assert.equal(switchedPath, "abc.jsonl");
-  assert.deepEqual(engine.skills, skillPool);
   assert.equal(engine.thinkingLevel, "high");
   assert.equal(engine.turns[0].assistantMessage, "answer");
   assert.deepEqual(await resumePiSessionById("missing", { runner, sessions, projectMarchDir }), ["Error: pi session not found: missing"]);
@@ -223,7 +220,7 @@ export async function runPiSessionSwitchCommandSmoke() {
   }), ["Error: failed to switch pi session abc123: runtime exploded"]);
   assert.equal(restoreCalled, false);
 
-  const mismatchEngine = new ContextEngine({ cwd: "D:/other", modelId: "test", provider: "deepseek", skills: [] });
+  const mismatchEngine = new ContextEngine({ cwd: "D:/other", modelId: "test", provider: "deepseek" });
   assert.deepEqual(await resumePiSessionById("abc", {
     runner: { canSwitchPiSession: () => true, engine: mismatchEngine },
     sessions,

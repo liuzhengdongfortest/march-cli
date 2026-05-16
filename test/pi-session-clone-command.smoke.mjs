@@ -30,7 +30,7 @@ export async function runPiSessionCloneCommandSmoke({ setupTmp, cleanup }) {
 
   const dir = setupTmp();
   const projectMarchDir = `${dir}/.march`;
-  const engine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: ["s1"], namespace: "ns" });
+  const engine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", namespace: "ns" });
   engine.recordTurn({ userMessage: "u", assistantMessage: "a" });
   let activeSession = {
     sessionManager: { getLeafId: () => "leaf-1" },
