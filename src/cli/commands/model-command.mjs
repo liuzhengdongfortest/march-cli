@@ -42,6 +42,8 @@ export async function handleModelCommand(parsed, { runner, ui = null, configHome
       selectedIndex,
       width: 72,
       suppressInitialLineFeed: true,
+      searchable: true,
+      getSearchText: modelSelectSearchText,
     });
     if (!item) return "Model unchanged.";
     const model = await runner.setModel(item.model);
@@ -51,6 +53,11 @@ export async function handleModelCommand(parsed, { runner, ui = null, configHome
   if (parsed.type === "select") return selectModelByIndex(parsed.index, { runner });
   if (parsed.type === "error") return `Error: ${parsed.message}`;
   return "";
+}
+
+function modelSelectSearchText(item) {
+  const model = item?.model;
+  return `${item?.label ?? ""} ${model?.name ?? ""} ${model?.id ?? ""} ${model?.provider ?? ""}`;
 }
 
 export function persistModelSelection(model, { configHomeDir } = {}) {

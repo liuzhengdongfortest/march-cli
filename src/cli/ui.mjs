@@ -124,9 +124,9 @@ export function createTuiUI({
     return toolsExpanded;
   }
 
-  function selectList({ items, selectedIndex = 0, maxVisible = 8 }) {
+  function selectList({ items, selectedIndex = 0, maxVisible = 8, ...options }) {
     ensureStarted();
-    return showEditorSelectList({ tui, editor, items, selectedIndex, maxVisible, requestRender });
+    return showEditorSelectList({ tui, editor, items, selectedIndex, maxVisible, requestRender, ...options });
   }
 
   function retryStart({ attempt, maxAttempts, delayMs, errorMessage }) {
