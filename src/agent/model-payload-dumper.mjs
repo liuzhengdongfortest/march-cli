@@ -122,13 +122,7 @@ function formatMessageHeading(message, toolCalls) {
 function formatToolCallLine(call) {
   const name = call?.function?.name ?? call?.name ?? "unnamed_tool";
   const args = call?.function?.arguments ?? call?.arguments ?? "";
-  return `tool_call ${name}(${truncateOneLine(args, 240)})`;
-}
-
-function truncateOneLine(text, maxLen) {
-  const value = stripAnsi(String(text ?? "")).replace(/[\r\n]+/g, " ").trim();
-  if (value.length <= maxLen) return value;
-  return `${value.slice(0, maxLen - 15)}...(truncated)`;
+  return `tool_call ${name}(${stripAnsi(String(args ?? ""))})`;
 }
 
 function normalizePayload(payload) {

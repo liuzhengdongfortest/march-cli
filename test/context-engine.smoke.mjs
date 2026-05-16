@@ -100,6 +100,18 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   assert.ok(ctx2.includes("mem_user | User hint | User recall hint"));
   assert.ok(ctx2.includes('[passive_recall source="assistant"]'));
 
+  const longUserTail = "user-tail-keep";
+  const longMarchTail = "march-tail-keep";
+  const longEngine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek" });
+  longEngine.recordTurn({
+    userMessage: `${"u".repeat(2500)}${longUserTail}`,
+    assistantMessage: `${"m".repeat(2500)}${longMarchTail}`,
+  });
+  const longCtx = longEngine.buildContext("");
+  assert.ok(longCtx.includes(longUserTail));
+  assert.ok(longCtx.includes(longMarchTail));
+  assert.ok(!longCtx.includes("...(truncated)"));
+
   for (let i = 0; i < 10; i++) {
     engine.recordTurn({ userMessage: `extra ${i}`, assistantMessage: `answer ${i}` });
   }

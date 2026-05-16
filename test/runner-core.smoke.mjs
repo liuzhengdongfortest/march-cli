@@ -55,6 +55,8 @@ export async function runRunnerCoreSmoke() {
   assert.ok(dumps[0].prompt.includes("# Messages"));
   assert.ok(dumps[0].prompt.includes("# Raw Payload"));
   const toolDumps = [];
+  const longToolArgTail = "tail-keep-in-dump";
+  const longToolArguments = JSON.stringify({ path: "src/main.mjs", body: `${"x".repeat(500)}${longToolArgTail}` });
   const toolsAgent = {
     onPayload: async () => ({
       messages: [
@@ -62,7 +64,7 @@ export async function runRunnerCoreSmoke() {
         {
           role: "assistant",
           content: null,
-          tool_calls: [{ id: "call_1", type: "function", function: { name: "read", arguments: '{"path":"src/main.mjs"}' } }],
+          tool_calls: [{ id: "call_1", type: "function", function: { name: "read", arguments: longToolArguments } }],
         },
         { role: "tool", content: "Closed main.mjs", tool_call_id: "call_1" },
       ],
@@ -81,7 +83,8 @@ export async function runRunnerCoreSmoke() {
   assert.equal(toolDumps.length, 1);
   assert.ok(toolDumps[0].prompt.includes("hello"));
   assert.ok(!toolDumps[0].prompt.includes("\x1b["));
-  assert.ok(toolDumps[0].prompt.includes('tool_call read({"path":"src/main.mjs"})'));
+  assert.ok(toolDumps[0].prompt.includes(longToolArgTail));
+  assert.ok(!toolDumps[0].prompt.includes("...(truncated)"));
   assert.ok(toolDumps[0].prompt.includes("## tool read"));
   assert.equal(sidecars.length, 2);
   assert.equal(sidecars[0].suffix, "payload");

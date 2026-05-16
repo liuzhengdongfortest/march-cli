@@ -137,12 +137,12 @@ export class ContextEngine {
     const entries = [];
     for (const turn of this.turns) {
       let block = `## Turn ${turn.index}\n` +
-        `[user]\n${this.#truncate(turn.userMessage, 2000)}\n`;
+        `[user]\n${String(turn.userMessage ?? "")}\n`;
       const userRecall = formatRecallHints("user", turn.userRecallHints ?? []);
       if (userRecall) block += `\n${userRecall}\n`;
       block += `\n[March]\n`;
       if (turn.assistantMessage) {
-        block += `\n${this.#truncate(turn.assistantMessage, 2000)}\n`;
+        block += `\n${String(turn.assistantMessage ?? "")}\n`;
       }
       const assistantRecall = formatRecallHints("assistant", turn.assistantRecallHints ?? []);
       if (assistantRecall) block += `\n${assistantRecall}\n`;
@@ -151,10 +151,6 @@ export class ContextEngine {
     return `[recent_chat]\n${entries.join("\n\n")}`;
   }
 
-  #truncate(text, maxLen) {
-    if (text.length <= maxLen) return text;
-    return text.slice(0, maxLen) + "\n...(truncated)";
-  }
 }
 
 function appendCurrentUser(recentChat, userMessage) {
