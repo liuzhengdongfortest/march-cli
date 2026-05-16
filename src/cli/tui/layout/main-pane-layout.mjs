@@ -1,9 +1,10 @@
 export class MainPaneLayout {
-  constructor({ output, statusBar, editor, terminal }) {
+  constructor({ output, statusBar, editor, terminal, selection = null }) {
     this.output = output;
     this.statusBar = statusBar;
     this.editor = editor;
     this.terminal = terminal;
+    this.selection = selection;
   }
 
   render(width) {
@@ -14,8 +15,11 @@ export class MainPaneLayout {
     const viewportHeight = Math.max(1, (this.terminal?.rows || 30) - fixedHeight);
     this.output.setViewportHeight(viewportHeight);
     const outputLines = this.output.render(safeWidth);
+    const outputTop = Math.max(0, viewportHeight - outputLines.length);
+    this.selection?.setViewport({ topRow: outputTop, leftCol: 0, width: safeWidth, lines: outputLines });
+    const selectedOutputLines = this.selection?.apply(outputLines) ?? outputLines;
     return [
-      ...padToHeight(outputLines, viewportHeight),
+      ...padToHeight(selectedOutputLines, viewportHeight),
       ...statusLines,
       ...editorLines,
     ];

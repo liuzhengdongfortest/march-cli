@@ -10,27 +10,45 @@ export class ScreenSelection {
     this.anchor = null;
     this.focus = null;
     this.lines = [];
+    this.viewport = { topRow: 0, leftCol: 0, width: Infinity, height: 0 };
   }
 
   setLines(lines) {
     this.lines = lines.map((line) => stripAnsi(line));
+    this.viewport = { topRow: 0, leftCol: 0, width: Infinity, height: this.lines.length };
+  }
+
+  setViewport({ topRow = 0, leftCol = 0, width = Infinity, lines = [] } = {}) {
+    this.lines = lines.map((line) => stripAnsi(line));
+    this.viewport = {
+      topRow: Math.max(0, Math.trunc(topRow)),
+      leftCol: Math.max(0, Math.trunc(leftCol)),
+      width: Number.isFinite(width) ? Math.max(1, Math.trunc(width)) : Infinity,
+      height: this.lines.length,
+    };
   }
 
   start(point) {
+    const normalized = normalizePoint(point, this.viewport, true);
+    if (!normalized) {
+      this.clear();
+      return false;
+    }
     this.active = true;
-    this.anchor = normalizePoint(point);
+    this.anchor = normalized;
     this.focus = this.anchor;
+    return true;
   }
 
   update(point) {
     if (!this.active || !this.anchor) return false;
-    this.focus = normalizePoint(point);
+    this.focus = normalizePoint(point, this.viewport, true) ?? this.focus;
     return true;
   }
 
   finish(point) {
     if (!this.active || !this.anchor) return "";
-    this.focus = normalizePoint(point);
+    this.focus = normalizePoint(point, this.viewport, true) ?? this.focus;
     const text = this.text();
     this.clear();
     return text;
@@ -66,7 +84,7 @@ export class ScreenSelection {
       const startCol = row === range.start.row ? range.start.col : 0;
       const endCol = row === range.end.row ? range.end.col : visibleWidth(plain);
       if (endCol <= startCol) return line;
-      return highlightPlainLine(plain, startCol, endCol);
+      return highlightAnsiLine(line, startCol, endCol);
     });
   }
 
@@ -84,11 +102,19 @@ export function stripAnsi(text) {
   return String(text ?? "").replace(CONTROL_RE, "");
 }
 
-function normalizePoint({ row, col }) {
-  return {
-    row: Math.max(0, Math.trunc(row) - 1),
-    col: Math.max(0, Math.trunc(col) - 1),
-  };
+function normalizePoint({ row, col }, viewport, clamp) {
+  const screenRow = Math.trunc(row) - 1;
+  const screenCol = Math.trunc(col) - 1;
+  const height = viewport?.height ?? 0;
+  if (height <= 0) return null;
+
+  let localRow = screenRow - (viewport?.topRow ?? 0);
+  let localCol = screenCol - (viewport?.leftCol ?? 0);
+  const maxCol = Number.isFinite(viewport?.width) ? viewport.width : Infinity;
+  if (!clamp && (localRow < 0 || localRow >= height || localCol < 0 || localCol > maxCol)) return null;
+  localRow = clampNumber(localRow, 0, height - 1);
+  localCol = clampNumber(localCol, 0, maxCol);
+  return { row: localRow, col: localCol };
 }
 
 function comparePoints(a, b) {
@@ -96,11 +122,9 @@ function comparePoints(a, b) {
   return a.col - b.col;
 }
 
-function highlightPlainLine(line, startCol, endCol) {
-  const before = sliceColumns(line, 0, startCol);
-  const selected = sliceColumns(line, startCol, endCol);
-  const after = sliceColumns(line, endCol, visibleWidth(line));
-  return `${before}${INVERSE}${selected}${RESET}${after}`;
+function highlightAnsiLine(line, startCol, endCol) {
+  const { before, selected, after, activeAtStart, activeAtEnd } = splitAnsiColumns(line, startCol, endCol);
+  return `${before}${INVERSE}${activeAtStart}${selected}${RESET}${activeAtEnd}${after}`;
 }
 
 function sliceColumns(text, startCol, endCol) {
@@ -113,4 +137,68 @@ function sliceColumns(text, startCol, endCol) {
     if (col >= endCol) break;
   }
   return result;
+}
+
+function splitAnsiColumns(text, startCol, endCol) {
+  let col = 0;
+  let i = 0;
+  let before = "";
+  let selected = "";
+  let after = "";
+  let active = "";
+  let activeAtStart = "";
+  let activeAtEnd = "";
+  let capturedStart = false;
+  let capturedEnd = false;
+  const source = String(text ?? "");
+
+  while (i < source.length) {
+    const ansi = readAnsi(source, i);
+    if (ansi) {
+      active = updateActiveSgr(active, ansi);
+      if (col < startCol) before += ansi;
+      else if (col < endCol) selected += ansi;
+      else after += ansi;
+      i += ansi.length;
+      continue;
+    }
+
+    const ch = source[i];
+    if (!capturedStart && col >= startCol) {
+      activeAtStart = active;
+      capturedStart = true;
+    }
+    if (!capturedEnd && col >= endCol) {
+      activeAtEnd = active;
+      capturedEnd = true;
+    }
+
+    const next = col + visibleWidth(ch);
+    if (next <= startCol) before += ch;
+    else if (col >= endCol) after += ch;
+    else selected += ch;
+    col = next;
+    i += 1;
+  }
+
+  if (!capturedStart) activeAtStart = active;
+  if (!capturedEnd) activeAtEnd = active;
+  return { before, selected, after, activeAtStart, activeAtEnd };
+}
+
+function readAnsi(text, offset) {
+  if (text[offset] !== "\x1b") return null;
+  const match = text.slice(offset).match(/^\x1b(?:\][^\x07]*(?:\x07|\x1b\\)|\[[0-?]*[ -/]*[@-~]|[@-Z\\-_])/);
+  return match?.[0] ?? null;
+}
+
+function updateActiveSgr(active, seq) {
+  if (!seq.startsWith("\x1b[") || !seq.endsWith("m")) return active;
+  const body = seq.slice(2, -1);
+  if (body === "" || body.split(";").includes("0")) return "";
+  return seq;
+}
+
+function clampNumber(value, min, max) {
+  return Math.min(max, Math.max(min, value));
 }

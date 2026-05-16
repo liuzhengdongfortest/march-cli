@@ -18,11 +18,7 @@ export class ShellSplitLayout {
 
   render(width) {
     const safeWidth = Math.max(1, Math.trunc(width));
-    if (!this.shellPane?.isVisible?.() || safeWidth < 3) {
-      const lines = renderStack(this.mainChildren, safeWidth);
-      this.selection?.setLines(lines);
-      return this.selection?.apply(lines) ?? lines;
-    }
+    if (!this.shellPane?.isVisible?.() || safeWidth < 3) return renderStack(this.mainChildren, safeWidth);
 
     const shellWidth = computeShellWidth(safeWidth);
     const mainWidth = Math.max(1, safeWidth - shellWidth - SEPARATOR_WIDTH);
@@ -36,8 +32,7 @@ export class ShellSplitLayout {
       const right = padToWidth(shellLines[i] ?? "", shellWidth);
       lines.push(`${left}${SEPARATOR}${right}`);
     }
-    this.selection?.setLines(lines);
-    return this.selection?.apply(lines) ?? lines;
+    return lines;
   }
 
   invalidate() {

@@ -19,6 +19,20 @@ export async function runTuiSelectionSmoke() {
   assert.equal(selection.text(), "lpha\nbe");
   assert.ok(selection.apply(["alpha", "beta"]).join("\n").includes("\x1b[7m"));
 
+  selection.setViewport({ topRow: 2, width: 10, lines: ["alpha", "beta"] });
+  selection.start({ row: 3, col: 2 });
+  selection.update({ row: 4, col: 3 });
+  assert.equal(selection.text(), "lpha\nbe");
+
+  const coloredSelection = new ScreenSelection();
+  const colored = "\x1b[31malpha\x1b[0m";
+  coloredSelection.setLines([colored]);
+  coloredSelection.start({ row: 1, col: 2 });
+  coloredSelection.update({ row: 1, col: 4 });
+  const highlighted = coloredSelection.apply([colored])[0];
+  assert.ok(highlighted.includes("\x1b[31m"));
+  assert.ok(highlighted.includes("\x1b[7m"));
+
   let copied = "";
   const terminal = new FakeTerminal();
   terminal.columns = 40;

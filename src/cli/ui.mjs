@@ -40,7 +40,7 @@ export function createTuiUI({
   const statusBar = new StatusBar();
   const editor = new Editor(tui, EDITOR_THEME, { paddingX: 1 });
   const selection = new ScreenSelection();
-  const mainPane = new MainPaneLayout({ output, statusBar, editor, terminal });
+  const mainPane = new MainPaneLayout({ output, statusBar, editor, terminal, selection });
   const shellSplitLayout = new ShellSplitLayout({
     mainChildren: [mainPane],
     shellPane: shellDrawer,
