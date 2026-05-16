@@ -17,6 +17,19 @@ export function buildDiagnosticsLayer({ snapshot } = {}) {
   return lines.join("\n");
 }
 
+export function buildDiagnosticsForPath({ snapshot, path } = {}) {
+  const targetPath = String(path ?? "");
+  if (!targetPath) return "";
+  const diagnostics = (snapshot?.diagnostics ?? []).filter((diagnostic) => diagnostic.path === targetPath);
+  if (diagnostics.length === 0) return "";
+  return buildDiagnosticsLayer({
+    snapshot: {
+      ...snapshot,
+      diagnostics,
+    },
+  });
+}
+
 function formatDiagnostic(diagnostic) {
   const severity = formatSeverity(diagnostic.severity);
   const line = (diagnostic.range?.start?.line ?? 0) + 1;

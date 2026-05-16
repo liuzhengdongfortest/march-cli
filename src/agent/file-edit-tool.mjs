@@ -3,6 +3,7 @@ import { dirname } from "node:path";
 import { defineTool } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
 import { toolText } from "./tool-result.mjs";
+import { buildDiagnosticsForPath } from "../context/diagnostics.mjs";
 
 const PATCH_MODE = "patch";
 const WRITE_MODE = "write";
@@ -44,18 +45,18 @@ export function createEditFileTool({ engine, ui, lspService = null }) {
   });
 }
 
-export function executeEditFile({ params, engine, ui, lspService = null }) {
+export async function executeEditFile({ params, engine, ui, lspService = null }) {
   const absPath = engine.resolvePath(params.path);
   const mode = params.mode ?? PATCH_MODE;
 
   if (mode === WRITE_MODE || mode === OVERWRITE_MODE) {
-    return writeFullFile({ absPath, path: params.path, content: params.content, mode, engine, lspService });
+    return await writeFullFile({ absPath, path: params.path, content: params.content, mode, engine, lspService });
   }
   if (mode !== PATCH_MODE) return toolText(`Error: unsupported edit_file mode: ${mode}`, { error: true });
-  return patchFile({ absPath, path: params.path, edits: params.edits, engine, ui, lspService });
+  return await patchFile({ absPath, path: params.path, edits: params.edits, engine, ui, lspService });
 }
 
-function writeFullFile({ absPath, path, content, mode, engine, lspService }) {
+async function writeFullFile({ absPath, path, content, mode, engine, lspService }) {
   if (typeof content !== "string") {
     return toolText(`Error: content is required for mode=${mode}`, { error: true });
   }
@@ -65,14 +66,15 @@ function writeFullFile({ absPath, path, content, mode, engine, lspService }) {
   try {
     mkdirSync(dirname(absPath), { recursive: true });
     writeFileSync(absPath, content, "utf8");
+    lspService?.touchFile?.(absPath);
 
-    return toolText(`${mode === WRITE_MODE ? "Wrote" : "Overwrote"} ${path}`, { path: absPath });
+    return await toolTextWithDiagnostics(`${mode === WRITE_MODE ? "Wrote" : "Overwrote"} ${path}`, { path: absPath }, { lspService, path: absPath });
   } catch (err) {
     return toolText(`Error writing ${absPath}: ${err.message}`, { error: true });
   }
 }
 
-function patchFile({ absPath, path, edits, engine, ui, lspService }) {
+async function patchFile({ absPath, path, edits, engine, ui, lspService }) {
   if (!existsSync(absPath)) {
     return toolText(`Error: ${absPath} does not exist. Use mode=write to create it.`, { error: true });
   }
@@ -90,10 +92,31 @@ function patchFile({ absPath, path, edits, engine, ui, lspService }) {
     writeFileSync(absPath, newContent, "utf8");
     lspService?.touchFile?.(absPath);
     for (const edit of prepared.edits) ui.editDiff(absPath, formatDiff(edit.oldText, edit.newText, { startLine: edit.startLine }));
-    return toolText(`Edited ${absPath}`, { path: absPath, edits: prepared.edits.length });
+    return await toolTextWithDiagnostics(`Edited ${absPath}`, { path: absPath, edits: prepared.edits.length }, { lspService, path: absPath });
   } catch (err) {
     return toolText(`Error writing ${absPath}: ${err.message}`, { error: true });
   }
+}
+
+async function toolTextWithDiagnostics(text, details, { lspService, path, timeoutMs = 3000, intervalMs = 150 } = {}) {
+  const diagnostics = await waitForDiagnosticsForPath({ lspService, path, timeoutMs, intervalMs });
+  return toolText(diagnostics ? `${text}\n\n${diagnostics}` : text, details);
+}
+
+async function waitForDiagnosticsForPath({ lspService, path, timeoutMs, intervalMs }) {
+  if (!lspService?.snapshot || !path) return "";
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const diagnostics = buildDiagnosticsForPath({ snapshot: lspService.snapshot(), path });
+    if (diagnostics) return diagnostics;
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) return "";
+    await sleep(Math.min(intervalMs, remaining));
+  }
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export function preparePatchEdits(content, edits, path = "file") {
