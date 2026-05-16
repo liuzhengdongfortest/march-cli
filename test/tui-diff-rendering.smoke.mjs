@@ -58,9 +58,30 @@ export async function runTuiDiffRenderingSmoke() {
   assert.ok(split.some((line) => line.includes("48;5;52")));
   assert.ok(split.some((line) => line.includes("48;5;22")));
   assert.ok(split.some((line) => line.includes("38;5;117")));
+
+  const addOnly = formatEditDiffLines({
+    path: "src/app.ts",
+    width: 140,
+    diffLines: [{ type: "add", text: "const added = true;", lineNum: 8 }],
+  }).map(stripAnsi);
+  const addOnlyLine = addOnly[1];
+  assert.equal(addOnlyLine.length, 140);
+  assert.ok(separatorPositions(addOnlyLine).includes(68));
+  assert.ok(addOnlyLine.slice(0, 68).includes(" │ "));
+  assert.ok(addOnlyLine.slice(71).includes("+ const added = true;"));
   console.log("  PASS");
 }
 
 function stripAnsi(text) {
   return String(text ?? "").replace(/\x1b(?:\][^\x07]*(?:\x07|\x1b\\)|[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, "");
+}
+
+function separatorPositions(text) {
+  const positions = [];
+  let index = text.indexOf(" │ ");
+  while (index >= 0) {
+    positions.push(index);
+    index = text.indexOf(" │ ", index + 1);
+  }
+  return positions;
 }

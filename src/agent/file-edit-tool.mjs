@@ -91,7 +91,7 @@ async function patchFile({ absPath, path, edits, engine, ui, lspService }) {
     mkdirSync(dirname(absPath), { recursive: true });
     writeFileSync(absPath, newContent, "utf8");
     lspService?.touchFile?.(absPath);
-    for (const edit of prepared.edits) ui.editDiff(absPath, formatDiff(edit.oldText, edit.newText, { startLine: edit.startLine }));
+    ui.editDiff(absPath, prepared.edits.flatMap((edit) => formatDiff(edit.oldText, edit.newText, { startLine: edit.startLine })));
     return await toolTextWithDiagnostics(`Edited ${absPath}`, { path: absPath, edits: prepared.edits.length }, { lspService, path: absPath });
   } catch (err) {
     return toolText(`Error writing ${absPath}: ${err.message}`, { error: true });

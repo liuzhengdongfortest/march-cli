@@ -67,7 +67,7 @@ function formatUnifiedSide({ num, sign, text, type, path }) {
 }
 
 function formatSplitSide({ side, sideWidth, gutterWidth, path, fallbackType }) {
-  if (!side) return " ".repeat(sideWidth);
+  if (!side) return formatEmptySplitSide({ sideWidth, gutterWidth });
   const type = side.type ?? fallbackType;
   const bg = type === "del" ? BG_DEL : type === "add" ? BG_ADD : BG_CTX;
   const sign = type === "del" ? "-" : type === "add" ? "+" : " ";
@@ -84,6 +84,16 @@ function formatSplitSide({ side, sideWidth, gutterWidth, path, fallbackType }) {
     styleSyntax(`${sign} `, signScope, bg),
     code,
     stylePlain(" ".repeat(padding), "", bg),
+  ].join("");
+}
+
+function formatEmptySplitSide({ sideWidth, gutterWidth }) {
+  const prefixWidth = gutterWidth + 5;
+  const textWidth = Math.max(1, sideWidth - prefixWidth);
+  return [
+    stylePlain(`${" ".repeat(gutterWidth)} │ `, "90", ""),
+    styleSyntax("  ", "default", ""),
+    " ".repeat(textWidth),
   ].join("");
 }
 

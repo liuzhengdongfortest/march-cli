@@ -142,6 +142,27 @@ export async function runEditFileToolSmoke({ setupTmp, cleanup }) {
   assert.equal(readFileSync(newFile, "utf8"), "replaced");
   assert.ok(touched.includes(newFile));
 
+  const multiFile = join(dir, "multi.txt");
+  writeFileSync(multiFile, "alpha\nbeta\ngamma\ndelta", "utf8");
+  const multiDiffs = [];
+  result = await executeEditFile({
+    params: {
+      path: multiFile,
+      edits: [
+        { type: "replace_text", oldText: "beta", newText: "BETA" },
+        { type: "replace_text", oldText: "delta", newText: "DELTA" },
+      ],
+    },
+    engine,
+    ui: { editDiff: (path, diff) => multiDiffs.push({ path, diff }) },
+    lspService: { touchFile: (path) => touched.push(path) },
+  });
+  assert.equal(result.details.error, undefined);
+  assert.equal(readFileSync(multiFile, "utf8"), "alpha\nBETA\ngamma\nDELTA");
+  assert.equal(multiDiffs.length, 1);
+  assert.ok(multiDiffs[0].diff.some((line) => line.type === "add" && line.text === "BETA"));
+  assert.ok(multiDiffs[0].diff.some((line) => line.type === "add" && line.text === "DELTA"));
+
   cleanup(dir);
   console.log("  PASS");
 }
