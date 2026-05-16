@@ -80,11 +80,11 @@ function renderBlock(token, lines, width, depth) {
 function renderList(token, lines, width, depth) {
   token.items?.forEach((item, index) => {
     const marker = token.ordered ? `${Number(token.start || 1) + index}.` : "•";
-    const prefix = `${"  ".repeat(depth)}${cyan(marker)} `;
-    const textTokens = item.tokens?.filter((t) => t.type === "text") ?? [];
+    const prefix = `${'  '.repeat(depth)}${cyan(marker)} `;
+    const inlineTokens = item.tokens?.filter((t) => t.type !== "list") ?? [];
     const nested = item.tokens?.filter((t) => t.type === "list") ?? [];
-    const runs = textTokens.length
-      ? textTokens.flatMap((t) => inlineRuns(t.tokens ?? [{ type: "text", text: t.text }]))
+    const runs = inlineTokens.length
+      ? inlineTokens.flatMap((t) => inlineRuns(t.tokens ?? [{ type: "text", text: t.text }]))
       : inlineRuns([{ type: "text", text: item.text ?? "" }]);
     appendWrappedRuns(lines, runs, width, visibleWidth(stripAnsi(prefix)), prefix);
     for (const child of nested) renderList(child, lines, width, depth + 1);
