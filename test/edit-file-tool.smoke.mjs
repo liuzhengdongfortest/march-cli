@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 export async function runEditFileToolSmoke({ setupTmp, cleanup }) {
@@ -15,7 +15,6 @@ export async function runEditFileToolSmoke({ setupTmp, cleanup }) {
   const ui = { editDiff: (path, diff) => diffs.push({ path, diff }) };
   const lspService = { touchFile: (path) => touched.push(path) };
 
-  engine.openFile(file);
   let result = executeEditFile({
     params: {
       path: file,
@@ -105,18 +104,7 @@ export async function runEditFileToolSmoke({ setupTmp, cleanup }) {
 }
 
 function createEngine(cwd) {
-  const openFiles = new Map();
   return {
     resolvePath: (path) => resolve(cwd, path),
-    isOpen: (path) => openFiles.has(path),
-    getOpenFile: (path) => openFiles.get(path),
-    openFile: (path) => {
-      mkdirSync(cwd, { recursive: true });
-      if (!existsSync(path)) throw new Error(`file not found: ${path}`);
-      const content = readFileSync(path, "utf8");
-      const entry = { content, lineCount: content.split("\n").length };
-      openFiles.set(path, entry);
-      return entry;
-    },
   };
 }

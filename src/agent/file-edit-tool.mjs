@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { defineTool } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
@@ -26,7 +26,7 @@ export function createEditFileTool({ engine, ui, lspService = null }) {
     name: "edit_file",
     label: "Edit File",
     description:
-      "Single file write tool. Use mode=patch with edits[] for targeted edits in [open_files]. " +
+      "Single file write tool. Use mode=patch with edits[] for targeted edits. " +
       "Use mode=write with content for new files. Use mode=overwrite with content for full-file replacement.",
     parameters: Type.Object({
       path: Type.String({ description: "Absolute or relative path" }),
@@ -36,7 +36,7 @@ export function createEditFileTool({ engine, ui, lspService = null }) {
         Type.Literal(OVERWRITE_MODE),
       ], { description: "patch (default), write, or overwrite" })),
       edits: Type.Optional(Type.Array(Type.Union([replaceTextEditSchema, replaceRangeEditSchema]), {
-        description: "Patch edits. replace_text uses exact text; replace_range uses 1-based inclusive line numbers from [open_files].",
+        description: "Patch edits. replace_text uses exact text; replace_range uses 1-based inclusive line numbers.",
       })),
       content: Type.Optional(Type.String({ description: "Full file content for mode=write or mode=overwrite" })),
     }),
@@ -52,7 +52,7 @@ export function executeEditFile({ params, engine, ui, lspService = null }) {
     return writeFullFile({ absPath, path: params.path, content: params.content, mode, engine, lspService });
   }
   if (mode !== PATCH_MODE) return toolText(`Error: unsupported edit_file mode: ${mode}`, { error: true });
-  return patchOpenFile({ absPath, path: params.path, edits: params.edits, engine, ui, lspService });
+  return patchFile({ absPath, path: params.path, edits: params.edits, engine, ui, lspService });
 }
 
 function writeFullFile({ absPath, path, content, mode, engine, lspService }) {
@@ -65,31 +65,29 @@ function writeFullFile({ absPath, path, content, mode, engine, lspService }) {
   try {
     mkdirSync(dirname(absPath), { recursive: true });
     writeFileSync(absPath, content, "utf8");
-    if (engine.isOpen(absPath)) engine.openFile(absPath);
-    lspService?.touchFile?.(absPath);
+
     return toolText(`${mode === WRITE_MODE ? "Wrote" : "Overwrote"} ${path}`, { path: absPath });
   } catch (err) {
     return toolText(`Error writing ${absPath}: ${err.message}`, { error: true });
   }
 }
 
-function patchOpenFile({ absPath, edits, engine, ui, lspService }) {
-  if (!engine.isOpen(absPath)) {
-    return toolText(`Error: ${absPath} is not in [open_files]. Use open_file first.`, { error: true, requiresOpen: true });
+function patchFile({ absPath, path, edits, engine, ui, lspService }) {
+  if (!existsSync(absPath)) {
+    return toolText(`Error: ${absPath} does not exist. Use mode=write to create it.`, { error: true });
   }
   if (!Array.isArray(edits) || edits.length === 0) {
     return toolText("Error: mode=patch requires at least one edit", { error: true });
   }
 
-  const entry = engine.getOpenFile(absPath);
-  const prepared = preparePatchEdits(entry.content, edits, absPath);
+  const content = readFileSync(absPath, "utf8");
+  const prepared = preparePatchEdits(content, edits, absPath);
   if (prepared.error) return toolText(prepared.error, { error: true });
 
-  const newContent = applyPreparedEdits(entry.content, prepared.edits);
+  const newContent = applyPreparedEdits(content, prepared.edits);
   try {
     mkdirSync(dirname(absPath), { recursive: true });
     writeFileSync(absPath, newContent, "utf8");
-    engine.openFile(absPath);
     lspService?.touchFile?.(absPath);
     for (const edit of prepared.edits) ui.editDiff(absPath, formatDiff(edit.oldText, edit.newText, { startLine: edit.startLine }));
     return toolText(`Edited ${absPath}`, { path: absPath, edits: prepared.edits.length });

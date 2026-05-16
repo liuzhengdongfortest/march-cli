@@ -12,8 +12,8 @@ export async function runStartupResumeSmoke({ setupTmp, cleanup }) {
   assert.equal(loadOrCreateProjectId(projectMarchDir), projectId);
   const statuses = [];
   const ui = { status: (line) => statuses.push(line) };
-  const engine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: [], pins: [] });
-  const sourceEngine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: [], pins: ["pinned"] });
+  const engine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: [] });
+  const sourceEngine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: [] });
   sourceEngine.recordTurn({ userMessage: "hello", assistantMessage: "answer" });
   savePiSessionSidecar({
     projectMarchDir,

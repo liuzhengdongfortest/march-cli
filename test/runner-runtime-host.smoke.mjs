@@ -100,7 +100,6 @@ export async function runRunnerRuntimeHostSmoke() {
     modelId: "deepseek-v4-pro",
     ui: { editDiff: () => {} },
     skills: [],
-    pins: [],
     shellRuntime: { killAll: () => shellKills.push("killAll") },
     useRuntimeHost: true,
     modelContextDumper: {
@@ -155,7 +154,6 @@ export async function runRunnerRuntimeHostSmoke() {
       modelId: "model",
       ui: { editDiff: () => {} },
       skills: [],
-      pins: [],
       extensionPaths: ["D:/repo/ext.ts"],
       useRuntimeHost: false,
       createAgentSessionImpl: async () => ({ session: { id: "unused" } }),
@@ -174,7 +172,6 @@ export async function runRunnerRuntimeHostSmoke() {
     modelId: "deepseek-v4-pro",
     ui: { editDiff: () => {} },
     skills: [],
-    pins: [],
     shellRuntime: {
       async dispose() {
         disposeCalls.push("shell-start");
@@ -208,7 +205,6 @@ export async function runRunnerRuntimeHostSmoke() {
     modelId: "deepseek-v4-pro",
     ui: { editDiff: () => {} },
     skills: [],
-    pins: [],
     shellRuntime: {
       dispose() {
         failureCalls.push("shell");

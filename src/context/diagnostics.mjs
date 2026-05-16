@@ -1,15 +1,10 @@
 const MAX_DIAGNOSTICS = 20;
 
-export function buildDiagnosticsLayer({ snapshot, openFiles = [] } = {}) {
+export function buildDiagnosticsLayer({ snapshot } = {}) {
   const diagnostics = snapshot?.diagnostics ?? [];
   if (diagnostics.length === 0) return "[diagnostics]";
 
-  const openSet = new Set(openFiles);
-  const sorted = [...diagnostics].sort((a, b) => {
-    const openDelta = Number(openSet.has(b.path)) - Number(openSet.has(a.path));
-    if (openDelta) return openDelta;
-    return severityRank(a.severity) - severityRank(b.severity);
-  });
+  const sorted = [...diagnostics].sort((a, b) => severityRank(a.severity) - severityRank(b.severity));
 
   const counts = countSeverities(diagnostics);
   const lines = ["[diagnostics]", "source: lsp"];

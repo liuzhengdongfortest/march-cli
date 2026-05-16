@@ -78,7 +78,6 @@ export async function runDefaultStartupFlowSmoke({ setupTmp, cleanup }) {
       stateRoot: join(dir, ".state"),
       ui: makeUi(calls),
       skills: [],
-      pins: [],
       projectMarchDir,
       sessionManager,
       useRuntimeHost: true,

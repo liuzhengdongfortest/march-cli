@@ -90,7 +90,6 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
     stateRoot: join(dir, ".state"),
     ui,
     skills: [],
-    pins: [],
     projectMarchDir,
     syncPiSidecar: true,
     createAgentSessionImpl: async () => ({ session }),

@@ -84,7 +84,6 @@ export async function run(argv) {
   const provider = args.provider ?? config.provider ?? null;
   const model = args.model ?? config.model ?? null;
   const skills = [...config.skills, ...args.skills];
-  const pins = [...config.pins, ...args.pins];
   const extensionPaths = [
     ...discoverProjectExtensionPaths(cwd),
     ...args.extensions.map((extensionPath) => resolve(cwd, extensionPath)),
@@ -172,7 +171,6 @@ export async function run(argv) {
     ui,
     skills: skills,
     skillPool,
-    pins: pins,
     memoryStore,
     memoryTools,
     skillTools,

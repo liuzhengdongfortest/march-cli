@@ -18,13 +18,12 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
     provider: "deepseek",
     thinkingLevel: "high",
     sessionName: "Sprint",
-    openFiles: new Map([["a", {}]]),
-    getPins: () => ["pin.md"],
   };
   const sessionStats = {
     sessionId: "pi1",
     tokens: { input: 10, output: 20 },
   };
+
   assert.equal(formatExtensionDiagnosticSummary(), "ok");
   assert.equal(formatExtensionDiagnosticSummary(
     [{ type: "warning", message: "a" }],
@@ -51,8 +50,6 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(line.includes("thinking:high"));
   assert.ok(line.includes("tokens:10in/20out"));
   assert.ok(line.includes("ext:1warning"));
-  assert.ok(line.includes("open:1"));
-  assert.ok(line.includes("pins:1"));
   assert.equal(shortSessionId("019e0ff8-8f03-74d3-a8cb-39635eae5ca1"), "019e0ff8");
   const doStatusBar = stripAnsi(formatStatusBarLine({
     engine,
@@ -70,7 +67,7 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
   assert.equal(doStatusBar.includes("ext:"), false);
   assert.equal(doStatusBar.includes("pi:"), false);
   assert.equal(stripAnsi(formatStatusBarLine({
-    engine: { ...engine, openFiles: new Map(), getPins: () => [] },
+    engine,
     sessionState: { sessionId: "019e0ff8-8f03-74d3-a8cb-39635eae5ca1" },
     sessionStats: { sessionId: "019e0ff8-8f03-74d3-a8cb-39635eae5ca1", tokens: { input: 0, output: 0 } },
     sessionSource: "pi",
@@ -102,7 +99,7 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
     sessionSource: "pi",
     gitBranch: null,
   }), [
-    "git:none  session:pi1  source:pi  name:Sprint  model:deepseek-chat  provider:deepseek  thinking:high  tokens:10in/20out  ext:ok  open:1  pins:1",
+    "git:none  session:pi1  source:pi  name:Sprint  model:deepseek-chat  provider:deepseek  thinking:high  tokens:10in/20out  ext:ok",
   ]);
   cleanup(dir);
   console.log("  PASS");

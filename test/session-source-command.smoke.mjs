@@ -26,11 +26,8 @@ export async function runSessionSourceCommandSmoke({ setupTmp, cleanup }) {
       provider: "deepseek",
       namespace: "ns",
       turns: [{ index: 1, userMessage: "slash pi", assistantMessage: "ok" }],
-      pins: new Set(),
       skills: [],
-      openFiles: new Map(),
     },
-    metadata: { sessionId: "pi-slash", sessionFile: "2026-05-10T00-00-00-000Z_pi.jsonl" },
   });
 
   const output = [];
@@ -43,8 +40,6 @@ export async function runSessionSourceCommandSmoke({ setupTmp, cleanup }) {
       provider: "deepseek",
       namespace: "ns",
       turns: [],
-      pins: new Set(),
-      openFiles: new Map(),
       skills: [],
       restoreSession: (state) => {
         restored = state;

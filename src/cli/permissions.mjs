@@ -27,8 +27,6 @@ export const MODE = Object.freeze({
 
 // ── Default tool → category mapping ────────────────────────────────────
 const DEFAULT_CATEGORIES = {
-  open_file: PERM.READ_ONLY,
-  close_file: PERM.READ_ONLY,
   context_stats: PERM.READ_ONLY,
   find: PERM.READ_ONLY,
   edit_file: PERM.FILE_WRITE,

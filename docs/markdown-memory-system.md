@@ -106,7 +106,7 @@ YYYY-MM-DD-slug.md
 ---
 id: mem_01hx_context_cache
 name: Context cache ordering
-description: 高频变化层不能放在大块 open_files 前面，否则会污染 prefix cache
+description: 高频变化层不能放在大块稳定上下文前面，否则会污染 prefix cache
 tags:
   - march/context
   - cache
@@ -315,7 +315,7 @@ assistant 输出触发：
 我们继续讨论 memory 召回。
 
 [passive_recall source="user"]
-- mem_01hx_context_cache | Context cache ordering | 高频变化层不能放在大块 open_files 前面
+- mem_01hx_context_cache | Context cache ordering | 高频变化层不能放在大块稳定上下文前面
 - mem_01hx_recall_dedup | Passive recall dedup | 用户召回按最近 10 个 turn 做滚动抑制
 
 [assistant]

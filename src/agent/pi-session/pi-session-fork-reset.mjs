@@ -81,9 +81,7 @@ function createResetSidecarState({ engine, sourceStats, entryId, savedAt }) {
     thinkingLevel: engine.thinkingLevel,
     namespace: engine.namespace,
     turns: [],
-    pins: [],
     skills: [],
-    openFiles: [],
   };
 }
 

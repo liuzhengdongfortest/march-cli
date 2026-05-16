@@ -10,7 +10,7 @@ export function createReadFileTool({ engine }) {
   return defineTool({
     name: "read",
     label: "Read File",
-    description: "Read a file slice with 1-based line numbers. Use open_file when the file should stay in [open_files].",
+    description: "Read a file slice with 1-based line numbers. Use offset and limit to read specific line ranges.",
     parameters: Type.Object({
       path: Type.String({ description: "Absolute or relative path to read" }),
       offset: Type.Optional(Type.Number({ description: "1-based line number to start reading from; default 1" })),

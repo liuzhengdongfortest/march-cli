@@ -54,7 +54,6 @@ export async function runRunnerImageAttachmentsSmoke({ setupTmp, cleanup }) {
     stateRoot: join(dir, ".state"),
     ui,
     skills: [],
-    pins: [],
     projectMarchDir,
     createAgentSessionImpl: async () => ({ session }),
   });

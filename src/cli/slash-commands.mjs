@@ -11,7 +11,6 @@ import { formatPromptTemplateLines } from "./input/prompt-templates.mjs";
 import { handleSettingsCommand, parseSettingsCommand } from "../config/settings-command.mjs";
 import { handleSessionNameCommand, parseSessionNameCommand } from "./session/session-name-command.mjs";
 import { handleShellCommand, parseShellCommand } from "./shell/shell-command.mjs";
-import { handlePinCommand, parsePinCommand } from "./commands/pin-command.mjs";
 import { handleProviderCommand, parseProviderCommand } from "./commands/provider-command.mjs";
 import { formatHelpLines } from "./commands/help-command.mjs";
 
@@ -137,12 +136,6 @@ export async function handleSlashCommand(trimmed, {
 
   if (trimmed === "/copy") {
     for (const line of copyLastAssistantMessage({ engine: runner.engine, writeClipboard })) ui.writeln(line);
-    return { handled: true };
-  }
-
-  const pinCommand = parsePinCommand(trimmed);
-  if (pinCommand.type !== "none") {
-    for (const line of handlePinCommand(pinCommand, { engine: runner.engine })) ui.writeln(line);
     return { handled: true };
   }
 

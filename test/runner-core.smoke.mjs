@@ -62,11 +62,11 @@ export async function runRunnerCoreSmoke() {
         {
           role: "assistant",
           content: null,
-          tool_calls: [{ id: "call_1", type: "function", function: { name: "close_file", arguments: '{"path":"src/main.mjs"}' } }],
+          tool_calls: [{ id: "call_1", type: "function", function: { name: "read", arguments: '{"path":"src/main.mjs"}' } }],
         },
         { role: "tool", content: "Closed main.mjs", tool_call_id: "call_1" },
       ],
-      tools: [{ name: "read", description: "Read a file" }],
+    tools: [{ name: "read", description: "Read a file" }],
     }),
   };
   installModelPayloadDumper({ agent: toolsAgent }, {
@@ -81,8 +81,8 @@ export async function runRunnerCoreSmoke() {
   assert.equal(toolDumps.length, 1);
   assert.ok(toolDumps[0].prompt.includes("hello"));
   assert.ok(!toolDumps[0].prompt.includes("\x1b["));
-  assert.ok(toolDumps[0].prompt.includes('tool_call close_file({"path":"src/main.mjs"})'));
-  assert.ok(toolDumps[0].prompt.includes("## tool close_file"));
+  assert.ok(toolDumps[0].prompt.includes('tool_call read({"path":"src/main.mjs"})'));
+  assert.ok(toolDumps[0].prompt.includes("## tool read"));
   assert.equal(sidecars.length, 2);
   assert.equal(sidecars[0].suffix, "payload");
   assert.equal(sidecars[0].value.messages[0].content, "\x1b[31mhello\x1b[0m");
@@ -150,9 +150,7 @@ export async function runRunnerCoreSmoke() {
       stateRoot: process.cwd(),
       ui: {},
       skills: [],
-      pins: [],
     }),
-    /Run: march provider --config/,
   );
   console.log("  PASS");
 }

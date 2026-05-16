@@ -9,7 +9,7 @@ export async function runPiSessionForkResetSmoke({ setupTmp, cleanup }) {
 
   const dir = setupTmp();
   const projectMarchDir = `${dir}/.march`;
-  const engine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", thinkingLevel: "high", skills: ["s1"], pins: ["pinned"], namespace: "ns" });
+  const engine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", thinkingLevel: "high", skills: ["s1"], namespace: "ns" });
   engine.recordTurn({ userMessage: "current", assistantMessage: "current" });
   let activeSession = {
     getUserMessagesForForking: () => [{ entryId: "u1", text: "old prompt" }],
@@ -45,7 +45,6 @@ export async function runPiSessionForkResetSmoke({ setupTmp, cleanup }) {
   assert.equal(result.sessionId, "new");
   assert.equal(result.selectedText, "old prompt");
   assert.equal(engine.turns.length, 0);
-  assert.deepEqual(engine.getPins(), []);
   assert.deepEqual(engine.skills, []);
 
   const sidecar = loadPiSessionSidecar({ projectMarchDir, sessionRef: "new.jsonl" });
@@ -56,12 +55,11 @@ export async function runPiSessionForkResetSmoke({ setupTmp, cleanup }) {
   assert.equal(sidecar.state.derivedFromPiEntryId, "u1");
   assert.equal(sidecar.state.thinkingLevel, "high");
   assert.deepEqual(sidecar.state.turns, []);
-  assert.deepEqual(sidecar.state.pins, []);
-  assert.deepEqual(sidecar.state.openFiles, []);
   assert.deepEqual(sidecar.state.skills, []);
 
+
   let rolledBackTo = null;
-  const rollbackEngine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: ["s1"], pins: ["pinned"], namespace: "ns" });
+  const rollbackEngine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek", skills: ["s1"], namespace: "ns" });
   rollbackEngine.recordTurn({ userMessage: "current", assistantMessage: "current" });
   const rollbackSource = {
     getUserMessagesForForking: () => [{ entryId: "u1", text: "old prompt" }],
@@ -96,7 +94,6 @@ export async function runPiSessionForkResetSmoke({ setupTmp, cleanup }) {
   assert.equal(rolledBackTo, "old-rollback.jsonl");
   assert.equal(rollbackBinding.get().getSessionStats().sessionId, "old-rollback");
   assert.equal(rollbackEngine.turns.length, 1);
-  assert.deepEqual(rollbackEngine.getPins(), ["pinned"]);
   assert.deepEqual(rollbackEngine.skills, ["s1"]);
 
   await assert.rejects(() => forkPiSessionWithResetContext({

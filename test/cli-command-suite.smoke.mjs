@@ -12,7 +12,6 @@ import {
 import { runPiSessionCloneCommandSmoke } from "./pi-session-clone-command.smoke.mjs";
 import { runPiSessionForkCommandSmoke } from "./pi-session-fork-command.smoke.mjs";
 import { runPiSessionForkResetSmoke } from "./pi-session-fork-reset.smoke.mjs";
-import { runPinCommandSmoke } from "./pin-command.smoke.mjs";
 import { runHelpCommandSmoke } from "./help-command.smoke.mjs";
 import { runSessionSourceCommandSmoke } from "./session-source-command.smoke.mjs";
 import { runRunnerCleanupSmoke } from "./runner-cleanup.smoke.mjs";
@@ -60,7 +59,6 @@ export async function runCliCommandSuiteSmoke({ setupTmp, cleanup }) {
   await runPiSessionCloneCommandSmoke({ setupTmp, cleanup });
   await runPiSessionForkCommandSmoke();
   await runPiSessionForkResetSmoke({ setupTmp, cleanup });
-  await runPinCommandSmoke();
   await runHelpCommandSmoke();
   await runSessionSourceCommandSmoke({ setupTmp, cleanup });
   await runSlashCommandSmoke({ setupTmp, cleanup });

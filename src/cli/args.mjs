@@ -8,8 +8,8 @@ export function parseCliArgs(argv) {
       provider: { type: "string" },
       resume: { type: "string" },
       json: { type: "boolean" },
-      pin: { type: "string", multiple: true },
       skill: { type: "string", multiple: true },
+      extension: { type: "string", short: "e", multiple: true },
       extension: { type: "string", short: "e", multiple: true },
       config: { type: "boolean" },
       "dump-context": { type: "boolean" },
@@ -31,7 +31,6 @@ export function parseCliArgs(argv) {
     provider: values.provider,
     resume: values.resume,
     json: values.json ?? false,
-    pins: values.pin ?? [],
     skills: values.skill ?? [],
     extensions: values.extension ?? [],
     dumpContext: values["dump-context"] ?? false,
@@ -67,7 +66,6 @@ Options:
   --shell-runtime      Enable interactive PTY shell tools (default)
   --no-shell-runtime   Disable interactive PTY shell tools and shell pane
   --permission-mode <mode>  Permission mode: default, bypassPermissions, dontAsk (default: bypassPermissions)
-  --pin <path>         Pin a file in context (repeatable)
   --skill <name>       Activate a skill (repeatable)
   -e, --extension <path>
                        Load a pi extension path in the default runtime host (repeatable)

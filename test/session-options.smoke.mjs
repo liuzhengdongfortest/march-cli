@@ -20,7 +20,6 @@ export async function runSessionOptionsSmoke() {
   assert.equal(options.model, model);
   assert.deepEqual(options.scopedModels, [{ model }]);
   assert.equal(options.thinkingLevel, "medium");
-  assert.ok(options.customTools.some((tool) => tool.name === "open_file"));
   assert.ok(options.customTools.some((tool) => tool.name === "terminal_list"));
   assert.ok(options.customTools.some((tool) => tool.name === "remember"));
   assert.deepEqual(options.tools.slice(0, 3), ["read", "grep", "ls"]);
@@ -28,7 +27,6 @@ export async function runSessionOptionsSmoke() {
   assert.ok(!options.tools.includes("powershell"));
   assert.ok(!options.tools.includes("edit"));
   assert.ok(!options.tools.includes("write"));
-  assert.ok(options.tools.includes("open_file"));
   assert.ok(options.tools.includes("find"));
   assert.ok(options.tools.includes("command_exec"));
   assert.ok(options.tools.includes("edit_file"));

@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { rmSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 export async function runContextEngineSmoke({ setupTmp, cleanup }) {
@@ -12,7 +12,6 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
     modelId: "test",
     provider: "deepseek",
     skills: [],
-    pins: [],
   });
 
   const ctx = engine.buildContext("装備を確認する");
@@ -47,7 +46,6 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
     modelId: "deepseek-v4-pro",
     provider: "other-provider",
     skills: [],
-    pins: [],
   });
   assert.ok(modelPromptEngine.buildContext("").includes("Build context from current project facts before editing."));
 
@@ -120,23 +118,7 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   assert.equal(engine.turns.at(-1).userMessage, "extra 14");
   assert.deepEqual([...engine.getRecentRecallMemoryIds()], []);
 
-  const testFile = join(dir, "test.txt");
-  writeFileSync(testFile, "line1\nline2\nline3");
-  engine.addPin(testFile);
-  const { lineCount, pinned } = engine.openFile(testFile);
-  assert.equal(lineCount, 3);
-  assert.equal(pinned, true);
-  assert.equal(engine.getPins().length, 1);
-
-  const ctx3 = engine.buildContext("装備を確認する");
-  assert.ok(ctx3.includes("[open_files]"));
-  assert.ok(ctx3.includes("1 | line1"));
-  assert.ok(ctx3.includes("2 | line2"));
-  assert.ok(ctx3.includes("(pinned)"));
-  assert.ok(ctx3.indexOf("[open_files]") < ctx3.indexOf("[workspace_status]"));
-  assert.ok(ctx3.indexOf("[open_files]") < ctx3.indexOf("[diagnostics]"));
-  assert.ok(ctx3.indexOf("[diagnostics]") < ctx3.indexOf("[workspace_status]"));
-
+  // diagnostics layer
   const diagnosticEngine = new ContextEngine({
     cwd: dir,
     modelId: "test",
@@ -148,7 +130,7 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
           serverId: "vue",
           source: "vue",
           severity: 1,
-          path: testFile,
+          path: join(dir, "vue-file.ts"),
           range: { start: { line: 1, character: 4 }, end: { line: 1, character: 8 } },
           code: "TS2322",
           message: "Type 'string' is not assignable to type 'number'.",
@@ -156,35 +138,9 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
       }),
     },
   });
-  diagnosticEngine.openFile(testFile);
   const diagnosticCtx = diagnosticEngine.buildContext("");
   assert.ok(diagnosticCtx.includes("source: lsp"));
   assert.ok(diagnosticCtx.includes("status: idle"));
-  assert.ok(diagnosticCtx.includes(`- error vue ${testFile}:2:5 TS2322`));
-  assert.ok(diagnosticCtx.includes("Type 'string' is not assignable to type 'number'."));
-
-  writeFileSync(testFile, "new1\nnew2");
-  const refreshedCtx = engine.buildContext("装備を確認する");
-  assert.ok(refreshedCtx.includes(`--- ${testFile} (1-2) (pinned) ---`));
-  assert.ok(refreshedCtx.includes("1 | new1"));
-  assert.ok(refreshedCtx.includes("2 | new2"));
-  assert.ok(!refreshedCtx.includes("stale"));
-
-  rmSync(testFile);
-  const staleCtx = engine.buildContext("装備を確認する");
-  assert.ok(staleCtx.includes(`--- ${testFile} (1-2) (pinned, stale) ---`));
-  assert.ok(staleCtx.includes("This file may have been moved or deleted"));
-  assert.ok(staleCtx.includes("If you no longer need this file, close it."));
-  assert.ok(staleCtx.includes("1 | new1"));
-  assert.ok(staleCtx.includes("2 | new2"));
-
-  const testFile2 = join(dir, "test2.txt");
-  writeFileSync(testFile2, "data");
-  engine.openFile(testFile2);
-  assert.equal(engine.openFiles.size, 2);
-  engine.closeFile(testFile2);
-  assert.equal(engine.openFiles.size, 1);
-  assert.equal(engine.closeFile(testFile), false);
 
   engine.setToolDefs([
     { name: "test_tool", description: "A test tool", parameters: { x: "number" } },

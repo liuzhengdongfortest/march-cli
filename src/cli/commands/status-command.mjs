@@ -69,8 +69,6 @@ export function formatStatusLine({
     `thinking:${engine.thinkingLevel ?? "unknown"}`,
     `tokens:${tokens}`,
     `ext:${formatExtensionDiagnosticSummary(extensionDiagnostics, lifecycleState)}`,
-    `open:${engine.openFiles?.size ?? 0}`,
-    `pins:${engine.getPins?.().length ?? engine.pins?.size ?? 0}`,
   );
   return parts.join("  ");
 }

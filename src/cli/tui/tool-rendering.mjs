@@ -31,7 +31,6 @@ export function formatToolStartLine(name, args = {}) {
   if (name === "command_exec") return joinToolParts("◆", name, [compactText(args?.command ?? "")]);
   if (name === "terminal_send") return joinToolParts("◆", name, [args?.shell_id, formatTerminalSendAction(args)]);
   if (name?.startsWith?.("terminal_")) return joinToolParts("◆", name, [args?.shell_id, formatTerminalDetails(args)]);
-  if (name === "open_file" || name === "close_file") return joinToolParts("◆", name, [compactPath(args?.path ?? args?.filePath ?? "")]);
   if (name === "web_search") return joinToolParts("◆", name, [quoteCompact(args?.query ?? "")]);
   if (name === "web_fetch") return joinToolParts("◆", name, [compactText(args?.url ?? "")]);
   if (name === "context_stats") return joinToolParts("◆", name, []);

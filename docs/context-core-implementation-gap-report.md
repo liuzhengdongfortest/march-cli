@@ -23,9 +23,8 @@
 [session_identity]
 [available_skills]
 [active_skills]
-[open_files]
+[diagnostics]
 [workspace_status]
-[runtime_status]
 [shells]
 [recent_chat]
 ```
@@ -39,10 +38,8 @@
 [session_identity]
 [available_skills]
 [active_skills]
-[open_files]
 [diagnostics]
 [workspace_status]
-[runtime_status]
 [shells]
 [recent_chat]
 ```
@@ -102,7 +99,7 @@ git 仓库状态
 
 1. 先接短格式 git status，不放 diff。
 2. 最近变更摘要只放路径和状态，不放文件正文。
-3. 保持该层在 `[open_files]` 后面，避免污染打开文件缓存。
+3. 保持该层为短摘要，不放文件正文或 diff。
 
 ### 3. `recent_chat` 数量和召回位置需要统一
 
@@ -201,15 +198,15 @@ MCP tools 进入 [tools]
 
 ### `session_status` 已拆分
 
-已将旧 `[session_status]` 拆成 `[session_identity]` 和 `[workspace_status]`。`[session_identity]` 保留 cwd、workspace root、平台、shell；目录树迁移到 `[workspace_status]`，并放在 `[open_files]` 后面。
+已将旧 `[session_status]` 拆成 `[session_identity]` 和 `[workspace_status]`。`[session_identity]` 保留 cwd、workspace root、平台、shell；目录树迁移到 `[workspace_status]`。
 
 ### `recent_chat` 保留窗口已改为 10
 
 已将 `ContextEngine.recordTurn()` 的历史 turn 保留窗口从 20 改为 10，和 `docs/context-core.md` 以及 passive recall 的 rolling suppression window 对齐。
 
-### `open_files` 已补行号和 stale 标记
+### 常驻文件正文层已移除
 
-已将 `[open_files]` 内容改为逐行编号输出。文件刷新失败时会标记 `(stale)`，提示文件可能已移动或删除，并保留最后一次成功读取的快照；如果 AI 不再需要该文件，应主动 close。
+文件正文不再作为常驻上下文层注入。AI 需要文件内容时通过 `read` 读取当前磁盘内容；修改文件时通过 `edit_file` 在工具执行阶段读取磁盘并应用 patch。
 
 ### skill 来源边界已确认
 

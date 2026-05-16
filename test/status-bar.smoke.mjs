@@ -51,8 +51,6 @@ export async function runStatusBarSmoke() {
         modelId: "m1",
         provider: "test",
         thinkingLevel: "medium",
-        openFiles: new Map(),
-        getPins: () => [],
       },
       getSessionStats: () => ({
         sessionId: "pi1",

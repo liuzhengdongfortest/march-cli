@@ -154,7 +154,7 @@ export async function runPiSessionSwitchCommandSmoke() {
   }), ["Error: pi session sidecar not found for abc123; refusing partial resume"]);
 
   let switchedPath = null;
-  const engine = new ContextEngine({ cwd: "D:/repo", modelId: "test", provider: "deepseek", skills: [], pins: [] });
+  const engine = new ContextEngine({ cwd: "D:/repo", modelId: "test", provider: "deepseek", skills: [] });
   const sidecarDir = join(projectMarchDir, "pi-sidecars");
   mkdirSync(sidecarDir, { recursive: true });
   const sourceEngine = new ContextEngine({
@@ -163,7 +163,6 @@ export async function runPiSessionSwitchCommandSmoke() {
     provider: "deepseek",
     thinkingLevel: "high",
     skills: ["review"],
-    pins: ["/target.txt"],
     namespace: "ns",
   });
   sourceEngine.recordTurn({ userMessage: "hello", assistantMessage: "answer" });
@@ -191,7 +190,6 @@ export async function runPiSessionSwitchCommandSmoke() {
   const skillPool = [{ name: "review", body: "review body" }];
   assert.deepEqual(await resumePiSessionById("abc", { runner, sessions, projectMarchDir, skillPool }), ["Resumed pi session: abc123"]);
   assert.equal(switchedPath, "abc.jsonl");
-  assert.deepEqual(engine.getPins(), ["/target.txt"]);
   assert.deepEqual(engine.skills, skillPool);
   assert.equal(engine.thinkingLevel, "high");
   assert.equal(engine.turns[0].assistantMessage, "answer");
@@ -225,7 +223,7 @@ export async function runPiSessionSwitchCommandSmoke() {
   }), ["Error: failed to switch pi session abc123: runtime exploded"]);
   assert.equal(restoreCalled, false);
 
-  const mismatchEngine = new ContextEngine({ cwd: "D:/other", modelId: "test", provider: "deepseek", skills: [], pins: [] });
+  const mismatchEngine = new ContextEngine({ cwd: "D:/other", modelId: "test", provider: "deepseek", skills: [] });
   assert.deepEqual(await resumePiSessionById("abc", {
     runner: { canSwitchPiSession: () => true, engine: mismatchEngine },
     sessions,

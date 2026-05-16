@@ -1,9 +1,7 @@
-import { isAbsolute, resolve } from "node:path";
-import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { buildSessionIdentity, buildWorkspaceStatus } from "./session-status.mjs";
 import { buildShellLayers } from "./shell-layers.mjs";
 import { buildActiveSkills, buildSkillCatalog } from "./skill-layers.mjs";
-import { buildOpenFilesLayer } from "./open-files-layer.mjs";
 import { buildSystemCore, resolveSystemCorePromptKey } from "./system-core.mjs";
 import { buildInjectionsLayer } from "./injections.mjs";
 import { buildProjectContext } from "./project-context.mjs";
@@ -11,17 +9,15 @@ import { buildDiagnosticsLayer } from "./diagnostics.mjs";
 import { formatRecallHints } from "../memory/markdown-store.mjs";
 
 export class ContextEngine {
-  constructor({ cwd, modelId, provider = "deepseek", thinkingLevel = "medium", skills = [], skillPool = [], pins = [], namespace = "", shellRuntime = null, lspService = null, injections = [], maxTurns, trimBatch }) {
+  constructor({ cwd, modelId, provider = "deepseek", thinkingLevel = "medium", skills = [], skillPool = [], namespace = "", shellRuntime = null, lspService = null, injections = [], maxTurns, trimBatch }) {
     this.cwd = cwd;
     this.modelId = modelId;
     this.provider = provider;
     this.thinkingLevel = thinkingLevel;
     this.skills = [...skills];
     this.skillPool = skillPool;
-    this.pins = new Set(pins);
     this.turns = [];
     this.sessionName = "";
-    this.openFiles = new Map();
     this.toolDefs = [];
     this.namespace = namespace;
     this.shellRuntime = shellRuntime;
@@ -55,7 +51,6 @@ export class ContextEngine {
   }
 
   buildContextLayers(_userMessage = "") {
-    this.#refreshOpenFiles();
     const layers = [
       { name: "system_core", text: this.systemCore },
     ];
@@ -74,10 +69,6 @@ export class ContextEngine {
 
     if (this.skills.length > 0) {
       layers.push({ name: "active_skills", text: this.#buildActiveSkills() });
-    }
-
-    if (this.openFiles.size > 0) {
-      layers.push({ name: "open_files", text: this.#buildOpenFiles() });
     }
 
     layers.push(
@@ -114,47 +105,8 @@ export class ContextEngine {
   }
 
   resolvePath(raw) {
-    return isAbsolute(raw) ? raw : resolve(this.cwd, raw);
+    return resolve(this.cwd, raw);
   }
-
-  // ── openFiles management ────────────────────────────────────────────
-
-  openFile(absPath) {
-    const content = readFileSync(absPath, "utf8");
-    const lineCount = content.split("\n").length;
-    const pinned = this.pins.has(absPath);
-    this.openFiles.set(absPath, { content, lineCount, pinned });
-    return { content, lineCount, pinned };
-  }
-
-  closeFile(absPath) {
-    const entry = this.openFiles.get(absPath);
-    if (entry?.pinned) return false;
-    return this.openFiles.delete(absPath);
-  }
-
-  isOpen(absPath) {
-    return this.openFiles.has(absPath);
-  }
-
-  getOpenFile(absPath) {
-    return this.openFiles.get(absPath);
-  }
-
-  // ── Pin management ─────────────────────────────────────────────────
-
-  addPin(path) {
-    this.pins.add(path);
-    const entry = this.openFiles.get(path);
-    if (entry) entry.pinned = true;
-  }
-  removePin(path) {
-    this.pins.delete(path);
-    const entry = this.openFiles.get(path);
-    if (entry) entry.pinned = false;
-  }
-  hasPin(path) { return this.pins.has(path); }
-  getPins() { return [...this.pins]; }
 
   setSkills(skills) { this.skills = skills; }
   setInjections(injections = []) { this.injections = [...injections]; }
@@ -175,23 +127,11 @@ export class ContextEngine {
     if (replace) {
       this.turns = [];
       this.sessionName = "";
-      this.openFiles = new Map();
-      this.pins = new Set();
       this.skills = [];
     }
     if (data.turns) this.turns = data.turns;
     if (typeof data.sessionName === "string") this.sessionName = data.sessionName;
     this.setRuntimeState(data);
-    if (data.pins) {
-      for (const p of data.pins) {
-        this.pins.add(p);
-      }
-    }
-    if (data.openFiles) {
-      for (const f of data.openFiles) {
-        try { this.openFile(f); } catch {}
-      }
-    }
     if (data.skills && pool) {
       const found = [];
       for (const name of data.skills) {
@@ -202,7 +142,8 @@ export class ContextEngine {
     }
   }
 
-  // ── Layer 3: session_identity ──────────────────────────────────────
+  // ── Private layers ──────────────────────────────────────────────────
+
   #buildSessionIdentity() {
     return buildSessionIdentity({ cwd: this.cwd, workspaceRoot: this.cwd });
   }
@@ -217,26 +158,17 @@ export class ContextEngine {
   #buildDiagnostics() {
     return buildDiagnosticsLayer({
       snapshot: this.lspService?.snapshot?.() ?? { diagnostics: [] },
-      openFiles: [...this.openFiles.keys()],
     });
   }
 
-  // ── Layer 5: skills catalog (Tier 1: always in context) ────────────
   #buildSkillCatalog() {
     return buildSkillCatalog(this.skillPool);
   }
 
-  // ── Layer 5: active_skills (Tier 2: full bodies when activated) ─────
   #buildActiveSkills() {
     return buildActiveSkills(this.skills);
   }
 
-  // ── Layer 5: open_files ────────────────────────────────────────────
-  #buildOpenFiles() {
-    return buildOpenFilesLayer(this.openFiles);
-  }
-
-  // ── Layer 8: shells ────────────────────────────────────────────────
   #buildShellLayers() {
     return buildShellLayers({
       shellRuntime: this.shellRuntime,
@@ -244,7 +176,6 @@ export class ContextEngine {
     });
   }
 
-  // ── Layer 9: recent_chat ───────────────────────────────────────────
   #buildRecentChat() {
     if (this.turns.length === 0) {
       return `[recent_chat]\n(no prior turns)`;
@@ -264,22 +195,6 @@ export class ContextEngine {
       entries.push(block);
     }
     return `[recent_chat]\n${entries.join("\n\n")}`;
-  }
-
-  // ── Internal ────────────────────────────────────────────────────────
-
-  #refreshOpenFiles() {
-    for (const [path, entry] of this.openFiles) {
-      try {
-        const content = readFileSync(path, "utf8");
-        entry.content = content;
-        entry.lineCount = content.split("\n").length;
-        entry.stale = false;
-      } catch {
-        // File may have been deleted — keep stale content but mark
-        entry.stale = true;
-      }
-    }
   }
 
   #truncate(text, maxLen) {
