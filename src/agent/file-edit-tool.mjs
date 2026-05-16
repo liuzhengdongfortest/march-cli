@@ -54,25 +54,28 @@ export async function executeEditFile({ params, engine, ui, lspService = null })
   const mode = params.mode ?? PATCH_MODE;
 
   if (mode === WRITE_MODE || mode === OVERWRITE_MODE) {
-    return await writeFullFile({ absPath, path: params.path, content: params.content, mode, engine, lspService });
+    return await writeFullFile({ absPath, path: params.path, content: params.content, mode, engine, ui, lspService });
   }
   if (mode !== PATCH_MODE) return toolText(`Error: unsupported edit_file mode: ${mode}`, { error: true });
   return await patchFile({ absPath, path: params.path, edits: params.edits, engine, ui, lspService });
 }
 
-async function writeFullFile({ absPath, path, content, mode, engine, lspService }) {
+async function writeFullFile({ absPath, path, content, mode, engine, ui, lspService }) {
   if (typeof content !== "string") {
     return toolText(`Error: content is required for mode=${mode}`, { error: true });
   }
   if (mode === WRITE_MODE && existsSync(absPath)) {
     return toolText(`Error: ${absPath} already exists. Use mode=overwrite to replace it.`, { error: true });
   }
+  const oldText = mode === OVERWRITE_MODE && existsSync(absPath) ? readFileSync(absPath, "utf8") : "";
+  const diffLines = formatDiff(oldText, content, { startLine: 1 });
   try {
     mkdirSync(dirname(absPath), { recursive: true });
     writeFileSync(absPath, content, "utf8");
     lspService?.touchFile?.(absPath);
+    ui.editDiff(absPath, diffLines);
 
-    return await toolTextWithDiagnostics(`${mode === WRITE_MODE ? "Wrote" : "Overwrote"} ${path}`, { path: absPath }, { lspService, path: absPath });
+    return await toolTextWithDiagnostics(`${mode === WRITE_MODE ? "Wrote" : "Overwrote"} ${path}\n\n${formatAppliedDiff([{ oldText, newText: content, startLine: 1 }])}`, { path: absPath }, { lspService, path: absPath });
   } catch (err) {
     return toolText(`Error writing ${absPath}: ${err.message}`, { error: true });
   }

@@ -109,8 +109,12 @@ export async function runEditFileToolSmoke({ setupTmp, cleanup }) {
     lspService: { touchFile: (path) => touched.push(path) },
   });
   assert.equal(result.details.error, undefined);
+  assert.ok(result.content[0].text.includes("[diff]"));
+  assert.ok(result.content[0].text.includes("+1: created"));
   assert.ok(!result.content[0].text.includes("[diagnostics]"));
   assert.equal(readFileSync(newFile, "utf8"), "created");
+  assert.equal(diffs.at(-1).path, newFile);
+  assert.ok(diffs.at(-1).diff.some((line) => line.type === "add" && line.text === "created"));
   assert.ok(touched.includes(newFile));
 
   result = await executeEditFile({
@@ -141,9 +145,15 @@ export async function runEditFileToolSmoke({ setupTmp, cleanup }) {
     },
   });
   assert.equal(result.details.error, undefined);
+  assert.ok(result.content[0].text.includes("[diff]"));
+  assert.ok(result.content[0].text.includes("-1: created"));
+  assert.ok(result.content[0].text.includes("+1: replaced"));
   assert.ok(result.content[0].text.includes("[diagnostics]"));
   assert.ok(result.content[0].text.includes("New file warning"));
   assert.equal(readFileSync(newFile, "utf8"), "replaced");
+  assert.equal(diffs.at(-1).path, newFile);
+  assert.ok(diffs.at(-1).diff.some((line) => line.type === "del" && line.text === "created"));
+  assert.ok(diffs.at(-1).diff.some((line) => line.type === "add" && line.text === "replaced"));
   assert.ok(touched.includes(newFile));
 
   const multiFile = join(dir, "multi.txt");

@@ -1,4 +1,6 @@
 export function formatDiff(oldText, newText, { startLine = 1 } = {}) {
+  if (oldText === "") return newText === "" ? [] : newText.split("\n").map((text, i) => ({ type: "add", text, lineNum: startLine + i }));
+  if (newText === "") return oldText.split("\n").map((text, i) => ({ type: "del", text, lineNum: startLine + i }));
   const oldLines = oldText.split("\n");
   const newLines = newText.split("\n");
 
