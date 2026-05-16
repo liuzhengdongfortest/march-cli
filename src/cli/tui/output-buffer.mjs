@@ -230,12 +230,18 @@ export class OutputBuffer {
     // delta < 0 = scroll up (increase offset to see earlier lines)
     // delta > 0 = scroll down (decrease offset toward tail)
     const maxOffset = this.getMaxScrollOffset();
-    this.scrollOffset = clamp(this.scrollOffset + (delta < 0 ? 1 : -1), 0, maxOffset);
+    const step = this.getScrollStep();
+    this.scrollOffset = clamp(this.scrollOffset + (delta < 0 ? step : -step), 0, maxOffset);
     return {
       offset: this.scrollOffset,
       maxOffset,
       atTail: this.scrollOffset === 0,
     };
+  }
+
+  getScrollStep() {
+    const win = this.viewportHeight || (process.stdout.rows || 30) - 2;
+    return Math.max(1, Math.floor(win / 3));
   }
 
   getMaxScrollOffset() {
