@@ -1,6 +1,5 @@
 import { strict as assert } from "node:assert";
 import { writeFileSync } from "node:fs";
-import { join } from "node:path";
 
 export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: context engine ---");
@@ -19,7 +18,8 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   assert.ok(!ctx.includes("version="));
   assert.ok(ctx.includes("[session_identity]"));
   assert.ok(ctx.includes("[workspace_status]"));
-  assert.ok(ctx.includes("[diagnostics]"));
+  assert.ok(!ctx.includes("[diagnostics]"));
+  assert.ok(!ctx.includes("[shells]"));
   assert.ok(!ctx.includes("[runtime_status]"));
   assert.ok(ctx.includes("[recent_chat]"));
   assert.ok(ctx.includes("(no prior turns)"));
@@ -72,11 +72,10 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
     },
   });
   const shellCtx = shellEngine.buildContext("check shell");
-  assert.ok(shellCtx.includes("[shells]"));
-  assert.ok(shellCtx.includes("recent_output:\nready"));
+  assert.ok(!shellCtx.includes("[shells]"));
+  assert.ok(!shellCtx.includes("recent_output:\nready"));
   assert.ok(!shellCtx.includes("\x1b[32m"));
-  assert.ok(shellCtx.indexOf("[workspace_status]") < shellCtx.indexOf("[shells]"));
-  assert.ok(shellCtx.indexOf("[shells]") < shellCtx.indexOf("[recent_chat]"));
+  assert.ok(shellCtx.indexOf("[workspace_status]") < shellCtx.indexOf("[recent_chat]"));
 
   engine.setRuntimeState({ modelId: "other-model", provider: "test-provider", thinkingLevel: "high" });
   const runtimeCtx = engine.buildContext("");
@@ -116,7 +115,7 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   assert.equal(engine.turns.at(-1).userMessage, "extra 14");
   assert.deepEqual([...engine.getRecentRecallMemoryIds()], []);
 
-  // diagnostics layer
+  // diagnostics are available to runtime services, but not injected into context.
   const diagnosticEngine = new ContextEngine({
     cwd: dir,
     modelId: "test",
@@ -137,8 +136,9 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
     },
   });
   const diagnosticCtx = diagnosticEngine.buildContext("");
-  assert.ok(diagnosticCtx.includes("source: lsp"));
-  assert.ok(diagnosticCtx.includes("status: idle"));
+  assert.ok(!diagnosticCtx.includes("source: lsp"));
+  assert.ok(!diagnosticCtx.includes("status: idle"));
+  assert.ok(!diagnosticCtx.includes("Type 'string' is not assignable"));
 
   engine.setToolDefs([
     { name: "test_tool", description: "A test tool", parameters: { x: "number" } },

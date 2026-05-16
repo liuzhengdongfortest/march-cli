@@ -1,10 +1,8 @@
 import { resolve } from "node:path";
 import { buildSessionIdentity, buildWorkspaceStatus } from "./session-status.mjs";
-import { buildShellLayers } from "./shell-layers.mjs";
 import { buildSystemCore, resolveSystemCorePromptKey } from "./system-core.mjs";
 import { buildInjectionsLayer } from "./injections.mjs";
 import { buildProjectContext } from "./project-context.mjs";
-import { buildDiagnosticsLayer } from "./diagnostics.mjs";
 import { formatRecallHints } from "../memory/markdown-store.mjs";
 
 export class ContextEngine {
@@ -61,9 +59,7 @@ export class ContextEngine {
     if (projectCtx) layers.push({ name: "project_context", text: projectCtx });
 
     layers.push(
-      { name: "diagnostics", text: this.#buildDiagnostics() },
       { name: "workspace_status", text: this.#buildWorkspaceStatus() },
-      ...this.#buildShellLayers().map((text, index) => ({ name: index === 0 ? "shells" : `shells_${index + 1}`, text })),
       { name: "recent_chat", text: this.#buildRecentChat() },
     );
 
@@ -132,19 +128,6 @@ export class ContextEngine {
       this._cachedWorkspaceStatus = buildWorkspaceStatus({ cwd: this.cwd });
     }
     return this._cachedWorkspaceStatus;
-  }
-
-  #buildDiagnostics() {
-    return buildDiagnosticsLayer({
-      snapshot: this.lspService?.snapshot?.() ?? { diagnostics: [] },
-    });
-  }
-
-  #buildShellLayers() {
-    return buildShellLayers({
-      shellRuntime: this.shellRuntime,
-      truncateText: (text, maxLen) => this.#truncate(text, maxLen),
-    });
   }
 
   #buildRecentChat() {
