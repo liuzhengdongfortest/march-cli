@@ -16,7 +16,7 @@
 
 ### 工程实现
 
-- 核心机制优先追求“最小的优雅架构修复”，而不是“最小的局部补丁”：先判断责任边界，再做最小改动。优先级是正确职责边界、行为稳定、改动最小、代码量最少。
+- 核心机制优先追求“优雅架构”，而不是“最小的局部补丁”：先判断责任边界，再做最小改动。优先级是正确职责边界、代码设计优雅，能够合理得调整系统行为并保持系统的自洽
 - 保持功能内聚：代码超过 300 行时，按内聚原则把同一块逻辑拆出；如果新增逻辑在原代码中只有较少接入点，设计时就应拆出，再接回原代码。
 - 保持目录边界清晰：单个源码目录直属文件超过 10 个时，按职责边界拆出子目录，不用杂项目录或机械搬运凑数。
 
@@ -37,6 +37,7 @@
 
 - **Turn（用户轮次）**：用户发起一次请求，到 March 完成工具调用、模型调用并给出最终回复的完整处理周期。一个 turn 内可以包含多次 model call。
 - **Model call（模型调用）**：March 将当前组装后的上下文发送给模型，并接收一次模型输出的过程。工具调用后继续推理会产生新的 model call。
+- **Dialog Entry（对话条目）**：单次 model call 的 payload 中 `messages` 数组里的单个元素，包含 `role` 和 `content`。全称 Dialog Entry，简称 Entry。一个 model call 包含多个 dialog entry，其中 `role=tool` 的 entry 即 tool call。
 - **Tool call（工具调用）**：模型请求 March 执行一个工具的动作。tool call 不是 turn，也不是 model call；它通常发生在一次 model call 的输出之后。
 - **Context assembly（上下文组装）**：在一次 model call 前，March 从各上下文层读取当前事实并组装 prompt 的过程。
 - **Layer（上下文层）**：组成最终 prompt 的独立上下文模块。每个 layer 以 `[name]` 格式的 header 开头，后接该层对应的结构化文本。当前 layers 包括 `system_core`、`injections`、`session_identity`、`project_context`、`workspace_status`、`recent_chat` 六个。Context assembly 按固定顺序将这些 layers 组装为 prompt。
