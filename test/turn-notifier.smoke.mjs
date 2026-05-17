@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: turn notifier ---");
-  const { createDesktopTurnNotifier, buildWindowsBalloonScript } = await import("../src/notification/desktop-notifier.mjs");
+  const { createDesktopTurnNotifier, buildWindowsBalloonScript, buildWindowsNotificationScript } = await import("../src/notification/desktop-notifier.mjs");
   const { createRunner } = await import("../src/agent/runner.mjs");
 
   const spawned = [];
@@ -24,6 +24,11 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
   assert.equal((await createDesktopTurnNotifier({ enabled: false }).notifyTurnEnd({})).reason, "disabled");
   assert.equal((await createDesktopTurnNotifier({ platform: "linux" }).notifyTurnEnd({})).reason, "unsupported-platform");
   assert.ok(buildWindowsBalloonScript({ title: "March's turn", message: "done" }).includes("March''s turn"));
+  const toastScript = buildWindowsNotificationScript({ title: "March <done>", message: "ready & waiting" });
+  assert.ok(toastScript.includes("ToastNotificationManager"));
+  assert.ok(toastScript.includes("March &lt;done&gt;"));
+  assert.ok(toastScript.includes("ready &amp; waiting"));
+  assert.ok(toastScript.includes("System.Windows.Forms.NotifyIcon"));
 
   const dir = setupTmp();
   const previousKey = process.env.DEEPSEEK_API_KEY;

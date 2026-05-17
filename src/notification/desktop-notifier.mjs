@@ -25,7 +25,7 @@ export async function sendDesktopNotification({ platform = process.platform, spa
 
   const safeTitle = normalizeNotificationText(title) || "March";
   const safeMessage = normalizeNotificationText(message) || "Turn finished";
-  const script = buildWindowsBalloonScript({ title: safeTitle, message: safeMessage });
+  const script = buildWindowsNotificationScript({ title: safeTitle, message: safeMessage });
 
   try {
     const child = spawnProcess("powershell.exe", [
@@ -61,6 +61,38 @@ export function buildWindowsBalloonScript({ title, message, timeoutMs = DEFAULT_
     `Start-Sleep -Milliseconds ${timeout + 500}`,
     "$n.Dispose()",
   ].join("; ");
+}
+
+export function buildWindowsNotificationScript({ title, message, timeoutMs = DEFAULT_BALLOON_TIMEOUT_MS }) {
+  const toastXml = escapePowerShellDoubleQuotedString(buildToastXml({ title, message }));
+  const balloonScript = buildWindowsBalloonScript({ title, message, timeoutMs });
+  return [
+    "try {",
+    "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null",
+    "[Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] > $null",
+    "$xml = New-Object Windows.Data.Xml.Dom.XmlDocument",
+    `$xml.LoadXml("${toastXml}")`,
+    "$toast = [Windows.UI.Notifications.ToastNotification]::new($xml)",
+    "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('PowerShell').Show($toast)",
+    "} catch {",
+    balloonScript,
+    "}",
+  ].join("; ");
+}
+
+function buildToastXml({ title, message }) {
+  return `<toast><visual><binding template="ToastGeneric"><text>${escapeXmlText(title)}</text><text>${escapeXmlText(message)}</text></binding></visual></toast>`;
+}
+
+function escapeXmlText(text) {
+  return String(text)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function escapePowerShellDoubleQuotedString(text) {
+  return String(text).replace(/[`"$]/g, "`$&");
 }
 
 function defaultTurnTitle(status) {
