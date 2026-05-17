@@ -28,12 +28,13 @@ export async function runAuthStorageSmoke({ setupTmp, cleanup }) {
     providers: {
       openai: { type: "openai", auth: { method: "apiKey", apiKey: "openai-config-key" } },
       anthropic: { type: "anthropic", auth: { method: "apiKey", apiKey: "anthropic-config-key" } },
+      local: { type: "openai-compatible", auth: { method: "apiKey", apiKey: "local-config-key" } },
     },
     homeDir: dir,
     authStorage: { setRuntimeApiKey: (provider, key) => providerCalls.push([provider, key]), list: () => [] },
   });
   assert.equal(multi.hasAuth, true);
-  assert.deepEqual(providerCalls, [["openai", "openai-config-key"], ["anthropic", "anthropic-config-key"]]);
+  assert.deepEqual(providerCalls, [["openai", "openai-config-key"], ["anthropic", "anthropic-config-key"], ["local", "local-config-key"]]);
 
   const stored = createMarchAuthStorage({
     homeDir: dir,

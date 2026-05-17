@@ -21,6 +21,7 @@ import { MARCH_BASE_TOOL_NAMES } from "./tool-names.mjs";
 import { runRunnerTurn } from "./turn/turn-runner.mjs";
 import { appendFastVariants, createFastModelEntry, fromFastEntryModel, isFastProvider } from "./runner/fast-model.mjs";
 import { registerSuperGrokProvider } from "../supergrok/provider.mjs";
+import { registerCustomProviders } from "../provider/custom-provider.mjs";
 
 export { MARCH_BASE_TOOL_NAMES };
 export { installModelPayloadDumper } from "./model-payload-dumper.mjs";
@@ -38,6 +39,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   const resolvedAuth = authConfig.authStorage;
   const modelRegistry = ModelRegistry.create(resolvedAuth);
   registerSuperGrokProvider(modelRegistry);
+  registerCustomProviders(modelRegistry, providers);
   const selectedModel = resolveInitialModel({ modelRegistry, provider, modelId });
   if (!selectedModel) throw new Error("No authenticated models available. Run: march provider --config");
   provider = selectedModel.provider;
@@ -63,6 +65,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     runtimeHost = await createRunnerRuntimeHost({
       cwd, stateRoot, provider, modelId,
       authStorage: resolvedAuth, settingsManager, modelRegistry,
+      providers,
       sessionManager: resolvedSessionManager, sessionBinding, engine, ui,
       projectMarchDir,
       memoryTools, memoryStore, shellRuntime, lspService, mcpTools, webTools,

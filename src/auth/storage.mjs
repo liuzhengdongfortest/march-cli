@@ -13,11 +13,12 @@ export function createMarchAuthStorage({
 } = {}) {
   const resolvedAuthStorage = authStorage ?? AuthStorage.create(getMarchAuthPath(homeDir));
 
-  for (const profile of Object.values(providers ?? {})) {
+  for (const [id, profile] of Object.entries(providers ?? {})) {
     if (!profile || typeof profile !== "object") continue;
     const type = profile.type ?? profile.provider;
+    const providerKey = type === "openai-compatible" ? id : type;
     const profileKey = profile.auth?.method === "apiKey" ? profile.auth?.apiKey : null;
-    if (type && profileKey) resolvedAuthStorage.setRuntimeApiKey(type, profileKey);
+    if (providerKey && profileKey) resolvedAuthStorage.setRuntimeApiKey(providerKey, profileKey);
   }
   const hasStoredAuth = Boolean(resolvedAuthStorage.list?.().length);
   const hasConfiguredProvider = Object.values(providers ?? {}).some((profile) => {

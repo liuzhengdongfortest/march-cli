@@ -3,6 +3,7 @@ import { createMarchRuntimeFactory } from "./runtime-factory.mjs";
 import { createRuntimeHost } from "./runtime-host.mjs";
 import { resolveRunnerSessionOptions } from "../session/session-options.mjs";
 import { registerSuperGrokProvider } from "../../supergrok/provider.mjs";
+import { registerCustomProviders } from "../../provider/custom-provider.mjs";
 
 export async function createRunnerRuntimeHost({
   cwd,
@@ -12,6 +13,7 @@ export async function createRunnerRuntimeHost({
   authStorage,
   settingsManager,
   modelRegistry,
+  providers = {},
   sessionManager,
   sessionBinding,
   engine,
@@ -42,6 +44,7 @@ export async function createRunnerRuntimeHost({
     resolveSessionOptions: ({ cwd: sessionCwd, services }) => {
       const activeModelRegistry = services.modelRegistry ?? modelRegistry;
       registerSuperGrokProvider(activeModelRegistry);
+      registerCustomProviders(activeModelRegistry, providers);
       return resolveRunnerSessionOptions({
         cwd: sessionCwd,
         provider,
