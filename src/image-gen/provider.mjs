@@ -42,8 +42,10 @@ function buildHeaders(token, accountId) {
 function buildRequestBody(prompt, quality, size) {
   return {
     model: "gpt-5.4",
+    instructions: "You are an AI assistant that generates images based on user requests.",
+    input: [{ role: "user", content: [{ type: "input_text", text: prompt }] }],
     stream: true,
-    input: prompt,
+    store: false,
     tools: [
       {
         type: "image_generation",

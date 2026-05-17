@@ -26,7 +26,7 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], shel
     ...memoryTools,
     ...mcpTools,
     ...webTools,
-    ...(authStorage ? initImageGen({ authStorage }) ?? [] : []),
+    ...(authStorage ? initImageGen({ authStorage }) : []),
   ];
 
   if (!permissionController) return tools;
