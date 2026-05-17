@@ -92,7 +92,7 @@ export async function runInteractiveRepl({
     });
     if (slashResult.exit) break;
     if (slashResult.handled) {
-      refreshStatusBar();
+      refreshStatusBar(contextTokenRefreshOptions(slashResult, runner));
       continue;
     }
 
@@ -114,6 +114,12 @@ export async function runInteractiveRepl({
       modeState,
     });
   }
+}
+
+export function contextTokenRefreshOptions(slashResult, runner) {
+  if (!slashResult?.refreshContextTokens) return undefined;
+  if (typeof runner.estimateContextTokens !== "function") return undefined;
+  return { contextTokens: runner.estimateContextTokens("") };
 }
 
 function handleInlineCommand(trimmed, { cwd, ui, lastInlineShellCommand }) {

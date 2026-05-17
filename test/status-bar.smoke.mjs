@@ -11,6 +11,7 @@ export async function runStatusBarSmoke() {
     padToWidth,
   } = await import("../src/cli/tui/status/status-bar.mjs");
   const { createStatusLineUpdater } = await import("../src/cli/status-line-updater.mjs");
+  const { contextTokenRefreshOptions } = await import("../src/cli/repl-loop.mjs");
 
   assert.equal(normalizeStatusText("  git:main   session:abc  "), "git:main session:abc");
   assert.equal(normalizeStatusText(""), "March");
@@ -89,6 +90,12 @@ export async function runStatusBarSmoke() {
   const finalStoppedLine = update.stopWorking();
   assert.equal(stripAnsi(finalStoppedLine).includes("Working"), false);
   assert.equal(stripAnsi(finalStoppedLine).includes("Aborted"), false);
+
+  assert.deepEqual(
+    contextTokenRefreshOptions({ handled: true, refreshContextTokens: true }, { estimateContextTokens: () => 4321 }),
+    { contextTokens: 4321 },
+  );
+  assert.equal(contextTokenRefreshOptions({ handled: true }, { estimateContextTokens: () => 4321 }), undefined);
   console.log("  PASS");
 }
 

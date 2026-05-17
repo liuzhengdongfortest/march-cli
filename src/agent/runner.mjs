@@ -9,7 +9,7 @@ import { createMarchLifecycleAdapter } from "../extensions/lifecycle-adapter.mjs
 import { syncPiSessionSidecar } from "../session/sidecar-sync.mjs";
 import { LspService } from "../lsp/service.mjs";
 import { formatRecallHints } from "../memory/markdown-store.mjs";
-import { appendProviderUserMessage, installModelPayloadDumper, replaceProviderContextMessages } from "./model-payload-dumper.mjs";
+import { appendProviderUserMessage, estimateProviderPayloadTokens, installModelPayloadDumper, replaceProviderContextMessages } from "./model-payload-dumper.mjs";
 import { resolveInitialModel, resolveRunnerSessionManager } from "./runner/runner-init.mjs";
 import { runRunnerCleanup } from "./runner/runner-cleanup.mjs";
 import { createRunnerRuntimeHost } from "./runtime/runner-runtime-host.mjs";
@@ -176,6 +176,9 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       return [...new Set([...configured, ...available])];
     },
     getSessionStats() { return getRunnerSessionStats(sessionBinding.get(), runtimeHost); },
+    estimateContextTokens(userMessage = "") {
+      return estimateProviderPayloadTokens(providerContextToPayload(engine.buildProviderContext(userMessage)));
+    },
     setSessionName(name) {
       const activeSession = sessionBinding.get();
       activeSession.setSessionName?.(name);
@@ -254,6 +257,15 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     }
     return nextPayload;
   }
+}
+
+function providerContextToPayload(providerContext) {
+  return {
+    messages: [
+      { role: "system", content: providerContext.system },
+      ...(providerContext.userMessages ?? []).map((message) => ({ role: "user", content: message.content })),
+    ],
+  };
 }
 
 async function notifyTurnEndBestEffort(turnNotifier, event) {

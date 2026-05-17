@@ -40,11 +40,13 @@ export async function handleSlashCommand(trimmed, {
       ui.writeln("Error: pi runtime host is not enabled");
       return { handled: true };
     }
+    let refreshContextTokens = false;
     try {
       const result = await runner.startNewSession();
       if (result?.cancelled) {
         ui.writeln("New session cancelled");
       } else {
+        refreshContextTokens = true;
         ui.clearOutput?.();
         const bannerLines = typeof renderStartupBanner === "function" ? renderStartupBanner() : [];
         if (bannerLines.length > 0) {
@@ -56,7 +58,7 @@ export async function handleSlashCommand(trimmed, {
     } catch (err) {
       ui.writeln(`Error: ${err.message}`);
     }
-    return { handled: true };
+    return { handled: true, refreshContextTokens };
   }
 
   if (trimmed === "/help") {

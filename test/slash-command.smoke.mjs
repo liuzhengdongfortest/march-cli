@@ -105,6 +105,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
     renderStartupBanner: () => ["March", "banner"],
   });
   assert.equal(newSession.handled, true);
+  assert.equal(newSession.refreshContextTokens, true);
   assert.equal(clearOutputCount, 1);
   assert.deepEqual(output, ["March", "banner"]);
 
