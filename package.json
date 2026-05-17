@@ -18,7 +18,8 @@
     "test:shell-runtime-real": "node test/shell-real-runtime.acceptance.mjs",
     "test:shell-tui-real": "node test/shell-tui-real.acceptance.mjs",
     "test:tui-key-real": "node test/tui-key-real.acceptance.mjs",
-    "context": "cd .. && node march-cli/bin/march.mjs --dump-context"
+    "context": "cd .. && node march-cli/bin/march.mjs --dump-context",
+    "publish:env": "node scripts/npm-publish-from-env.mjs"
   },
   "dependencies": {
     "@earendil-works/pi-ai": "^0.74.0",
