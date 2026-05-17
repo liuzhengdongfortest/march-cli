@@ -187,7 +187,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.equal(runner.engine.turns[0].assistantRecallHints.length, 2);
   assert.equal(runner.engine.turns[0].assistantRecallHints[0].id, "mem_thinking");
   assert.equal(runner.engine.turns[0].assistantRecallHints[1].id, "mem_draft");
-  assert.ok(calls.some((call) => call[0] === "memoryHint" && call[1] === "assistant" && call[2].includes("mem_thinking") && call[2].includes("mem_draft")));
+  assert.ok(calls.some((call) => call[0] === "memoryHint" && call[1] === "assistant" && call[2].includes("mem_thinking") && !call[2].includes("mem_draft")));
   assert.equal(runner.engine.turns[0].assistantMessage, "draft text");
   assert.equal(runner.engine.sessionName, "hello");
   assert.deepEqual(sessionNameCalls, ["hello"]);

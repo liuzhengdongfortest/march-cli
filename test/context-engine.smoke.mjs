@@ -122,9 +122,16 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
     { id: "mem_carry", name: "Carryover", description: "Queued for the next turn." },
     { id: "mem_carry", name: "Duplicate", description: "Ignored." },
   ]);
+  assert.deepEqual(engine.peekPendingAssistantRecallHints(), [
+    { id: "mem_carry", name: "Carryover", description: "Queued for the next turn." },
+  ]);
+  assert.equal(engine.hasRenderedPendingAssistantRecallHints(), false);
+  engine.markPendingAssistantRecallHintsRendered();
+  assert.equal(engine.hasRenderedPendingAssistantRecallHints(), true);
   assert.deepEqual(engine.takePendingAssistantRecallHints(), [
     { id: "mem_carry", name: "Carryover", description: "Queued for the next turn." },
   ]);
+  assert.equal(engine.hasRenderedPendingAssistantRecallHints(), false);
   assert.deepEqual(engine.takePendingAssistantRecallHints(), []);
 
   const longUserTail = "user-tail-keep";

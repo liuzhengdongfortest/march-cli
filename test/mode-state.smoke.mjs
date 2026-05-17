@@ -17,6 +17,8 @@ export async function runModeStateSmoke() {
   const userMessages = [];
   const uiLines = [];
   let carryoverTaken = false;
+  let pendingAfterTurn = [];
+  let pendingRendered = false;
   await runSingleShotPrompt({
     prompt: "please inspect",
     runner: {
@@ -26,6 +28,9 @@ export async function runModeStateSmoke() {
           carryoverTaken = true;
           return [{ id: "mem_carry", name: "Carryover", description: "Matched after the previous final answer." }];
         },
+        peekPendingAssistantRecallHints: () => pendingAfterTurn,
+        hasRenderedPendingAssistantRecallHints: () => pendingRendered,
+        markPendingAssistantRecallHintsRendered: () => { pendingRendered = true; },
       },
       shellRuntime: {
         listShells: () => [{
@@ -41,6 +46,8 @@ export async function runModeStateSmoke() {
       runTurn: async (fullPrompt, userMessage) => {
         prompts.push(fullPrompt);
         userMessages.push(userMessage);
+        pendingAfterTurn = [{ id: "mem_final", name: "Final", description: "Queued between turns." }];
+        pendingRendered = false;
       },
     },
     memoryStore: {
@@ -49,7 +56,10 @@ export async function runModeStateSmoke() {
       endTurn() {},
     },
     currentProject: "project",
-    ui: { writeln: (line) => uiLines.push(line) },
+    ui: {
+      writeln: (line) => uiLines.push(line),
+      memoryHint: ({ source, hints }) => uiLines.push(`${source}:${hints.map((hint) => hint.id).join(",")}`),
+    },
     sessionState: { sessionDir: "unused" },
     refreshStatusBar() {},
     refreshStatusBar() {},
@@ -68,5 +78,7 @@ export async function runModeStateSmoke() {
   assert.ok(prompts[0].includes("Use terminal_read or terminal_snapshot"));
   assert.ok(!userMessages[0].includes("<mode>"));
   assert.ok(uiLines.join("\n").includes("please inspect"));
+  assert.ok(uiLines.includes("assistant:mem_final"));
+  assert.equal(pendingRendered, true);
   console.log("  PASS");
 }

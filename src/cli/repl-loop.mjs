@@ -18,6 +18,7 @@ export async function runSingleShotPrompt({
   modeState = null,
 }) {
   memoryStore.beginTurn();
+  const carryoverAlreadyRendered = runner.engine.hasRenderedPendingAssistantRecallHints?.() ?? false;
   const carryoverRecallHints = runner.engine.takePendingAssistantRecallHints?.() ?? [];
   const userRecallHints = memoryStore.recallForUser(prompt, { currentProject, excludedIds: runner.engine.getRecentRecallMemoryIds?.() ?? [] });
   const recallBlock = formatRecallHints("user", userRecallHints);
@@ -27,10 +28,11 @@ export async function runSingleShotPrompt({
   const fullPrompt = appendPromptBlocks(modePrompt, recallBlock, carryoverRecallBlock, shellHints);
   ui.writeln(formatUserDisplayMessage(prompt));
   ui.memoryHint?.({ source: "user", hints: userRecallHints });
-  if (carryoverRecallHints.length > 0) ui.memoryHint?.({ source: "assistant", hints: carryoverRecallHints });
+  if (carryoverRecallHints.length > 0 && !carryoverAlreadyRendered) ui.memoryHint?.({ source: "assistant", hints: carryoverRecallHints });
   refreshStatusBar.startWorking?.();
   try {
     await runner.runTurn(fullPrompt, prompt, { userRecallHints, currentProject });
+    renderPendingAssistantRecallPreview({ runner, ui });
   } finally {
     refreshStatusBar.stopWorking?.();
     memoryStore.endTurn();
@@ -129,6 +131,7 @@ function handleInlineCommand(trimmed, { cwd, ui, lastInlineShellCommand }) {
 
 async function runReplTurn({ prompt, args, runner, memoryStore, currentProject, ui, refreshStatusBar, setTurnRunning, modeState = null }) {
   memoryStore.beginTurn();
+  const carryoverAlreadyRendered = runner.engine.hasRenderedPendingAssistantRecallHints?.() ?? false;
   const carryoverRecallHints = runner.engine.takePendingAssistantRecallHints?.() ?? [];
   const userRecallHints = memoryStore.recallForUser(prompt, { currentProject, excludedIds: runner.engine.getRecentRecallMemoryIds?.() ?? [] });
   const recallBlock = formatRecallHints("user", userRecallHints);
@@ -139,10 +142,11 @@ async function runReplTurn({ prompt, args, runner, memoryStore, currentProject, 
   try {
     ui.writeln(formatUserDisplayMessage(prompt));
     ui.memoryHint?.({ source: "user", hints: userRecallHints });
-    if (carryoverRecallHints.length > 0) ui.memoryHint?.({ source: "assistant", hints: carryoverRecallHints });
+    if (carryoverRecallHints.length > 0 && !carryoverAlreadyRendered) ui.memoryHint?.({ source: "assistant", hints: carryoverRecallHints });
     setTurnRunning(true);
     refreshStatusBar.startWorking?.();
     await runner.runTurn(fullPrompt, prompt, { userRecallHints, currentProject });
+    renderPendingAssistantRecallPreview({ runner, ui });
     ui.writeln("");
   } catch (err) {
     ui.writeln(`Error: ${err.message}`);
@@ -160,4 +164,12 @@ export function formatUserDisplayMessage(prompt) {
 
 function appendPromptBlocks(prompt, ...blocks) {
   return [prompt, ...blocks.filter(Boolean)].join("\n\n");
+}
+
+function renderPendingAssistantRecallPreview({ runner, ui }) {
+  if (runner.engine.hasRenderedPendingAssistantRecallHints?.()) return;
+  const hints = runner.engine.peekPendingAssistantRecallHints?.() ?? [];
+  if (hints.length === 0) return;
+  ui.memoryHint?.({ source: "assistant", hints });
+  runner.engine.markPendingAssistantRecallHintsRendered?.();
 }

@@ -14,6 +14,7 @@ export class ContextEngine {
     this.thinkingLevel = thinkingLevel;
     this.turns = [];
     this.pendingAssistantRecallHints = [];
+    this.pendingAssistantRecallHintsRendered = false;
     this.sessionName = "";
     this.toolDefs = [];
     this.namespace = namespace;
@@ -89,11 +90,25 @@ export class ContextEngine {
 
   setPendingAssistantRecallHints(hints = []) {
     this.pendingAssistantRecallHints = uniqueHints(hints);
+    this.pendingAssistantRecallHintsRendered = false;
+  }
+
+  peekPendingAssistantRecallHints() {
+    return this.pendingAssistantRecallHints;
+  }
+
+  hasRenderedPendingAssistantRecallHints() {
+    return this.pendingAssistantRecallHintsRendered;
+  }
+
+  markPendingAssistantRecallHintsRendered() {
+    if (this.pendingAssistantRecallHints.length > 0) this.pendingAssistantRecallHintsRendered = true;
   }
 
   takePendingAssistantRecallHints() {
     const hints = this.pendingAssistantRecallHints;
     this.pendingAssistantRecallHints = [];
+    this.pendingAssistantRecallHintsRendered = false;
     return hints;
   }
 
@@ -119,10 +134,14 @@ export class ContextEngine {
     if (replace) {
       this.turns = [];
       this.pendingAssistantRecallHints = [];
+      this.pendingAssistantRecallHintsRendered = false;
       this.sessionName = "";
     }
     if (data.turns) this.turns = data.turns;
-    if (Array.isArray(data.pendingAssistantRecallHints)) this.pendingAssistantRecallHints = uniqueHints(data.pendingAssistantRecallHints);
+    if (Array.isArray(data.pendingAssistantRecallHints)) {
+      this.pendingAssistantRecallHints = uniqueHints(data.pendingAssistantRecallHints);
+      this.pendingAssistantRecallHintsRendered = false;
+    }
     if (typeof data.sessionName === "string") this.sessionName = data.sessionName;
     this.setRuntimeState(data);
   }
