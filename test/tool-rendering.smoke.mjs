@@ -77,7 +77,23 @@ export async function runToolRenderingSmoke() {
 
   const blocks = [];
   writeToolStart({ output: { addBlock: (block) => blocks.push(block) }, name: "read", args: { path: "a.js" } });
-  assert.equal(blocks[0].type, "tool");
-  assert.ok(blocks[0].lines[0].includes("read"));
+  assert.equal(blocks[0].type, "tool-card");
+  assert.ok(blocks[0].title.includes("read"));
+  writeToolEnd({ output: { addBlock: (block) => blocks.push(block) }, name: "read", isError: false, result: {}, toolBlock: blocks[0], extractToolOutputImpl: () => "file body" });
+  assert.equal(blocks.length, 1);
+  assert.equal(blocks[0].summary, "done");
+
+  const { OutputBuffer } = await import("../src/cli/tui/output-buffer.mjs");
+  const buffer = new OutputBuffer();
+  const block = writeToolStart({ output: buffer, name: "grep", args: { pattern: "needle", path: "src" } });
+  writeToolEnd({ output: buffer, name: "grep", isError: false, result: { details: { results: [{}, {}] } }, toolBlock: block, extractToolOutputImpl: () => "a\nb" });
+  let renderedCard = buffer.render(80).join("\n");
+  assert.ok(renderedCard.includes("┃"));
+  assert.ok(renderedCard.includes("2 matches"));
+  assert.ok(!renderedCard.includes("a\nb"));
+  buffer.setToolCardsExpanded(true);
+  renderedCard = buffer.render(80).join("\n");
+  assert.ok(renderedCard.includes("a"));
+  assert.ok(renderedCard.includes("b"));
   console.log("  PASS");
 }

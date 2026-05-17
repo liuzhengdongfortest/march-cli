@@ -1,5 +1,6 @@
 import { visibleWidth } from "@earendil-works/pi-tui";
 import { R, brightBlack, dim } from "./ui-theme.mjs";
+import { renderToolCardBlock } from "./output/tool-card-renderer.mjs";
 import { renderMarkdown, renderStreamingMarkdown } from "./markdown-renderer.mjs";
 import { renderEditDiffBlock } from "./tui-diff-rendering.mjs";
 import { OutputScrollState } from "./output/scroll-state.mjs";
@@ -72,6 +73,7 @@ function currentTextToBlocks(textLines, sealed, cache = null) {
 
 function renderBlock(block, width) {
   if (block.type === "diff") return renderEditDiffBlock(block, width);
+  if (block.type === "tool-card") return renderToolCardBlock(block, width);
   if (block.type === "plain" || block.type === "tool" || block.type === "status") return renderPlainBlock(block, width);
   if (block.type === "markdown") return renderMarkdownBlock(block, width);
   if (block.type === "thinking") return renderThinkingBlock(block, width);
@@ -102,6 +104,7 @@ function renderThinkingBlock(block, width) {
   }
   return lines;
 }
+
 
 export class OutputBuffer {
   constructor() {
@@ -249,6 +252,17 @@ export class OutputBuffer {
 
   resetScroll() {
     this.scrollState.reset();
+  }
+
+  setToolCardsExpanded(expanded) {
+    let changed = false;
+    for (const seg of this.segments) {
+      if (seg.type !== "tool-card") continue;
+      if (seg.expanded === expanded) continue;
+      seg.expanded = expanded;
+      changed = true;
+    }
+    return changed;
   }
 
   invalidate() {}

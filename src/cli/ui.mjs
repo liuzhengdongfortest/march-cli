@@ -58,6 +58,7 @@ export function createTuiUI({
   let started = false;
   let mouseOn = true;
   let toolsExpanded = false;
+  const activeToolBlocks = [];
 
   function requestRender() {
     tui.requestRender();
@@ -127,6 +128,7 @@ export function createTuiUI({
 
   function toggleToolOutput() {
     toolsExpanded = !toolsExpanded;
+    output.setToolCardsExpanded(toolsExpanded);
     output.writeln(brightBlack(`● tool output: ${toolsExpanded ? "expanded" : "collapsed"}`));
     requestRender();
     return toolsExpanded;
@@ -185,13 +187,11 @@ export function createTuiUI({
     toggleLastThinking: () => false,
 
     toolStart: (name, args) => {
-      ensureStarted(); retryStatus.stop(); spinnerStatus.stop(); writeToolStart({ output, name, args }); requestRender();
+      ensureStarted(); retryStatus.stop(); spinnerStatus.stop(); activeToolBlocks.push(writeToolStart({ output, name, args })); requestRender();
     },
 
     toolEnd: (name, isError, result) => {
-      if (writeToolEnd({ output, name, isError, result, toolsExpanded })) {
-        requestRender();
-      }
+      if (writeToolEnd({ output, name, isError, result, toolsExpanded, toolBlock: activeToolBlocks.pop() })) requestRender();
     },
 
     textDelta: (delta) => {
