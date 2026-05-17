@@ -61,16 +61,27 @@ export async function runImageGenSmoke({ setupTmp, cleanup }) {
     assert.equal(resolved.images[0].mimeType, "image/png");
     assert.equal(resolved.images[0].data, imageBase64);
 
+    let openedPath = null;
     const tool = createImageGenTool({
       authStorage,
       projectMarchDir,
       generateImageImpl: async () => ({ filePath: result.filePath, marker: result.marker, mimeType: "image/png" }),
+      openFileImpl: async (filePath) => {
+        openedPath = filePath;
+      },
     });
     const toolResult = await tool.execute("call_1", { prompt: "draw a cat", aspectRatio: "1:1" });
     const payload = JSON.parse(toolResult.content[0].text);
     assert.equal(payload.success, true);
     assert.equal(payload.image, result.marker);
     assert.equal(payload.path, result.filePath);
+    assert.equal(payload.opened, true);
+    assert.equal(openedPath, result.filePath);
+
+    const noOpenResult = await tool.execute("call_2", { prompt: "draw a cat", auto_open: false });
+    const noOpenPayload = JSON.parse(noOpenResult.content[0].text);
+    assert.equal(noOpenPayload.success, true);
+    assert.equal(noOpenPayload.opened, false);
   } finally {
     cleanup(dir);
   }
