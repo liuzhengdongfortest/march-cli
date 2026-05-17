@@ -19,6 +19,7 @@
     "test:shell-tui-real": "node test/shell-tui-real.acceptance.mjs",
     "test:tui-key-real": "node test/tui-key-real.acceptance.mjs",
     "context": "cd .. && node march-cli/bin/march.mjs --dump-context",
+    "notify:experiment": "node scripts/notify-experiment.mjs",
     "publish:env": "node scripts/npm-publish-from-env.mjs"
   },
   "dependencies": {
