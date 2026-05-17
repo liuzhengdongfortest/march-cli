@@ -1,6 +1,6 @@
 {
   "name": "march-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "March CLI — terminal-native coding agent with context reconstruction",
   "type": "module",
   "main": "./src/main.mjs",
@@ -24,6 +24,7 @@
     "@earendil-works/pi-ai": "^0.74.0",
     "@earendil-works/pi-coding-agent": "^0.74.0",
     "@earendil-works/pi-tui": "^0.74.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@xterm/headless": "^5.5.0",
     "marked": "^18.0.3",
     "node-pty": "^1.1.0",
