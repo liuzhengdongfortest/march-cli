@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 export async function runContextEngineSmoke({ setupTmp, cleanup }) {
@@ -44,6 +44,26 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   assert.equal(providerCtx.userMessages.at(-1).name, "recent_chat");
   assert.ok(providerCtx.userMessages.at(-1).content.includes("[recent_chat]"));
   assert.ok(providerCtx.userMessages.at(-1).content.includes("[current_user]\n装備を確認する"));
+
+  const centerDir = setupTmp();
+  const centerMemoryPath = join(centerDir, ".march", "memory", "center.md");
+  const centerEngine = new ContextEngine({ cwd: centerDir, modelId: "test", provider: "deepseek", centerMemoryPath });
+  assert.ok(!centerEngine.buildContext("").includes("[center_memory]"));
+  mkdirSync(join(centerDir, ".march", "memory"), { recursive: true });
+  writeFileSync(centerMemoryPath, "   \n", "utf8");
+  assert.ok(!centerEngine.buildContext("").includes("[center_memory]"));
+  writeFileSync(join(centerDir, "AGENTS.md"), "# Project Rule\n\nproject-rule: center follows project context\n", "utf8");
+  writeFileSync(centerMemoryPath, "# Center Memory\n\n- Prefer concise answers.\n", "utf8");
+  const centerCtx = centerEngine.buildContext("");
+  assert.ok(centerCtx.includes("[center_memory]"));
+  assert.ok(centerCtx.includes(`--- ${centerMemoryPath} ---`));
+  assert.ok(centerCtx.includes("- Prefer concise answers."));
+  assert.ok(centerCtx.indexOf("[project_context]") < centerCtx.indexOf("[center_memory]"));
+  assert.ok(centerCtx.indexOf("[center_memory]") < centerCtx.indexOf("[recent_chat]"));
+  const centerProviderCtx = centerEngine.buildProviderContext("hello");
+  assert.ok(centerProviderCtx.userMessages.some((message) => message.name === "center_memory" && message.content.includes("# Center Memory")));
+  assert.equal(centerProviderCtx.userMessages.at(-1).name, "recent_chat");
+  cleanup(centerDir);
 
   const modelPromptEngine = new ContextEngine({
     cwd: dir,

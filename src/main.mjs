@@ -28,6 +28,7 @@ import { formatStartupBanner } from "./cli/startup/startup-banner.mjs";
 import { initializeMcp } from "./mcp/index.mjs";
 import { createWebToolsFromConfig } from "./web/tools.mjs";
 import { createModelContextDumper } from "./debug/model-context-dumper.mjs";
+import { defaultCenterMemoryPath } from "./context/center-memory.mjs";
 import { runProviderConfigCommand } from "./provider/config-command.mjs";
 import { runWebSearchConfigCommand } from "./web/config-command.mjs";
 import { createDesktopTurnNotifier } from "./notification/desktop-notifier.mjs";
@@ -91,6 +92,7 @@ export async function run(argv) {
   const modeState = createModeState();
   const namespace = loadOrCreateProjectId(projectMarchDir);
   const memoryRoot = resolveMemoryRoot(config.memoryRoot, stateRoot);
+  const centerMemoryPath = defaultCenterMemoryPath();
   const memoryStore = new MarkdownMemoryStore({ root: memoryRoot });
   const memoryTools = createMarkdownMemoryTools(memoryStore);
   const currentProject = basename(cwd);
@@ -156,6 +158,7 @@ export async function run(argv) {
     stateRoot,
     ui,
     memoryRoot,
+    centerMemoryPath,
     memoryStore,
     memoryTools,
     shellRuntime,
