@@ -23,7 +23,7 @@ import { createTuiInputController } from "./tui/tui-input-controller.mjs";
 import { writeMemoryHint } from "./tui/recall-rendering.mjs";
 import { writeToolEnd, writeToolStart } from "./tui/tool-rendering.mjs";
 import { EDITOR_THEME, brightBlack } from "./tui/ui-theme.mjs";
-import { formatTranscriptLines } from "../session/transcript.mjs";
+import { writeTranscriptToOutput } from "../session/transcript.mjs";
 
 export { buildMarchCommands, MarchAutocompleteProvider } from "./input/autocomplete.mjs";
 
@@ -217,7 +217,7 @@ export function createTuiUI({
 
     restoreTranscript: (turns) => {
       ensureStarted(); spinnerStatus.stop(); retryStatus.stop(); output.clear();
-      for (const line of formatTranscriptLines(turns)) output.writeln(line);
+      writeTranscriptToOutput(output, turns);
       requestRender();
     },
 

@@ -34,21 +34,22 @@ export function loadPiSessionTranscriptTurns(sessionPath, { limit = DEFAULT_TRAN
   return normalized.slice(-Math.max(0, limit));
 }
 
-export function formatTranscriptLines(turns) {
-  if (!Array.isArray(turns) || turns.length === 0) return [];
-  const lines = [];
+export function writeTranscriptToOutput(output, turns) {
+  if (!Array.isArray(turns) || turns.length === 0) return;
   for (const turn of turns) {
     if (turn.userMessage) {
-      lines.push("You", ...String(turn.userMessage).split(/\r?\n/));
+      output.writeln("You");
+      for (const line of String(turn.userMessage).split(/\r?\n/)) output.writeln(line);
     }
     if (turn.assistantMessage) {
-      if (lines.length > 0) lines.push("");
-      lines.push("March", ...String(turn.assistantMessage).split(/\r?\n/));
+      output.writeln("");
+      output.writeln("March");
+      output.writeMarkdown(String(turn.assistantMessage));
+      output.ensureNewline();
+      output.sealCurrentText();
     }
-    lines.push("");
+    output.writeln("");
   }
-  while (lines.at(-1) === "") lines.pop();
-  return lines;
 }
 
 function readPiSessionEntries(sessionPath) {

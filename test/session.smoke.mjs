@@ -146,7 +146,8 @@ export async function runPiSessionSidecarSyncSmoke({ setupTmp, cleanup }) {
 
 export async function runPiSessionTranscriptSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: pi session transcript restore ---");
-  const { loadPiSessionTranscriptTurns, formatTranscriptLines } = await import("../src/session/transcript.mjs");
+  const { loadPiSessionTranscriptTurns, writeTranscriptToOutput } = await import("../src/session/transcript.mjs");
+  const { OutputBuffer } = await import("../src/cli/tui/output-buffer.mjs");
 
   const dir = setupTmp();
   mkdirSync(dir, { recursive: true });
@@ -164,12 +165,30 @@ export async function runPiSessionTranscriptSmoke({ setupTmp, cleanup }) {
   assert.equal(turns[0].userMessage, "user 3");
   assert.equal(turns.at(-1).assistantMessage, "assistant 22");
 
-  const rendered = formatTranscriptLines(turns.slice(-1)).join("\n");
+  const plainOutput = new OutputBuffer();
+  writeTranscriptToOutput(plainOutput, turns.slice(-1));
+  const rendered = stripAnsi(plainOutput.render(80).join("\n"));
   assert.ok(rendered.includes("You\nuser 22"));
   assert.ok(rendered.includes("March\nassistant 22"));
 
+  const markdownOutput = new OutputBuffer();
+  writeTranscriptToOutput(markdownOutput, [{
+    userMessage: "show markdown",
+    assistantMessage: "### Title\n**bold**\n\n```js\nconst a = 1;\n```",
+  }]);
+  const markdownRendered = stripAnsi(markdownOutput.render(80).join("\n"));
+  assert.ok(markdownRendered.includes("Title"));
+  assert.ok(markdownRendered.includes("bold"));
+  assert.ok(markdownRendered.includes("const a = 1"));
+  assert.ok(!markdownRendered.includes("###"));
+  assert.ok(!markdownRendered.includes("**bold**"));
+
   cleanup(dir);
   console.log("  PASS");
+}
+
+function stripAnsi(text) {
+  return String(text).replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "");
 }
 
 export async function runSessionTreeSmoke() {
