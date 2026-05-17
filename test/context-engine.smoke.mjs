@@ -45,7 +45,20 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
     modelId: "deepseek-v4-pro",
     provider: "other-provider",
   });
-  assert.ok(modelPromptEngine.buildContext("").includes("Build context from current project facts before editing."));
+  const modelPromptCtx = modelPromptEngine.buildContext("");
+  assert.ok(modelPromptCtx.includes("You are March, a terminal-native coding agent."));
+  assert.ok(modelPromptCtx.includes("Use edit_file for all file writes."));
+  assert.ok(modelPromptCtx.includes("Build context from current project facts before editing."));
+  assert.ok(!modelPromptCtx.includes("Use tools deliberately. Keep tool arguments strict and minimal."));
+
+  const defaultPromptEngine = new ContextEngine({
+    cwd: dir,
+    modelId: "unknown-model",
+    provider: "other-provider",
+  });
+  const defaultPromptCtx = defaultPromptEngine.buildContext("");
+  assert.ok(defaultPromptCtx.includes("You are March, a terminal-native coding agent."));
+  assert.ok(defaultPromptCtx.includes("Use tools deliberately. Keep tool arguments strict and minimal."));
 
   const injectionEngine = new ContextEngine({
     cwd: dir,

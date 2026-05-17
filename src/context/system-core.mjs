@@ -3,11 +3,12 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const PROMPT_DIR = join(dirname(fileURLToPath(import.meta.url)), "system-core", "prompts");
+const BASE_PROMPT_PATH = join(dirname(fileURLToPath(import.meta.url)), "system-core", "base.md");
 const DEFAULT_PROMPT_KEY = "default";
 
 export function buildSystemCore({ modelId } = {}) {
   const prompt = loadSystemCorePrompt({ modelId });
-  return `[system_core]\n${prompt.content}`;
+  return `[system_core]\n${prompt.base}\n\n${prompt.append}`;
 }
 
 export function resolveSystemCorePromptKey({ modelId = "" } = {}) {
@@ -20,7 +21,8 @@ function loadSystemCorePrompt({ modelId } = {}) {
   const key = resolveSystemCorePromptKey({ modelId });
   return {
     key,
-    content: readFileSync(promptPath(key), "utf8").trim(),
+    base: readFileSync(BASE_PROMPT_PATH, "utf8").trim(),
+    append: readFileSync(promptPath(key), "utf8").trim(),
   };
 }
 
