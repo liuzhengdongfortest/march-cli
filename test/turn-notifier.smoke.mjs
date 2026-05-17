@@ -25,7 +25,7 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
   assert.equal(toastCalls[0].message, "Smoke reply");
   assert.ok(toastCalls[0].icon.endsWith("march-icon.png"));
   assert.equal(toastCalls[0].appID, "March");
-  assert.equal(toastCalls[0].sound, false);
+  assert.equal(toastCalls[0].sound, true);
 
   const spawned = [];
   const fallback = await createDesktopTurnNotifier({
@@ -60,6 +60,32 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
   assert.equal((await createDesktopTurnNotifier({ platform: "linux" }).notifyTurnEnd({})).reason, "unsupported-platform");
   assert.equal((await createDesktopTurnNotifier({ config: { minDurationMs: 50 } }).notifyTurnEnd({ durationMs: 10 })).reason, "min-duration");
 
+  const customSoundCalls = [];
+  await createDesktopTurnNotifier({
+    platform: "win32",
+    config: { sound: "ms-winsoundevent:Notification.IM" },
+    toastNotifier: {
+      notify: (options, callback) => {
+        customSoundCalls.push(options);
+        setImmediate(() => callback(null));
+      },
+    },
+  }).notifyTurnEnd({ status: "success" });
+  assert.equal(customSoundCalls[0].sound, "ms-winsoundevent:Notification.IM");
+
+  const silentCalls = [];
+  await createDesktopTurnNotifier({
+    platform: "win32",
+    config: { sound: false },
+    toastNotifier: {
+      notify: (options, callback) => {
+        silentCalls.push(options);
+        setImmediate(() => callback(null));
+      },
+    },
+  }).notifyTurnEnd({ status: "success" });
+  assert.equal(silentCalls[0].sound, false);
+
   let bellText = "";
   const bellOnly = await createDesktopTurnNotifier({
     config: { desktop: false, bell: true },
@@ -84,8 +110,8 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
   assert.equal(commandSpawned[0].options.env.MARCH_NOTIFICATION_STATUS, "error");
   assert.equal(commandSpawned[0].options.env.MARCH_NOTIFICATION_SESSION, "Cmd");
   assert.ok(buildWindowsBalloonScript({ title: "March's turn", message: "done" }).includes("March''s turn"));
-  const toastOptions = buildWindowsToastOptions({ title: "March's turn", message: "ready & waiting", iconPath: "C:\\tmp\\March's icon.png" });
-  assert.deepEqual(toastOptions, { title: "March's turn", message: "ready & waiting", icon: "C:\\tmp\\March's icon.png", appID: "March", sound: false, wait: false });
+  const toastOptions = buildWindowsToastOptions({ title: "March's turn", message: "ready & waiting", iconPath: "C:\\tmp\\March's icon.png", sound: "ms-winsoundevent:Notification.Default" });
+  assert.deepEqual(toastOptions, { title: "March's turn", message: "ready & waiting", icon: "C:\\tmp\\March's icon.png", appID: "March", sound: "ms-winsoundevent:Notification.Default", wait: false });
   const notificationScript = buildWindowsNotificationScript({ title: "March's turn", message: "ready & waiting", iconPath: "C:\\tmp\\March's icon.png" });
   assert.ok(notificationScript.includes("System.Windows.Forms.NotifyIcon"));
   assert.ok(notificationScript.includes("March''s turn"));

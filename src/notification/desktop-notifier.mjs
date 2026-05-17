@@ -15,6 +15,7 @@ export function createDesktopTurnNotifier({
 } = {}) {
   const channels = resolveNotificationChannels(config);
   const minDurationMs = normalizeNonNegativeInteger(config.minDurationMs, 0);
+  const toastSound = normalizeNotificationSound(config.sound, true);
   return {
     async notifyTurnEnd(event) {
       const normalizedEvent = normalizeTurnEvent(event);
@@ -24,6 +25,7 @@ export function createDesktopTurnNotifier({
       const payload = {
         title: normalizedEvent.title ?? defaultTurnTitle(normalizedEvent.status),
         message: normalizedEvent.message ?? defaultTurnMessage(normalizedEvent),
+        sound: toastSound,
       };
       const results = [];
       if (channels.desktop) {
@@ -50,14 +52,14 @@ export function createDesktopTurnNotifier({
   };
 }
 
-export async function sendDesktopNotification({ platform = process.platform, spawnProcess = spawn, toastNotifier = nodeNotifier, title, message, iconPath = DEFAULT_NOTIFICATION_ICON_PATH }) {
+export async function sendDesktopNotification({ platform = process.platform, spawnProcess = spawn, toastNotifier = nodeNotifier, title, message, iconPath = DEFAULT_NOTIFICATION_ICON_PATH, sound = true }) {
   if (platform !== "win32") return { ok: false, reason: "unsupported-platform" };
 
   const safeTitle = normalizeNotificationText(title) || "March";
   const safeMessage = normalizeNotificationText(message) || "Turn finished";
 
   try {
-    const toastResult = await sendWindowsToastNotification({ toastNotifier, title: safeTitle, message: safeMessage, iconPath });
+    const toastResult = await sendWindowsToastNotification({ toastNotifier, title: safeTitle, message: safeMessage, iconPath, sound });
     if (toastResult.ok) return { ok: true };
 
     const script = buildWindowsNotificationScript({ title: safeTitle, message: safeMessage, iconPath });
@@ -138,18 +140,18 @@ export function buildWindowsNotificationScript({ title, message, timeoutMs = DEF
   return buildWindowsBalloonScript({ title, message, timeoutMs, iconPath });
 }
 
-export function buildWindowsToastOptions({ title, message, iconPath = DEFAULT_NOTIFICATION_ICON_PATH }) {
+export function buildWindowsToastOptions({ title, message, iconPath = DEFAULT_NOTIFICATION_ICON_PATH, sound = true }) {
   return {
     title,
     message,
     icon: iconPath,
     appID: "March",
-    sound: false,
+    sound,
     wait: false,
   };
 }
 
-function sendWindowsToastNotification({ toastNotifier = nodeNotifier, title, message, iconPath }) {
+function sendWindowsToastNotification({ toastNotifier = nodeNotifier, title, message, iconPath, sound }) {
   return new Promise((resolve) => {
     const notify = toastNotifier?.notify;
     if (typeof notify !== "function") {
@@ -159,7 +161,7 @@ function sendWindowsToastNotification({ toastNotifier = nodeNotifier, title, mes
 
     let settled = false;
     const timeout = setTimeout(() => finish({ ok: false, reason: "toast-timeout" }), DEFAULT_BALLOON_TIMEOUT_MS + 5000);
-    notify.call(toastNotifier, buildWindowsToastOptions({ title, message, iconPath }), (err) => {
+    notify.call(toastNotifier, buildWindowsToastOptions({ title, message, iconPath, sound }), (err) => {
       if (err) {
         finish({ ok: false, reason: err?.message ?? String(err) });
         return;
@@ -242,6 +244,12 @@ function normalizeNotificationText(text) {
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 240);
+}
+
+function normalizeNotificationSound(value, fallback) {
+  if (value === false) return false;
+  if (typeof value === "string") return normalizeNotificationText(value) || fallback;
+  return value === undefined ? fallback : Boolean(value);
 }
 
 function normalizeNonNegativeInteger(value, fallback) {
