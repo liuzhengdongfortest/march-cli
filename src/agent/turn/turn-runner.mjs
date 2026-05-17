@@ -13,6 +13,7 @@ export async function runRunnerTurn({
   setModelCallKind,
   onMidTurnRecallHints,
   syncCurrentPiSidecar,
+  autoNameSession,
   contextMode = "rebuild",
 }) {
   const { userRecallHints = [], currentProject = "" } = options;
@@ -61,6 +62,7 @@ export async function runRunnerTurn({
       assistantRecallHints: recordedAssistantRecallHints,
     });
 
+    autoNameSession?.();
     syncCurrentPiSidecar();
     return { draft: turnState.draft };
   } finally {

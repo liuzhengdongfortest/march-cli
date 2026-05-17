@@ -16,6 +16,7 @@ import { createRunnerRuntimeHost } from "./runtime/runner-runtime-host.mjs";
 import { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
 import { resolveRunnerSessionOptions } from "./session/session-options.mjs";
 import { createSessionBinding } from "./session/session-binding.mjs";
+import { maybeAutoNameSession } from "./session/session-auto-name.mjs";
 import { MARCH_BASE_TOOL_NAMES } from "./tool-names.mjs";
 import { runRunnerTurn } from "./turn/turn-runner.mjs";
 import { appendFastVariants, createFastModelEntry, fromFastEntryModel, isFastProvider } from "./runner/fast-model.mjs";
@@ -112,6 +113,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
           setModelCallKind: (kind) => { currentModelCallKind = kind; },
           onMidTurnRecallHints: (hints) => { pendingMidTurnRecallHints.push(...hints); },
           syncCurrentPiSidecar,
+          autoNameSession,
           contextMode,
         });
         await notifyTurnEndBestEffort(turnNotifier, {
@@ -172,6 +174,8 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     },
     getSessionStats() { return getRunnerSessionStats(sessionBinding.get(), runtimeHost); },
     setSessionName(name) {
+      const activeSession = sessionBinding.get();
+      activeSession.setSessionName?.(name);
       engine.setSessionName(name);
       syncCurrentPiSidecar();
       return engine.sessionName;
@@ -221,6 +225,18 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     return syncPiSessionSidecar({
       enabled: syncPiSidecar, projectMarchDir, engine,
       sessionStats: getRunnerSessionStats(sessionBinding.get(), runtimeHost),
+    });
+  }
+  function autoNameSession() {
+    return maybeAutoNameSession({
+      engine,
+      session: sessionBinding.get(),
+      setSessionName: (name) => {
+        const activeSession = sessionBinding.get();
+        activeSession.setSessionName?.(name);
+        engine.setSessionName(name);
+        return engine.sessionName;
+      },
     });
   }
   function injectMarchSystemContext(payload, { kind } = {}) {

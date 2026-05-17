@@ -12,6 +12,8 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   process.env.DEEPSEEK_API_KEY = previousKey || "test-key";
 
   let subscriber = null;
+  let sessionName = "";
+  const sessionNameCalls = [];
   const promptCalls = [];
   const providerPayloads = [];
   const session = {
@@ -20,6 +22,13 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
       onPayload: async (payload) => payload,
     },
     model: { id: "deepseek-v4-pro", provider: "deepseek" },
+    get sessionName() {
+      return sessionName || undefined;
+    },
+    setSessionName(name) {
+      sessionName = name;
+      sessionNameCalls.push(name);
+    },
     thinkingLevel: "medium",
     sessionManager: {
       isPersisted: () => true,
@@ -158,6 +167,12 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.equal(runner.engine.turns[0].assistantRecallHints.length, 1);
   assert.equal(runner.engine.turns[0].assistantRecallHints[0].id, "mem_thinking");
   assert.equal(runner.engine.turns[0].assistantMessage, "draft text");
+  assert.equal(runner.engine.sessionName, "hello");
+  assert.deepEqual(sessionNameCalls, ["hello"]);
+
+  assert.equal(runner.setSessionName("Manual Name"), "Manual Name");
+  assert.equal(runner.engine.sessionName, "Manual Name");
+  assert.deepEqual(sessionNameCalls, ["hello", "Manual Name"]);
 
   runner.abort();
   await runner.runTurn("second", "second");
@@ -183,8 +198,10 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.equal(countOccurrences(providerPayloads[3].messages[0].content, "[system_core]"), 1);
   assert.ok(!providerPayloads[3].messages.some((message, index) => index > 0 && message.content.includes("[system_core]")));
   const sidecar = loadPiSessionSidecar({ projectMarchDir, sessionRef: "turn-flow.jsonl" });
+  assert.equal(sidecar.state.sessionName, "Manual Name");
   assert.equal(sidecar.state.turns[0].assistantMessage, "draft text");
   assert.ok(!("summary" in sidecar.state.turns[0]));
+  assert.deepEqual(sessionNameCalls, ["hello", "Manual Name"]);
   assert.ok(calls.some((call) => call[0] === "toolStart" && call[1] === "read"));
   assert.deepEqual(calls.at(-1), ["turnEnd"]);
 
