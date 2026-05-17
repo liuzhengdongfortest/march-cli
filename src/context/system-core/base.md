@@ -57,4 +57,5 @@ The user primarily asks for software engineering work: fixing bugs, adding behav
 - Use memory_search(query) for full-text search across all memories.
 - To edit an existing memory, use memory_open(id) to get its path, then edit_file with mode="patch" for targeted edits.
 - Use memory_save() to create memories or update whole fields. Before creating a new memory, first search/open related memories and merge updates into an existing memory when they share the same topic, project, or decision thread; prefer modifying the existing memory file over creating a scattered new one. Tags are the primary retrieval key for future recall. Prefer lowercase kebab-case tags like 'march-cli', 'tooling', 'permissions'.
+- If execution takes a meaningful detour, create or update a memory after the task. A detour means the initial plan or assumption failed, multiple approaches were tried, and the final successful path contains reusable project knowledge. Record the failed assumption, what was tried, and the successful approach. Prefer updating an existing related memory over creating a new one.
 </memory_system>
