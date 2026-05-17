@@ -193,6 +193,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.deepEqual(sessionNameCalls, ["hello"]);
 
   await assertModelStreamIdleRetry({ createRunner, dir, ui, projectMarchDir });
+  await assertModelStreamIdleExhaustionAbortsTurn({ createRunner, dir, ui, projectMarchDir });
 
   assert.equal(runner.setSessionName("Manual Name"), "Manual Name");
   assert.equal(runner.engine.sessionName, "Manual Name");
@@ -297,6 +298,97 @@ async function assertModelStreamIdleRetry({ createRunner, dir, ui, projectMarchD
   assert.equal(retryEvents[0][1].maxAttempts, 2);
   assert.equal(retryEvents[1][0], "end");
   assert.equal(retryEvents[1][1].success, true);
+}
+
+async function assertModelStreamIdleExhaustionAbortsTurn({ createRunner, dir, ui, projectMarchDir }) {
+  let idleSubscriber = null;
+  let releasePrompt = null;
+  let abortCalls = 0;
+  const idlePromptCalls = [];
+  const providerPayloads = [];
+  const retryEvents = [];
+  const idleSession = {
+    agent: {
+      state: { messages: [{ role: "user", content: "stale" }] },
+      onPayload: async (payload) => {
+        providerPayloads.push(payload);
+        return payload;
+      },
+    },
+    model: { id: "deepseek-v4-pro", provider: "deepseek" },
+    subscribe(callback) {
+      idleSubscriber = callback;
+      return () => { idleSubscriber = null; };
+    },
+    async prompt(prompt) {
+      idlePromptCalls.push(prompt);
+      if (idlePromptCalls.length === 1) {
+        assert.deepEqual(this.agent.state.messages, []);
+        idleSubscriber?.({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "partial" } });
+        await this.agent.onPayload({ messages: [{ role: "user", content: [{ type: "text", text: prompt }] }] }, this.model);
+        await new Promise((resolve) => { releasePrompt = resolve; });
+        return;
+      }
+      assert.deepEqual(this.agent.state.messages, [
+        { role: "user", content: "idle question" },
+        { role: "assistant", content: "", stopReason: "aborted" },
+      ]);
+      await this.agent.onPayload({
+        messages: [
+          ...this.agent.state.messages,
+          { role: "user", content: [{ type: "text", text: prompt }] },
+        ],
+      }, this.model);
+      idleSubscriber?.({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "after idle" } });
+    },
+    abort() {
+      abortCalls += 1;
+      this.agent.state.messages = [
+        { role: "user", content: "idle question" },
+        { role: "assistant", content: "", stopReason: "aborted" },
+      ];
+      releasePrompt?.();
+      return true;
+    },
+    abortRetry() {},
+    getActiveToolNames: () => [],
+    getToolDefinition: () => null,
+    getSessionStats: () => ({ sessionId: "idle-exhaustion-session", sessionFile: "idle-exhaustion.jsonl" }),
+    dispose: () => {},
+  };
+  const idleRunner = await createRunner({
+    cwd: dir,
+    modelId: "deepseek-v4-pro",
+    provider: "deepseek",
+    stateRoot: join(dir, ".state-idle-exhaustion"),
+    ui: {
+      ...ui,
+      retryStart: (event) => retryEvents.push(["start", event]),
+      retryEnd: (event) => retryEvents.push(["end", event]),
+    },
+    projectMarchDir,
+    createAgentSessionImpl: async () => ({ session: idleSession }),
+    modelStreamIdleTimeoutMs: 20,
+    modelStreamIdleMaxRetries: 0,
+  });
+
+  await assert.rejects(
+    () => idleRunner.runTurn("idle prompt", "idle prompt"),
+    /Model stream idle for 20ms/,
+  );
+  assert.equal(abortCalls, 1);
+  assert.equal(idleRunner.engine.turns.length, 1);
+  assert.equal(idleRunner.engine.turns[0].userMessage, "idle prompt");
+  assert.equal(idleRunner.engine.turns[0].assistantMessage, "partial");
+  assert.equal(retryEvents[0][0], "end");
+  assert.equal(retryEvents[0][1].success, false);
+
+  const result = await idleRunner.runTurn("after", "after");
+  assert.equal(result.draft, "after idle");
+  assert.deepEqual(idlePromptCalls, ["idle prompt", "after"]);
+  assert.equal(providerPayloads[1].messages[0].content, "idle question");
+  assert.equal(providerPayloads[1].messages[1].stopReason, "aborted");
+  assert.equal(providerMessageText(providerPayloads[1].messages.at(-1)), "after");
 }
 
 function countOccurrences(text, needle) {

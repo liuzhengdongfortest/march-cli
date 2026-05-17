@@ -18,7 +18,7 @@ import { resolveRunnerSessionOptions } from "./session/session-options.mjs";
 import { createSessionBinding } from "./session/session-binding.mjs";
 import { maybeAutoNameSession } from "./session/session-auto-name.mjs";
 import { MARCH_BASE_TOOL_NAMES } from "./tool-names.mjs";
-import { runRunnerTurn } from "./turn/turn-runner.mjs";
+import { isModelStreamIdleTimeoutError, runRunnerTurn } from "./turn/turn-runner.mjs";
 import { appendFastVariants, createFastModelEntry, fromFastEntryModel, isFastProvider } from "./runner/fast-model.mjs";
 import { registerSuperGrokProvider } from "../supergrok/provider.mjs";
 
@@ -129,6 +129,9 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
         });
         return result;
       } catch (err) {
+        if (isModelStreamIdleTimeoutError(err)) {
+          nextTurnContextMode = "continueExistingPiTranscript";
+        }
         lastNotificationResult = await notifyTurnEndBestEffort(turnNotifier, {
           status: "error",
           sessionName: engine.sessionName,

@@ -1,6 +1,10 @@
 import { resolveImageAttachmentReferences } from "../../session/attachment-references.mjs";
 import { closeAssistantReply, createTurnEventState, handleRunnerSessionEvent } from "./turn-events.mjs";
 
+export function isModelStreamIdleTimeoutError(err) {
+  return err?.code === "MODEL_STREAM_IDLE_TIMEOUT";
+}
+
 export async function runRunnerTurn({
   prompt,
   userMessage,
@@ -60,25 +64,40 @@ export async function runRunnerTurn({
         maxRetries: modelStreamIdleMaxRetries,
         watchdog: modelIdleWatchdog,
       });
+    } catch (err) {
+      if (!isModelStreamIdleTimeoutError(err)) throw err;
+      finalizeTurn({
+        prompt,
+        userMessage,
+        userRecallHints,
+        currentProject,
+        memoryStore,
+        engine,
+        ui,
+        turnState,
+        midTurnRecallHints,
+        syncCurrentPiSidecar,
+        autoNameSession,
+      });
+      throw err;
     } finally {
       modelIdleWatchdog.stop();
       setModelCallKind("model");
     }
 
-    closeAssistantReply({ ui, state: turnState });
-    const assistantRecallHints = flushAssistantRecall({ memoryStore, engine, turnState, currentProject });
-    engine.setPendingAssistantRecallHints?.(assistantRecallHints);
-    const recordedAssistantRecallHints = uniqueHints([...midTurnRecallHints, ...assistantRecallHints]);
-
-    engine.recordTurn({
-      userMessage: userMessage ?? prompt.slice(0, 300),
-      assistantMessage: turnState.draft,
+    finalizeTurn({
+      prompt,
+      userMessage,
       userRecallHints,
-      assistantRecallHints: recordedAssistantRecallHints,
+      currentProject,
+      memoryStore,
+      engine,
+      ui,
+      turnState,
+      midTurnRecallHints,
+      syncCurrentPiSidecar,
+      autoNameSession,
     });
-
-    autoNameSession?.();
-    syncCurrentPiSidecar();
     return { draft: turnState.draft };
   } finally {
     ui.turnEnd();
@@ -108,14 +127,37 @@ async function promptWithModelIdleRetry({ session, prompt, promptOptions, resetB
       watchdog.stop();
     }
 
-    restorePiMessageHistory(session, messageHistorySnapshot);
     if (attempt > maxRetries) {
-      const err = new Error(`Model stream idle for ${watchdog.timeoutMs}ms`);
+      const err = createModelStreamIdleTimeoutError(watchdog.timeoutMs);
       watchdog.reportExhausted({ attempt, error: err });
       throw err;
     }
+    restorePiMessageHistory(session, messageHistorySnapshot);
     watchdog.reportRetry({ attempt, maxAttempts: maxRetries + 1 });
   }
+}
+
+function finalizeTurn({ prompt, userMessage, userRecallHints, currentProject, memoryStore, engine, ui, turnState, midTurnRecallHints, syncCurrentPiSidecar, autoNameSession }) {
+  closeAssistantReply({ ui, state: turnState });
+  const assistantRecallHints = flushAssistantRecall({ memoryStore, engine, turnState, currentProject });
+  engine.setPendingAssistantRecallHints?.(assistantRecallHints);
+  const recordedAssistantRecallHints = uniqueHints([...midTurnRecallHints, ...assistantRecallHints]);
+
+  engine.recordTurn({
+    userMessage: userMessage ?? prompt.slice(0, 300),
+    assistantMessage: turnState.draft,
+    userRecallHints,
+    assistantRecallHints: recordedAssistantRecallHints,
+  });
+
+  autoNameSession?.();
+  syncCurrentPiSidecar();
+}
+
+function createModelStreamIdleTimeoutError(timeoutMs) {
+  const err = new Error(`Model stream idle for ${timeoutMs}ms`);
+  err.code = "MODEL_STREAM_IDLE_TIMEOUT";
+  return err;
 }
 
 function createModelStreamIdleWatchdog({ session, ui, timeoutMs }) {
