@@ -77,6 +77,8 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   assert.ok(deprecatedSearch.content[0].text.includes("No memory files matched"));
 
   const openResult = await open.execute("t2", { id: entry.id });
+  assert.ok(openResult.content[0].text.includes(`path: ${entry.path}`));
+  assert.ok(openResult.content[0].text.includes("Use edit_file with this path for targeted edits."));
   assert.ok(openResult.content[0].text.includes("# Memory hint dedup"));
 
   const saveResult = await save.execute("t3", { id: entry.id, tags: ["memory/memory-hint", "memory/window"] });

@@ -24,7 +24,7 @@ export function createMarkdownMemoryTools(store) {
     defineTool({
       name: "memory_open",
       label: "Memory Open",
-      description: "Open a Markdown memory by id or by path. Use this after memory hint or memory_search when you need the full memory body.",
+      description: "Open a Markdown memory by id or by path. Use this after memory hint or memory_search when you need the full memory body. To edit an existing memory, use the returned path with edit_file for targeted edits.",
       parameters: Type.Object({
         id: Type.Optional(Type.String({ description: "Memory id from memory hint, e.g. mem_..." })),
         path: Type.Optional(Type.String({ description: "Path returned by memory_search" })),
@@ -33,7 +33,10 @@ export function createMarkdownMemoryTools(store) {
         try {
           const identifier = params.id || params.path;
           const opened = store.open(identifier);
-          return toolText(`--- ${opened.path} ---\n${opened.content}`, opened);
+          return toolText(
+            `path: ${opened.path}\nUse edit_file with this path for targeted edits.\n\n---\n${opened.content}`,
+            opened,
+          );
         } catch (err) {
           return toolText(`Error: ${err.message}`, { error: true });
         }
@@ -44,7 +47,7 @@ export function createMarkdownMemoryTools(store) {
       name: "memory_save",
       label: "Memory Save",
       description:
-        "Create or update a Markdown memory. Before creating a new memory, merge related updates into an existing memory when they share the same topic or decision thread. New memories require name, description, body, and at least one tag because memory hints only use tags. When updating by id, omitted fields keep their existing values; passing tags replaces the full tag list.",
+        "Create a Markdown memory or update whole fields on an existing memory. For targeted edits to an existing memory body or frontmatter, use memory_open to get the path, then edit_file. Before creating a new memory, merge related updates into an existing memory when they share the same topic or decision thread. New memories require name, description, body, and at least one tag because memory hints only use tags. When updating by id, omitted fields keep their existing values; passing tags replaces the full tag list.",
       parameters: Type.Object({
         id: Type.Optional(Type.String({ description: "Existing memory id to update. Omit to create a new memory." })),
         name: Type.Optional(Type.String({ description: "Memory name. Required when creating." })),
