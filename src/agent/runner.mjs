@@ -49,6 +49,8 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   const sessionBinding = createSessionBinding(null);
   let currentModelCallKind = "model";
   let currentPromptForContext = "";
+  let currentTurnContextMode = "rebuild";
+  let nextTurnContextMode = "rebuild";
   let pendingMidTurnRecallHints = [];
   let runtimeHost = null;
   let lifecycleAdapter = null;
@@ -98,19 +100,29 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     shellRuntime,
     async runTurn(prompt, userMessage, { userRecallHints = [], currentProject = "" } = {}) {
       currentPromptForContext = prompt;
+      const contextMode = nextTurnContextMode;
+      currentTurnContextMode = contextMode;
+      nextTurnContextMode = "rebuild";
       pendingMidTurnRecallHints = [];
-      return runRunnerTurn({
-        prompt, userMessage, options: { userRecallHints, currentProject },
-        sessionBinding, engine, ui, projectMarchDir, memoryStore,
-        setModelCallKind: (kind) => { currentModelCallKind = kind; },
-        onMidTurnRecallHints: (hints) => { pendingMidTurnRecallHints.push(...hints); },
-        syncCurrentPiSidecar,
-      });
+      try {
+        return await runRunnerTurn({
+          prompt, userMessage, options: { userRecallHints, currentProject },
+          sessionBinding, engine, ui, projectMarchDir, memoryStore,
+          setModelCallKind: (kind) => { currentModelCallKind = kind; },
+          onMidTurnRecallHints: (hints) => { pendingMidTurnRecallHints.push(...hints); },
+          syncCurrentPiSidecar,
+          contextMode,
+        });
+      } finally {
+        currentTurnContextMode = "rebuild";
+      }
     },
     abort() {
       const activeSession = sessionBinding.get();
       activeSession.abortRetry?.();
-      return activeSession.abort();
+      const result = activeSession.abort();
+      nextTurnContextMode = "continueExistingPiTranscript";
+      return result;
     },
     async cycleModel() {
       const result = await sessionBinding.get().cycleModel();
@@ -153,6 +165,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     canSwitchPiSession() { return Boolean(runtimeHost); },
     async startNewSession() {
       if (!runtimeHost) throw new Error("pi runtime host is not enabled");
+      nextTurnContextMode = "rebuild";
       syncCurrentPiSidecar();
       const result = await runtimeHost.newSession();
       if (result?.cancelled) return { cancelled: true };
@@ -165,6 +178,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     getExtensionLifecycleState() { return lifecycleAdapter.getState(); },
     async switchPiSession(sessionPath) {
       if (!runtimeHost) throw new Error("pi runtime host is not enabled");
+      nextTurnContextMode = "rebuild";
       return runtimeHost.switchSession(sessionPath);
     },
     cycleThinkingLevel() {
@@ -197,7 +211,9 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   }
   function injectMarchSystemContext(payload, { kind } = {}) {
     if (kind !== "user") return payload;
-    let nextPayload = replaceProviderContextMessages(payload, engine.buildProviderContext(currentPromptForContext));
+    let nextPayload = currentTurnContextMode === "continueExistingPiTranscript"
+      ? payload
+      : replaceProviderContextMessages(payload, engine.buildProviderContext(currentPromptForContext));
     if (_currentFastEntry) nextPayload = { ...nextPayload, service_tier: "priority" };
     if (pendingMidTurnRecallHints.length > 0) {
       nextPayload = appendProviderUserMessage(nextPayload, formatRecallHints("assistant", pendingMidTurnRecallHints));

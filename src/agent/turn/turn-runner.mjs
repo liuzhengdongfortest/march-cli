@@ -13,6 +13,7 @@ export async function runRunnerTurn({
   setModelCallKind,
   onMidTurnRecallHints,
   syncCurrentPiSidecar,
+  contextMode = "rebuild",
 }) {
   const { userRecallHints = [], currentProject = "" } = options;
   const activeSession = sessionBinding.get();
@@ -39,9 +40,9 @@ export async function runRunnerTurn({
     });
     setModelCallKind("user");
     try {
-      resetPiMessageHistory(activeSession);
+      if (contextMode === "rebuild") resetPiMessageHistory(activeSession);
       await activeSession.prompt(
-        prompt,
+        contextMode === "continueExistingPiTranscript" ? (userMessage ?? prompt) : prompt,
         attachmentReferences.images.length > 0 ? { images: attachmentReferences.images } : undefined,
       );
     } finally {

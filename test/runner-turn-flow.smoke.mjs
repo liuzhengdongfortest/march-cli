@@ -33,12 +33,25 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
     },
     async prompt(prompt) {
       promptCalls.push(prompt);
-      assert.deepEqual(this.agent.state.messages, []);
+      const isContinuation = prompt === "second";
+      if (isContinuation) {
+        assert.deepEqual(this.agent.state.messages, [
+          { role: "user", content: "aborted question" },
+          { role: "assistant", content: "", stopReason: "aborted" },
+        ]);
+      } else {
+        assert.deepEqual(this.agent.state.messages, []);
+      }
       providerPayloads.push(await this.agent.onPayload({
-        messages: [
-          { role: "system", content: "Pi system" },
-          { role: "user", content: [{ type: "text", text: prompt }] },
-        ],
+        messages: isContinuation
+          ? [
+              ...this.agent.state.messages,
+              { role: "user", content: [{ type: "text", text: prompt }] },
+            ]
+          : [
+              { role: "system", content: "Pi system" },
+              { role: "user", content: [{ type: "text", text: prompt }] },
+            ],
       }, this.model));
       if (promptCalls.length === 1) {
         emit({ type: "message_update", assistantMessageEvent: { type: "thinking_start" } });
@@ -55,6 +68,13 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
         }, this.model));
         emit({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "draft text" } });
       }
+    },
+    abort() {
+      this.agent.state.messages = [
+        { role: "user", content: "aborted question" },
+        { role: "assistant", content: "", stopReason: "aborted" },
+      ];
+      return true;
     },
     getActiveToolNames: () => ["read", "write"],
     setActiveToolsByName(names) {
@@ -139,16 +159,29 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.equal(runner.engine.turns[0].assistantRecallHints[0].id, "mem_thinking");
   assert.equal(runner.engine.turns[0].assistantMessage, "draft text");
 
+  runner.abort();
   await runner.runTurn("second", "second");
   assert.equal(promptCalls.length, 2);
   assert.ok(!promptCalls[1].includes("[system_core]"));
-  assert.ok(providerPayloads[2].messages[0].content.includes("[system_core]"));
-  assert.ok(!providerPayloads[2].messages[0].content.includes("[recent_chat]"));
-  assert.ok(providerPayloads[2].messages.at(-1).content.includes("[recent_chat]"));
-  assert.ok(providerPayloads[2].messages.at(-1).content.includes("draft text"));
-  assert.ok(providerPayloads[2].messages.at(-1).content.includes("[current_user]\nsecond"));
-  assert.equal(countOccurrences(providerPayloads[2].messages[0].content, "[system_core]"), 1);
-  assert.ok(!providerPayloads[2].messages.some((message, index) => index > 0 && message.content.includes("[system_core]")));
+  assert.equal(providerPayloads[2].messages[0].role, "user");
+  assert.equal(providerPayloads[2].messages[0].content, "aborted question");
+  assert.equal(providerPayloads[2].messages[1].stopReason, "aborted");
+  assert.equal(providerPayloads[2].messages.at(-1).role, "user");
+  assert.equal(providerMessageText(providerPayloads[2].messages.at(-1)), "second");
+  assert.ok(!providerPayloads[2].messages.some((message) => providerMessageText(message).includes("[system_core]")));
+  assert.ok(!providerPayloads[2].messages.some((message) => providerMessageText(message).includes("[workspace_status]")));
+  assert.ok(!providerPayloads[2].messages.some((message) => providerMessageText(message).includes("[recent_chat]")));
+
+  await runner.runTurn("third", "third");
+  assert.equal(promptCalls.length, 3);
+  assert.ok(!promptCalls[2].includes("[system_core]"));
+  assert.ok(providerPayloads[3].messages[0].content.includes("[system_core]"));
+  assert.ok(!providerPayloads[3].messages[0].content.includes("[recent_chat]"));
+  assert.ok(providerPayloads[3].messages.at(-1).content.includes("[recent_chat]"));
+  assert.ok(providerPayloads[3].messages.at(-1).content.includes("draft text"));
+  assert.ok(providerPayloads[3].messages.at(-1).content.includes("[current_user]\nthird"));
+  assert.equal(countOccurrences(providerPayloads[3].messages[0].content, "[system_core]"), 1);
+  assert.ok(!providerPayloads[3].messages.some((message, index) => index > 0 && message.content.includes("[system_core]")));
   const sidecar = loadPiSessionSidecar({ projectMarchDir, sessionRef: "turn-flow.jsonl" });
   assert.equal(sidecar.state.turns[0].assistantMessage, "draft text");
   assert.ok(!("summary" in sidecar.state.turns[0]));
@@ -170,4 +203,12 @@ function countOccurrences(text, needle) {
 
 function countUserMessagesContaining(messages, text) {
   return messages.filter((message) => message.role === "user" && String(message.content).includes(text)).length;
+}
+
+function providerMessageText(message) {
+  if (typeof message?.content === "string") return message.content;
+  if (Array.isArray(message?.content)) {
+    return message.content.map((part) => part?.text ?? "").join("");
+  }
+  return "";
 }
