@@ -16,10 +16,17 @@ export async function runModeStateSmoke() {
   const prompts = [];
   const userMessages = [];
   const uiLines = [];
+  let carryoverTaken = false;
   await runSingleShotPrompt({
     prompt: "please inspect",
     runner: {
-      engine: { buildContext: () => "[system]\nctx" },
+      engine: {
+        buildContext: () => "[system]\nctx",
+        takePendingAssistantRecallHints: () => {
+          carryoverTaken = true;
+          return [{ id: "mem_carry", name: "Carryover", description: "Matched after the previous final answer." }];
+        },
+      },
       shellRuntime: {
         listShells: () => [{
           id: "sh1",
@@ -53,6 +60,9 @@ export async function runModeStateSmoke() {
   assert.ok(prompts[0].startsWith("please inspect\n\n<mode>"));
   assert.ok(!prompts[0].includes("[system]"));
   assert.ok(prompts[0].includes("You are in discuss mode"));
+  assert.ok(carryoverTaken);
+  assert.ok(prompts[0].includes('[memory_hint source="assistant"]'));
+  assert.ok(prompts[0].includes("mem_carry | Carryover | Matched after the previous final answer."));
   assert.ok(prompts[0].includes("[shell_hints]"));
   assert.ok(prompts[0].includes("sh1 dev running command: npm run dev cwd: D:/repo lines: 42"));
   assert.ok(prompts[0].includes("Use terminal_read or terminal_snapshot"));

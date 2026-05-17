@@ -13,6 +13,7 @@ export class ContextEngine {
     this.provider = provider;
     this.thinkingLevel = thinkingLevel;
     this.turns = [];
+    this.pendingAssistantRecallHints = [];
     this.sessionName = "";
     this.toolDefs = [];
     this.namespace = namespace;
@@ -86,6 +87,16 @@ export class ContextEngine {
     return ids;
   }
 
+  setPendingAssistantRecallHints(hints = []) {
+    this.pendingAssistantRecallHints = uniqueHints(hints);
+  }
+
+  takePendingAssistantRecallHints() {
+    const hints = this.pendingAssistantRecallHints;
+    this.pendingAssistantRecallHints = [];
+    return hints;
+  }
+
   resolvePath(raw) {
     return resolve(this.cwd, raw);
   }
@@ -107,9 +118,11 @@ export class ContextEngine {
   restoreSession(data, _pool, { replace = false } = {}) {
     if (replace) {
       this.turns = [];
+      this.pendingAssistantRecallHints = [];
       this.sessionName = "";
     }
     if (data.turns) this.turns = data.turns;
+    if (Array.isArray(data.pendingAssistantRecallHints)) this.pendingAssistantRecallHints = uniqueHints(data.pendingAssistantRecallHints);
     if (typeof data.sessionName === "string") this.sessionName = data.sessionName;
     this.setRuntimeState(data);
   }
@@ -146,4 +159,15 @@ export class ContextEngine {
 function appendCurrentUser(recentChat, userMessage) {
   const currentUser = String(userMessage ?? "").trimEnd();
   return `${recentChat}\n\n[current_user]\n${currentUser}`;
+}
+
+function uniqueHints(hints = []) {
+  const seen = new Set();
+  const unique = [];
+  for (const hint of hints) {
+    if (!hint?.id || seen.has(hint.id)) continue;
+    seen.add(hint.id);
+    unique.push(hint);
+  }
+  return unique;
 }

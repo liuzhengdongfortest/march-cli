@@ -51,6 +51,7 @@ export async function runRunnerTurn({
 
     closeAssistantReply({ ui, state: turnState });
     const assistantRecallHints = flushAssistantRecall({ memoryStore, engine, turnState, currentProject });
+    engine.setPendingAssistantRecallHints?.(assistantRecallHints);
     const recordedAssistantRecallHints = uniqueHints([...midTurnRecallHints, ...assistantRecallHints]);
     ui.memoryHint?.({ source: "assistant", hints: recordedAssistantRecallHints });
 

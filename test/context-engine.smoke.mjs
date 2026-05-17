@@ -118,6 +118,15 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   assert.ok(ctx2.includes("mem_user | User hint | User recall hint"));
   assert.ok(ctx2.includes('[memory_hint source="assistant"]'));
 
+  engine.setPendingAssistantRecallHints([
+    { id: "mem_carry", name: "Carryover", description: "Queued for the next turn." },
+    { id: "mem_carry", name: "Duplicate", description: "Ignored." },
+  ]);
+  assert.deepEqual(engine.takePendingAssistantRecallHints(), [
+    { id: "mem_carry", name: "Carryover", description: "Queued for the next turn." },
+  ]);
+  assert.deepEqual(engine.takePendingAssistantRecallHints(), []);
+
   const longUserTail = "user-tail-keep";
   const longMarchTail = "march-tail-keep";
   const longEngine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek" });

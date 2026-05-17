@@ -22,6 +22,7 @@ export function captureContextSidecar(engine, metadata = {}) {
     sessionName: engine.sessionName ?? "",
     thinkingLevel: engine.thinkingLevel,
     namespace: engine.namespace,
+    pendingAssistantRecallHints: engine.pendingAssistantRecallHints ?? [],
     turns: engine.turns,
   };
 }

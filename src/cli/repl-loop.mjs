@@ -18,13 +18,16 @@ export async function runSingleShotPrompt({
   modeState = null,
 }) {
   memoryStore.beginTurn();
+  const carryoverRecallHints = runner.engine.takePendingAssistantRecallHints?.() ?? [];
   const userRecallHints = memoryStore.recallForUser(prompt, { currentProject, excludedIds: runner.engine.getRecentRecallMemoryIds?.() ?? [] });
   const recallBlock = formatRecallHints("user", userRecallHints);
+  const carryoverRecallBlock = formatRecallHints("assistant", carryoverRecallHints);
   const shellHints = formatShellHints(runner.shellRuntime);
   const modePrompt = appendModeReminder(prompt, modeState?.get?.());
-  const fullPrompt = appendPromptBlocks(modePrompt, recallBlock, shellHints);
+  const fullPrompt = appendPromptBlocks(modePrompt, recallBlock, carryoverRecallBlock, shellHints);
   ui.writeln(formatUserDisplayMessage(prompt));
   ui.memoryHint?.({ source: "user", hints: userRecallHints });
+  if (carryoverRecallHints.length > 0) ui.memoryHint?.({ source: "assistant", hints: carryoverRecallHints });
   refreshStatusBar.startWorking?.();
   try {
     await runner.runTurn(fullPrompt, prompt, { userRecallHints, currentProject });
@@ -126,14 +129,17 @@ function handleInlineCommand(trimmed, { cwd, ui, lastInlineShellCommand }) {
 
 async function runReplTurn({ prompt, args, runner, memoryStore, currentProject, ui, refreshStatusBar, setTurnRunning, modeState = null }) {
   memoryStore.beginTurn();
+  const carryoverRecallHints = runner.engine.takePendingAssistantRecallHints?.() ?? [];
   const userRecallHints = memoryStore.recallForUser(prompt, { currentProject, excludedIds: runner.engine.getRecentRecallMemoryIds?.() ?? [] });
   const recallBlock = formatRecallHints("user", userRecallHints);
+  const carryoverRecallBlock = formatRecallHints("assistant", carryoverRecallHints);
   const shellHints = formatShellHints(runner.shellRuntime);
   const modePrompt = appendModeReminder(prompt, modeState?.get?.());
-  const fullPrompt = appendPromptBlocks(modePrompt, recallBlock, shellHints);
+  const fullPrompt = appendPromptBlocks(modePrompt, recallBlock, carryoverRecallBlock, shellHints);
   try {
     ui.writeln(formatUserDisplayMessage(prompt));
     ui.memoryHint?.({ source: "user", hints: userRecallHints });
+    if (carryoverRecallHints.length > 0) ui.memoryHint?.({ source: "assistant", hints: carryoverRecallHints });
     setTurnRunning(true);
     refreshStatusBar.startWorking?.();
     await runner.runTurn(fullPrompt, prompt, { userRecallHints, currentProject });
