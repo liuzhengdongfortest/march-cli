@@ -24,7 +24,7 @@ export async function runRunnerTurn({
     userRecallHints = [],
     currentProject = "",
     modelStreamIdleTimeoutMs = 7000,
-    modelStreamIdleMaxRetries = 1,
+    modelStreamIdleMaxRetries = 5,
   } = options;
   const activeSession = sessionBinding.get();
   const turnState = createTurnEventState();
