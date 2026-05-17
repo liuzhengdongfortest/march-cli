@@ -27,7 +27,7 @@ export { installModelPayloadDumper } from "./model-payload-dumper.mjs";
 export { createDefaultSessionManager, resolveRunnerSessionManager } from "./runner/runner-init.mjs";
 export { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
 
-export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, memoryRoot = null, centerMemoryPath = null, memoryStore = null, memoryTools = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, modelContextDumper = null, turnNotifier = null, onModelPayload = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices, maxTurns, trimBatch, serviceTier = null }) {
+export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, memoryRoot = null, centerMemoryPath = null, memoryStore = null, memoryTools = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, modelContextDumper = null, turnNotifier = null, onModelPayload = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices, maxTurns, trimBatch, serviceTier = null, modelStreamIdleTimeoutMs = 7000, modelStreamIdleMaxRetries = 1 }) {
   if (!useRuntimeHost && extensionPaths.length > 0) {
     throw new Error("--extension requires the default pi runtime host path");
   }
@@ -113,7 +113,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       const turnStartedAt = Date.now();
       try {
         const result = await runRunnerTurn({
-          prompt, userMessage, options: { userRecallHints, currentProject },
+          prompt, userMessage, options: { userRecallHints, currentProject, modelStreamIdleTimeoutMs, modelStreamIdleMaxRetries },
           sessionBinding, engine, ui, projectMarchDir, memoryStore,
           setModelCallKind: (kind) => { currentModelCallKind = kind; },
           onMidTurnRecallHints: (hints) => { pendingMidTurnRecallHints.push(...hints); },

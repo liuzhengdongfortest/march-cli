@@ -192,6 +192,8 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.equal(runner.engine.sessionName, "hello");
   assert.deepEqual(sessionNameCalls, ["hello"]);
 
+  await assertModelStreamIdleRetry({ createRunner, dir, ui, projectMarchDir });
+
   assert.equal(runner.setSessionName("Manual Name"), "Manual Name");
   assert.equal(runner.engine.sessionName, "Manual Name");
   assert.deepEqual(sessionNameCalls, ["hello", "Manual Name"]);
@@ -235,6 +237,66 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   }
   cleanup(dir);
   console.log("  PASS");
+}
+
+async function assertModelStreamIdleRetry({ createRunner, dir, ui, projectMarchDir }) {
+  let idleSubscriber = null;
+  let releasePrompt = null;
+  let abortCalls = 0;
+  const idlePromptCalls = [];
+  const retryEvents = [];
+  const idleSession = {
+    agent: { state: { messages: [{ role: "user", content: "stale" }] }, onPayload: async (payload) => payload },
+    model: { id: "deepseek-v4-pro", provider: "deepseek" },
+    subscribe(callback) {
+      idleSubscriber = callback;
+      return () => { idleSubscriber = null; };
+    },
+    async prompt(prompt) {
+      idlePromptCalls.push(prompt);
+      assert.deepEqual(this.agent.state.messages, []);
+      if (idlePromptCalls.length === 1) {
+        this.agent.state.messages.push({ role: "assistant", content: "partial", stopReason: "aborted" });
+        await new Promise((resolve) => { releasePrompt = resolve; });
+        return;
+      }
+      idleSubscriber?.({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "ok" } });
+    },
+    abort() {
+      abortCalls += 1;
+      releasePrompt?.();
+      return true;
+    },
+    getActiveToolNames: () => [],
+    getToolDefinition: () => null,
+    getSessionStats: () => ({ sessionId: "idle-retry-session", sessionFile: "idle.jsonl" }),
+    dispose: () => {},
+  };
+  const idleRunner = await createRunner({
+    cwd: dir,
+    modelId: "deepseek-v4-pro",
+    provider: "deepseek",
+    stateRoot: join(dir, ".state-idle"),
+    ui: {
+      ...ui,
+      retryStart: (event) => retryEvents.push(["start", event]),
+      retryEnd: (event) => retryEvents.push(["end", event]),
+    },
+    projectMarchDir,
+    createAgentSessionImpl: async () => ({ session: idleSession }),
+    modelStreamIdleTimeoutMs: 20,
+    modelStreamIdleMaxRetries: 1,
+  });
+
+  const result = await idleRunner.runTurn("idle", "idle");
+  assert.equal(result.draft, "ok");
+  assert.deepEqual(idlePromptCalls, ["idle", "idle"]);
+  assert.equal(abortCalls, 1);
+  assert.equal(retryEvents[0][0], "start");
+  assert.equal(retryEvents[0][1].attempt, 1);
+  assert.equal(retryEvents[0][1].maxAttempts, 2);
+  assert.equal(retryEvents[1][0], "end");
+  assert.equal(retryEvents[1][1].success, true);
 }
 
 function countOccurrences(text, needle) {
