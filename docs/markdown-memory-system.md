@@ -85,10 +85,13 @@ tags:
 <ObsidianVault>/March Memories/
 └─ 2026/
    └─ 05/
-      ├─ 2026-05-14-writing-style.md
-      ├─ 2026-05-14-context-cache-ordering.md
-      └─ 2026-05-14-prefix-cache.md
+      └─ week2/
+         ├─ 2026-05-14-writing-style.md
+         ├─ 2026-05-14-context-cache-ordering.md
+         └─ 2026-05-14-prefix-cache.md
 ```
+
+月内按 7 天分桶：`01-07 -> week1`，`08-14 -> week2`，`15-21 -> week3`，`22-28 -> week4`，`29-31 -> week5`。
 
 文件名用于人工浏览，不作为稳定引用。稳定引用只依赖 frontmatter 里的 `id`。
 

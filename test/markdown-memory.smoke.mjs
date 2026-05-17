@@ -1,5 +1,6 @@
 import { strict as assert } from "node:assert";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { relative } from "node:path";
 
 export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: markdown memory system ---");
@@ -24,6 +25,7 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
 
   assert.ok(entry.id.startsWith("mem_"));
   assert.deepEqual(entry.tags, ["memory/memory-hint", "memory/dedup", "project/march-cli"]);
+  assert.match(relative(dir, entry.path), /^2026[\\/]05[\\/]week2[\\/]2026-05-14-memory-hint-dedup\.md$/);
   assert.ok(existsSync(store.indexPath));
 
   store.beginTurn();

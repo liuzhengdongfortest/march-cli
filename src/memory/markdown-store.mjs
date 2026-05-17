@@ -253,8 +253,9 @@ export class MarkdownMemoryStore {
 
   #newMemoryPath(isoDate, name) {
     const date = isoDate.slice(0, 10);
-    const [year, month] = date.split("-");
-    return join(this.root, year, month, `${date}-${slugify(name)}.md`);
+    const [year, month, day] = date.split("-");
+    const week = `week${Math.ceil(Number(day) / 7)}`;
+    return join(this.root, year, month, week, `${date}-${slugify(name)}.md`);
   }
 
   #resolveMemoryPath(raw) {
