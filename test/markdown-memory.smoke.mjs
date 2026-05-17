@@ -13,6 +13,7 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
     root: dir,
     now: () => new Date("2026-05-14T10:30:00.000Z"),
   });
+  assert.equal(store.db.prepare("PRAGMA busy_timeout").get().timeout, 5000);
 
   assert.throws(() => store.save({ name: "No tags", description: "Missing tags", body: "Body" }), /tags are required/);
 

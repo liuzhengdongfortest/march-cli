@@ -25,6 +25,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS memory_tags_fts USING fts5(
 export function openMarkdownMemoryIndex(path) {
   mkdirSync(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
+  db.exec("PRAGMA busy_timeout = 5000");
   db.exec("PRAGMA journal_mode = WAL");
   db.exec(SCHEMA);
   return db;
@@ -48,14 +49,21 @@ export function loadMarkdownMemoryIndex(db) {
 }
 
 export function replaceMarkdownMemoryIndex(db, entries, expandTags) {
-  clearMarkdownMemoryIndex(db);
-  const insertMeta = db.prepare(
-    "INSERT INTO memory_index (id, path, name, description, tags_json, status, created_at, updated_at, mtime_ms, size) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-  );
-  const insertFts = db.prepare("INSERT INTO memory_tags_fts (id, tags_text) VALUES (?, ?)");
-  for (const entry of entries.values()) {
-    insertMeta.run(entry.id, entry.path, entry.name, entry.description, JSON.stringify(entry.tags), entry.status, entry.createdAt, entry.updatedAt, entry.mtimeMs, entry.size);
-    insertFts.run(entry.id, expandTags(entry.tags).join(" "));
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    clearMarkdownMemoryIndex(db);
+    const insertMeta = db.prepare(
+      "INSERT INTO memory_index (id, path, name, description, tags_json, status, created_at, updated_at, mtime_ms, size) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    );
+    const insertFts = db.prepare("INSERT INTO memory_tags_fts (id, tags_text) VALUES (?, ?)");
+    for (const entry of entries.values()) {
+      insertMeta.run(entry.id, entry.path, entry.name, entry.description, JSON.stringify(entry.tags), entry.status, entry.createdAt, entry.updatedAt, entry.mtimeMs, entry.size);
+      insertFts.run(entry.id, expandTags(entry.tags).join(" "));
+    }
+    db.exec("COMMIT");
+  } catch (err) {
+    try { db.exec("ROLLBACK"); } catch {}
+    throw err;
   }
 }
 

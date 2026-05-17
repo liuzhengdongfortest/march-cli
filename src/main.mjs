@@ -230,39 +230,59 @@ export async function run(argv) {
       });
     } finally {
       turnRunning = false;
+      await closeMarchRuntime({ runner, memoryStore, ui, blankLine: true });
     }
-    await runner.dispose();
-    ui.writeln("");
-    await ui.close();
     return 0;
   }
 
   const dumpContextPath = args.dumpContext ? relative(cwd, contextDumpRoot) : null;
   if (startupResume.transcriptTurns?.length > 0) ui.restoreTranscript?.(startupResume.transcriptTurns);
   for (const line of formatStartupBanner({ cwd, modelId: runner.engine.modelId, thinkingLevel: runner.engine.thinkingLevel, mode: modeState.get(), dumpContextPath })) ui.writeln(line);
-  await runInteractiveRepl({
-    cwd,
-    args,
-    ui,
-    runner,
-    memoryStore,
-    currentProject,
-    sessionState,
-    sessionsRoot,
-    projectMarchDir,
-    sessionSource,
-    extensionPaths,
-    keybindingConfig,
-    promptTemplateConfig,
-    renderStartupBanner: () => formatStartupBanner({ cwd, modelId: runner.engine.modelId, thinkingLevel: runner.engine.thinkingLevel, mode: modeState.get(), dumpContextPath }),
-    refreshStatusBar,
-    setTurnRunning: (value) => { turnRunning = value; },
-    modeState,
-  });
-
-  await runner.dispose();
-  await ui.close();
+  try {
+    await runInteractiveRepl({
+      cwd,
+      args,
+      ui,
+      runner,
+      memoryStore,
+      currentProject,
+      sessionState,
+      sessionsRoot,
+      projectMarchDir,
+      sessionSource,
+      extensionPaths,
+      keybindingConfig,
+      promptTemplateConfig,
+      renderStartupBanner: () => formatStartupBanner({ cwd, modelId: runner.engine.modelId, thinkingLevel: runner.engine.thinkingLevel, mode: modeState.get(), dumpContextPath }),
+      refreshStatusBar,
+      setTurnRunning: (value) => { turnRunning = value; },
+      modeState,
+    });
+  } finally {
+    await closeMarchRuntime({ runner, memoryStore, ui });
+  }
   return 0;
+}
+
+async function closeMarchRuntime({ runner, memoryStore, ui, blankLine = false }) {
+  let firstError = null;
+  try {
+    await runner.dispose();
+  } catch (err) {
+    firstError ??= err;
+  }
+  try {
+    memoryStore.close();
+  } catch (err) {
+    firstError ??= err;
+  }
+  try {
+    if (blankLine) ui.writeln("");
+    await ui.close();
+  } catch (err) {
+    firstError ??= err;
+  }
+  if (firstError) throw firstError;
 }
 
 function resolveMemoryRoot(configured, stateRoot) {
