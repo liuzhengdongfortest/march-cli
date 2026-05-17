@@ -19,6 +19,7 @@ import { runExtensionLifecycleManifestSmoke } from "./extension-lifecycle-manife
 import { runExternalEditorSmoke } from "./external-editor.smoke.mjs";
 import { runFindToolSmoke } from "./find-tool.smoke.mjs";
 import { runImageSmokeSuite } from "./image-smoke-suite.smoke.mjs";
+import { runImageGenSmoke } from "./image-gen.smoke.mjs";
 import { runInputHistorySmoke } from "./input-history.smoke.mjs";
 import { runKeybindingsSmoke } from "./keybindings.smoke.mjs";
 import { runLoginCommandSmoke } from "./login-command.smoke.mjs";
@@ -148,6 +149,7 @@ await runStartupResumeSmoke({ setupTmp, cleanup });
 await runAuthStorageSmoke({ setupTmp, cleanup });
 await runLoginCommandSmoke();
 await runImageSmokeSuite({ setupTmp, cleanup });
+await runImageGenSmoke({ setupTmp, cleanup });
 await runCopyCommandSmoke();
 await runCommandExecToolSmoke();
 await runCommandExecToolSmoke();

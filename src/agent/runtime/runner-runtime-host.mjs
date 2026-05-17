@@ -15,6 +15,7 @@ export async function createRunnerRuntimeHost({
   sessionBinding,
   engine,
   ui,
+  projectMarchDir = null,
   memoryTools = [],
   shellRuntime = null,
   lspService = null,
@@ -51,6 +52,7 @@ export async function createRunnerRuntimeHost({
       webTools,
       permissionController,
       authStorage,
+      projectMarchDir,
     }),
   });
 

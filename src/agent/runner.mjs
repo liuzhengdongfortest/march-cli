@@ -61,6 +61,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       cwd, stateRoot, provider, modelId,
       authStorage: resolvedAuth, settingsManager, modelRegistry,
       sessionManager: resolvedSessionManager, sessionBinding, engine, ui,
+      projectMarchDir,
       memoryTools, memoryStore, shellRuntime, lspService, mcpTools, webTools,
       permissionController, extensionPaths,
       onRebind: (session) => {
@@ -75,7 +76,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     const sessionOptions = resolveRunnerSessionOptions({
       cwd, provider, modelId, modelRegistry, engine, ui,
       memoryTools, shellRuntime, lspService, mcpTools, webTools, permissionController,
-      authStorage: resolvedAuth,
+      authStorage: resolvedAuth, projectMarchDir,
     });
     const { session } = await createAgentSessionImpl({
       cwd, agentDir: stateRoot, ...sessionOptions,

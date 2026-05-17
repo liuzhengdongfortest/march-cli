@@ -3,7 +3,7 @@ import { Type } from "typebox";
 import { toolText } from "../agent/tool-result.mjs";
 import { generateImage } from "./provider.mjs";
 
-export function createImageGenTool({ authStorage }) {
+export function createImageGenTool({ authStorage, projectMarchDir, generateImageImpl = generateImage }) {
   return defineTool({
     name: "image_generate",
     label: "Image Generation",
@@ -36,11 +36,27 @@ export function createImageGenTool({ authStorage }) {
     execute: async (_toolCallId, params) => {
       try {
         const { prompt, quality = "medium", aspectRatio = "1:1" } = params;
-        const { filePath } = await generateImage({ prompt, quality, aspectRatio, authStorage });
-        return toolText(`Image generated and saved to: ${filePath}`, { filePath });
+        const image = await generateImageImpl({ prompt, quality, aspectRatio, authStorage, projectMarchDir });
+        return toolJson({
+          success: true,
+          image: image.marker,
+          path: image.filePath,
+          mimeType: image.mimeType,
+          prompt,
+          aspectRatio,
+          quality,
+        }, image);
       } catch (err) {
-        return toolText(`Image generation failed: ${err.message}`, { error: true });
+        return toolJson({
+          success: false,
+          image: null,
+          error: err.message,
+        }, { error: true });
       }
     },
   });
+}
+
+function toolJson(payload, details = {}) {
+  return toolText(JSON.stringify(payload, null, 2), details);
 }

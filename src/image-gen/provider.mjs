@@ -1,8 +1,5 @@
-import { homedir } from "node:os";
-import { join } from "node:path";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { randomUUID } from "node:crypto";
 import { getOAuthProvider } from "@earendil-works/pi-ai/oauth";
+import { saveGeneratedImageAttachment } from "../session/attachments.mjs";
 
 const CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex/responses";
 const JWT_CLAIM_PATH = "https://api.openai.com/auth";
@@ -42,8 +39,8 @@ function buildHeaders(token, accountId) {
 function buildRequestBody(prompt, quality, size) {
   return {
     model: "gpt-5.4",
-    instructions: "You are an AI assistant that generates images based on user requests.",
-    input: [{ role: "user", content: [{ type: "input_text", text: prompt }] }],
+    instructions: "You are an assistant that must fulfill image generation requests by using the image_generation tool when provided.",
+    input: [{ type: "message", role: "user", content: [{ type: "input_text", text: prompt }] }],
     stream: true,
     store: false,
     tools: [
@@ -52,9 +49,16 @@ function buildRequestBody(prompt, quality, size) {
         model: "gpt-image-2",
         size,
         quality: quality || "medium",
+        output_format: "png",
+        background: "opaque",
+        partial_images: 1,
       },
     ],
-    tool_choice: "auto",
+    tool_choice: {
+      type: "allowed_tools",
+      mode: "required",
+      tools: [{ type: "image_generation" }],
+    },
   };
 }
 
@@ -90,11 +94,23 @@ async function* parseSSE(response) {
   }
 }
 
-export async function generateImage({ prompt, quality = "medium", aspectRatio = "1:1", authStorage }) {
-  const credentials = authStorage.get("openai-codex");
+export async function generateImage({
+  prompt,
+  quality = "medium",
+  aspectRatio = "1:1",
+  authStorage,
+  projectMarchDir,
+  fetchImpl = fetch,
+  oauthProvider = getOAuthProvider("openai-codex"),
+  now = new Date(),
+  id,
+} = {}) {
+  if (!projectMarchDir) throw new Error("projectMarchDir is required for image generation");
+  const credentials = authStorage?.get?.("openai-codex");
   if (!credentials) throw new Error("OpenAI Codex not authenticated. Run: march login openai-codex");
 
-  const provider = getOAuthProvider("openai-codex");
+  const provider = oauthProvider;
+  if (!provider) throw new Error("OpenAI Codex OAuth provider is not available");
   let apiKey = provider.getApiKey(credentials);
 
   if (Date.now() >= credentials.expires) {
@@ -106,7 +122,7 @@ export async function generateImage({ prompt, quality = "medium", aspectRatio = 
   const accountId = extractAccountId(apiKey);
   const size = ASPECT_RATIO_MAP[aspectRatio] || "1024x1024";
 
-  const response = await fetch(CODEX_BASE_URL, {
+  const response = await fetchImpl(CODEX_BASE_URL, {
     method: "POST",
     headers: buildHeaders(apiKey, accountId),
     body: JSON.stringify(buildRequestBody(prompt, quality, size)),
@@ -123,6 +139,12 @@ export async function generateImage({ prompt, quality = "medium", aspectRatio = 
   for await (const event of parseSSE(response)) {
     const type = event.type;
 
+    if (type === "response.image_generation_call.partial_image" && event.partial_image_b64) {
+      imageBase64 = event.partial_image_b64;
+      mimeType = "image/png";
+      continue;
+    }
+
     if (type === "response.output_item.added") {
       continue;
     }
@@ -130,6 +152,12 @@ export async function generateImage({ prompt, quality = "medium", aspectRatio = 
     if (type === "response.output_item.done") {
       const item = event.item;
       if (!item) continue;
+
+      if (item.type === "image_generation_call" && item.result) {
+        imageBase64 = item.result;
+        mimeType = "image/png";
+        continue;
+      }
 
       if (item.type === "file" && item.filename?.endsWith?.(".png")) {
         const content = item.content?.[0];
@@ -157,6 +185,10 @@ export async function generateImage({ prompt, quality = "medium", aspectRatio = 
       const resp = event.response;
       if (resp?.output) {
         for (const item of resp.output) {
+          if (item.type === "image_generation_call" && item.result) {
+            imageBase64 = item.result;
+            mimeType = "image/png";
+          }
           for (const part of item.content || []) {
             if (part.type === "image_file" && part.image_base64) {
               imageBase64 = part.image_base64;
@@ -182,13 +214,15 @@ export async function generateImage({ prompt, quality = "medium", aspectRatio = 
     throw new Error("No image data received from Codex");
   }
 
-  const cacheDir = join(homedir(), ".march", "cache", "images");
-  if (!existsSync(cacheDir)) mkdirSync(cacheDir, { recursive: true });
-  const filename = `${randomUUID()}.png`;
-  const filePath = join(cacheDir, filename);
-  writeFileSync(filePath, Buffer.from(imageBase64, "base64"));
+  const saved = saveGeneratedImageAttachment({
+    projectMarchDir,
+    data: imageBase64,
+    mimeType,
+    now,
+    id,
+  });
 
-  return { filePath, mimeType };
+  return { filePath: saved.path, marker: saved.marker, mimeType, metadataPath: saved.metadataPath };
 }
 
 function isBase64(str) {

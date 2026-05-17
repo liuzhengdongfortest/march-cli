@@ -9,6 +9,7 @@ export async function runAttachmentsSmoke({ setupTmp, cleanup }) {
     getSessionAttachmentDir,
     imageExtensionForMime,
     sanitizePathSegment,
+    saveGeneratedImageAttachment,
     saveImageAttachment,
   } = await import("../src/session/attachments.mjs");
 
@@ -53,6 +54,27 @@ export async function runAttachmentsSmoke({ setupTmp, cleanup }) {
     id: "b",
   });
   assert.equal(readFileSync(fromBase64.path).length, 1);
+
+  const generated = saveGeneratedImageAttachment({
+    projectMarchDir,
+    data: Buffer.from([5, 6]).toString("base64"),
+    mimeType: "image/png",
+    now: new Date("2026-05-10T00:00:02.000Z"),
+    id: "generated:1",
+  });
+  assert.ok(generated.path.endsWith(join("attachments", "generated", "2026-05-10T00-00-02-000Z_generated-1.png")));
+  assert.equal(generated.relativePath, "attachments/generated/2026-05-10T00-00-02-000Z_generated-1.png");
+  assert.equal(generated.marker, "@.march/attachments/generated/2026-05-10T00-00-02-000Z_generated-1.png");
+  assert.deepEqual(JSON.parse(readFileSync(generated.metadataPath, "utf8")), {
+    version: 1,
+    sessionId: null,
+    source: "image_generate",
+    mimeType: "image/png",
+    sizeBytes: 2,
+    createdAt: "2026-05-10T00:00:02.000Z",
+    filename: "2026-05-10T00-00-02-000Z_generated-1.png",
+    relativePath: "attachments/generated/2026-05-10T00-00-02-000Z_generated-1.png",
+  });
 
   assert.throws(() => imageExtensionForMime("text/plain"), /unsupported image mime type/);
   assert.throws(() => saveImageAttachment({

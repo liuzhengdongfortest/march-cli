@@ -61,6 +61,46 @@ export function saveImageAttachment({
   };
 }
 
+export function saveGeneratedImageAttachment({
+  projectMarchDir,
+  data,
+  mimeType,
+  now = new Date(),
+  id = randomUUID().slice(0, 8),
+} = {}) {
+  const ext = imageExtensionForMime(mimeType);
+  const buffer = toBuffer(data);
+  if (buffer.length === 0) throw new Error("attachment data is empty");
+
+  const dir = assertInsideRoot(resolve(getAttachmentRoot(projectMarchDir), "generated"), getAttachmentRoot(projectMarchDir));
+  mkdirSync(dir, { recursive: true });
+
+  const createdAt = now.toISOString();
+  const stem = `${formatTimestampForFile(createdAt)}_${sanitizePathSegment(id)}`;
+  const path = assertInsideRoot(resolve(dir, `${stem}.${ext}`), getAttachmentRoot(projectMarchDir));
+  const metadataPath = assertInsideRoot(resolve(dir, `${stem}.json`), getAttachmentRoot(projectMarchDir));
+  writeFileSync(path, buffer);
+
+  const metadata = {
+    version: ATTACHMENT_STORE_VERSION,
+    sessionId: null,
+    source: "image_generate",
+    mimeType,
+    sizeBytes: buffer.length,
+    createdAt,
+    filename: basename(path),
+    relativePath: toProjectMarchRelative(projectMarchDir, path),
+  };
+  writeFileSync(metadataPath, `${JSON.stringify(metadata, null, 2)}\n`, "utf8");
+  return {
+    path,
+    metadataPath,
+    relativePath: metadata.relativePath,
+    marker: `@.march/${metadata.relativePath}`,
+    metadata,
+  };
+}
+
 export function imageExtensionForMime(mimeType) {
   const ext = IMAGE_EXTENSIONS[String(mimeType || "").toLowerCase()];
   if (!ext) throw new Error(`unsupported image mime type: ${mimeType || "unknown"}`);
