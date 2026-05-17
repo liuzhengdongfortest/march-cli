@@ -144,6 +144,34 @@ export async function runPiSessionSidecarSyncSmoke({ setupTmp, cleanup }) {
   console.log("  PASS");
 }
 
+export async function runPiSessionTranscriptSmoke({ setupTmp, cleanup }) {
+  console.log("--- smoke: pi session transcript restore ---");
+  const { loadPiSessionTranscriptTurns, formatTranscriptLines } = await import("../src/session/transcript.mjs");
+
+  const dir = setupTmp();
+  mkdirSync(dir, { recursive: true });
+  const sessionFile = join(dir, "session.jsonl");
+  const lines = [JSON.stringify({ type: "session", version: 3, id: "s1", timestamp: "2026-05-10T00:00:00.000Z", cwd: dir })];
+  for (let i = 1; i <= 22; i += 1) {
+    lines.push(JSON.stringify({ type: "message", id: `u${i}`, parentId: null, message: { role: "user", content: `user ${i}` } }));
+    lines.push(JSON.stringify({ type: "message", id: `a${i}`, parentId: `u${i}`, message: { role: "assistant", content: [{ type: "text", text: `assistant ${i}` }] } }));
+  }
+  lines.push("{bad json", "");
+  writeFileSync(sessionFile, lines.join("\n"));
+
+  const turns = loadPiSessionTranscriptTurns(sessionFile);
+  assert.equal(turns.length, 20);
+  assert.equal(turns[0].userMessage, "user 3");
+  assert.equal(turns.at(-1).assistantMessage, "assistant 22");
+
+  const rendered = formatTranscriptLines(turns.slice(-1)).join("\n");
+  assert.ok(rendered.includes("You\nuser 22"));
+  assert.ok(rendered.includes("March\nassistant 22"));
+
+  cleanup(dir);
+  console.log("  PASS");
+}
+
 export async function runSessionTreeSmoke() {
   console.log("--- smoke: session tree formatting ---");
   const { buildSessionTree, formatSessionTree } = await import("../src/session/tree.mjs");

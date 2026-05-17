@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 export async function runSessionSourceCommandSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: session source slash command handling ---");
-  const { handleSessionSourceCommand } = await import("../src/cli/session/session-source-command.mjs");
+  const { buildSessionSelectItems, handleSessionSourceCommand } = await import("../src/cli/session/session-source-command.mjs");
   const { savePiSessionSidecar } = await import("../src/session/sidecar.mjs");
 
   const dir = setupTmp();
@@ -30,14 +30,20 @@ export async function runSessionSourceCommandSmoke({ setupTmp, cleanup }) {
   });
 
   const output = [];
+  const restoredTranscript = [];
   const ui = {
     writeln: (text) => output.push(text),
     selectList: async ({ items, selectedIndex, searchable, getSearchText }) => {
       assert.equal(selectedIndex, 0);
       assert.equal(searchable, true);
       assert.ok(getSearchText(items[0]).includes("slash pi"));
+      assert.equal(items[0].label, "slash pi");
+      assert.match(items[0].description, /^2026-05-\d\d \d\d:\d\d$/);
+      assert.ok(!items[0].description.includes("pi-slash"));
+      assert.ok(!items[0].description.includes("2m"));
       return items[0];
     },
+    restoreTranscript: (turns) => restoredTranscript.push(...turns),
   };
   let restored = null;
   let switchedPath = null;
@@ -65,6 +71,9 @@ export async function runSessionSourceCommandSmoke({ setupTmp, cleanup }) {
   const session = await handleSessionSourceCommand("/session", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(session.handled, true);
   assert.ok(output.join("\n").includes("Resumed pi session: pi-slash"));
+  assert.equal(restoredTranscript.length, 1);
+  assert.equal(restoredTranscript[0].userMessage, "slash pi");
+  assert.equal(restoredTranscript[0].assistantMessage, "ok");
   assert.equal(restored.turns[0].assistantMessage, "ok");
   assert.ok(switchedPath.endsWith("2026-05-10T00-00-00-000Z_pi.jsonl"));
   assert.equal((await handleSessionSourceCommand("/sessions", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
@@ -78,6 +87,17 @@ export async function runSessionSourceCommandSmoke({ setupTmp, cleanup }) {
   assert.equal(defaultPiSave.handled, true);
   assert.ok(output.join("\n").includes("Pi session auto-saved: pi-slash"));
   assert.equal((await handleSessionSourceCommand("/unknown", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
+
+  const selectItems = buildSessionSelectItems([{
+    id: "abc",
+    name: "Named Session",
+    firstMessage: "first",
+    savedAt: "2026-05-17T02:25:42.000Z",
+    turnCount: 304,
+  }], "abc");
+  assert.deepEqual(selectItems.map(({ label, description }) => ({ label, description })), [
+    { label: "Named Session", description: "2026-05-17 02:25" },
+  ]);
 
   cleanup(dir);
   console.log("  PASS");

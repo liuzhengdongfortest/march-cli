@@ -218,7 +218,7 @@ export async function run(argv) {
   });
 
   // Resume session
-  await resumeStartupSession({
+  const startupResume = await resumeStartupSession({
     resumeId: args.resume,
     runner,
     sessionState,
@@ -251,6 +251,7 @@ export async function run(argv) {
   }
 
   const dumpContextPath = args.dumpContext ? relative(cwd, contextDumpRoot) : null;
+  if (startupResume.transcriptTurns?.length > 0) ui.restoreTranscript?.(startupResume.transcriptTurns);
   for (const line of formatStartupBanner({ cwd, modelId: runner.engine.modelId, thinkingLevel: runner.engine.thinkingLevel, mode: modeState.get(), dumpContextPath })) ui.writeln(line);
   await runInteractiveRepl({
     cwd,

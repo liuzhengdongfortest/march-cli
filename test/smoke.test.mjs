@@ -35,7 +35,7 @@ import { runReadFileToolSmoke } from "./read-file-tool.smoke.mjs";
 import { runRipgrepResolverSmoke } from "./ripgrep-resolver.smoke.mjs";
 import { runRunnerCoreSmoke } from "./runner-core.smoke.mjs";
 import { runSettingsCommandSmoke } from "./settings-command.smoke.mjs";
-import { runPiSessionManagerFactorySmoke, runPiSessionSidecarSmoke, runPiSessionSidecarSyncSmoke, runSessionPersistenceSmoke, runSessionTreeSmoke } from "./session.smoke.mjs";
+import { runPiSessionManagerFactorySmoke, runPiSessionSidecarSmoke, runPiSessionSidecarSyncSmoke, runPiSessionTranscriptSmoke, runSessionPersistenceSmoke, runSessionTreeSmoke } from "./session.smoke.mjs";
 import { runSessionNameCommandSmoke } from "./session-name-command.smoke.mjs";
 import { runShellRuntimeSmoke } from "./shell-runtime.smoke.mjs";
 import { runShellScreenBufferSmoke } from "./shell-screen-buffer.smoke.mjs";
@@ -449,6 +449,7 @@ await runSessionPersistenceSmoke({ setupTmp, cleanup });
 await runPiSessionManagerFactorySmoke({ setupTmp, cleanup });
 await runPiSessionSidecarSmoke({ setupTmp, cleanup });
 await runPiSessionSidecarSyncSmoke({ setupTmp, cleanup });
+await runPiSessionTranscriptSmoke({ setupTmp, cleanup });
 await runSessionTreeSmoke();
 
 // ── 5. Memory, diff and UI API smoke ────────────────────────────────

@@ -34,6 +34,7 @@ export function createJsonUI() {
     status: () => {},
     memoryHint: () => {},
     clearOutput: () => {},
+    restoreTranscript: () => {},
     setStatusBar: () => {},
     turnStart: () => {},
     assistantReplyEnd: () => {},
@@ -115,6 +116,7 @@ export function createPlainUI() {
       for (const line of formatMemoryHintLines(hints)) stdout.write(`${brightBlack(line)}\n`);
     },
     clearOutput: () => {},
+    restoreTranscript: () => {},
     setStatusBar: () => {},
     turnStart: () => {},
     assistantReplyEnd: ensureNewline,

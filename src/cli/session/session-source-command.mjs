@@ -1,4 +1,5 @@
 import { listPiSessionInfos } from "../../session/pi-manager.mjs";
+import { loadPiSessionTranscriptTurns } from "../../session/transcript.mjs";
 import { resumePiSessionById } from "./pi-session-switch-command.mjs";
 
 export async function handleSessionSourceCommand(trimmed, {
@@ -40,7 +41,9 @@ export async function handleSessionSourceCommand(trimmed, {
       ui.writeln("Session unchanged.");
       return { handled: true };
     }
-    for (const line of await resumePiSessionById(item.session.id, { runner, sessions, projectMarchDir })) {
+    const lines = await resumePiSessionById(item.session.id, { runner, sessions, projectMarchDir });
+    if (isResumeSuccess(lines)) restoreTranscriptFromSession(item.session, ui);
+    for (const line of lines) {
       ui.writeln(line);
     }
     return { handled: true };
@@ -52,12 +55,11 @@ export async function handleSessionSourceCommand(trimmed, {
 export function buildSessionSelectItems(sessions, currentSessionId = null) {
   return sessions.map((session) => {
     const label = session.name || session.firstMessage || "(no messages)";
-    const savedAt = session.savedAt?.slice(0, 19) ?? "?";
-    const messageCount = Number.isFinite(session.turnCount) ? `${session.turnCount}m` : "?m";
+    const savedAt = formatSessionSelectTime(session.savedAt);
     return {
       value: session.id,
       label,
-      description: `${session.id} | ${messageCount} | ${savedAt}${session.id === currentSessionId ? " | current" : ""}`,
+      description: savedAt,
       session,
     };
   });
@@ -65,5 +67,23 @@ export function buildSessionSelectItems(sessions, currentSessionId = null) {
 
 function sessionSelectSearchText(item) {
   const session = item?.session;
-  return `${item?.label ?? ""} ${item?.description ?? ""} ${session?.id ?? ""} ${session?.name ?? ""} ${session?.firstMessage ?? ""}`;
+  return `${item?.label ?? ""} ${item?.description ?? ""} ${session?.id ?? ""} ${session?.name ?? ""} ${session?.firstMessage ?? ""} ${session?.turnCount ?? ""}`;
+}
+
+function restoreTranscriptFromSession(session, ui) {
+  if (typeof ui.restoreTranscript !== "function") return;
+  try {
+    ui.restoreTranscript(loadPiSessionTranscriptTurns(session.path));
+  } catch (err) {
+    ui.writeln(`Warning: failed to restore session transcript: ${err.message}`);
+  }
+}
+
+function isResumeSuccess(lines) {
+  return Array.isArray(lines) && lines.some((line) => String(line).startsWith("Resumed pi session:"));
+}
+
+function formatSessionSelectTime(value) {
+  if (!value) return "?";
+  return String(value).slice(0, 16).replace("T", " ");
 }
