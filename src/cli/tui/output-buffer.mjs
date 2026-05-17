@@ -2,6 +2,7 @@ import { visibleWidth } from "@earendil-works/pi-tui";
 import { R, brightBlack, dim } from "./ui-theme.mjs";
 import { renderMarkdown, renderStreamingMarkdown } from "./markdown-renderer.mjs";
 import { renderEditDiffBlock } from "./tui-diff-rendering.mjs";
+import { OutputScrollState } from "./output/scroll-state.mjs";
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
@@ -112,8 +113,11 @@ export class OutputBuffer {
     this.spinnerIdx = 0;
     this._activeThinking = null;
     this.overlayStatus = null;
-    this.scrollOffset = 0;
-    this.viewportHeight = null;
+    this.scrollState = new OutputScrollState();
+  }
+
+  get scrollOffset() {
+    return this.scrollState.offset;
   }
 
   clear() {
@@ -125,8 +129,7 @@ export class OutputBuffer {
     this.spinnerIdx = 0;
     this._activeThinking = null;
     this.overlayStatus = null;
-    this.scrollOffset = 0;
-    this.viewportHeight = null;
+    this.scrollState.clear();
   }
 
   write(text) {
@@ -229,36 +232,23 @@ export class OutputBuffer {
   }
 
   scroll(delta) {
-    // delta < 0 = scroll up (increase offset to see earlier lines)
-    // delta > 0 = scroll down (decrease offset toward tail)
-    const maxOffset = this.getMaxScrollOffset();
-    const step = this.getScrollStep();
-    this.scrollOffset = clamp(this.scrollOffset + (delta < 0 ? step : -step), 0, maxOffset);
-    return {
-      offset: this.scrollOffset,
-      maxOffset,
-      atTail: this.scrollOffset === 0,
-    };
+    return this.scrollState.scroll(delta);
   }
 
   getScrollStep() {
-    const win = this.viewportHeight || (process.stdout.rows || 30) - 2;
-    return Math.max(1, Math.floor(win / 3));
+    return this.scrollState.getStep();
   }
 
   getMaxScrollOffset() {
-    const total = this._cachedTotalLines || 0;
-    const win = this.viewportHeight || (process.stdout.rows || 30) - 2;
-    return Math.max(0, total - win);
+    return this.scrollState.getMaxOffset();
   }
 
   setViewportHeight(height) {
-    this.viewportHeight = Math.max(1, Math.trunc(height));
-    this.scrollOffset = clamp(this.scrollOffset, 0, this.getMaxScrollOffset());
+    this.scrollState.setViewportHeight(height);
   }
 
   resetScroll() {
-    this.scrollOffset = 0;
+    this.scrollState.reset();
   }
 
   invalidate() {}
@@ -266,12 +256,10 @@ export class OutputBuffer {
   render(width) {
     const allLines = this._computeLines(width);
     this._cachedTotalLines = allLines.length;
-    if (this.viewportHeight === null) return allLines;
-
-    this.scrollOffset = clamp(this.scrollOffset, 0, this.getMaxScrollOffset());
-    const winSize = this.viewportHeight;
-    const end = Math.max(0, allLines.length - this.scrollOffset);
-    const start = Math.max(0, end - winSize);
+    this.scrollState.setTotalLines(allLines.length);
+    const range = this.scrollState.sliceRange();
+    if (!range) return allLines;
+    const { start, end } = range;
     return allLines.slice(start, end);
   }
 
@@ -292,8 +280,4 @@ export class OutputBuffer {
     }
     return lines;
   }
-}
-
-function clamp(value, min, max) {
-  return Math.min(max, Math.max(min, value));
 }

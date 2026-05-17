@@ -377,8 +377,10 @@ await runTuiAutocompleteEscSmoke({ setupTmp, cleanup });
   scrollable.scroll(-1);
   assert.equal(scrollable.scrollOffset, 2);
   assert.deepEqual(stripAnsi(scrollable.render(80).join("\n")).split("\n"), ["line8", "line9", "line10", "line11"]);
+  for (let i = 13; i <= 15; i += 1) scrollable.writeln(`line${i}`);
+  assert.deepEqual(stripAnsi(scrollable.render(80).join("\n")).split("\n"), ["line8", "line9", "line10", "line11"]);
   scrollable.scroll(1);
-  assert.equal(scrollable.scrollOffset, 1);
+  assert.equal(scrollable.scrollOffset, 4);
 
   const fastScroll = new OutputBuffer();
   for (let i = 1; i <= 30; i += 1) fastScroll.writeln(`line${i}`);
