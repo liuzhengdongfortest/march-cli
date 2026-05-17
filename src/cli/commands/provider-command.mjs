@@ -11,8 +11,12 @@ export function parseProviderCommand(input) {
 
 export function listProviders({ runner }) {
   const scopedModels = runner.getScopedModels?.() || [];
+  const seen = new Set();
   const providers = new Map();
   for (const { model } of scopedModels) {
+    // Deduplicate: skip models that differ only by provider (e.g. supergrok-oauth vs xai-oauth)
+    if (seen.has(model.id)) continue;
+    seen.add(model.id);
     if (!providers.has(model.provider)) {
       providers.set(model.provider, {
         provider: model.provider,

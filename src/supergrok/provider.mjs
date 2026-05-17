@@ -14,7 +14,7 @@ export function registerSuperGrokProvider(modelRegistry) {
   if (!modelRegistry?.registerProvider) return;
   for (const providerId of [SUPERGROK_OAUTH_PROVIDER_ID, XAI_OAUTH_COMPAT_PROVIDER_ID]) {
     modelRegistry.registerProvider(providerId, {
-      name: providerId === SUPERGROK_OAUTH_PROVIDER_ID ? "SuperGrok OAuth (xAI Subscription)" : "xAI OAuth (SuperGrok compatible)",
+      name: providerId === SUPERGROK_OAUTH_PROVIDER_ID ? "SuperGrok" : "xAI OAuth",
       baseUrl: XAI_BASE_URL,
       api: "openai-responses",
       oauth: { ...superGrokOAuthProvider, id: providerId },

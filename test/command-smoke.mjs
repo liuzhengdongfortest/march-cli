@@ -47,8 +47,8 @@ export async function runModelCommandSmoke() {
     "Use Ctrl+L or /model to choose a model.",
   ]);
   assert.deepEqual(buildModelSelectItems({ current: models[0].model, scopedModels: models }), [
-    { value: "0", label: "test / Model A", description: "current", model: models[0].model },
-    { value: "1", label: "other / b", description: "other", model: models[1].model },
+    { value: "0", label: "Model A (test)", description: "current", model: models[0].model },
+    { value: "1", label: "b (other)", description: "other", model: models[1].model },
   ]);
   assert.deepEqual(formatModelsList({ current: null, scopedModels: [] }), [
     "(no available models - run `march provider --config`)",
@@ -57,6 +57,16 @@ export async function runModelCommandSmoke() {
   assert.deepEqual(parseModelCommand("/model"), { type: "select-interactive" });
   assert.equal(parseModelCommand("/model 2").type, "error");
   assert.equal(parseModelCommand("/model nope").type, "error");
+
+  // Deduplication: same model id under different providers should show once
+  const dupModels = [
+    { model: { id: "grok-4.3", name: "Grok 4.3", provider: "supergrok-oauth" } },
+    { model: { id: "grok-4.3", name: "Grok 4.3", provider: "xai-oauth" } },
+    { model: { id: "grok-4.20", name: "Grok 4.20", provider: "supergrok-oauth" } },
+  ];
+  const dedupedItems = buildModelSelectItems({ current: null, scopedModels: dupModels });
+  assert.equal(dedupedItems.length, 2, "Dedup should remove duplicate model ids");
+  assert.equal(dedupedItems[0].model.provider, "supergrok-oauth", "Preferred provider supergrok-oauth wins");
 
   let selectedModel = null;
   const runner = {

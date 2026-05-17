@@ -76,19 +76,20 @@ export function wireTuiHandlers({
       const scopedModels = runner.getScopedModels?.() || [];
       if (ui.selectList && scopedModels.length > 0) {
         const current = runner.getCurrentModel?.();
-        const selectedIndex = Math.max(0, scopedModels.findIndex(({ model }) =>
-          current && model.id === current.id && model.provider === current.provider
+        const items = buildModelSelectItems({ current, scopedModels });
+        const selectedIndex = Math.max(0, items.findIndex((item) =>
+          current && item.model.id === current.id && item.model.provider === current.provider
         ));
-        const item = await ui.selectList({
-          items: buildModelSelectItems({ current, scopedModels }),
+        const selectedItem = await ui.selectList({
+          items,
           selectedIndex,
           width: 72,
         });
-        if (!item) {
+        if (!selectedItem) {
           ui.writeln(brightBlack(`● model: unchanged`));
           return;
         }
-        const model = await runner.setModel(item.model);
+        const model = await runner.setModel(selectedItem.model);
         persistModelSelection(model, { configHomeDir });
         const name = model.name || model.id;
         ui.writeln(brightBlack(`● model: ${name} (${model.provider})`));

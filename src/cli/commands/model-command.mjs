@@ -1,6 +1,34 @@
 import { getProviderLabel } from "../../provider/presets.mjs";
 import { globalConfigJsonPath, upsertModelSelection } from "../../config/config-json.mjs";
 
+// Deduplicate models by id, preferring canonical providers.
+// When the same model id appears under multiple providers (e.g. supergrok-oauth
+// and xai-oauth), keep only the entry with the preferred provider.
+const PREFERRED_PROVIDERS = ["supergrok-oauth"];
+
+function dedupByModelId(scopedModels) {
+  const seen = new Map();
+  const result = [];
+  for (const entry of scopedModels) {
+    const { model } = entry;
+    const existing = seen.get(model.id);
+    if (!existing) {
+      seen.set(model.id, entry);
+      result.push(entry);
+    } else {
+      // Prefer canonical provider when duplicates exist
+      const existingPref = PREFERRED_PROVIDERS.indexOf(existing.model.provider);
+      const currentPref = PREFERRED_PROVIDERS.indexOf(model.provider);
+      if (currentPref !== -1 && (existingPref === -1 || currentPref < existingPref)) {
+        const idx = result.indexOf(existing);
+        result[idx] = entry;
+        seen.set(model.id, entry);
+      }
+    }
+  }
+  return result;
+}
+
 export function parseModelCommand(input) {
   if (input !== "/model" && !input.startsWith("/model ")) {
     return { type: "none" };
@@ -21,9 +49,10 @@ export async function selectModelByIndex(index, { runner }) {
 }
 
 export function buildModelSelectItems({ current, scopedModels = [] }) {
-  return scopedModels.map(({ model }, index) => ({
+  const deduped = dedupByModelId(scopedModels);
+  return deduped.map(({ model }, index) => ({
     value: String(index),
-    label: `${getProviderLabel(model.provider)} / ${model.name || model.id}`,
+    label: `${model.name || model.id} (${getProviderLabel(model.provider)})`,
     description: current && model.id === current.id && model.provider === current.provider ? "current" : model.provider,
     model,
   }));
@@ -34,19 +63,20 @@ export async function handleModelCommand(parsed, { runner, ui = null, configHome
     const scopedModels = runner.getScopedModels?.() || [];
     if (!ui?.selectList || scopedModels.length === 0) return "Use Ctrl+L to choose a model.";
     const current = runner.getCurrentModel?.();
-    const selectedIndex = Math.max(0, scopedModels.findIndex(({ model }) =>
-      current && model.id === current.id && model.provider === current.provider
+    const items = buildModelSelectItems({ current, scopedModels });
+    const selectedIndex = Math.max(0, items.findIndex((item) =>
+      current && item.model.id === current.id && item.model.provider === current.provider
     ));
-    const item = await ui.selectList({
-      items: buildModelSelectItems({ current, scopedModels }),
+    const selectedItem = await ui.selectList({
+      items,
       selectedIndex,
       width: 72,
       suppressInitialConfirm: true,
       searchable: true,
       getSearchText: modelSelectSearchText,
     });
-    if (!item) return "Model unchanged.";
-    const model = await runner.setModel(item.model);
+    if (!selectedItem) return "Model unchanged.";
+    const model = await runner.setModel(selectedItem.model);
     persistModelSelection(model, { configHomeDir });
     return `Model: ${model.name || model.id} (${model.provider})`;
   }
@@ -85,8 +115,9 @@ export function formatModelsList({ current, scopedModels = [] }) {
 }
 
 function formatGroupedModels({ current, scopedModels }) {
+  const deduped = dedupByModelId(scopedModels);
   const groups = new Map();
-  for (const item of scopedModels) {
+  for (const item of deduped) {
     const provider = item.model.provider;
     if (!groups.has(provider)) groups.set(provider, []);
     groups.get(provider).push(item);
