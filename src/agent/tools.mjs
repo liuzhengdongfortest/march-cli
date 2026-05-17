@@ -9,6 +9,7 @@ import { toolText } from "./tool-result.mjs";
 import { createShellTools } from "../shell/tools.mjs";
 import { createWebTools } from "../web/tools.mjs";
 import { initImageGen } from "../image-gen/index.mjs";
+import { createSuperGrokTool } from "../supergrok/tool.mjs";
 export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], shellRuntime = null, lspService = null, mcpTools = [], webTools = [], permissionController = null, authStorage = null, projectMarchDir = null }) {
   const commandExecTool = createCommandExecTool({ cwd });
   const contextStatsTool = createContextStatsTool({ engine });
@@ -26,6 +27,7 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], shel
     ...memoryTools,
     ...mcpTools,
     ...webTools,
+    ...(authStorage ? [createSuperGrokTool({ authStorage, projectMarchDir })] : []),
     ...(authStorage ? initImageGen({ authStorage, projectMarchDir }) : []),
   ];
 

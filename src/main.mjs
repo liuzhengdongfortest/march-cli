@@ -30,6 +30,7 @@ import { createModelContextDumper } from "./debug/model-context-dumper.mjs";
 import { runProviderConfigCommand } from "./provider/config-command.mjs";
 import { runWebSearchConfigCommand } from "./web/config-command.mjs";
 import { createDesktopTurnNotifier } from "./notification/desktop-notifier.mjs";
+import { registerSuperGrokOAuthProvider } from "./supergrok/oauth-provider.mjs";
 
 function loadDotEnv(cwd) {
   for (const dir of [cwd, dirname(fileURLToPath(import.meta.url))]) {
@@ -50,6 +51,7 @@ function loadDotEnv(cwd) {
 export async function run(argv) {
   const cwd = process.cwd();
   loadDotEnv(cwd);
+  registerSuperGrokOAuthProvider();
 
   const args = parseCliArgs(argv);
 

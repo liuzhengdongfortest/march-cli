@@ -2,6 +2,7 @@ import { createAgentSessionRuntime } from "@earendil-works/pi-coding-agent";
 import { createMarchRuntimeFactory } from "./runtime-factory.mjs";
 import { createRuntimeHost } from "./runtime-host.mjs";
 import { resolveRunnerSessionOptions } from "../session/session-options.mjs";
+import { registerSuperGrokProvider } from "../../supergrok/provider.mjs";
 
 export async function createRunnerRuntimeHost({
   cwd,
@@ -38,22 +39,26 @@ export async function createRunnerRuntimeHost({
     resourceLoaderOptions: {
       additionalExtensionPaths: extensionPaths,
     },
-    resolveSessionOptions: ({ cwd: sessionCwd, services }) => resolveRunnerSessionOptions({
-      cwd: sessionCwd,
-      provider,
-      modelId,
-      modelRegistry: services.modelRegistry ?? modelRegistry,
-      engine,
-      ui,
-      memoryTools,
-      shellRuntime,
-      lspService,
-      mcpTools,
-      webTools,
-      permissionController,
-      authStorage,
-      projectMarchDir,
-    }),
+    resolveSessionOptions: ({ cwd: sessionCwd, services }) => {
+      const activeModelRegistry = services.modelRegistry ?? modelRegistry;
+      registerSuperGrokProvider(activeModelRegistry);
+      return resolveRunnerSessionOptions({
+        cwd: sessionCwd,
+        provider,
+        modelId,
+        modelRegistry: activeModelRegistry,
+        engine,
+        ui,
+        memoryTools,
+        shellRuntime,
+        lspService,
+        mcpTools,
+        webTools,
+        permissionController,
+        authStorage,
+        projectMarchDir,
+      });
+    },
   });
 
   const runtime = await createAgentSessionRuntimeImpl(createRuntime, {

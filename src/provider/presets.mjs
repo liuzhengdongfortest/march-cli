@@ -1,5 +1,8 @@
 import { getProviders } from "@earendil-works/pi-ai";
 import { getOAuthProviders } from "@earendil-works/pi-ai/oauth";
+import { registerSuperGrokOAuthProvider } from "../supergrok/oauth-provider.mjs";
+
+registerSuperGrokOAuthProvider();
 
 const PROVIDER_LABELS = {
   anthropic: "Anthropic",
@@ -25,8 +28,10 @@ const PROVIDER_LABELS = {
   openai: "OpenAI",
   "openai-codex": "OpenAI Codex",
   openrouter: "OpenRouter",
+  "supergrok-oauth": "SuperGrok OAuth (xAI Subscription)",
   "vercel-ai-gateway": "Vercel AI Gateway",
   xai: "xAI",
+  "xai-oauth": "xAI OAuth (SuperGrok compatible)",
   zai: "ZAI",
   xiaomi: "Xiaomi MiMo",
   "xiaomi-token-plan-cn": "Xiaomi MiMo Token Plan (China)",

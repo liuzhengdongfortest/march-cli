@@ -46,6 +46,7 @@ import { runSourceDirectoryLimitSmoke } from "./source-directory-limit.smoke.mjs
 import { runSourceLineLimitSmoke } from "./source-line-limit.smoke.mjs";
 import { runStartupBannerSmoke } from "./startup-banner.smoke.mjs";
 import { runStartupResumeSmoke } from "./startup-resume.smoke.mjs";
+import { runSuperGrokToolSmoke } from "./supergrok-tool.smoke.mjs";
 import { runSyntaxHighlightingSmoke } from "./syntax-highlighting.smoke.mjs";
 import { runTuiAutocompleteEscSmoke } from "./tui-autocomplete-esc.smoke.mjs";
 import { runTuiSelectionSmoke } from "./tui-selection.smoke.mjs";
@@ -166,6 +167,7 @@ await runSettingsCommandSmoke({ setupTmp, cleanup });
 await runProviderConfigCommandSmoke({ setupTmp, cleanup });
 await runWebSearchConfigCommandSmoke({ setupTmp, cleanup });
 await runWebToolsSmoke();
+await runSuperGrokToolSmoke({ setupTmp, cleanup });
 await runRipgrepResolverSmoke();
 await runModelContextDumperSmoke({ setupTmp, cleanup });
 await runInputHistorySmoke({ setupTmp, cleanup });
