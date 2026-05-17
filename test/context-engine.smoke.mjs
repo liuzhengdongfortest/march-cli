@@ -1,5 +1,6 @@
 import { strict as assert } from "node:assert";
 import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 
 export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: context engine ---");
@@ -10,6 +11,7 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
     cwd: dir,
     modelId: "test",
     provider: "deepseek",
+    memoryRoot: join(dir, "memories"),
   });
 
   const ctx = engine.buildContext("装備を確認する");
@@ -17,6 +19,8 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   assert.ok(!ctx.includes("model_prompt="));
   assert.ok(!ctx.includes("version="));
   assert.ok(ctx.includes("[session_identity]"));
+  assert.ok(ctx.includes(`memory_root: ${join(dir, "memories")}`));
+  assert.ok(!ctx.includes("memory_project"));
   assert.ok(!ctx.includes("[workspace_status]"));
   assert.ok(!ctx.includes("[diagnostics]"));
   assert.ok(!ctx.includes("[shells]"));
@@ -36,7 +40,7 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   assert.ok(!providerCtx.system.includes("[recent_chat]"));
   assert.ok(!providerCtx.system.includes("[workspace_status]"));
   assert.ok(!providerCtx.userMessages.some((message) => message.name === "workspace_status"));
-  assert.ok(providerCtx.userMessages.some((message) => message.name === "session_identity" && message.content.includes("[session_identity]")));
+  assert.ok(providerCtx.userMessages.some((message) => message.name === "session_identity" && message.content.includes(`memory_root: ${join(dir, "memories")}`)));
   assert.equal(providerCtx.userMessages.at(-1).name, "recent_chat");
   assert.ok(providerCtx.userMessages.at(-1).content.includes("[recent_chat]"));
   assert.ok(providerCtx.userMessages.at(-1).content.includes("[current_user]\n装備を確認する"));

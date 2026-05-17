@@ -155,6 +155,7 @@ export async function run(argv) {
     providers: config.providers,
     stateRoot,
     ui,
+    memoryRoot,
     memoryStore,
     memoryTools,
     shellRuntime,

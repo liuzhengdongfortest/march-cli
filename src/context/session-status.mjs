@@ -1,15 +1,17 @@
 export function buildSessionIdentity({
   cwd,
   workspaceRoot = cwd,
+  memoryRoot = null,
   platform = process.platform,
 } = {}) {
   const shellInfo = platform === "win32"
     ? "shells: powershell (recommended), bash (Git Bash)"
     : "shell: bash";
+  const memoryInfo = memoryRoot ? `memory_root: ${memoryRoot}\n` : "";
 
   return `[session_identity]
 cwd: ${cwd}
 workspace_root: ${workspaceRoot}
-platform: ${platform}
+${memoryInfo}platform: ${platform}
 ${shellInfo}`;
 }
