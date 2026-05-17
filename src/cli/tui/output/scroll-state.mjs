@@ -17,11 +17,11 @@ export class OutputScrollState {
     this.totalLines = Math.max(0, Math.trunc(total));
   }
 
-  scroll(delta) {
+  scroll(delta, { step = this.getStep() } = {}) {
     const total = this.totalLines;
     const win = this._windowHeight();
     const maxOffset = this.getMaxOffset();
-    const step = this.getStep();
+    step = Math.max(1, Math.trunc(step));
     const currentStart = this.anchorStart ?? Math.max(0, total - this.offset - win);
     const maxStart = Math.max(0, total - win);
     const nextStart = clamp(currentStart + (delta < 0 ? -step : step), 0, maxStart);

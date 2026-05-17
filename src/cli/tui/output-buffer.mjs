@@ -194,8 +194,8 @@ export class OutputBuffer {
     this.spinnerIdx = (this.spinnerIdx + 1) % SPINNER_FRAMES.length;
   }
 
-  scroll(delta) {
-    return this.scrollState.scroll(delta);
+  scroll(delta, options) {
+    return this.scrollState.scroll(delta, options);
   }
 
   getScrollStep() {

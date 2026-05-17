@@ -1,6 +1,8 @@
 import { parseMouseEvent } from "./mouse-tracking.mjs";
 import { brightBlack } from "../ui-theme.mjs";
 
+const OUTPUT_WHEEL_SCROLL_LINES = 3;
+
 export function createMouseSelectionController({
   terminal,
   output,
@@ -49,7 +51,7 @@ export function createMouseSelectionController({
         if (shellDrawer.isVisible?.() && mouse.col > Math.floor((terminal.columns || 80) * 0.64)) {
           shellDrawerControls.scroll(mouse.delta);
         } else {
-          output.scroll(mouse.delta);
+          output.scroll(mouse.delta, { step: OUTPUT_WHEEL_SCROLL_LINES });
         }
         requestRender();
         return { consume: true };
