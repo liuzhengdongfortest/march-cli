@@ -6,16 +6,42 @@ export function createDesktopTurnNotifier({
   enabled = true,
   platform = process.platform,
   spawnProcess = spawn,
+  writeBell = () => process.stdout.write("\x07"),
+  config = {},
 } = {}) {
+  const channels = resolveNotificationChannels(config);
+  const minDurationMs = normalizeNonNegativeInteger(config.minDurationMs, 0);
   return {
     async notifyTurnEnd(event) {
-      if (!enabled) return { ok: false, reason: "disabled" };
-      return sendDesktopNotification({
-        platform,
-        spawnProcess,
-        title: event?.title ?? defaultTurnTitle(event?.status),
-        message: event?.message ?? defaultTurnMessage(event),
-      });
+      const normalizedEvent = normalizeTurnEvent(event);
+      if (!enabled) return { ok: false, reason: "disabled", results: [] };
+      if (normalizedEvent.durationMs < minDurationMs) return { ok: false, reason: "min-duration", results: [] };
+
+      const payload = {
+        title: normalizedEvent.title ?? defaultTurnTitle(normalizedEvent.status),
+        message: normalizedEvent.message ?? defaultTurnMessage(normalizedEvent),
+      };
+      const results = [];
+      if (channels.desktop) {
+        results.push({
+          channel: "desktop",
+          ...(await sendDesktopNotification({ platform, spawnProcess, ...payload })),
+        });
+      }
+      if (channels.bell) results.push({ channel: "bell", ...sendBellNotification({ writeBell }) });
+      if (channels.command) {
+        results.push({
+          channel: "command",
+          ...sendCommandNotification({ spawnProcess, command: channels.command, event: normalizedEvent, ...payload }),
+        });
+      }
+
+      const delivered = results.some((result) => result.ok);
+      return {
+        ok: delivered,
+        reason: delivered ? undefined : results[0]?.reason ?? "no-channels",
+        results,
+      };
     },
   };
 }
@@ -37,6 +63,39 @@ export async function sendDesktopNotification({ platform = process.platform, spa
       detached: true,
       stdio: "ignore",
       windowsHide: true,
+    });
+    child?.unref?.();
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, reason: err?.message ?? String(err) };
+  }
+}
+
+export function sendBellNotification({ writeBell = () => process.stdout.write("\x07") } = {}) {
+  try {
+    writeBell("\x07");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, reason: err?.message ?? String(err) };
+  }
+}
+
+export function sendCommandNotification({ spawnProcess = spawn, command, event = {}, title, message }) {
+  if (!command) return { ok: false, reason: "command-not-configured" };
+  try {
+    const child = spawnProcess(String(command), [], {
+      shell: true,
+      detached: true,
+      stdio: "ignore",
+      windowsHide: true,
+      env: {
+        ...process.env,
+        MARCH_NOTIFICATION_STATUS: String(event.status ?? ""),
+        MARCH_NOTIFICATION_TITLE: normalizeNotificationText(title),
+        MARCH_NOTIFICATION_MESSAGE: normalizeNotificationText(message),
+        MARCH_NOTIFICATION_SESSION: normalizeNotificationText(event.sessionName),
+        MARCH_NOTIFICATION_DURATION_MS: String(event.durationMs ?? 0),
+      },
     });
     child?.unref?.();
     return { ok: true };
@@ -69,6 +128,22 @@ export function buildWindowsNotificationScript({ title, message, timeoutMs = DEF
   return buildWindowsBalloonScript({ title, message, timeoutMs });
 }
 
+function resolveNotificationChannels(config) {
+  return {
+    desktop: config.desktop !== false,
+    bell: config.bell === true,
+    command: typeof config.command === "string" && config.command.trim() ? config.command.trim() : null,
+  };
+}
+
+function normalizeTurnEvent(event) {
+  return {
+    ...event,
+    status: event?.status === "error" ? "error" : "success",
+    durationMs: normalizeNonNegativeInteger(event?.durationMs, 0),
+  };
+}
+
 function defaultTurnTitle(status) {
   return status === "error" ? "March turn failed" : "March is ready";
 }
@@ -84,6 +159,11 @@ function normalizeNotificationText(text) {
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 240);
+}
+
+function normalizeNonNegativeInteger(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.max(0, Math.trunc(number)) : fallback;
 }
 
 function escapePowerShellSingleQuotedString(text) {

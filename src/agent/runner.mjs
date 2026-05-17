@@ -109,6 +109,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       currentTurnContextMode = contextMode;
       nextTurnContextMode = "rebuild";
       pendingMidTurnRecallHints = [];
+      const turnStartedAt = Date.now();
       try {
         const result = await runRunnerTurn({
           prompt, userMessage, options: { userRecallHints, currentProject },
@@ -123,6 +124,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
           status: "success",
           sessionName: engine.sessionName,
           draft: result?.draft ?? "",
+          durationMs: Date.now() - turnStartedAt,
         });
         return result;
       } catch (err) {
@@ -130,6 +132,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
           status: "error",
           sessionName: engine.sessionName,
           errorMessage: err?.message ?? String(err),
+          durationMs: Date.now() - turnStartedAt,
         });
         throw err;
       } finally {

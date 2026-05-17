@@ -13,13 +13,13 @@ export async function runConfigLoadingSmoke({ setupTmp, cleanup }) {
   assert.deepEqual(empty.providers, {});
   assert.equal(empty.memoryRoot, null);
   assert.deepEqual(empty.webSearch, { provider: null, providers: {} });
-  assert.deepEqual(empty.notifications, { turnEnd: true });
+  assert.deepEqual(empty.notifications, { turnEnd: true, desktop: true, bell: false, command: null, minDurationMs: 0 });
 
-  writeFileSync(join(dir, ".marchrc"), JSON.stringify({ model: "test-model", memoryRoot: "D:/vault/March Memories", skills: ["ignored-legacy-skill"], notifications: { turnEnd: false }, webSearch: { provider: "tavily", providers: { tavily: { apiKey: "tvly" } } } }));
+  writeFileSync(join(dir, ".marchrc"), JSON.stringify({ model: "test-model", memoryRoot: "D:/vault/March Memories", skills: ["ignored-legacy-skill"], notifications: { turnEnd: false, bell: true, minDurationMs: 250 }, webSearch: { provider: "tavily", providers: { tavily: { apiKey: "tvly" } } } }));
   const withRc = loadConfig(dir, { homeDir: dir });
   assert.equal(withRc.model, "test-model");
   assert.equal(withRc.memoryRoot, "D:/vault/March Memories");
-  assert.deepEqual(withRc.notifications, { turnEnd: false });
+  assert.deepEqual(withRc.notifications, { turnEnd: false, desktop: true, bell: true, command: null, minDurationMs: 250 });
   assert.equal(withRc.webSearch.provider, "tavily");
   assert.equal(withRc.webSearch.providers.tavily.apiKey, "tvly");
   assert.equal(Object.hasOwn(withRc, "skills"), false);

@@ -49,7 +49,7 @@ function mergeLayers(layers) {
     maxTurns: null,
     trimBatch: null,
     memoryRoot: null,
-    notifications: { turnEnd: true },
+    notifications: { turnEnd: true, desktop: true, bell: false, command: null, minDurationMs: 0 },
   };
 
   for (const layer of layers) {

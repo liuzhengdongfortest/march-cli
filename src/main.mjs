@@ -113,6 +113,7 @@ export async function run(argv) {
   const webTools = createWebToolsFromConfig(config);
   const turnNotifier = createDesktopTurnNotifier({
     enabled: Boolean(config.notifications?.turnEnd),
+    config: config.notifications,
   });
 
   // Permission controller

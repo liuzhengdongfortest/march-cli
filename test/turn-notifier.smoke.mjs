@@ -14,8 +14,9 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
       return { unref: () => spawned.push({ unref: true }) };
     },
   });
-  const result = await notifier.notifyTurnEnd({ status: "success", sessionName: "Smoke" });
+  const result = await notifier.notifyTurnEnd({ status: "success", sessionName: "Smoke", durationMs: 25 });
   assert.equal(result.ok, true);
+  assert.equal(result.results[0].channel, "desktop");
   assert.equal(spawned[0].command, "powershell.exe");
   assert.ok(spawned[0].args.includes("-Command"));
   assert.equal(spawned[0].options.detached, true);
@@ -23,6 +24,31 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
 
   assert.equal((await createDesktopTurnNotifier({ enabled: false }).notifyTurnEnd({})).reason, "disabled");
   assert.equal((await createDesktopTurnNotifier({ platform: "linux" }).notifyTurnEnd({})).reason, "unsupported-platform");
+  assert.equal((await createDesktopTurnNotifier({ config: { minDurationMs: 50 } }).notifyTurnEnd({ durationMs: 10 })).reason, "min-duration");
+
+  let bellText = "";
+  const bellOnly = await createDesktopTurnNotifier({
+    config: { desktop: false, bell: true },
+    writeBell: (text) => { bellText += text; },
+  }).notifyTurnEnd({ status: "success" });
+  assert.equal(bellOnly.ok, true);
+  assert.equal(bellOnly.results[0].channel, "bell");
+  assert.equal(bellText, "\x07");
+
+  const commandSpawned = [];
+  const commandOnly = await createDesktopTurnNotifier({
+    config: { desktop: false, command: "echo notify" },
+    spawnProcess: (command, args, options) => {
+      commandSpawned.push({ command, args, options });
+      return { unref: () => {} };
+    },
+  }).notifyTurnEnd({ status: "error", sessionName: "Cmd", durationMs: 123, errorMessage: "bad" });
+  assert.equal(commandOnly.ok, true);
+  assert.equal(commandOnly.results[0].channel, "command");
+  assert.equal(commandSpawned[0].command, "echo notify");
+  assert.equal(commandSpawned[0].options.shell, true);
+  assert.equal(commandSpawned[0].options.env.MARCH_NOTIFICATION_STATUS, "error");
+  assert.equal(commandSpawned[0].options.env.MARCH_NOTIFICATION_SESSION, "Cmd");
   assert.ok(buildWindowsBalloonScript({ title: "March's turn", message: "done" }).includes("March''s turn"));
   const notificationScript = buildWindowsNotificationScript({ title: "March's turn", message: "ready & waiting" });
   assert.ok(notificationScript.includes("System.Windows.Forms.NotifyIcon"));
