@@ -1,4 +1,5 @@
 import { strict as assert } from "node:assert";
+import { EventEmitter } from "node:events";
 import { join } from "node:path";
 
 export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
@@ -12,8 +13,11 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
     platform: "win32",
     spawnProcess: (command, args, options) => {
       spawned.push({ command, args, options });
-      return { unref: () => spawned.push({ unref: true }) };
-    },
+      const child = new EventEmitter();
+      child.stderr = new EventEmitter();
+      setImmediate(() => child.emit("close", 0, null));
+      return child;
+    }
   });
   const result = await notifier.notifyTurnEnd({ status: "success", sessionName: "Smoke", durationMs: 25 });
   assert.equal(result.ok, true);
@@ -21,9 +25,9 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
   assert.equal(spawned[0].command, "powershell.exe");
   assert.ok(spawned[0].args.includes("-Command"));
   assert.ok(!spawned[0].args.includes("-WindowStyle"));
-  assert.equal(spawned[0].options.detached, true);
+  assert.equal(spawned[0].options.detached, undefined);
   assert.equal(spawned[0].options.windowsHide, false);
-  assert.deepEqual(spawned[1], { unref: true });
+  assert.deepEqual(spawned[0].options.stdio, ["ignore", "pipe", "pipe"]);
 
   assert.equal((await createDesktopTurnNotifier({ enabled: false }).notifyTurnEnd({})).reason, "disabled");
   assert.equal((await createDesktopTurnNotifier({ platform: "linux" }).notifyTurnEnd({})).reason, "unsupported-platform");

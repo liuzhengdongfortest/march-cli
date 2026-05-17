@@ -54,17 +54,9 @@ export async function sendDesktopNotification({ platform = process.platform, spa
   const script = buildWindowsNotificationScript({ title: safeTitle, message: safeMessage });
 
   try {
-    const child = spawnProcess("powershell.exe", [
-      "-NoProfile",
-      "-ExecutionPolicy", "Bypass",
-      "-Command", script,
-    ], {
-      detached: true,
-      stdio: "ignore",
-      windowsHide: false,
-    });
-    child?.unref?.();
-    return { ok: true };
+    const result = await runWindowsNotificationPowerShell({ spawnProcess, script, timeoutMs: DEFAULT_BALLOON_TIMEOUT_MS + 5000 });
+    if (result.ok) return { ok: true };
+    return { ok: false, reason: result.reason };
   } catch (err) {
     return { ok: false, reason: err?.message ?? String(err) };
   }
@@ -133,6 +125,41 @@ function resolveNotificationChannels(config) {
     bell: config.bell === true,
     command: typeof config.command === "string" && config.command.trim() ? config.command.trim() : null,
   };
+}
+
+function runWindowsNotificationPowerShell({ spawnProcess, script, timeoutMs }) {
+  return new Promise((resolve) => {
+    const child = spawnProcess("powershell.exe", [
+      "-NoProfile",
+      "-ExecutionPolicy", "Bypass",
+      "-Command", script,
+    ], {
+      windowsHide: false,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    let stderr = "";
+    let settled = false;
+    const timeout = setTimeout(() => finish({ ok: false, reason: "timeout" }), timeoutMs);
+
+    child?.stderr?.on?.("data", (chunk) => { stderr += chunk; });
+    child?.on?.("error", (err) => finish({ ok: false, reason: err?.message ?? String(err) }));
+    child?.on?.("close", (exitCode, signal) => {
+      if (exitCode === 0) {
+        finish({ ok: true });
+        return;
+      }
+      const detail = stderr.trim() || (signal ? `signal ${signal}` : `exit ${exitCode}`);
+      finish({ ok: false, reason: detail });
+    });
+
+    function finish(result) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      resolve(result);
+    }
+  });
 }
 
 function normalizeTurnEvent(event) {
