@@ -18,7 +18,7 @@ import { resolveRunnerSessionOptions } from "./session/session-options.mjs";
 import { createSessionBinding } from "./session/session-binding.mjs";
 import { maybeAutoNameSession } from "./session/session-auto-name.mjs";
 import { MARCH_BASE_TOOL_NAMES } from "./tool-names.mjs";
-import { isModelStreamIdleTimeoutError, runRunnerTurn } from "./turn/turn-runner.mjs";
+import { runRunnerTurn } from "./turn/turn-runner.mjs";
 import { appendFastVariants, createFastModelEntry, fromFastEntryModel, isFastProvider } from "./runner/fast-model.mjs";
 import { registerSuperGrokProvider } from "../supergrok/provider.mjs";
 
@@ -27,7 +27,7 @@ export { installModelPayloadDumper } from "./model-payload-dumper.mjs";
 export { createDefaultSessionManager, resolveRunnerSessionManager } from "./runner/runner-init.mjs";
 export { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
 
-export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, memoryRoot = null, centerMemoryPath = null, memoryStore = null, memoryTools = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, modelContextDumper = null, turnNotifier = null, onModelPayload = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices, maxTurns, trimBatch, serviceTier = null, modelStreamIdleTimeoutMs = 7000, modelStreamIdleMaxRetries = 5 }) {
+export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, memoryRoot = null, centerMemoryPath = null, memoryStore = null, memoryTools = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, modelContextDumper = null, turnNotifier = null, onModelPayload = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices, maxTurns, trimBatch, serviceTier = null }) {
   if (!useRuntimeHost && extensionPaths.length > 0) {
     throw new Error("--extension requires the default pi runtime host path");
   }
@@ -113,7 +113,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       const turnStartedAt = Date.now();
       try {
         const result = await runRunnerTurn({
-          prompt, userMessage, options: { userRecallHints, currentProject, modelStreamIdleTimeoutMs, modelStreamIdleMaxRetries },
+          prompt, userMessage, options: { userRecallHints, currentProject },
           sessionBinding, engine, ui, projectMarchDir, memoryStore,
           setModelCallKind: (kind) => { currentModelCallKind = kind; },
           onMidTurnRecallHints: (hints) => { pendingMidTurnRecallHints.push(...hints); },
@@ -129,9 +129,6 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
         });
         return result;
       } catch (err) {
-        if (isModelStreamIdleTimeoutError(err)) {
-          nextTurnContextMode = "continueExistingPiTranscript";
-        }
         lastNotificationResult = await notifyTurnEndBestEffort(turnNotifier, {
           status: "error",
           sessionName: engine.sessionName,
