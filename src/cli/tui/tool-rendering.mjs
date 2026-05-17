@@ -90,6 +90,9 @@ export function formatToolSuccessSummary(name, result, out = "") {
     const matches = result?.details?.count ?? countNonEmptyLines(out);
     return `${matches} file${matches === 1 ? "" : "s"}`;
   }
+  if (name === "memory_open") {
+    return compactText(result?.details?.entry?.name ?? compactPath(result?.details?.path ?? ""));
+  }
   return "";
 }
 

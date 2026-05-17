@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runToolRenderingSmoke() {
   console.log("--- smoke: tool rendering ---");
-  const { formatToolStartLine, writeToolEnd, writeToolStart } = await import("../src/cli/tui/tool-rendering.mjs");
+  const { formatToolStartLine, formatToolSuccessSummary, writeToolEnd, writeToolStart } = await import("../src/cli/tui/tool-rendering.mjs");
 
   const lines = [];
   const output = { writeln: (line) => lines.push(line) };
@@ -45,6 +45,9 @@ export async function runToolRenderingSmoke() {
   assert.equal(findSummary, true);
   assert.ok(lines.some((line) => line.includes("12 files")));
 
+  assert.equal(formatToolSuccessSummary("memory_open", { details: { entry: { name: "Project Overview" } } }), "Project Overview");
+  assert.equal(formatToolSuccessSummary("memory_open", { details: { path: "D:\\memories\\2026\\05\\project-overview.md" } }), "memories\\2026\\05\\project-overview.md");
+
   const rendered = writeToolEnd({
     output,
     name: "bash",
@@ -82,6 +85,19 @@ export async function runToolRenderingSmoke() {
   writeToolEnd({ output: { addBlock: (block) => blocks.push(block) }, name: "read", isError: false, result: {}, toolBlock: blocks[0], extractToolOutputImpl: () => "file body" });
   assert.equal(blocks.length, 1);
   assert.equal(blocks[0].summary, "done");
+
+  const memoryBlocks = [];
+  writeToolStart({ output: { addBlock: (block) => memoryBlocks.push(block) }, name: "memory_open", args: { id: "mem_123" } });
+  writeToolEnd({
+    output: { addBlock: (block) => memoryBlocks.push(block) },
+    name: "memory_open",
+    isError: false,
+    result: { details: { entry: { name: "Project Overview" }, path: "D:\\memories\\project-overview.md" } },
+    toolBlock: memoryBlocks[0],
+    extractToolOutputImpl: () => "path: D:\\memories\\project-overview.md",
+  });
+  assert.equal(memoryBlocks.length, 1);
+  assert.equal(memoryBlocks[0].summary, "Project Overview");
 
   const { OutputBuffer } = await import("../src/cli/tui/output-buffer.mjs");
   const buffer = new OutputBuffer();
