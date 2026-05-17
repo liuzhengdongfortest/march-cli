@@ -29,6 +29,9 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
   assert.ok(notificationCommand.includes("$n.BalloonTipText = 'Smoke reply'"));
   assert.ok(notificationCommand.includes("march-icon.png"));
   assert.ok(notificationCommand.includes("[System.Drawing.Bitmap]::FromFile"));
+  assert.ok(notificationCommand.includes("New-Object System.Drawing.Bitmap 32, 32"));
+  assert.ok(notificationCommand.includes("$n.Text = 'March'"));
+  assert.ok(notificationCommand.includes("$n.BalloonTipIcon = [System.Windows.Forms.ToolTipIcon]::None"));
   assert.ok(!spawned[0].args.includes("-WindowStyle"));
   assert.equal(spawned[0].options.detached, undefined);
   assert.equal(spawned[0].options.windowsHide, false);
@@ -67,6 +70,7 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
   assert.ok(notificationScript.includes("March''s turn"));
   assert.ok(notificationScript.includes("ready & waiting"));
   assert.ok(notificationScript.includes("C:\\tmp\\March''s icon.png"));
+  assert.ok(notificationScript.includes("New-Object System.Drawing.Bitmap 32, 32"));
 
   const dir = setupTmp();
   const previousKey = process.env.DEEPSEEK_API_KEY;
