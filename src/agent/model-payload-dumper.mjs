@@ -75,7 +75,7 @@ export function estimateProviderPayloadTokens(payload) {
 function formatHumanPayload(payload) {
   const request = normalizePayload(payload);
   const lines = ["# Messages", ""];
-  const messages = Array.isArray(request.messages) ? request.messages : [];
+  const messages = getHumanMessages(request);
   const toolCalls = collectToolCalls(messages);
   if (messages.length === 0) {
     lines.push("(no messages found)", "");
@@ -99,6 +99,24 @@ function formatHumanPayload(payload) {
   lines.push("# Raw Payload", "", "See the sibling `*-payload.json` file for the exact provider request.");
   if (tools?.length) lines.push("See the sibling `*-tools.json` file for the complete tool schema.");
   return lines.join("\n");
+}
+
+function getHumanMessages(request) {
+  if (Array.isArray(request.messages)) return request.messages;
+  if (!Array.isArray(request.input)) return [];
+  const messages = [];
+  if (typeof request.instructions === "string" && request.instructions) {
+    messages.push({ role: "system", content: request.instructions });
+  }
+  for (const item of request.input) {
+    if (!item || typeof item !== "object") continue;
+    if (item.role) {
+      messages.push(item);
+      continue;
+    }
+    messages.push({ role: item.type ?? "input", content: item });
+  }
+  return messages;
 }
 
 function collectToolCalls(messages) {

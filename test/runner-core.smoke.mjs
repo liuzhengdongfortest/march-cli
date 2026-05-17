@@ -54,6 +54,30 @@ export async function runRunnerCoreSmoke() {
   assert.equal(dumps[0].metadata.payload, "provider_request");
   assert.ok(dumps[0].prompt.includes("# Messages"));
   assert.ok(dumps[0].prompt.includes("# Raw Payload"));
+  const responseDumps = [];
+  const responsesAgent = {
+    onPayload: async () => ({
+      instructions: "[system_core]\nMarch system",
+      input: [
+        { role: "user", content: [{ type: "input_text", text: "[session_identity]\ncwd: /tmp" }] },
+        { role: "user", content: [{ type: "input_text", text: "[recent_chat]\n[current_user]\nhello" }] },
+        { type: "reasoning", id: "rs_1", summary: [] },
+        { type: "function_call", call_id: "call_1", name: "read", arguments: "{}" },
+        { type: "function_call_output", call_id: "call_1", output: "ok" },
+      ],
+    }),
+  };
+  installModelPayloadDumper({ agent: responsesAgent }, {
+    enabled: true,
+    dump: (entry) => responseDumps.push(entry),
+  }, () => "user");
+  await responsesAgent.onPayload({ ignored: true }, { provider: "openai-codex", id: "gpt-5.5" });
+  assert.equal(responseDumps.length, 1);
+  assert.ok(!responseDumps[0].prompt.includes("(no messages found)"));
+  assert.ok(responseDumps[0].prompt.includes("[system_core]\nMarch system"));
+  assert.ok(responseDumps[0].prompt.includes("[recent_chat]\n[current_user]\nhello"));
+  assert.ok(responseDumps[0].prompt.includes("## function_call"));
+  assert.ok(responseDumps[0].prompt.includes("## function_call_output"));
   const toolDumps = [];
   const longToolArgTail = "tail-keep-in-dump";
   const longToolArguments = JSON.stringify({ path: "src/main.mjs", body: `${"x".repeat(500)}${longToolArgTail}` });
