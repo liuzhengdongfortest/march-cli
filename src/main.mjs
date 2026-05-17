@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
-import { join, resolve, dirname, basename, relative } from "node:path";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { join, resolve, basename, relative } from "node:path";
+import { existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseCliArgs, showHelp } from "./cli/args.mjs";
 import { createUI } from "./cli/ui.mjs";
@@ -18,6 +18,7 @@ import { createRunner } from "./agent/runner.mjs";
 import { createCliShellRuntime } from "./shell/cli-runtime.mjs";
 import { MarkdownMemoryStore } from "./memory/markdown-store.mjs";
 import { createMarkdownMemoryTools } from "./memory/markdown-tools.mjs";
+import { loadDotEnv } from "./config/dotenv.mjs";
 import { loadConfig } from "./config/loader.mjs";
 import { discoverProjectExtensionPaths } from "./extensions/discovery.mjs";
 import { loadProjectLifecycleHookManifests } from "./extensions/lifecycle-manifest.mjs";
@@ -31,22 +32,6 @@ import { runProviderConfigCommand } from "./provider/config-command.mjs";
 import { runWebSearchConfigCommand } from "./web/config-command.mjs";
 import { createDesktopTurnNotifier } from "./notification/desktop-notifier.mjs";
 import { registerSuperGrokOAuthProvider } from "./supergrok/oauth-provider.mjs";
-
-function loadDotEnv(cwd) {
-  for (const dir of [cwd, dirname(fileURLToPath(import.meta.url))]) {
-    const path = join(dir, ".env");
-    if (!existsSync(path)) continue;
-    for (const line of readFileSync(path, "utf-8").split(/\r?\n/)) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#")) continue;
-      const eq = trimmed.indexOf("=");
-      if (eq < 1) continue;
-      const key = trimmed.slice(0, eq).trim();
-      const val = trimmed.slice(eq + 1).trim();
-      if (!process.env[key]) process.env[key] = val;
-    }
-  }
-}
 
 export async function run(argv) {
   const cwd = process.cwd();

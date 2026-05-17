@@ -35,6 +35,24 @@ export async function runConfigLoadingSmoke({ setupTmp, cleanup }) {
   assert.equal(withBoth.webSearch.providers.tavily.apiKey, "tvly");
   assert.equal(withBoth.webSearch.providers.brave.apiKey, "brave");
 
+  const { loadDotEnv } = await import("../src/config/dotenv.mjs");
+  const envDir = setupTmp();
+  const homeMarchDir = join(envDir, "home", ".march");
+  const sourceDir = join(envDir, "src");
+  mkdirSync(homeMarchDir, { recursive: true });
+  mkdirSync(sourceDir, { recursive: true });
+  writeFileSync(join(envDir, ".env"), "MARCH_SMOKE_DOTENV_PROJECT=project\nMARCH_SMOKE_DOTENV_ORDER=project\nMARCH_SMOKE_DOTENV_SYSTEM=project\n");
+  writeFileSync(join(homeMarchDir, ".env"), "MARCH_SMOKE_DOTENV_GLOBAL=global\nMARCH_SMOKE_DOTENV_ORDER=global\n");
+  writeFileSync(join(sourceDir, ".env"), "MARCH_SMOKE_DOTENV_SOURCE=source\nMARCH_SMOKE_DOTENV_ORDER=source\n");
+  process.env.MARCH_SMOKE_DOTENV_SYSTEM = "system";
+  loadDotEnv(envDir, { homeDir: join(envDir, "home"), sourceDir });
+  assert.equal(process.env.MARCH_SMOKE_DOTENV_PROJECT, "project");
+  assert.equal(process.env.MARCH_SMOKE_DOTENV_GLOBAL, "global");
+  assert.equal(process.env.MARCH_SMOKE_DOTENV_SOURCE, "source");
+  assert.equal(process.env.MARCH_SMOKE_DOTENV_ORDER, "project");
+  assert.equal(process.env.MARCH_SMOKE_DOTENV_SYSTEM, "system");
+  for (const key of ["MARCH_SMOKE_DOTENV_PROJECT", "MARCH_SMOKE_DOTENV_GLOBAL", "MARCH_SMOKE_DOTENV_SOURCE", "MARCH_SMOKE_DOTENV_ORDER", "MARCH_SMOKE_DOTENV_SYSTEM"]) delete process.env[key];
+  cleanup(envDir);
   cleanup(dir);
   console.log("  PASS");
 }
