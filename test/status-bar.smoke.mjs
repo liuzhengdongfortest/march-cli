@@ -77,9 +77,18 @@ export async function runStatusBarSmoke() {
   const workingLine = update.startWorking();
   assert.ok(stripAnsi(workingLine).includes("Working"));
   assert.ok(stripAnsi(seen.at(-1)).includes("Working"));
+  const abortedLine = update.markAborted();
+  assert.ok(stripAnsi(abortedLine).includes("x Aborted"));
+  assert.equal(stripAnsi(abortedLine).includes("Working"), false);
+  assert.ok(stripAnsi(seen.at(-1)).includes("Aborted"));
   const stoppedLine = update.stopWorking();
-  assert.equal(stripAnsi(stoppedLine).includes("Working"), false);
-  assert.equal(stripAnsi(seen.at(-1)).includes("Working"), false);
+  assert.ok(stripAnsi(stoppedLine).includes("Aborted"));
+  const nextWorkingLine = update.startWorking();
+  assert.ok(stripAnsi(nextWorkingLine).includes("Working"));
+  assert.equal(stripAnsi(nextWorkingLine).includes("Aborted"), false);
+  const finalStoppedLine = update.stopWorking();
+  assert.equal(stripAnsi(finalStoppedLine).includes("Working"), false);
+  assert.equal(stripAnsi(finalStoppedLine).includes("Aborted"), false);
   console.log("  PASS");
 }
 

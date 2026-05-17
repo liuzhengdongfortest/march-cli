@@ -11,7 +11,7 @@ export function createStatusLineUpdater({
   getMode = () => undefined,
 }) {
   let contextTokens = null;
-  let working = false;
+  let activity = null;
   let frameIndex = 0;
   let timer = null;
 
@@ -26,14 +26,14 @@ export function createStatusLineUpdater({
       lifecycleState: runner.getExtensionLifecycleState?.() ?? null,
       mode: getMode(),
       contextTokens,
-      activity: working ? { frame: WORKING_FRAMES[frameIndex], label: "Working" } : null,
+      activity: formatActivity(activity, frameIndex),
     });
     ui.setStatusBar(line);
     return line;
   };
 
   update.startWorking = () => {
-    working = true;
+    activity = "working";
     frameIndex = 0;
     const line = update();
     if (!timer) {
@@ -47,7 +47,16 @@ export function createStatusLineUpdater({
   };
 
   update.stopWorking = () => {
-    working = false;
+    if (activity === "working") activity = null;
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+    return update();
+  };
+
+  update.markAborted = () => {
+    activity = "aborted";
     if (timer) {
       clearInterval(timer);
       timer = null;
@@ -56,4 +65,10 @@ export function createStatusLineUpdater({
   };
 
   return update;
+}
+
+function formatActivity(activity, frameIndex) {
+  if (activity === "working") return { frame: WORKING_FRAMES[frameIndex], label: "Working" };
+  if (activity === "aborted") return { frame: "x", label: "Aborted" };
+  return null;
 }

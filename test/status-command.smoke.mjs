@@ -90,6 +90,12 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
   assert.equal(stripAnsi(formatStatusBarLine({
     engine,
     mode: "do",
+    contextTokens: 6000,
+    activity: { frame: "x", label: "Aborted" },
+  })), "Do | deepseek-chat·high | x Aborted | 6K");
+  assert.equal(stripAnsi(formatStatusBarLine({
+    engine,
+    mode: "do",
     contextTokens: 11300,
   })).includes("ctx:"), false);
   const branch = getGitBranch(dir);

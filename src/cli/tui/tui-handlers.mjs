@@ -1,7 +1,7 @@
 import { buildModelSelectItems, persistModelSelection } from "../commands/model-command.mjs";
 import { pasteClipboardImage } from "../commands/paste-image-command.mjs";
 import { buildThinkingSelectItems } from "../commands/thinking-command.mjs";
-import { yellow, brightBlack } from "./ui-theme.mjs";
+import { brightBlack } from "./ui-theme.mjs";
 
 export function wireTuiHandlers({
   ui,
@@ -17,13 +17,13 @@ export function wireTuiHandlers({
   ui.setEscapeHandler(() => {
     if (isTurnRunning()) {
       runner.abort();
-      ui.writeln(yellow(`● aborted`));
+      refreshStatusBar.markAborted?.();
     }
   });
   ui.setCtrlCHandler?.(() => {
     if (isTurnRunning()) {
       runner.abort();
-      ui.writeln(yellow(`● aborted`));
+      refreshStatusBar.markAborted?.();
       return;
     }
     ui.requestExit?.();

@@ -43,6 +43,9 @@ export async function runTuiHandlersSmoke() {
     },
   };
   let refreshCount = 0;
+  let abortStatusCount = 0;
+  const refreshStatusBar = () => { refreshCount += 1; };
+  refreshStatusBar.markAborted = () => { abortStatusCount += 1; };
   let pasteArgs = null;
   try {
     wireTuiHandlers({
@@ -50,7 +53,7 @@ export async function runTuiHandlersSmoke() {
       runner,
       sessionState: { sessionId: "state-session" },
       projectMarchDir: "D:/repo/.march",
-      refreshStatusBar: () => { refreshCount += 1; },
+      refreshStatusBar,
       isTurnRunning: () => true,
       modeState,
       configHomeDir,
@@ -62,10 +65,12 @@ export async function runTuiHandlersSmoke() {
 
   handlers.escape();
   assert.deepEqual(calls[0], ["abort"]);
-  assert.ok(calls.some(([type, line]) => type === "writeln" && line.includes("aborted")));
+  assert.equal(abortStatusCount, 1);
+  assert.equal(calls.some(([type, line]) => type === "writeln" && line.includes("aborted")), false);
 
   handlers.ctrlC();
   assert.deepEqual(calls.filter(([type]) => type === "abort").length, 2);
+  assert.equal(abortStatusCount, 2);
 
   ui.selectList = async ({ items }) => items[2];
   await handlers.shiftTab();
