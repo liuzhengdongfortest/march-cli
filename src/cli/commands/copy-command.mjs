@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 
 export function copyLastAssistantMessage({ engine, writeClipboard = writeSystemClipboard } = {}) {
   const message = findLastAssistantMessage(engine);
@@ -31,6 +31,34 @@ export function writeSystemClipboard(text, { platform = process.platform } = {})
     return { ok: false, message: stderr || `${command.bin} exited ${result.status}` };
   }
   return { ok: true };
+}
+
+export function writeSystemClipboardAsync(text, { platform = process.platform } = {}) {
+  const command = clipboardCommand(platform);
+  if (!command) return Promise.resolve({ ok: false, message: `clipboard is not supported on ${platform}` });
+  return new Promise((resolve) => {
+    let settled = false;
+    let stderr = "";
+    const done = (result) => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
+
+    const child = spawn(command.bin, command.args, {
+      windowsHide: true,
+      stdio: ["pipe", "ignore", "pipe"],
+    });
+    child.stderr?.setEncoding?.("utf8");
+    child.stderr?.on("data", (chunk) => { stderr += chunk; });
+    child.on("error", (err) => done({ ok: false, message: err.message }));
+    child.on("close", (status) => {
+      if (status === 0) done({ ok: true });
+      else done({ ok: false, message: stderr.trim() || `${command.bin} exited ${status}` });
+    });
+    child.stdin?.on("error", (err) => done({ ok: false, message: err.message }));
+    child.stdin?.end(text, "utf8");
+  });
 }
 
 function clipboardCommand(platform) {

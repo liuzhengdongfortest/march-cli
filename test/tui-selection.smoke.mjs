@@ -61,6 +61,8 @@ export async function runTuiSelectionSmoke() {
   terminal.input("\x1b[<0;1;1M");
   terminal.input("\x1b[<32;40;8M");
   terminal.input("\x1b[<0;40;8m");
+  assert.equal(copied, "");
+  terminal.input("\x03");
   assert.ok(copied.includes("alpha"));
   assert.ok(copied.includes("beta"));
 
@@ -73,14 +75,34 @@ export async function runTuiSelectionSmoke() {
     output: { setOverlayStatus: (lines) => statusLines.push(lines) },
     shellDrawer: { isVisible: () => false },
     shellDrawerControls: { scroll: () => {} },
-    selection: { finish: () => "abc" },
+    selection: { text: () => "abc", clear: () => true },
     writeClipboard: () => ({ ok: false, message: "ExternalException\n  + FullyQualifiedErrorId : System.Runtime.InteropServices.ExternalException" }),
     requestRender: () => {},
   });
-  controller.handleMouseInput("\x1b[<0;1;1m", true);
+  controller.handleCopyKey("\x03");
   const plainStatus = stripAnsi(statusLines.at(-1)[0]);
   assert.ok(!plainStatus.includes("\n"));
   assert.ok(plainStatus.includes("ExternalException + FullyQualifiedErrorId"));
+
+  let asyncResolved = false;
+  let renderCount = 0;
+  const asyncController = createMouseSelectionController({
+    terminal: { columns: 40 },
+    output: { setOverlayStatus: (lines) => statusLines.push(lines) },
+    shellDrawer: { isVisible: () => false },
+    shellDrawerControls: { scroll: () => {} },
+    selection: { text: () => "async", clear: () => true },
+    writeClipboard: () => new Promise((resolve) => setTimeout(() => {
+      asyncResolved = true;
+      resolve({ ok: true });
+    }, 10)),
+    requestRender: () => { renderCount += 1; },
+  });
+  assert.deepEqual(asyncController.handleCopyKey("\x03"), { consume: true });
+  assert.equal(asyncResolved, false);
+  await delay(20);
+  assert.equal(asyncResolved, true);
+  assert.ok(renderCount >= 2);
   console.log("  PASS");
 }
 

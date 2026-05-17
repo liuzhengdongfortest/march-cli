@@ -46,11 +46,12 @@ export class ScreenSelection {
     return true;
   }
 
-  finish(point) {
+  finish(point, { clear = true } = {}) {
     if (!this.active || !this.anchor) return "";
     this.focus = normalizePoint(point, this.viewport, true) ?? this.focus;
     const text = this.text();
-    this.clear();
+    if (clear) this.clear();
+    else this.active = false;
     return text;
   }
 

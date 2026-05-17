@@ -1,6 +1,6 @@
 import { stdout } from "node:process";
 import { Editor, ProcessTerminal, TUI } from "@earendil-works/pi-tui";
-import { writeSystemClipboard } from "./commands/copy-command.mjs";
+import { writeSystemClipboardAsync } from "./commands/copy-command.mjs";
 import { buildMarchCommands, MarchAutocompleteProvider } from "./input/autocomplete.mjs";
 import { createJsonUI, createPlainUI } from "./fallback-ui.mjs";
 import { createKeybindingDispatcher } from "./input/keybinding-dispatch.mjs";
@@ -34,7 +34,7 @@ export function createTuiUI({
   shellRuntime = null,
   historyStore = null,
   terminal = new ProcessTerminal(),
-  writeClipboard = writeSystemClipboard,
+  writeClipboard = writeSystemClipboardAsync,
 } = {}) {
   const tui = new TUI(terminal);
   const output = new OutputBuffer();

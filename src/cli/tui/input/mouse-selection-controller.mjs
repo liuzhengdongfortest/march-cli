@@ -12,14 +12,33 @@ export function createMouseSelectionController({
 }) {
   function copySelectionText(text) {
     if (!text) return false;
-    const result = writeClipboard(text);
+    let result;
+    try {
+      result = writeClipboard(text);
+    } catch (err) {
+      setCopyStatus({ ok: false, message: err.message }, text.length);
+      return false;
+    }
+    if (result?.then) {
+      output.setOverlayStatus([brightBlack(`● copying selection (${text.length} chars)`)]);
+      requestRender();
+      result.then(
+        (resolved) => setCopyStatus(resolved, text.length),
+        (err) => setCopyStatus({ ok: false, message: err.message }, text.length)
+      );
+      return true;
+    }
+    setCopyStatus(result, text.length);
+    return result?.ok !== false;
+  }
+
+  function setCopyStatus(result, length) {
     output.setOverlayStatus([
       result?.ok === false
         ? brightBlack(`● selection copy failed: ${compactStatusMessage(result.message)}`)
-        : brightBlack(`● copied selection (${text.length} chars)`),
+        : brightBlack(`● copied selection (${length} chars)`),
     ]);
     requestRender();
-    return result?.ok !== false;
   }
 
   return {
@@ -46,9 +65,8 @@ export function createMouseSelectionController({
         return { consume: true };
       }
       if (mouse?.type === "up") {
-        const text = selection.finish(mouse);
-        if (text) copySelectionText(text);
-        else requestRender();
+        selection.finish(mouse, { clear: false });
+        requestRender();
         return { consume: true };
       }
       return undefined;
