@@ -27,6 +27,8 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
   const notificationCommand = spawned[0].args[spawned[0].args.indexOf("-Command") + 1];
   assert.ok(notificationCommand.includes("$n.BalloonTipTitle = 'March'"));
   assert.ok(notificationCommand.includes("$n.BalloonTipText = 'Smoke reply'"));
+  assert.ok(notificationCommand.includes("march-icon.png"));
+  assert.ok(notificationCommand.includes("[System.Drawing.Bitmap]::FromFile"));
   assert.ok(!spawned[0].args.includes("-WindowStyle"));
   assert.equal(spawned[0].options.detached, undefined);
   assert.equal(spawned[0].options.windowsHide, false);
@@ -60,10 +62,11 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
   assert.equal(commandSpawned[0].options.env.MARCH_NOTIFICATION_STATUS, "error");
   assert.equal(commandSpawned[0].options.env.MARCH_NOTIFICATION_SESSION, "Cmd");
   assert.ok(buildWindowsBalloonScript({ title: "March's turn", message: "done" }).includes("March''s turn"));
-  const notificationScript = buildWindowsNotificationScript({ title: "March's turn", message: "ready & waiting" });
+  const notificationScript = buildWindowsNotificationScript({ title: "March's turn", message: "ready & waiting", iconPath: "C:\\tmp\\March's icon.png" });
   assert.ok(notificationScript.includes("System.Windows.Forms.NotifyIcon"));
   assert.ok(notificationScript.includes("March''s turn"));
   assert.ok(notificationScript.includes("ready & waiting"));
+  assert.ok(notificationScript.includes("C:\\tmp\\March''s icon.png"));
 
   const dir = setupTmp();
   const previousKey = process.env.DEEPSEEK_API_KEY;
