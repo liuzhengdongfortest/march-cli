@@ -50,6 +50,7 @@ export async function createRunnerRuntimeHost({
       mcpTools,
       webTools,
       permissionController,
+      authStorage,
     }),
   });
 

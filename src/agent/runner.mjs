@@ -74,6 +74,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     const sessionOptions = resolveRunnerSessionOptions({
       cwd, provider, modelId, modelRegistry, engine, ui,
       memoryTools, shellRuntime, lspService, mcpTools, webTools, permissionController,
+      authStorage: resolvedAuth,
     });
     const { session } = await createAgentSessionImpl({
       cwd, agentDir: stateRoot, ...sessionOptions,
