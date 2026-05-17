@@ -167,6 +167,12 @@ function appendWrappedRuns(lines, runs, width, indent = 0, firstPrefix = null) {
   const maxWidth = Math.max(1, width);
   for (const run of runs) {
     for (const ch of run.text) {
+      if (ch === "\n") {
+        lines.push(current);
+        current = restPrefix;
+        currentWidth = visibleWidth(restPrefix);
+        continue;
+      }
       const charWidth = visibleWidth(ch);
       if (currentWidth + charWidth > maxWidth && currentWidth > visibleWidth(stripAnsi(prefix))) {
         lines.push(current);

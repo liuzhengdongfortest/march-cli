@@ -308,6 +308,10 @@ await runTuiAutocompleteEscSmoke({ setupTmp, cleanup });
   const warningTableLines = renderMarkdown("| # | 结果 |\n|---|------|\n| 6 | ⚠️ 再次翻车 — 文本删除比预期少了，导致 addTask 签名重复、执行逻辑双份 |", 139);
   assert.ok(warningTableLines.every((line) => visibleWidth(line) <= 139));
 
+  const diagramMarkdown = renderMarkdown("passive recall 没有作为正式 context layer 存在，而是由 REPL 层拼进用户 prompt：当前：\n│ repl-loop 拼 fullPrompt\n│   └── 用户输入 + memory_hint + shell_hints\n│       ↓\n│ Context assembly\n│   ├── recent_chat\n│   ├── passive_memory_recall   ← 正式 layer\n│   └── current_user", 80).map(stripAnsi);
+  assert.ok(diagramMarkdown.includes("│   └── 用户输入 + memory_hint + shell_hints"));
+  assert.ok(diagramMarkdown.includes("│   ├── passive_memory_recall   ← 正式 layer"));
+
   const codeMarkdown = new OutputBuffer();
   codeMarkdown.writeMarkdown("```js\nif (this.turns.length > 10) {\n  return this.turns.slice(-10);\n}\n```");
   const codeRendered = codeMarkdown.render(80).join("\n");
