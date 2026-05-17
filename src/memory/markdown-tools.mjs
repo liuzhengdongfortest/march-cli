@@ -44,13 +44,13 @@ export function createMarkdownMemoryTools(store) {
       name: "memory_save",
       label: "Memory Save",
       description:
-        "Create or update a Markdown memory. New memories require name, description, body, and at least one tag because memory hints only use tags. When updating by id, omitted fields keep their existing values; passing tags replaces the full tag list.",
+        "Create or update a Markdown memory. Before creating a new memory, merge related updates into an existing memory when they share the same topic or decision thread. New memories require name, description, body, and at least one tag because memory hints only use tags. When updating by id, omitted fields keep their existing values; passing tags replaces the full tag list.",
       parameters: Type.Object({
         id: Type.Optional(Type.String({ description: "Existing memory id to update. Omit to create a new memory." })),
         name: Type.Optional(Type.String({ description: "Memory name. Required when creating." })),
         description: Type.Optional(Type.String({ description: "Short natural-language summary shown in memory hint. Required when creating." })),
         body: Type.Optional(Type.String({ description: "Markdown memory body. Required when creating." })),
-        tags: Type.Optional(Type.Array(Type.String(), { description: "Tags used for memory hint. Required and non-empty when creating; replaces tags when updating. Prefer stable retrieval keys: project name, technology, feature/domain, user/person, and decision topic. Use lowercase kebab-case when possible. Examples: ['march-cli', 'tooling', 'permissions'], ['memory', 'sqlite-index']." })),
+        tags: Type.Optional(Type.Array(Type.String(), { description: "Tags used for memory hint. Required and non-empty when creating; replaces tags when updating. Prefer stable retrieval keys: project name, technology, feature/domain, user/person, and decision topic. Use lowercase kebab-case when possible. Use shared tags to keep related facts discoverable and merge them into one memory when they belong to the same topic. Examples: ['march-cli', 'tooling', 'permissions'], ['memory', 'sqlite-index']." })),
       }),
       execute: async (_toolCallId, params) => {
         try {
