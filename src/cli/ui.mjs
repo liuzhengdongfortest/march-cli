@@ -23,6 +23,7 @@ import { createTuiInputController } from "./tui/tui-input-controller.mjs";
 import { writeMemoryHint } from "./tui/recall-rendering.mjs";
 import { writeToolEnd, writeToolStart } from "./tui/tool-rendering.mjs";
 import { EDITOR_THEME, brightBlack } from "./tui/ui-theme.mjs";
+import { createRenderScheduler } from "./tui/render/render-scheduler.mjs";
 import { writeTranscriptToOutput } from "../session/transcript.mjs";
 
 export { buildMarchCommands, MarchAutocompleteProvider } from "./input/autocomplete.mjs";
@@ -59,10 +60,8 @@ export function createTuiUI({
   let mouseOn = true;
   let toolsExpanded = false;
   const activeToolBlocks = [];
-
-  function requestRender() {
-    tui.requestRender();
-  }
+  const renderScheduler = createRenderScheduler({ requestRender: () => tui.requestRender() });
+  const requestRender = renderScheduler.renderNow;
 
   const spinnerStatus = createSpinnerStatusController({ output, requestRender });
   const retryStatus = createRetryStatusController({ output, requestRender, stopSpinner: spinnerStatus.stop });
@@ -172,7 +171,7 @@ export function createTuiUI({
 
     thinkingDelta: (delta) => {
       output.appendThinking(delta);
-      requestRender();
+      renderScheduler.renderSoon();
     },
 
     thinkingEnd: (tokens) => {
@@ -197,7 +196,7 @@ export function createTuiUI({
     textDelta: (delta) => {
       ensureStarted(); retryStatus.stop(); spinnerStatus.stop();
       output.writeMarkdown(delta);
-      requestRender();
+      renderScheduler.renderSoon();
     },
     assistantReplyEnd: () => {
       ensureStarted();
@@ -278,8 +277,8 @@ export function createTuiUI({
     toggleToolOutput,
     toggleShellDrawer: () => shellDrawerControls.toggle(),
     requestExit: () => inputController.requestExit(),
-
     close: async () => {
+      renderScheduler.clearPending();
       spinnerStatus.stop();
       retryStatus.stop();
       if (started) {

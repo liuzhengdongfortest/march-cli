@@ -1,59 +1,13 @@
-import { visibleWidth } from "@earendil-works/pi-tui";
-import { R, brightBlack, dim } from "./ui-theme.mjs";
+import { brightBlack, dim } from "./ui-theme.mjs";
 import { renderToolCardBlock } from "./output/tool-card-renderer.mjs";
 import { renderMarkdown, renderStreamingMarkdown } from "./markdown-renderer.mjs";
 import { renderEditDiffBlock } from "./tui-diff-rendering.mjs";
 import { OutputScrollState } from "./output/scroll-state.mjs";
+import { appendTextLines, wrapLine } from "./output/text-line-renderer.mjs";
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
-function wrapLine(text, maxWidth) {
-  if (maxWidth <= 0) return [""];
-  const result = [];
-  let cur = "";
-  let curW = 0;
-  let activeSgr = "";
-  for (let i = 0; i < text.length;) {
-    if (text[i] === "\x1b") {
-      const match = text.slice(i).match(/^\x1b\[[0-?]*[ -/]*[@-~]/);
-      if (match) {
-        const seq = match[0];
-        cur += seq;
-        activeSgr = updateActiveSgr(activeSgr, seq);
-        i += seq.length;
-        continue;
-      }
-    }
-    const ch = text[i];
-    const w = visibleWidth(ch);
-    if (curW + w > maxWidth) {
-      result.push(activeSgr ? `${cur}${R}` : cur);
-      cur = activeSgr + ch;
-      curW = w;
-    } else {
-      cur += ch;
-      curW += w;
-    }
-    i += 1;
-  }
-  if (cur) result.push(cur);
-  return result.length > 0 ? result : [""];
-}
 
-function updateActiveSgr(activeSgr, seq) {
-  if (!seq.endsWith("m")) return activeSgr;
-  const body = seq.slice(2, -1);
-  if (body === "" || body.split(";").includes("0")) return "";
-  return seq;
-}
-
-function appendTextLines(lines, textLines, width) {
-  for (const line of textLines) {
-    for (const part of String(line ?? "").split(/\r?\n/)) {
-      for (const wrapped of wrapLine(part, width)) lines.push(wrapped);
-    }
-  }
-}
 
 function currentTextToBlocks(textLines, sealed, cache = null) {
   const blocks = [];
@@ -117,6 +71,7 @@ export class OutputBuffer {
     this._activeThinking = null;
     this.overlayStatus = null;
     this.scrollState = new OutputScrollState();
+    this._segmentLinesCache = new Map();
   }
 
   get scrollOffset() {
@@ -133,6 +88,7 @@ export class OutputBuffer {
     this._activeThinking = null;
     this.overlayStatus = null;
     this.scrollState.clear();
+    this._segmentLinesCache = new Map();
   }
 
   write(text) {
@@ -174,6 +130,7 @@ export class OutputBuffer {
     this._flushText();
     const seg = { type: "thinking", tokens: 0, content: [] };
     this.segments.push(seg);
+    this._invalidateSegmentLines();
     this._activeThinking = seg;
   }
 
@@ -197,12 +154,14 @@ export class OutputBuffer {
     this.overlayStatus = null;
     this._flushText();
     this.segments.push({ type: "thinking", tokens, content: content.split("\n") });
+    this._invalidateSegmentLines();
   }
 
   addBlock(block) {
     this.overlayStatus = null;
     this._flushText();
     this.segments.push(block);
+    this._invalidateSegmentLines();
   }
 
   setOverlayStatus(lines) {
@@ -220,6 +179,7 @@ export class OutputBuffer {
   _flushText() {
     if (this.currentText.length <= 1 && this.currentText[0].text === "") return false;
     this.segments.push(...currentTextToBlocks(this.currentText, true));
+    this._invalidateSegmentLines();
     this.currentText = [{ text: "", markdown: false }];
     this.currentTextCache = new Map();
     return true;
@@ -262,10 +222,17 @@ export class OutputBuffer {
       seg.expanded = expanded;
       changed = true;
     }
+    if (changed) this._invalidateSegmentLines();
     return changed;
   }
 
-  invalidate() {}
+  invalidate() {
+    this._invalidateSegmentLines();
+  }
+
+  _invalidateSegmentLines() {
+    this._segmentLinesCache.clear();
+  }
 
   render(width) {
     const allLines = this._computeLines(width);
@@ -278,8 +245,9 @@ export class OutputBuffer {
   }
 
   _computeLines(width) {
-    const lines = [];
-    for (const seg of this.segments) {
+    const lines = [...this._renderCachedSegmentLines(width)];
+    const dynamicStart = this._cachedSegmentPrefixCount();
+    for (const seg of this.segments.slice(dynamicStart)) {
       for (const line of renderBlock(seg, width)) lines.push(line);
     }
     for (const block of currentTextToBlocks(this.currentText, false, this.currentTextCache)) {
@@ -293,5 +261,24 @@ export class OutputBuffer {
       lines.push(brightBlack(`${frame} ${this.spinnerText}`));
     }
     return lines;
+  }
+
+  _renderCachedSegmentLines(width) {
+    const prefixCount = this._cachedSegmentPrefixCount();
+    const cached = this._segmentLinesCache.get(width);
+    if (cached?.prefixCount === prefixCount) return cached.lines;
+
+    const lines = [];
+    for (let i = 0; i < prefixCount; i += 1) {
+      for (const line of renderBlock(this.segments[i], width)) lines.push(line);
+    }
+    this._segmentLinesCache.set(width, { prefixCount, lines });
+    return lines;
+  }
+
+  _cachedSegmentPrefixCount() {
+    if (!this._activeThinking) return this.segments.length;
+    const index = this.segments.indexOf(this._activeThinking);
+    return index < 0 ? this.segments.length : index;
   }
 }
