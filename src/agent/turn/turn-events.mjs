@@ -3,6 +3,7 @@ export function createTurnEventState() {
     draft: "",
     thinkingText: "",
     thinkingAccumulator: "",
+    recallCursor: { draftLength: 0, thinkingLength: 0 },
     assistantReplyOpen: false,
   };
 }

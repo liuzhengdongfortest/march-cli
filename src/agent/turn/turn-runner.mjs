@@ -24,12 +24,11 @@ export async function runRunnerTurn({
 
   const unsubscribe = activeSession.subscribe((event) => {
     handleRunnerSessionEvent(event, { ui, engine, state: turnState });
-    if (event.type === "tool_execution_end") {
-      const hints = recallForAssistantState({ memoryStore, engine, turnState, currentProject });
+    if (event.type === "tool_execution_start") {
+      const hints = flushAssistantRecall({ memoryStore, engine, turnState, currentProject });
       if (hints.length > 0) {
         midTurnRecallHints.push(...hints);
         onMidTurnRecallHints?.(hints);
-        ui.memoryHint?.({ source: "assistant", hints });
       }
     }
   });
@@ -51,9 +50,9 @@ export async function runRunnerTurn({
     }
 
     closeAssistantReply({ ui, state: turnState });
-    const assistantRecallHints = recallForAssistantState({ memoryStore, engine, turnState, currentProject });
-    ui.memoryHint?.({ source: "assistant", hints: assistantRecallHints });
+    const assistantRecallHints = flushAssistantRecall({ memoryStore, engine, turnState, currentProject });
     const recordedAssistantRecallHints = uniqueHints([...midTurnRecallHints, ...assistantRecallHints]);
+    ui.memoryHint?.({ source: "assistant", hints: recordedAssistantRecallHints });
 
     engine.recordTurn({
       userMessage: userMessage ?? prompt.slice(0, 300),
@@ -71,18 +70,37 @@ export async function runRunnerTurn({
   }
 }
 
-function recallForAssistantState({ memoryStore, engine, turnState, currentProject }) {
+function flushAssistantRecall({ memoryStore, engine, turnState, currentProject }) {
   if (!memoryStore) return [];
-  return memoryStore.recallForAssistant(assistantRecallText(turnState), {
+  const text = assistantRecallDeltaText(turnState);
+  advanceAssistantRecallCursor(turnState);
+  if (!text.trim()) return [];
+  return memoryStore.recallForAssistant(text, {
     currentProject,
     excludedIds: engine.getRecentRecallMemoryIds?.() ?? [],
   });
 }
 
-function assistantRecallText(turnState) {
-  return [turnState.draft, turnState.thinkingAccumulator, turnState.thinkingText]
+function assistantRecallDeltaText(turnState) {
+  const cursor = turnState.recallCursor ?? { draftLength: 0, thinkingLength: 0 };
+  const thinking = assistantThinkingText(turnState);
+  return [
+    turnState.draft.slice(cursor.draftLength),
+    thinking.slice(cursor.thinkingLength),
+  ]
     .filter(Boolean)
     .join("\n");
+}
+
+function advanceAssistantRecallCursor(turnState) {
+  turnState.recallCursor = {
+    draftLength: turnState.draft.length,
+    thinkingLength: assistantThinkingText(turnState).length,
+  };
+}
+
+function assistantThinkingText(turnState) {
+  return `${turnState.thinkingAccumulator}${turnState.thinkingText}`;
 }
 
 function uniqueHints(hints) {

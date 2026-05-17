@@ -67,6 +67,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
         emit({ type: "message_update", assistantMessageEvent: { type: "thinking_delta", delta: "12345678" } });
         emit({ type: "message_update", assistantMessageEvent: { type: "thinking_end" } });
         emit({ type: "tool_execution_start", toolName: "read", args: { path: "a.txt" } });
+        assert.equal(recallCalls, 1);
         emit({ type: "tool_execution_end", toolName: "read", isError: false, result: "file body" });
         providerPayloads.push(await this.agent.onPayload({
           messages: [
@@ -76,6 +77,16 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
           ],
         }, this.model));
         emit({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "draft text" } });
+      } else if (promptCalls.length === 3) {
+        emit({ type: "tool_execution_start", toolName: "read", args: { path: "tool-only.txt" } });
+        emit({ type: "tool_execution_end", toolName: "read", isError: false, result: "tool only body" });
+        providerPayloads.push(await this.agent.onPayload({
+          messages: [
+            { role: "system", content: "Pi system" },
+            { role: "assistant", content: null, tool_calls: [{ id: "call_2", type: "function", function: { name: "read", arguments: '{"path":"tool-only.txt"}' } }] },
+            { role: "tool", content: "tool only body", tool_call_id: "call_2" },
+          ],
+        }, this.model));
       }
     },
     abort() {
@@ -114,11 +125,17 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
     recallForAssistant(text, options) {
       if (!text) return [];
       recallCalls += 1;
-      assert.ok(text.includes("12345678"));
       if (recallCalls === 1) assert.deepEqual([...options.excludedIds], []);
-      return recallCalls === 1
-        ? [{ id: "mem_thinking", name: "Thinking memory", description: "Matched from thinking text." }]
-        : [];
+      if (recallCalls === 1) {
+        assert.ok(text.includes("12345678"));
+        assert.ok(!text.includes("draft text"));
+        return [{ id: "mem_thinking", name: "Thinking memory", description: "Matched from thinking text." }];
+      }
+      if (recallCalls === 2) {
+        assert.equal(text, "draft text");
+        return [{ id: "mem_draft", name: "Draft memory", description: "Matched from visible assistant text." }];
+      }
+      return [];
     },
   };
   const ui = {
@@ -130,7 +147,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
     thinkingEnd: (tokens) => calls.push(["thinkingEnd", tokens]),
     toolStart: (name, args) => calls.push(["toolStart", name, args]),
     toolEnd: (name, isError, result) => calls.push(["toolEnd", name, isError, result]),
-    passiveRecall: ({ source, hints }) => calls.push(["passiveRecall", source, hints.map((hint) => hint.id)]),
+    memoryHint: ({ source, hints }) => calls.push(["memoryHint", source, hints.map((hint) => hint.id)]),
   };
   const runner = await createRunner({
     cwd: dir,
@@ -165,8 +182,10 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.equal(providerPayloads[1].messages.at(-1).role, "user");
   assert.ok(providerPayloads[1].messages.at(-1).content.includes("[memory_hint source=\"assistant\"]"));
   assert.ok(providerPayloads[1].messages.at(-1).content.includes("mem_thinking | Thinking memory | Matched from thinking text."));
-  assert.equal(runner.engine.turns[0].assistantRecallHints.length, 1);
+  assert.equal(runner.engine.turns[0].assistantRecallHints.length, 2);
   assert.equal(runner.engine.turns[0].assistantRecallHints[0].id, "mem_thinking");
+  assert.equal(runner.engine.turns[0].assistantRecallHints[1].id, "mem_draft");
+  assert.ok(calls.some((call) => call[0] === "memoryHint" && call[1] === "assistant" && call[2].includes("mem_thinking") && call[2].includes("mem_draft")));
   assert.equal(runner.engine.turns[0].assistantMessage, "draft text");
   assert.equal(runner.engine.sessionName, "hello");
   assert.deepEqual(sessionNameCalls, ["hello"]);
@@ -198,6 +217,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.ok(providerPayloads[3].messages.at(-1).content.includes("[current_user]\nthird"));
   assert.equal(countOccurrences(providerPayloads[3].messages[0].content, "[system_core]"), 1);
   assert.ok(!providerPayloads[3].messages.some((message, index) => index > 0 && message.content.includes("[system_core]")));
+  assert.equal(recallCalls, 2);
   const sidecar = loadPiSessionSidecar({ projectMarchDir, sessionRef: "turn-flow.jsonl" });
   assert.equal(sidecar.state.sessionName, "Manual Name");
   assert.equal(sidecar.state.turns[0].assistantMessage, "draft text");
