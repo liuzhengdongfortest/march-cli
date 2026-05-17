@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import nodeNotifier from "node-notifier";
 import { fileURLToPath } from "node:url";
 
 const DEFAULT_BALLOON_TIMEOUT_MS = 5000;
@@ -9,6 +10,7 @@ export function createDesktopTurnNotifier({
   platform = process.platform,
   spawnProcess = spawn,
   writeBell = () => process.stdout.write("\x07"),
+  toastNotifier = nodeNotifier,
   config = {},
 } = {}) {
   const channels = resolveNotificationChannels(config);
@@ -27,7 +29,7 @@ export function createDesktopTurnNotifier({
       if (channels.desktop) {
         results.push({
           channel: "desktop",
-          ...(await sendDesktopNotification({ platform, spawnProcess, ...payload })),
+          ...(await sendDesktopNotification({ platform, spawnProcess, toastNotifier, ...payload })),
         });
       }
       if (channels.bell) results.push({ channel: "bell", ...sendBellNotification({ writeBell }) });
@@ -48,17 +50,20 @@ export function createDesktopTurnNotifier({
   };
 }
 
-export async function sendDesktopNotification({ platform = process.platform, spawnProcess = spawn, title, message, iconPath = DEFAULT_NOTIFICATION_ICON_PATH }) {
+export async function sendDesktopNotification({ platform = process.platform, spawnProcess = spawn, toastNotifier = nodeNotifier, title, message, iconPath = DEFAULT_NOTIFICATION_ICON_PATH }) {
   if (platform !== "win32") return { ok: false, reason: "unsupported-platform" };
 
   const safeTitle = normalizeNotificationText(title) || "March";
   const safeMessage = normalizeNotificationText(message) || "Turn finished";
-  const script = buildWindowsNotificationScript({ title: safeTitle, message: safeMessage, iconPath });
 
   try {
-    const result = await runWindowsNotificationPowerShell({ spawnProcess, script, timeoutMs: DEFAULT_BALLOON_TIMEOUT_MS + 5000 });
-    if (result.ok) return { ok: true };
-    return { ok: false, reason: result.reason };
+    const toastResult = await sendWindowsToastNotification({ toastNotifier, title: safeTitle, message: safeMessage, iconPath });
+    if (toastResult.ok) return { ok: true };
+
+    const script = buildWindowsNotificationScript({ title: safeTitle, message: safeMessage, iconPath });
+    const balloonResult = await runWindowsNotificationPowerShell({ spawnProcess, script, timeoutMs: DEFAULT_BALLOON_TIMEOUT_MS + 5000 });
+    if (balloonResult.ok) return { ok: true, fallback: "balloon", toastReason: toastResult.reason };
+    return { ok: false, reason: `toast: ${toastResult.reason}; balloon: ${balloonResult.reason}` };
   } catch (err) {
     return { ok: false, reason: err?.message ?? String(err) };
   }
@@ -130,9 +135,45 @@ export function buildWindowsBalloonScript({ title, message, timeoutMs = DEFAULT_
 }
 
 export function buildWindowsNotificationScript({ title, message, timeoutMs = DEFAULT_BALLOON_TIMEOUT_MS, iconPath = DEFAULT_NOTIFICATION_ICON_PATH }) {
-  // Windows toast APIs can succeed without displaying anything unless the app has a registered AUMID.
-  // NotifyIcon balloon tips are less pretty, but reliable for a terminal CLI process.
   return buildWindowsBalloonScript({ title, message, timeoutMs, iconPath });
+}
+
+export function buildWindowsToastOptions({ title, message, iconPath = DEFAULT_NOTIFICATION_ICON_PATH }) {
+  return {
+    title,
+    message,
+    icon: iconPath,
+    appID: "March",
+    sound: false,
+    wait: false,
+  };
+}
+
+function sendWindowsToastNotification({ toastNotifier = nodeNotifier, title, message, iconPath }) {
+  return new Promise((resolve) => {
+    const notify = toastNotifier?.notify;
+    if (typeof notify !== "function") {
+      resolve({ ok: false, reason: "toast-notifier-unavailable" });
+      return;
+    }
+
+    let settled = false;
+    const timeout = setTimeout(() => finish({ ok: false, reason: "toast-timeout" }), DEFAULT_BALLOON_TIMEOUT_MS + 5000);
+    notify.call(toastNotifier, buildWindowsToastOptions({ title, message, iconPath }), (err) => {
+      if (err) {
+        finish({ ok: false, reason: err?.message ?? String(err) });
+        return;
+      }
+      finish({ ok: true });
+    });
+
+    function finish(result) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      resolve(result);
+    }
+  });
 }
 
 function resolveNotificationChannels(config) {

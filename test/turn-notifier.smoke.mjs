@@ -4,29 +4,48 @@ import { join } from "node:path";
 
 export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: turn notifier ---");
-  const { createDesktopTurnNotifier, buildWindowsBalloonScript, buildWindowsNotificationScript } = await import("../src/notification/desktop-notifier.mjs");
+  const { createDesktopTurnNotifier, buildWindowsBalloonScript, buildWindowsNotificationScript, buildWindowsToastOptions } = await import("../src/notification/desktop-notifier.mjs");
   const { createRunner } = await import("../src/agent/runner.mjs");
   const { handleSlashCommand } = await import("../src/cli/slash-commands.mjs");
 
-  const spawned = [];
+  const toastCalls = [];
   const notifier = createDesktopTurnNotifier({
     platform: "win32",
+    toastNotifier: {
+      notify: (options, callback) => {
+        toastCalls.push(options);
+        setImmediate(() => callback(null, { activationType: "timeout" }));
+      },
+    },
+  });
+  const result = await notifier.notifyTurnEnd({ status: "success", sessionName: "Smoke", draft: "Smoke reply", durationMs: 25 });
+  assert.equal(result.ok, true);
+  assert.equal(result.results[0].channel, "desktop");
+  assert.equal(toastCalls[0].title, "March");
+  assert.equal(toastCalls[0].message, "Smoke reply");
+  assert.ok(toastCalls[0].icon.endsWith("march-icon.png"));
+  assert.equal(toastCalls[0].appID, "March");
+  assert.equal(toastCalls[0].sound, false);
+
+  const spawned = [];
+  const fallback = await createDesktopTurnNotifier({
+    platform: "win32",
+    toastNotifier: { notify: (_options, callback) => setImmediate(() => callback(new Error("toast failed"))) },
     spawnProcess: (command, args, options) => {
       spawned.push({ command, args, options });
       const child = new EventEmitter();
       child.stderr = new EventEmitter();
       setImmediate(() => child.emit("close", 0, null));
       return child;
-    }
-  });
-  const result = await notifier.notifyTurnEnd({ status: "success", sessionName: "Smoke", draft: "Smoke reply", durationMs: 25 });
-  assert.equal(result.ok, true);
-  assert.equal(result.results[0].channel, "desktop");
+    },
+  }).notifyTurnEnd({ status: "success", draft: "Balloon fallback" });
+  assert.equal(fallback.ok, true);
+  assert.equal(fallback.results[0].fallback, "balloon");
   assert.equal(spawned[0].command, "powershell.exe");
   assert.ok(spawned[0].args.includes("-Command"));
   const notificationCommand = spawned[0].args[spawned[0].args.indexOf("-Command") + 1];
   assert.ok(notificationCommand.includes("$n.BalloonTipTitle = 'March'"));
-  assert.ok(notificationCommand.includes("$n.BalloonTipText = 'Smoke reply'"));
+  assert.ok(notificationCommand.includes("$n.BalloonTipText = 'Balloon fallback'"));
   assert.ok(notificationCommand.includes("march-icon.png"));
   assert.ok(notificationCommand.includes("[System.Drawing.Bitmap]::FromFile"));
   assert.ok(notificationCommand.includes("New-Object System.Drawing.Bitmap 32, 32"));
@@ -65,6 +84,8 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
   assert.equal(commandSpawned[0].options.env.MARCH_NOTIFICATION_STATUS, "error");
   assert.equal(commandSpawned[0].options.env.MARCH_NOTIFICATION_SESSION, "Cmd");
   assert.ok(buildWindowsBalloonScript({ title: "March's turn", message: "done" }).includes("March''s turn"));
+  const toastOptions = buildWindowsToastOptions({ title: "March's turn", message: "ready & waiting", iconPath: "C:\\tmp\\March's icon.png" });
+  assert.deepEqual(toastOptions, { title: "March's turn", message: "ready & waiting", icon: "C:\\tmp\\March's icon.png", appID: "March", sound: false, wait: false });
   const notificationScript = buildWindowsNotificationScript({ title: "March's turn", message: "ready & waiting", iconPath: "C:\\tmp\\March's icon.png" });
   assert.ok(notificationScript.includes("System.Windows.Forms.NotifyIcon"));
   assert.ok(notificationScript.includes("March''s turn"));

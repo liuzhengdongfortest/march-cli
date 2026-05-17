@@ -29,6 +29,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@xterm/headless": "^5.5.0",
     "marked": "^18.0.3",
+    "node-notifier": "^10.0.1",
     "node-pty": "^1.1.0",
     "typebox": "^1.0.58",
     "web-tree-sitter": "^0.26.8"
