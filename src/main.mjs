@@ -29,6 +29,7 @@ import { createWebToolsFromConfig } from "./web/tools.mjs";
 import { createModelContextDumper } from "./debug/model-context-dumper.mjs";
 import { runProviderConfigCommand } from "./provider/config-command.mjs";
 import { runWebSearchConfigCommand } from "./web/config-command.mjs";
+import { createDesktopTurnNotifier } from "./notification/desktop-notifier.mjs";
 
 function loadDotEnv(cwd) {
   for (const dir of [cwd, dirname(fileURLToPath(import.meta.url))]) {
@@ -121,6 +122,9 @@ export async function run(argv) {
   }
 
   const webTools = createWebToolsFromConfig(config);
+  const turnNotifier = createDesktopTurnNotifier({
+    enabled: Boolean(config.notifications?.turnEnd),
+  });
 
   // Permission controller
   const permissionMode = args.permissionMode ?? MODE.BYPASS;
@@ -188,6 +192,7 @@ export async function run(argv) {
     trimBatch: config.trimBatch ?? undefined,
     permissionController,
     modelContextDumper,
+    turnNotifier,
     onModelPayload: ({ estimatedTokens }) => {
       refreshStatusBar?.({ contextTokens: estimatedTokens });
     },

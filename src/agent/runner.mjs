@@ -25,7 +25,7 @@ export { installModelPayloadDumper } from "./model-payload-dumper.mjs";
 export { createDefaultSessionManager, resolveRunnerSessionManager } from "./runner/runner-init.mjs";
 export { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
 
-export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, memoryStore = null, memoryTools = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, modelContextDumper = null, onModelPayload = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices, maxTurns, trimBatch, serviceTier = null }) {
+export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, memoryStore = null, memoryTools = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, modelContextDumper = null, turnNotifier = null, onModelPayload = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices, maxTurns, trimBatch, serviceTier = null }) {
   if (!useRuntimeHost && extensionPaths.length > 0) {
     throw new Error("--extension requires the default pi runtime host path");
   }
@@ -105,7 +105,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       nextTurnContextMode = "rebuild";
       pendingMidTurnRecallHints = [];
       try {
-        return await runRunnerTurn({
+        const result = await runRunnerTurn({
           prompt, userMessage, options: { userRecallHints, currentProject },
           sessionBinding, engine, ui, projectMarchDir, memoryStore,
           setModelCallKind: (kind) => { currentModelCallKind = kind; },
@@ -113,6 +113,19 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
           syncCurrentPiSidecar,
           contextMode,
         });
+        await notifyTurnEndBestEffort(turnNotifier, {
+          status: "success",
+          sessionName: engine.sessionName,
+          draft: result?.draft ?? "",
+        });
+        return result;
+      } catch (err) {
+        await notifyTurnEndBestEffort(turnNotifier, {
+          status: "error",
+          sessionName: engine.sessionName,
+          errorMessage: err?.message ?? String(err),
+        });
+        throw err;
       } finally {
         currentTurnContextMode = "rebuild";
       }
@@ -220,5 +233,14 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       pendingMidTurnRecallHints = [];
     }
     return nextPayload;
+  }
+}
+
+async function notifyTurnEndBestEffort(turnNotifier, event) {
+  if (!turnNotifier?.notifyTurnEnd) return;
+  try {
+    await turnNotifier.notifyTurnEnd(event);
+  } catch {
+    // Notification must never change turn behavior.
   }
 }

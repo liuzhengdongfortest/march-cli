@@ -49,6 +49,7 @@ function mergeLayers(layers) {
     maxTurns: null,
     trimBatch: null,
     memoryRoot: null,
+    notifications: { turnEnd: false },
   };
 
   for (const layer of layers) {
@@ -61,6 +62,12 @@ function mergeLayers(layers) {
     }
     if (layer.webSearch && typeof layer.webSearch === "object" && !Array.isArray(layer.webSearch)) {
       result.webSearch = mergeWebSearch(result.webSearch, layer.webSearch);
+    }
+    if (layer.notifications && typeof layer.notifications === "object" && !Array.isArray(layer.notifications)) {
+      result.notifications = {
+        ...result.notifications,
+        ...layer.notifications,
+      };
     }
     if (layer.memoryRoot) result.memoryRoot = layer.memoryRoot;
   }
