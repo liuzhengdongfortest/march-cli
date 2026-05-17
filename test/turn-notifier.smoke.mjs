@@ -24,11 +24,10 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
   assert.equal((await createDesktopTurnNotifier({ enabled: false }).notifyTurnEnd({})).reason, "disabled");
   assert.equal((await createDesktopTurnNotifier({ platform: "linux" }).notifyTurnEnd({})).reason, "unsupported-platform");
   assert.ok(buildWindowsBalloonScript({ title: "March's turn", message: "done" }).includes("March''s turn"));
-  const toastScript = buildWindowsNotificationScript({ title: "March <done>", message: "ready & waiting" });
-  assert.ok(toastScript.includes("ToastNotificationManager"));
-  assert.ok(toastScript.includes("March &lt;done&gt;"));
-  assert.ok(toastScript.includes("ready &amp; waiting"));
-  assert.ok(toastScript.includes("System.Windows.Forms.NotifyIcon"));
+  const notificationScript = buildWindowsNotificationScript({ title: "March's turn", message: "ready & waiting" });
+  assert.ok(notificationScript.includes("System.Windows.Forms.NotifyIcon"));
+  assert.ok(notificationScript.includes("March''s turn"));
+  assert.ok(notificationScript.includes("ready & waiting"));
 
   const dir = setupTmp();
   const previousKey = process.env.DEEPSEEK_API_KEY;

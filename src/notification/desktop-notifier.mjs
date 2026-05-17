@@ -64,35 +64,9 @@ export function buildWindowsBalloonScript({ title, message, timeoutMs = DEFAULT_
 }
 
 export function buildWindowsNotificationScript({ title, message, timeoutMs = DEFAULT_BALLOON_TIMEOUT_MS }) {
-  const toastXml = escapePowerShellDoubleQuotedString(buildToastXml({ title, message }));
-  const balloonScript = buildWindowsBalloonScript({ title, message, timeoutMs });
-  return [
-    "try {",
-    "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null",
-    "[Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] > $null",
-    "$xml = New-Object Windows.Data.Xml.Dom.XmlDocument",
-    `$xml.LoadXml("${toastXml}")`,
-    "$toast = [Windows.UI.Notifications.ToastNotification]::new($xml)",
-    "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('PowerShell').Show($toast)",
-    "} catch {",
-    balloonScript,
-    "}",
-  ].join("; ");
-}
-
-function buildToastXml({ title, message }) {
-  return `<toast><visual><binding template="ToastGeneric"><text>${escapeXmlText(title)}</text><text>${escapeXmlText(message)}</text></binding></visual></toast>`;
-}
-
-function escapeXmlText(text) {
-  return String(text)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
-}
-
-function escapePowerShellDoubleQuotedString(text) {
-  return String(text).replace(/[`"$]/g, "`$&");
+  // Windows toast APIs can succeed without displaying anything unless the app has a registered AUMID.
+  // NotifyIcon balloon tips are less pretty, but reliable for a terminal CLI process.
+  return buildWindowsBalloonScript({ title, message, timeoutMs });
 }
 
 function defaultTurnTitle(status) {
