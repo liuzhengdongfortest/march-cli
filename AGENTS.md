@@ -64,6 +64,6 @@
 - **Dialog Entry（对话条目）**：单次 model call 的 payload 中 `messages` 数组里的单个元素，包含 `role` 和 `content`。全称 Dialog Entry，简称 Entry。一个 model call 包含多个 dialog entry，其中 `role=tool` 的 entry 即 tool call。
 - **Tool call（工具调用）**：模型请求 March 执行一个工具的动作。tool call 不是 turn，也不是 model call；它通常发生在一次 model call 的输出之后。
 - **Context assembly（上下文组装）**：在一次 model call 前，March 从各上下文层读取当前事实并组装 prompt 的过程。
-- **Layer（上下文层）**：组成最终 prompt 的独立上下文模块。每个 layer 以 `[name]` 格式的 header 开头，后接该层对应的结构化文本。当前 layers 包括 `system_core`、`injections`、`session_identity`、`project_context`、`workspace_status`、`recent_chat` 六个。Context assembly 按固定顺序将这些 layers 组装为 prompt。
+- **Layer（上下文层）**：组成最终 prompt 的独立上下文模块。每个 layer 以 `[name]` 格式的 header 开头，后接该层对应的结构化文本。当前 layers 包括 `system_core`、`injections`、`session_identity`、`project_context`、`recent_chat` 五个。Context assembly 按固定顺序将这些 layers 组装为 prompt。
 - **Diagnostic（诊断信息）**：编译器、类型检查器、linter 或语言服务器对当前工作区产生的错误、警告和提示，等价于 VS Code Problems 面板里的结构化问题列表。
 - **Model-specific system prompt（模型专属系统提示）**：`system_core` 中针对具体 `modelId` 选择的 prompt 文件；用于适配不同模型的行为差异，不按 provider 区分。provider 只负责请求路由、鉴权和 transport，不参与 prompt 选择。

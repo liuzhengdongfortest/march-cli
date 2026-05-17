@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { buildSessionIdentity, buildWorkspaceStatus } from "./session-status.mjs";
+import { buildSessionIdentity } from "./session-status.mjs";
 import { buildSystemCore, resolveSystemCorePromptKey } from "./system-core.mjs";
 import { buildInjectionsLayer } from "./injections.mjs";
 import { buildProjectContext } from "./project-context.mjs";
@@ -20,7 +20,6 @@ export class ContextEngine {
     this.injections = [...injections];
     this.maxTurns = maxTurns ?? 15;
     this.trimBatch = trimBatch ?? 5;
-    this._cachedWorkspaceStatus = null;
     this.systemCorePromptKey = resolveSystemCorePromptKey({ modelId });
     this.systemCore = buildSystemCore({ modelId });
   }
@@ -58,10 +57,7 @@ export class ContextEngine {
     const projectCtx = buildProjectContext(this.cwd);
     if (projectCtx) layers.push({ name: "project_context", text: projectCtx });
 
-    layers.push(
-      { name: "workspace_status", text: this.#buildWorkspaceStatus() },
-      { name: "recent_chat", text: this.#buildRecentChat() },
-    );
+    layers.push({ name: "recent_chat", text: this.#buildRecentChat() });
 
     return layers;
   }
@@ -121,13 +117,6 @@ export class ContextEngine {
 
   #buildSessionIdentity() {
     return buildSessionIdentity({ cwd: this.cwd, workspaceRoot: this.cwd });
-  }
-
-  #buildWorkspaceStatus() {
-    if (!this._cachedWorkspaceStatus) {
-      this._cachedWorkspaceStatus = buildWorkspaceStatus({ cwd: this.cwd });
-    }
-    return this._cachedWorkspaceStatus;
   }
 
   #buildRecentChat() {

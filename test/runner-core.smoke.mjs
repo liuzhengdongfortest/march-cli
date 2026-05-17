@@ -149,14 +149,14 @@ export async function runRunnerCoreSmoke() {
   }, {
     system: "[system_core]\nMarch system",
     userMessages: [
-      { name: "workspace_status", content: "[workspace_status]\nclean" },
+      { name: "session_identity", content: "[session_identity]\ncwd: /tmp" },
       { name: "recent_chat", content: "[recent_chat]\n## Turn 1\n[March]\nold\n\n[current_user]\nhello" },
     ],
   });
   assert.equal(transformedResponses.instructions, "[system_core]\nMarch system");
   assert.equal(transformedResponses.input[0].role, "user");
   assert.equal(transformedResponses.input[0].content[0].type, "input_text");
-  assert.equal(transformedResponses.input[0].content[0].text, "[workspace_status]\nclean");
+  assert.equal(transformedResponses.input[0].content[0].text, "[session_identity]\ncwd: /tmp");
   assert.equal(transformedResponses.input[1].content[0].text, "[recent_chat]\n## Turn 1\n[March]\nold\n\n[current_user]\nhello");
   assert.deepEqual(transformedResponses.input[1].content[1], { type: "input_image", image_url: "file://a.png" });
   assert.equal(transformedResponses.input.filter((item) => item.role === "user").length, 2);

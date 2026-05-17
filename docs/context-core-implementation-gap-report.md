@@ -6,9 +6,9 @@
 
 当前代码没有完全实现 `docs/context-core.md` 描述的新上下文核心模型。
 
-主要差异不是字段缺失，而是部分上下文层的数据源还没补齐：`[session_identity]` 和 `[workspace_status]` 已拆出；`[workspace_status]` 还缺 git 状态和最近变更摘要。
+当前实现已删除空壳 `[workspace_status]` 层；环境身份统一由 `[session_identity]` 承载，工作区事实按需通过工具查询。
 
-建议下一步补齐 `[workspace_status]` 的 git 状态和最近变更摘要。
+建议下一步明确当前 turn 的 recall hint 是否继续作为尾部用户消息附加，还是并入 `[recent_chat]`。
 
 ## 当前实现概览
 
@@ -21,7 +21,6 @@
 [injections]
 [session_identity]
 [project_context]
-[workspace_status]
 [recent_chat]
 ```
 
@@ -31,7 +30,6 @@
 [system_core]
 [injections]
 [session_identity]
-[workspace_status]
 [recent_chat]
 ```
 
@@ -39,35 +37,11 @@
 
 | 优先级 | 差异 | 当前代码 | 文档要求 | 影响 |
 |---|---|---|---|---|
-| P1 | `workspace_status` 数据不完整 | 已有项目路径 | 项目路径、git 状态、最近变更 | AI 仍缺少当前工作区变更事实 |
 | P1 | 当前 turn 的 recall hint 不在 `[recent_chat]` | 拼在最终 prompt 的 `[user]` 后 | 跟随消息附加在 `[recent_chat]` 中 | 语义上可用，但与文档模型不一致 |
 
 ## 分项说明
 
-### 1. `workspace_status` 还需要补数据源
-
-当前实现位置：`src/context/session-status.mjs`
-
-当前 `[workspace_status]` 已包含：
-
-```text
-project
-```
-
-文档还要求：
-
-```text
-git 仓库状态
-最近变更文件摘要
-```
-
-处理建议：
-
-1. 先接短格式 git status，不放 diff。
-2. 最近变更摘要只放路径和状态，不放文件正文。
-3. 保持该层为短摘要，不放文件正文或 diff。
-
-### 2. `recent_chat` 数量和召回位置需要统一
+### 1. `recent_chat` 数量和召回位置需要统一
 
 当前实现位置：`src/context/engine.mjs`、`src/main.mjs`
 
@@ -122,12 +96,11 @@ MCP tools 进入 [tools]
 
 ## 建议推进顺序
 
-1. 补齐 `[workspace_status]` 的 git 状态和最近变更摘要。
-2. 明确当前 turn recall 的归属。
+1. 明确当前 turn recall 的归属。
 
 ## 风险判断
 
-如果直接补字段而不先拆层，会继续扩大旧模型的复杂度。这里的关键不是“多输出一点信息”，而是把不同稳定性的事实放回正确层级，避免高频变化内容污染 provider prefix cache。
+如果为了未来可能存在的 git 状态而保留空壳 layer，会继续扩大上下文模型复杂度。这里的关键不是“多输出一点信息”，而是只保留当前真实、有独立职责的层。
 
 ## 已处理
 
@@ -135,9 +108,9 @@ MCP tools 进入 [tools]
 
 已删除 `src/context/memory-layer.mjs`，并停止在 `ContextEngine.buildContext()` 中注入 `[memory]`。记忆系统只保留 memory hints 和主动 memory 工具，符合 `docs/context-core.md` 的边界。
 
-### `session_status` 已拆分
+### 旧 `workspace_status` 已移除
 
-已将旧 `[session_status]` 拆成 `[session_identity]` 和 `[workspace_status]`。`[session_identity]` 保留 cwd、workspace root、平台、shell；`[workspace_status]` 保留项目路径。
+已删除只包含项目路径的 `[workspace_status]` 空壳层。`[session_identity]` 保留 cwd、workspace root、平台、shell；工作区状态由工具按需查询。
 
 ### 常驻目录树已移除
 

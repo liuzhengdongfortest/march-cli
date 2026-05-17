@@ -154,7 +154,8 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.ok(!providerPayloads[0].messages[0].content.includes("[workspace_status]"));
   assert.ok(!providerPayloads[0].messages[0].content.includes("[recent_chat]"));
   assert.equal(providerPayloads[0].messages[1].role, "user");
-  assert.ok(providerPayloads[0].messages.some((message) => message.role === "user" && message.content.includes("[workspace_status]")));
+  assert.ok(!providerPayloads[0].messages.some((message) => message.role === "user" && message.content.includes("[workspace_status]")));
+  assert.ok(providerPayloads[0].messages.some((message) => message.role === "user" && message.content.includes("[session_identity]")));
   assert.ok(!providerPayloads[0].messages.some((message) => message.role === "user" && message.content.includes("[runtime_status]")));
   assert.ok(!providerPayloads[0].messages.some((message, index) => index > 0 && message.content.includes("[system_core]")));
   assert.ok(!providerPayloads[0].messages.some((message, index) => index > 0 && message.role === "system"));
