@@ -20,7 +20,9 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
   assert.equal(result.results[0].channel, "desktop");
   assert.equal(spawned[0].command, "powershell.exe");
   assert.ok(spawned[0].args.includes("-Command"));
+  assert.ok(!spawned[0].args.includes("-WindowStyle"));
   assert.equal(spawned[0].options.detached, true);
+  assert.equal(spawned[0].options.windowsHide, false);
   assert.deepEqual(spawned[1], { unref: true });
 
   assert.equal((await createDesktopTurnNotifier({ enabled: false }).notifyTurnEnd({})).reason, "disabled");

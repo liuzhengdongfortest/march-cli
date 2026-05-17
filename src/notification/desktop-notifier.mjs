@@ -57,12 +57,11 @@ export async function sendDesktopNotification({ platform = process.platform, spa
     const child = spawnProcess("powershell.exe", [
       "-NoProfile",
       "-ExecutionPolicy", "Bypass",
-      "-WindowStyle", "Hidden",
       "-Command", script,
     ], {
       detached: true,
       stdio: "ignore",
-      windowsHide: true,
+      windowsHide: false,
     });
     child?.unref?.();
     return { ok: true };
