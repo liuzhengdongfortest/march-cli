@@ -181,7 +181,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     },
     getSessionStats() { return getRunnerSessionStats(sessionBinding.get(), runtimeHost); },
     getLastNotificationResult() { return lastNotificationResult; },
-    async notifyTest({ title = "March notification test", message = "If you see this, March runtime notifications work." } = {}) {
+    async notifyTest({ title = "March", message = "If you see this, March runtime notifications work." } = {}) {
       lastNotificationResult = await notifyTurnEndBestEffort(turnNotifier, {
         status: "success",
         sessionName: engine.sessionName,

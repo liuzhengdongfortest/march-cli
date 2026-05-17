@@ -19,11 +19,14 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
       return child;
     }
   });
-  const result = await notifier.notifyTurnEnd({ status: "success", sessionName: "Smoke", durationMs: 25 });
+  const result = await notifier.notifyTurnEnd({ status: "success", sessionName: "Smoke", draft: "Smoke reply", durationMs: 25 });
   assert.equal(result.ok, true);
   assert.equal(result.results[0].channel, "desktop");
   assert.equal(spawned[0].command, "powershell.exe");
   assert.ok(spawned[0].args.includes("-Command"));
+  const notificationCommand = spawned[0].args[spawned[0].args.indexOf("-Command") + 1];
+  assert.ok(notificationCommand.includes("$n.BalloonTipTitle = 'March'"));
+  assert.ok(notificationCommand.includes("$n.BalloonTipText = 'Smoke reply'"));
   assert.ok(!spawned[0].args.includes("-WindowStyle"));
   assert.equal(spawned[0].options.detached, undefined);
   assert.equal(spawned[0].options.windowsHide, false);
@@ -74,7 +77,7 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
     ui: createFakeUi(events),
     turnNotifier: {
       notifyTurnEnd: async (event) => {
-        events.push(["notify", event.status, event.errorMessage ?? ""]);
+        events.push(["notify", event.status, event.errorMessage ?? event.draft ?? ""]);
         return { ok: true, results: [{ channel: "test", ok: true }] };
       },
     },
@@ -82,7 +85,7 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
   });
 
   await runner.runTurn("ok", "ok");
-  assert.deepEqual(events.slice(-2), [["turnEnd"], ["notify", "success", ""]]);
+  assert.deepEqual(events.slice(-2), [["turnEnd"], ["notify", "success", "assistant reply"]]);
   assert.equal(runner.getLastNotificationResult().ok, true);
 
   await assert.rejects(() => runner.runTurn("fail", "fail"), /boom/);
@@ -129,14 +132,19 @@ function createFakeUi(events) {
 }
 
 function createFakeSession() {
+  let listener = () => {};
   return {
     agent: { state: { messages: [] }, onPayload: async (payload) => payload },
     model: { id: "deepseek-v4-pro", provider: "deepseek" },
     thinkingLevel: "medium",
     sessionManager: { isPersisted: () => false, getSessionFile: () => null },
-    subscribe() { return () => {}; },
+    subscribe(callback) {
+      listener = callback;
+      return () => { listener = () => {}; };
+    },
     async prompt(prompt) {
       if (prompt === "fail") throw new Error("boom");
+      listener({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "assistant reply" } });
     },
     abort: () => true,
     getActiveToolNames: () => [],

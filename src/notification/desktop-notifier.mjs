@@ -170,13 +170,13 @@ function normalizeTurnEvent(event) {
   };
 }
 
-function defaultTurnTitle(status) {
-  return status === "error" ? "March turn failed" : "March is ready";
+function defaultTurnTitle() {
+  return "March";
 }
 
 function defaultTurnMessage(event) {
   if (event?.status === "error") return event?.errorMessage ?? "Something went wrong";
-  return event?.sessionName ? `${event.sessionName} is ready for review` : "Your turn is ready for review";
+  return event?.draft || "Turn finished";
 }
 
 function normalizeNotificationText(text) {
