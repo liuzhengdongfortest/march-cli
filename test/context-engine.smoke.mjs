@@ -17,7 +17,7 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   assert.ok(!ctx.includes("model_prompt="));
   assert.ok(!ctx.includes("version="));
   assert.ok(ctx.includes("[session_identity]"));
-  assert.ok(ctx.includes("[workspace_status]"));
+  assert.ok(!ctx.includes("[workspace_status]"));
   assert.ok(!ctx.includes("[diagnostics]"));
   assert.ok(!ctx.includes("[shells]"));
   assert.ok(!ctx.includes("[runtime_status]"));
@@ -35,7 +35,8 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   assert.ok(providerCtx.system.includes("[system_core]"));
   assert.ok(!providerCtx.system.includes("[recent_chat]"));
   assert.ok(!providerCtx.system.includes("[workspace_status]"));
-  assert.ok(providerCtx.userMessages.some((message) => message.name === "workspace_status" && message.content.includes("[workspace_status]")));
+  assert.ok(!providerCtx.userMessages.some((message) => message.name === "workspace_status"));
+  assert.ok(providerCtx.userMessages.some((message) => message.name === "session_identity" && message.content.includes("[session_identity]")));
   assert.equal(providerCtx.userMessages.at(-1).name, "recent_chat");
   assert.ok(providerCtx.userMessages.at(-1).content.includes("[recent_chat]"));
   assert.ok(providerCtx.userMessages.at(-1).content.includes("[current_user]\n装備を確認する"));
@@ -88,7 +89,7 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   assert.ok(!shellCtx.includes("[shells]"));
   assert.ok(!shellCtx.includes("recent_output:\nready"));
   assert.ok(!shellCtx.includes("\x1b[32m"));
-  assert.ok(shellCtx.indexOf("[workspace_status]") < shellCtx.indexOf("[recent_chat]"));
+  assert.ok(shellCtx.indexOf("[session_identity]") < shellCtx.indexOf("[recent_chat]"));
 
   engine.setRuntimeState({ modelId: "other-model", provider: "test-provider", thinkingLevel: "high" });
   const runtimeCtx = engine.buildContext("");
