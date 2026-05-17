@@ -122,6 +122,12 @@ export async function handleSlashCommand(trimmed, {
     return { handled: true };
   }
 
+  if (trimmed === "/notify") {
+    const result = await runner.notifyTest?.();
+    ui.writeln(formatNotificationResult(result));
+    return { handled: true };
+  }
+
   const shellCommand = parseShellCommand(trimmed);
   if (shellCommand.type !== "none") {
     for (const line of handleShellCommand(shellCommand, { shellRuntime: runner.shellRuntime })) ui.writeln(line);
@@ -175,4 +181,12 @@ export async function handleSlashCommand(trimmed, {
   }
 
   return { handled: false };
+}
+
+function formatNotificationResult(result) {
+  if (!result) return "notification: unavailable";
+  const channels = (result.results ?? [])
+    .map((entry) => `${entry.channel}:${entry.ok ? "ok" : entry.reason ?? "failed"}`)
+    .join(", ");
+  return `notification: ${result.ok ? "ok" : result.reason ?? "failed"}${channels ? ` (${channels})` : ""}`;
 }

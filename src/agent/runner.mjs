@@ -55,6 +55,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   let currentTurnContextMode = "rebuild";
   let nextTurnContextMode = "rebuild";
   let pendingMidTurnRecallHints = [];
+  let lastNotificationResult = null;
   let runtimeHost = null;
   let lifecycleAdapter = null;
   let _currentFastEntry = null;
@@ -120,7 +121,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
           autoNameSession,
           contextMode,
         });
-        await notifyTurnEndBestEffort(turnNotifier, {
+        lastNotificationResult = await notifyTurnEndBestEffort(turnNotifier, {
           status: "success",
           sessionName: engine.sessionName,
           draft: result?.draft ?? "",
@@ -128,7 +129,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
         });
         return result;
       } catch (err) {
-        await notifyTurnEndBestEffort(turnNotifier, {
+        lastNotificationResult = await notifyTurnEndBestEffort(turnNotifier, {
           status: "error",
           sessionName: engine.sessionName,
           errorMessage: err?.message ?? String(err),
@@ -179,6 +180,17 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       return [...new Set([...configured, ...available])];
     },
     getSessionStats() { return getRunnerSessionStats(sessionBinding.get(), runtimeHost); },
+    getLastNotificationResult() { return lastNotificationResult; },
+    async notifyTest({ title = "March notification test", message = "If you see this, March runtime notifications work." } = {}) {
+      lastNotificationResult = await notifyTurnEndBestEffort(turnNotifier, {
+        status: "success",
+        sessionName: engine.sessionName,
+        title,
+        message,
+        durationMs: 0,
+      });
+      return lastNotificationResult;
+    },
     estimateContextTokens(userMessage = "") {
       return estimateProviderPayloadTokens(providerContextToPayload(engine.buildProviderContext(userMessage)));
     },
@@ -272,10 +284,11 @@ function providerContextToPayload(providerContext) {
 }
 
 async function notifyTurnEndBestEffort(turnNotifier, event) {
-  if (!turnNotifier?.notifyTurnEnd) return;
+  if (!turnNotifier?.notifyTurnEnd) return { ok: false, reason: "not-configured", results: [] };
   try {
-    await turnNotifier.notifyTurnEnd(event);
-  } catch {
+    return await turnNotifier.notifyTurnEnd(event);
+  } catch (err) {
     // Notification must never change turn behavior.
+    return { ok: false, reason: err?.message ?? String(err), results: [] };
   }
 }

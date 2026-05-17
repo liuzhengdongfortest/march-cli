@@ -5,6 +5,7 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: turn notifier ---");
   const { createDesktopTurnNotifier, buildWindowsBalloonScript, buildWindowsNotificationScript } = await import("../src/notification/desktop-notifier.mjs");
   const { createRunner } = await import("../src/agent/runner.mjs");
+  const { handleSlashCommand } = await import("../src/cli/slash-commands.mjs");
 
   const spawned = [];
   const notifier = createDesktopTurnNotifier({
@@ -66,16 +67,21 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
     stateRoot: join(dir, ".state"),
     ui: createFakeUi(events),
     turnNotifier: {
-      notifyTurnEnd: async (event) => events.push(["notify", event.status, event.errorMessage ?? ""]),
+      notifyTurnEnd: async (event) => {
+        events.push(["notify", event.status, event.errorMessage ?? ""]);
+        return { ok: true, results: [{ channel: "test", ok: true }] };
+      },
     },
     createAgentSessionImpl: async () => ({ session: createFakeSession() }),
   });
 
   await runner.runTurn("ok", "ok");
   assert.deepEqual(events.slice(-2), [["turnEnd"], ["notify", "success", ""]]);
+  assert.equal(runner.getLastNotificationResult().ok, true);
 
   await assert.rejects(() => runner.runTurn("fail", "fail"), /boom/);
   assert.deepEqual(events.slice(-2), [["turnEnd"], ["notify", "error", "boom"]]);
+  assert.equal(runner.getLastNotificationResult().ok, true);
 
   const resilientRunner = await createRunner({
     cwd: dir,
@@ -87,6 +93,16 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
     createAgentSessionImpl: async () => ({ session: createFakeSession() }),
   });
   await resilientRunner.runTurn("still ok", "still ok");
+  assert.match(resilientRunner.getLastNotificationResult().reason, /notify failed/);
+
+  const slashLines = [];
+  await handleSlashCommand("/notify", {
+    ui: { writeln: (line) => slashLines.push(line) },
+    runner: {
+      notifyTest: async () => ({ ok: true, results: [{ channel: "desktop", ok: true }] }),
+    },
+  });
+  assert.deepEqual(slashLines, ["notification: ok (desktop:ok)"]);
 
   if (previousKey === undefined) {
     delete process.env.DEEPSEEK_API_KEY;
