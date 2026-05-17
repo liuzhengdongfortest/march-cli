@@ -1,1 +1,1 @@
-// Legacy session switch command removed. Use pi session commands (/resume-pi, /clone-pi, /fork-pi).
+// Legacy session switch command removed. Use /session to restore previous pi sessions.

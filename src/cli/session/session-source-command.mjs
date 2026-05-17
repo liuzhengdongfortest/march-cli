@@ -1,8 +1,5 @@
 import { listPiSessionInfos } from "../../session/pi-manager.mjs";
-import { clonePiSession, parseClonePiCommand } from "./pi-session-clone-command.mjs";
-import { forkPiSessionResetContext, listPiForkCandidates, listPiSessionEntryCandidates, parseForkPiCommand } from "./pi-session-fork-command.mjs";
-import { parseResumePiCommand, resumePiSessionById } from "./pi-session-switch-command.mjs";
-import { formatPiSessionList, formatPiSessionTree } from "./session-list-command.mjs";
+import { resumePiSessionById } from "./pi-session-switch-command.mjs";
 
 export async function handleSessionSourceCommand(trimmed, {
   ui,
@@ -17,83 +14,56 @@ export async function handleSessionSourceCommand(trimmed, {
     return { handled: true };
   }
 
-  if (trimmed === "/fork") {
-    ui.writeln("Pi sessions use explicit branch commands: /clone-pi for current branch, or /fork-pi for entry candidates.");
-    return { handled: true };
-  }
-
-  if (trimmed === "/sessions" || trimmed === "/sessions tree") {
+  if (trimmed === "/session") {
     const sessions = await listPiSessionInfos({
       cwd: runner.engine.cwd,
       projectMarchDir,
     });
-    const currentPiSessionId = runner.getSessionStats?.().sessionId ?? null;
-    const lines = trimmed === "/sessions tree"
-      ? formatPiSessionTree(sessions, currentPiSessionId)
-      : formatPiSessionList(sessions);
-    for (const line of lines) ui.writeln(line);
-    return { handled: true };
-  }
-
-  if (trimmed === "/sessions pi" || trimmed === "/sessions pi tree") {
-    const sessions = await listPiSessionInfos({
-      cwd: runner.engine.cwd,
-      projectMarchDir,
+    if (sessions.length === 0) {
+      ui.writeln("No previous sessions.");
+      return { handled: true };
+    }
+    if (!ui.selectList) {
+      ui.writeln("Session selector is only available in TUI.");
+      return { handled: true };
+    }
+    const currentSessionId = runner.getSessionStats?.().sessionId ?? null;
+    const item = await ui.selectList({
+      items: buildSessionSelectItems(sessions, currentSessionId),
+      selectedIndex: Math.max(0, sessions.findIndex((session) => session.id === currentSessionId)),
+      width: 72,
+      suppressInitialConfirm: true,
+      searchable: true,
+      getSearchText: sessionSelectSearchText,
     });
-    const currentPiSessionId = runner.getSessionStats?.().sessionId ?? null;
-    const lines = trimmed === "/sessions pi tree"
-      ? formatPiSessionTree(sessions, currentPiSessionId)
-      : formatPiSessionList(sessions);
-    for (const line of lines) ui.writeln(line);
-    return { handled: true };
-  }
-
-  const resumePiCommand = parseResumePiCommand(trimmed);
-  if (resumePiCommand.type !== "none") {
-    if (resumePiCommand.type === "error") {
-      ui.writeln(`Error: ${resumePiCommand.message}`);
-    } else {
-      const sessions = await listPiSessionInfos({
-        cwd: runner.engine.cwd,
-        projectMarchDir,
-      });
-      for (const line of await resumePiSessionById(resumePiCommand.id, {
-        runner,
-        sessions,
-        projectMarchDir,
-      })) {
-        ui.writeln(line);
-      }
+    if (!item) {
+      ui.writeln("Session unchanged.");
+      return { handled: true };
     }
-    return { handled: true };
-  }
-
-  const clonePiCommand = parseClonePiCommand(trimmed);
-  if (clonePiCommand.type !== "none") {
-    if (clonePiCommand.type === "error") {
-      ui.writeln(`Error: ${clonePiCommand.message}`);
-    } else {
-      for (const line of await clonePiSession({ runner })) ui.writeln(line);
+    for (const line of await resumePiSessionById(item.session.id, { runner, sessions, projectMarchDir })) {
+      ui.writeln(line);
     }
-    return { handled: true };
-  }
-
-  const forkPiCommand = parseForkPiCommand(trimmed);
-  if (forkPiCommand.type !== "none") {
-    if (forkPiCommand.type === "error") {
-      ui.writeln(`Error: ${forkPiCommand.message}`);
-    } else if (forkPiCommand.type === "fork-pi-reset") {
-      for (const line of await forkPiSessionResetContext(forkPiCommand.entryId, { runner })) ui.writeln(line);
-    } else {
-      for (const line of listPiForkCandidates({ runner })) ui.writeln(line);
-    }
-    return { handled: true };
-  }
-
-  if (trimmed === "/session entries") {
-    for (const line of listPiSessionEntryCandidates({ runner })) ui.writeln(line);
     return { handled: true };
   }
 
   return { handled: false };
+}
+
+export function buildSessionSelectItems(sessions, currentSessionId = null) {
+  return sessions.map((session) => {
+    const label = session.name || session.firstMessage || "(no messages)";
+    const savedAt = session.savedAt?.slice(0, 19) ?? "?";
+    const messageCount = Number.isFinite(session.turnCount) ? `${session.turnCount}m` : "?m";
+    return {
+      value: session.id,
+      label,
+      description: `${session.id} | ${messageCount} | ${savedAt}${session.id === currentSessionId ? " | current" : ""}`,
+      session,
+    };
+  });
+}
+
+function sessionSelectSearchText(item) {
+  const session = item?.session;
+  return `${item?.label ?? ""} ${item?.description ?? ""} ${session?.id ?? ""} ${session?.name ?? ""} ${session?.firstMessage ?? ""}`;
 }

@@ -226,12 +226,13 @@ await runRunnerCoreSmoke();
   assert.ok(commands.some((command) => command.name === "templates"));
   assert.ok(commands.some((command) => command.name === "fix"));
   assert.ok(commands.some((command) => command.name === "models"));
-  assert.ok(commands.some((command) => command.name === "resume"));
+  assert.ok(commands.some((command) => command.name === "session"));
   assert.ok(commands.some((command) => command.name === "thinking list"));
   assert.ok(commands.some((command) => command.name === "shell"));
   assert.ok(commands.some((command) => command.name === "shell spawn"));
-  assert.equal(commands.find((command) => command.name === "sessions").description, "List default pi JSONL sessions");
-  assert.equal(commands.find((command) => command.name === "resume").description, "Resume a pi session by id");
+  assert.equal(commands.find((command) => command.name === "session").description, "Open previous session selector");
+  assert.ok(!commands.some((command) => command.name === "sessions"));
+  assert.ok(!commands.some((command) => command.name === "resume"));
   assert.equal(commands.find((command) => command.name === "save").description, "Show auto-save status");
 
   const provider = new MarchAutocompleteProvider(commands, dir);

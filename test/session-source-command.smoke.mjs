@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 export async function runSessionSourceCommandSmoke({ setupTmp, cleanup }) {
@@ -30,8 +30,17 @@ export async function runSessionSourceCommandSmoke({ setupTmp, cleanup }) {
   });
 
   const output = [];
-  const ui = { writeln: (text) => output.push(text) };
+  const ui = {
+    writeln: (text) => output.push(text),
+    selectList: async ({ items, selectedIndex, searchable, getSearchText }) => {
+      assert.equal(selectedIndex, 0);
+      assert.equal(searchable, true);
+      assert.ok(getSearchText(items[0]).includes("slash pi"));
+      return items[0];
+    },
+  };
   let restored = null;
+  let switchedPath = null;
   const runner = {
     engine: {
       cwd: dir,
@@ -44,60 +53,30 @@ export async function runSessionSourceCommandSmoke({ setupTmp, cleanup }) {
       },
     },
     canSwitchPiSession: () => true,
-    switchPiSession: async () => ({ cancelled: false }),
-    clonePiSession: async () => ({ cancelled: false, sessionId: "pi-clone", sourceSessionId: "s1" }),
-    getPiForkCandidates: () => [{ entryId: "u1", text: "fork me" }],
-    forkPiSessionWithResetContext: async () => ({ cancelled: false, sessionId: "pi-fork", sourceSessionId: "s1", entryId: "u1" }),
-    getSessionStats: () => ({ sessionId: "s1" }),
+    switchPiSession: async (path) => {
+      switchedPath = path;
+      return { cancelled: false };
+    },
+    getSessionStats: () => ({ sessionId: "pi-slash" }),
   };
   const sessionsRoot = join(dir, "sessions");
   const sessionState = { sessionId: "s1", sessionDir: join(sessionsRoot, "s1") };
 
-  const piSessions = await handleSessionSourceCommand("/sessions pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
-  assert.equal(piSessions.handled, true);
-  assert.ok(output.join("\n").includes("pi-slash"));
-  const piSessionTree = await handleSessionSourceCommand("/sessions pi tree", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
-  assert.equal(piSessionTree.handled, true);
-  assert.ok(output.join("\n").includes("file-level tree uses pi JSONL parentSessionPath"));
-  const defaultPiSessions = await handleSessionSourceCommand("/sessions", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
-  assert.equal(defaultPiSessions.handled, true);
-  assert.ok(output.join("\n").includes("pi JSONL session files"));
-  const defaultPiSessionTree = await handleSessionSourceCommand("/sessions tree", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
-  assert.equal(defaultPiSessionTree.handled, true);
-  assert.ok(output.join("\n").includes("file-level tree uses pi JSONL parentSessionPath"));
-  assert.equal((await handleSessionSourceCommand("/sessions legacy", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
-  assert.equal((await handleSessionSourceCommand("/sessions legacy tree", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
-
-  const resumePi = await handleSessionSourceCommand("/resume-pi pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
-  assert.equal(resumePi.handled, true);
+  const session = await handleSessionSourceCommand("/session", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
+  assert.equal(session.handled, true);
   assert.ok(output.join("\n").includes("Resumed pi session: pi-slash"));
   assert.equal(restored.turns[0].assistantMessage, "ok");
-  const defaultResumePi = await handleSessionSourceCommand("/resume pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
-  assert.equal(defaultResumePi.handled, true);
-  assert.ok(output.join("\n").includes("Resumed pi session: pi-slash"));
-  const resumeLegacy = await handleSessionSourceCommand("/resume-legacy missing", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
-  assert.equal(resumeLegacy.handled, false);
-
-  const clonePi = await handleSessionSourceCommand("/clone-pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
-  assert.equal(clonePi.handled, true);
-  assert.ok(output.join("\n").includes("Cloned pi session: pi-clone (from: s1)"));
-  const forkPi = await handleSessionSourceCommand("/fork-pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
-  assert.equal(forkPi.handled, true);
-  assert.ok(output.join("\n").includes("1. u1  fork me"));
-  assert.ok(output.join("\n").includes("These are in-file user entries, not /sessions tree files."));
-  const sessionEntries = await handleSessionSourceCommand("/session entries", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
-  assert.equal(sessionEntries.handled, true);
-  assert.ok(output.join("\n").includes("Pi session entry fork candidates (current JSONL file):"));
-  const forkPiReset = await handleSessionSourceCommand("/fork-pi u1 --reset-context", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
-  assert.equal(forkPiReset.handled, true);
-  assert.ok(output.join("\n").includes("Forked pi session: pi-fork (from: s1, entry: u1)"));
-  const defaultPiFork = await handleSessionSourceCommand("/fork", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
-  assert.equal(defaultPiFork.handled, true);
-  assert.ok(output.join("\n").includes("Pi sessions use explicit branch commands"));
+  assert.ok(switchedPath.endsWith("2026-05-10T00-00-00-000Z_pi.jsonl"));
+  assert.equal((await handleSessionSourceCommand("/sessions", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
+  assert.equal((await handleSessionSourceCommand("/sessions tree", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
+  assert.equal((await handleSessionSourceCommand("/resume pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
+  assert.equal((await handleSessionSourceCommand("/resume-pi pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
+  assert.equal((await handleSessionSourceCommand("/clone-pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
+  assert.equal((await handleSessionSourceCommand("/fork-pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
+  assert.equal((await handleSessionSourceCommand("/session entries", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
   const defaultPiSave = await handleSessionSourceCommand("/save", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(defaultPiSave.handled, true);
-  assert.ok(output.join("\n").includes("Pi session auto-saved: s1"));
-  assert.equal((await handleSessionSourceCommand("/fork-legacy", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
+  assert.ok(output.join("\n").includes("Pi session auto-saved: pi-slash"));
   assert.equal((await handleSessionSourceCommand("/unknown", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
 
   cleanup(dir);

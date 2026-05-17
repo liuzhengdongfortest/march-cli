@@ -57,6 +57,7 @@ export function formatHotkeysPanel(keybindings = DEFAULT_KEYBINDINGS, diagnostic
     ...formatKeybindingDiagnostics(diagnostics),
     "Input prefixes:",
     "  /          Slash command autocomplete",
+    "  /session   Restore a previous session",
     "  /thinking  Choose or list/set thinking level",
     "  @          File path autocomplete",
     "  ! cmd      Run local shell command without sending to the model",

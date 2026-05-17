@@ -10,8 +10,6 @@ import { syncPiSessionSidecar } from "../session/sidecar-sync.mjs";
 import { LspService } from "../lsp/service.mjs";
 import { formatRecallHints } from "../memory/markdown-store.mjs";
 import { appendProviderUserMessage, installModelPayloadDumper, replaceProviderContextMessages } from "./model-payload-dumper.mjs";
-import { cloneCurrentPiSession } from "./pi-session/pi-session-clone.mjs";
-import { forkPiSessionWithResetContext } from "./pi-session/pi-session-fork-reset.mjs";
 import { resolveInitialModel, resolveRunnerSessionManager } from "./runner/runner-init.mjs";
 import { runRunnerCleanup } from "./runner/runner-cleanup.mjs";
 import { createRunnerRuntimeHost } from "./runtime/runner-runtime-host.mjs";
@@ -168,22 +166,6 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     async switchPiSession(sessionPath) {
       if (!runtimeHost) throw new Error("pi runtime host is not enabled");
       return runtimeHost.switchSession(sessionPath);
-    },
-    async clonePiSession() {
-      return cloneCurrentPiSession({
-        runtimeHost, sessionBinding, engine, projectMarchDir,
-        getSessionStats: getRunnerSessionStats,
-      });
-    },
-    getPiForkCandidates() {
-      if (!runtimeHost) throw new Error("pi runtime host is not enabled");
-      return sessionBinding.get().getUserMessagesForForking();
-    },
-    async forkPiSessionWithResetContext(entryId) {
-      return forkPiSessionWithResetContext({
-        runtimeHost, sessionBinding, engine, projectMarchDir, entryId,
-        getSessionStats: getRunnerSessionStats,
-      });
     },
     cycleThinkingLevel() {
       const level = sessionBinding.get().cycleThinkingLevel();

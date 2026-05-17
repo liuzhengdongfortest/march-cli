@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { savePiSessionSidecar } from "../src/session/sidecar.mjs";
 
 export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: slash command handling ---");
@@ -10,6 +11,25 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   const ui = { writeln: (text) => output.push(text), clearOutput: () => { clearOutputCount++; output.length = 0; }, toggleMouse: () => false };
   const dir = setupTmp();
   const projectMarchDir = join(dir, ".march");
+  const piSessionDir = join(projectMarchDir, "pi-sessions");
+  mkdirSync(piSessionDir, { recursive: true });
+  writeFileSync(join(piSessionDir, "2026-05-10T00-00-00-000Z_pi.jsonl"), [
+    JSON.stringify({ type: "session", version: 3, id: "pi-slash", timestamp: "2026-05-10T00:00:00.000Z", cwd: dir }),
+    JSON.stringify({ type: "message", id: "u1", parentId: null, timestamp: "2026-05-10T00:00:01.000Z", message: { role: "user", content: "slash pi", timestamp: 1778342401000 } }),
+    JSON.stringify({ type: "message", id: "a1", parentId: "u1", timestamp: "2026-05-10T00:00:02.000Z", message: { role: "assistant", content: [{ type: "text", text: "ok" }], provider: "test", model: "test", usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: "stop", timestamp: 1778342402000 } }),
+    "",
+  ].join("\n"));
+  savePiSessionSidecar({
+    projectMarchDir,
+    sessionRef: "2026-05-10T00-00-00-000Z_pi.jsonl",
+    engine: {
+      cwd: dir,
+      modelId: "test-model",
+      provider: "deepseek",
+      turns: [{ index: 1, userMessage: "slash pi", assistantMessage: "ok" }],
+    },
+  });
+  let restored = null;
   const runner = {
     engine: {
       cwd: dir,
@@ -19,6 +39,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
       turns: [{ assistantMessage: "previous answer" }],
       sessionName: "",
       setSessionName(name) { this.sessionName = name; },
+      restoreSession(state) { restored = state; },
     },
     getAvailableThinkingLevels: () => ["off", "medium", "high"],
     getThinkingLevel: () => "high",
@@ -29,6 +50,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
     setModel: async (model) => model,
     canSwitchPiSession: () => true,
     startNewSession: async () => ({ sessionId: "new-session" }),
+    switchPiSession: async () => ({ cancelled: false }),
     getExtensionDiagnostics: () => [{ type: "warning", message: "extension skipped" }],
     getExtensionLifecycleState: () => ({
       status: "read-only",
@@ -103,8 +125,10 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(output.join("\n").includes("/shell spawn [name]"));
   assert.ok(output.join("\n").includes("/copy"));
   assert.ok(output.join("\n").includes("/name"));
-  assert.ok(output.join("\n").includes("Branches:"));
-  assert.ok(output.join("\n").includes("/session entries and /fork-pi list in-file entry candidates"));
+  assert.ok(output.join("\n").includes("Sessions:"));
+  assert.ok(!output.join("\n").includes("/sessions"));
+  assert.ok(!output.join("\n").includes("/resume"));
+  assert.ok(!output.join("\n").includes("/fork-pi"));
   const hotkeys = await handleSlashCommand("/hotkeys", {
     ui,
     runner,
@@ -182,7 +206,8 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(output.join("\n").includes("Use /model without arguments"));
   const session = await handleSlashCommand("/session", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(session.handled, true);
-  assert.ok(output.join("\n").includes("messages: 1u + 1a + 0t = 2 total"));
+  assert.ok(output.join("\n").includes("Resumed pi session: pi-slash"));
+  assert.equal(restored.turns[0].assistantMessage, "ok");
   const shellList = await handleSlashCommand("/shell", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(shellList.handled, true);
   assert.ok(output.join("\n").includes("Shells:"));
@@ -215,6 +240,10 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(output.join("\n").includes("Copied last assistant response"));
   assert.equal(existsSync(join(sessionState.sessionDir, "session.json")), false);
   assert.equal((await handleSlashCommand("/compact", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
+  assert.equal((await handleSlashCommand("/sessions", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
+  assert.equal((await handleSlashCommand("/resume pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
+  assert.equal((await handleSlashCommand("/fork-pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
+  assert.equal((await handleSlashCommand("/clone-pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
   const unknown = await handleSlashCommand("/unknown", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(unknown.handled, false);
   cleanup(dir);

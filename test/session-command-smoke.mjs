@@ -29,13 +29,12 @@ export async function runSessionCommandSmoke() {
     "session: s1",
     "persistence: in-memory",
     "runtime: direct-agent-session",
-    "/resume-pi: requires pi runtime host",
     "messages: 2u + 3a + 4t = 9 total",
     "tokens: 10 in / 20 out (3 cache read, 4 cache write)",
     "cost: $0.1235",
   ]);
   assert.ok(formatSessionStats({ ...stats, runtimeHost: true, piSessionSwitching: true }).includes("runtime: pi-runtime-host"));
-  assert.ok(formatSessionStats({ ...stats, runtimeHost: true, piSessionSwitching: true }).includes("/resume-pi: available"));
+  assert.ok(!formatSessionStats({ ...stats, runtimeHost: true, piSessionSwitching: true }).join("\n").includes("/resume-pi"));
   assert.ok(formatSessionStats({ ...stats, persisted: true, sessionFile: "session.jsonl" }).includes("persistence: pi-jsonl (session.jsonl)"));
   const runner = {
     getSessionStats: () => stats,
@@ -81,7 +80,7 @@ export async function runSessionListCommandSmoke() {
     savedAt: "2026-05-10T00:00:00.000Z",
     turnCount: 2,
     firstMessage: "hello pi",
-  }]).some((line) => line.includes("/sessions tree") && line.includes("not in-file entry branches") && line.includes("/resume <id>")));
+  }]).some((line) => line.includes("/session") && line.includes("restore a previous session")));
   const piTree = formatPiSessionTree([
     {
       id: "parent",
@@ -112,7 +111,7 @@ export async function runSessionListCommandSmoke() {
   assert.ok(piTree.some((line) => line.startsWith("- parent")));
   assert.ok(piTree.some((line) => line.startsWith("  * child")));
   assert.ok(piTree.at(-1).includes("file-level tree"));
-  assert.ok(piTree.at(-1).includes("/session entries or /fork-pi"));
+  assert.ok(!piTree.at(-1).includes("/fork-pi"));
   console.log("  PASS");
 }
 
@@ -126,15 +125,9 @@ export async function runPiSessionSwitchCommandSmoke() {
   const { mkdirSync, mkdtempSync, rmSync, writeFileSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
   const { join } = await import("node:path");
-  const { parseResumePiCommand, resumePiSessionById } = await import("../src/cli/session/pi-session-switch-command.mjs");
+  const { resumePiSessionById } = await import("../src/cli/session/pi-session-switch-command.mjs");
   const { ContextEngine } = await import("../src/context/engine.mjs");
   const { savePiSessionSidecar } = await import("../src/session/sidecar.mjs");
-
-  assert.deepEqual(parseResumePiCommand("hello"), { type: "none" });
-  assert.deepEqual(parseResumePiCommand("/resume-piabc"), { type: "none" });
-  assert.deepEqual(parseResumePiCommand("/resume-pi abc"), { type: "resume-pi", id: "abc" });
-  assert.equal(parseResumePiCommand("/resume-pi").type, "error");
-  assert.equal(parseResumePiCommand("/resume-pi ../bad").type, "error");
 
   const sessions = [
     { id: "abc123", path: "abc.jsonl" },
