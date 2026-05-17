@@ -14,7 +14,9 @@ export function wireTuiHandlers({
   pasteClipboardImageImpl = pasteClipboardImage,
   configHomeDir,
 } = {}) {
+  let lastIdleCtrlCAt = 0;
   ui.setEscapeHandler(() => {
+    lastIdleCtrlCAt = 0;
     if (isTurnRunning()) {
       runner.abort();
       refreshStatusBar.markAborted?.();
@@ -22,8 +24,15 @@ export function wireTuiHandlers({
   });
   ui.setCtrlCHandler?.(() => {
     if (isTurnRunning()) {
+      lastIdleCtrlCAt = 0;
       runner.abort();
       refreshStatusBar.markAborted?.();
+      return;
+    }
+    const now = Date.now();
+    if (now - lastIdleCtrlCAt > 2000) {
+      lastIdleCtrlCAt = now;
+      ui.status?.("press Ctrl+C again to exit");
       return;
     }
     ui.requestExit?.();

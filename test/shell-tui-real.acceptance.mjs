@@ -64,6 +64,8 @@ try {
   await waitForText(marker, 10000);
 
   writeInput("Ctrl+C", ctrlC);
+  await waitForText("press Ctrl+C again to exit", 10000);
+  writeInput("Ctrl+C", ctrlC);
   await waitForExit(10000);
   assert.equal(exited, true);
   console.log("PASS real TUI shell drawer acceptance");

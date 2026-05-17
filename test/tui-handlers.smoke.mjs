@@ -10,6 +10,8 @@ export async function runTuiHandlersSmoke() {
   const calls = [];
   const configHomeDir = mkdtempSync(join(tmpdir(), "march-tui-handlers-"));
   const handlers = {};
+  let turnRunning = true;
+  let exitCalls = 0;
   const ui = {
     selectList: async () => null,
     setEscapeHandler: (fn) => { handlers.escape = fn; },
@@ -19,6 +21,7 @@ export async function runTuiHandlersSmoke() {
     setCtrlLHandler: (fn) => { handlers.ctrlL = fn; },
     setPasteImageHandler: (fn) => { handlers.pasteImage = fn; },
     setToggleModeHandler: (fn) => { handlers.toggleMode = fn; },
+    requestExit: () => { exitCalls += 1; },
     writeln: (line) => calls.push(["writeln", line]),
     status: (line) => calls.push(["status", line]),
   };
@@ -54,7 +57,7 @@ export async function runTuiHandlersSmoke() {
       sessionState: { sessionId: "state-session" },
       projectMarchDir: "D:/repo/.march",
       refreshStatusBar,
-      isTurnRunning: () => true,
+      isTurnRunning: () => turnRunning,
       modeState,
       configHomeDir,
       pasteClipboardImageImpl: (args) => {
@@ -71,6 +74,13 @@ export async function runTuiHandlersSmoke() {
   handlers.ctrlC();
   assert.deepEqual(calls.filter(([type]) => type === "abort").length, 2);
   assert.equal(abortStatusCount, 2);
+
+  turnRunning = false;
+  handlers.ctrlC();
+  assert.equal(exitCalls, 0);
+  assert.ok(calls.some(([type, line]) => type === "status" && line.includes("press Ctrl+C again")));
+  handlers.ctrlC();
+  assert.equal(exitCalls, 1);
 
   ui.selectList = async ({ items }) => items[2];
   await handlers.shiftTab();

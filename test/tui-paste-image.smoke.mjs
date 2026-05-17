@@ -40,12 +40,14 @@ export async function runTuiCtrlCSmoke({ setupTmp, cleanup }) {
 
   ui.setCtrlCHandler(() => {
     ctrlCCalls += 1;
-    ui.requestExit();
+    if (ctrlCCalls >= 2) ui.requestExit();
   });
   const pending = ui.readline("> ");
   terminal.input(TERMINAL_KEY_SEQUENCES["Ctrl+C"]);
 
   assert.equal(ctrlCCalls, 1);
+  terminal.input(TERMINAL_KEY_SEQUENCES["Ctrl+C"]);
+  assert.equal(ctrlCCalls, 2);
   assert.equal(await pending, null);
   await ui.close();
   assert.deepEqual(terminal.events, ["drain", "stop"]);

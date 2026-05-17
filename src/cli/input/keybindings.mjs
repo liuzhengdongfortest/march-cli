@@ -21,7 +21,7 @@ export const DEFAULT_KEYBINDINGS = Object.freeze({
 
 export const KEYBINDING_ACTIONS = Object.freeze({
   abort: "Abort current turn; cancel retry wait",
-  interrupt: "Abort current turn or exit when idle",
+  interrupt: "Abort current turn; press twice to exit when idle",
   toggleMode: "Toggle Do/Discuss mode",
   cycleThinking: "Open thinking selector",
   thinkingSelector: "Open thinking selector",

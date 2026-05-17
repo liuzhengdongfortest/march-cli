@@ -34,6 +34,14 @@ export async function runTuiSelectionSmoke() {
   assert.ok(highlighted.includes("\x1b[31m"));
   assert.ok(highlighted.includes("\x1b[7m"));
 
+  const markdownSelection = new ScreenSelection();
+  const markdownStyled = "\x1b[38;2;245;167;66mbold\x1b[0m plain";
+  markdownSelection.setLines([markdownStyled]);
+  markdownSelection.start({ row: 1, col: 1 });
+  markdownSelection.update({ row: 1, col: 11 });
+  const markdownHighlighted = markdownSelection.apply([markdownStyled])[0];
+  assert.ok(markdownHighlighted.includes("\x1b[0m\x1b[7m plain"));
+
   let copied = "";
   const terminal = new FakeTerminal();
   terminal.columns = 40;

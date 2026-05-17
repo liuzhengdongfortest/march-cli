@@ -124,7 +124,14 @@ function comparePoints(a, b) {
 
 function highlightAnsiLine(line, startCol, endCol) {
   const { before, selected, after, activeAtStart, activeAtEnd } = splitAnsiColumns(line, startCol, endCol);
-  return `${before}${INVERSE}${activeAtStart}${selected}${RESET}${activeAtEnd}${after}`;
+  return `${before}${INVERSE}${activeAtStart}${keepInverseAfterReset(selected)}${RESET}${activeAtEnd}${after}`;
+}
+
+function keepInverseAfterReset(text) {
+  return String(text ?? "").replace(/\x1b\[([0-9;]*)m/g, (seq, body) => {
+    const params = body === "" ? ["0"] : body.split(";");
+    return params.includes("0") ? `${seq}${INVERSE}` : seq;
+  });
 }
 
 function sliceColumns(text, startCol, endCol) {
