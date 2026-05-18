@@ -1,4 +1,4 @@
-const message = 'lsp check after spawn fix'
+const message = 'lsp check after tsconfig resolver'
 
 console.log(message.toUpperCase())
 
