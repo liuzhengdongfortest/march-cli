@@ -70,11 +70,12 @@ export class ContextEngine {
     return layers;
   }
 
-  recordTurn({ userMessage, assistantMessage, userRecallHints = [], assistantRecallHints = [] }) {
+  recordTurn({ userMessage, assistantMessage, assistantContext = "", userRecallHints = [], assistantRecallHints = [] }) {
     this.turns.push({
       index: this.turns.length + 1,
       userMessage,
       assistantMessage: assistantMessage ?? "",
+      assistantContext: assistantContext ?? "",
       userRecallHints,
       assistantRecallHints,
     });
@@ -167,9 +168,10 @@ export class ContextEngine {
         `[user]\n${String(turn.userMessage ?? "")}\n`;
       const userRecall = formatRecallHints("user", turn.userRecallHints ?? []);
       if (userRecall) block += `\n${userRecall}\n`;
-      block += `\n[March]\n`;
-      if (turn.assistantMessage) {
-        block += `\n${String(turn.assistantMessage ?? "")}\n`;
+      block += `\n[assistant]\n`;
+      const assistantText = turn.assistantContext || turn.assistantMessage;
+      if (assistantText) {
+        block += `\n${String(assistantText ?? "")}\n`;
       }
       const assistantRecall = formatRecallHints("assistant", turn.assistantRecallHints ?? []);
       if (assistantRecall) block += `\n${assistantRecall}\n`;

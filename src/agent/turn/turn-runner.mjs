@@ -1,5 +1,5 @@
 import { resolveImageAttachmentReferences } from "../../session/attachment-references.mjs";
-import { closeAssistantReply, createTurnEventState, handleRunnerSessionEvent } from "./turn-events.mjs";
+import { closeAssistantReply, compactAssistantContext, createTurnEventState, handleRunnerSessionEvent } from "./turn-events.mjs";
 
 export async function runRunnerTurn({
   prompt,
@@ -122,6 +122,7 @@ function finalizeTurn({ prompt, userMessage, userRecallHints, currentProject, me
   engine.recordTurn({
     userMessage: userMessage ?? prompt.slice(0, 300),
     assistantMessage: turnState.draft,
+    assistantContext: compactAssistantContext(turnState),
     userRecallHints,
     assistantRecallHints: recordedAssistantRecallHints,
   });

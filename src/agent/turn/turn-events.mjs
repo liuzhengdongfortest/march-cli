@@ -1,3 +1,5 @@
+import { formatToolStartLine, formatToolSuccessSummary } from "../tool-summary.mjs";
+
 export function createTurnEventState() {
   return {
     draft: "",
@@ -5,6 +7,8 @@ export function createTurnEventState() {
     thinkingAccumulator: "",
     recallCursor: { draftLength: 0, thinkingLength: 0 },
     assistantReplyOpen: false,
+    assistantContextParts: [],
+    activeToolContextPart: null,
   };
 }
 
@@ -14,9 +18,11 @@ export function handleRunnerSessionEvent(event, { ui, engine, state }) {
   }
   if (event.type === "tool_execution_start") {
     closeAssistantReply({ ui, state });
+    appendToolStartContext(state, event.toolName, event.args);
     ui.toolStart(event.toolName, event.args);
   }
   if (event.type === "tool_execution_end") {
+    updateToolEndContext(state, event.toolName, event.isError, event.result);
     ui.toolEnd(event.toolName, event.isError, event.result);
   }
   if (event.type === "auto_retry_start") {
@@ -45,6 +51,7 @@ export function closeAssistantReply({ ui, state }) {
 function handleAssistantMessageEvent(event, { ui, state }) {
   if (event.type === "text_delta") {
     state.draft += event.delta;
+    appendAssistantContextText(state, event.delta, "output");
     state.assistantReplyOpen = true;
     ui.textDelta(event.delta);
   }
@@ -54,6 +61,7 @@ function handleAssistantMessageEvent(event, { ui, state }) {
   }
   if (event.type === "thinking_delta") {
     state.thinkingText += event.delta;
+    appendAssistantContextText(state, event.delta, "thinking");
     ui.thinkingDelta(event.delta);
   }
   if (event.type === "thinking_end" && state.thinkingText) {
@@ -62,4 +70,42 @@ function handleAssistantMessageEvent(event, { ui, state }) {
     state.thinkingAccumulator += state.thinkingText;
     state.thinkingText = "";
   }
+}
+
+export function compactAssistantContext(state) {
+  return (state?.assistantContextParts ?? [])
+    .map((part) => part?.text ?? "")
+    .join("")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function appendAssistantContextText(state, text, type) {
+  if (!text) return;
+  const parts = state.assistantContextParts;
+  const last = parts.at(-1);
+  if (last?.type === type) {
+    last.text += text;
+    return;
+  }
+  if (last && !last.text.endsWith("\n")) last.text += "\n";
+  parts.push({ type, text });
+}
+
+function appendToolStartContext(state, name, args) {
+  const parts = state.assistantContextParts;
+  const last = parts.at(-1);
+  if (last && !last.text.endsWith("\n")) last.text += "\n";
+  const part = { type: "tool", name, text: `${formatToolStartLine(name, args)}\n` };
+  parts.push(part);
+  state.activeToolContextPart = part;
+}
+
+function updateToolEndContext(state, name, isError, result) {
+  const part = state.activeToolContextPart;
+  if (!part || part.name !== name) return;
+  const summary = isError ? "failed" : formatToolSuccessSummary(name, result, "");
+  if (summary && summary !== "done") part.text = `${part.text.trimEnd()} (${summary})\n`;
+  state.activeToolContextPart = null;
 }

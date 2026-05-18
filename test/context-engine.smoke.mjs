@@ -124,6 +124,7 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   engine.recordTurn({
     userMessage: "hello",
     assistantMessage: "tested the engine",
+    assistantContext: "looked around\n→ read · src\\context\\engine.mjs\nfinal context answer",
     userRecallHints: [{ id: "mem_user", name: "User hint", description: "User recall hint" }],
     assistantRecallHints: [{ id: "mem_assistant", name: "Assistant hint", description: "Assistant recall hint" }],
   });
@@ -132,7 +133,9 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   assert.deepEqual([...engine.getRecentRecallMemoryIds()].sort(), ["mem_assistant", "mem_user"]);
 
   const ctx2 = engine.buildContext("装備を確認する");
-  assert.ok(ctx2.includes("tested the engine"));
+  assert.ok(ctx2.includes("[assistant]"));
+  assert.ok(ctx2.includes("looked around\n→ read · src\\context\\engine.mjs\nfinal context answer"));
+  assert.ok(!ctx2.includes("tested the engine"));
   assert.ok(!ctx2.includes("WorkSummary"));
   assert.ok(ctx2.includes('[memory_hint source="user"]'));
   assert.ok(ctx2.includes("mem_user | User hint | User recall hint"));

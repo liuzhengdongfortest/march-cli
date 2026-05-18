@@ -129,6 +129,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
       if (recallCalls === 1) {
         assert.ok(text.includes("12345678"));
         assert.ok(!text.includes("draft text"));
+        assert.ok(!text.includes("→ read"));
         return [{ id: "mem_thinking", name: "Thinking memory", description: "Matched from thinking text." }];
       }
       if (recallCalls === 2) {
@@ -189,6 +190,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.equal(runner.engine.turns[0].assistantRecallHints[1].id, "mem_draft");
   assert.ok(calls.some((call) => call[0] === "memoryHint" && call[1] === "assistant" && call[2].includes("mem_thinking") && !call[2].includes("mem_draft")));
   assert.equal(runner.engine.turns[0].assistantMessage, "draft text");
+  assert.equal(runner.engine.turns[0].assistantContext, "12345678\n→ read · a.txt\ndraft text");
   assert.equal(runner.engine.sessionName, "hello");
   assert.deepEqual(sessionNameCalls, ["hello"]);
 
@@ -216,6 +218,8 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.ok(!providerPayloads[3].messages[0].content.includes("[recent_chat]"));
   assert.ok(providerPayloads[3].messages.at(-1).content.includes("[recent_chat]"));
   assert.ok(providerPayloads[3].messages.at(-1).content.includes("draft text"));
+  assert.ok(providerPayloads[3].messages.at(-1).content.includes("→ read · a.txt"));
+  assert.ok(!providerPayloads[3].messages.at(-1).content.includes("file body"));
   assert.ok(providerPayloads[3].messages.at(-1).content.includes("[current_user]\nthird"));
   assert.equal(countOccurrences(providerPayloads[3].messages[0].content, "[system_core]"), 1);
   assert.ok(!providerPayloads[3].messages.some((message, index) => index > 0 && message.content.includes("[system_core]")));
@@ -223,6 +227,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   const sidecar = loadPiSessionSidecar({ projectMarchDir, sessionRef: "turn-flow.jsonl" });
   assert.equal(sidecar.state.sessionName, "Manual Name");
   assert.equal(sidecar.state.turns[0].assistantMessage, "draft text");
+  assert.equal(sidecar.state.turns[0].assistantContext, "12345678\n→ read · a.txt\ndraft text");
   assert.ok(!("summary" in sidecar.state.turns[0]));
   assert.deepEqual(sessionNameCalls, ["hello", "Manual Name"]);
   assert.ok(calls.some((call) => call[0] === "toolStart" && call[1] === "read"));
