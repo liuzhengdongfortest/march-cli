@@ -7,7 +7,7 @@ export async function runRunnerCoreSmoke() {
   const { createSessionBinding } = await import("../src/agent/session/session-binding.mjs");
   const { ContextEngine } = await import("../src/context/engine.mjs");
 
-  assert.deepEqual(MARCH_BASE_TOOL_NAMES, ["grep", "ls"]);
+  assert.deepEqual(MARCH_BASE_TOOL_NAMES, ["grep", "find", "ls"]);
   console.log("  PASS");
 
   console.log("--- smoke: runner session manager seam ---");

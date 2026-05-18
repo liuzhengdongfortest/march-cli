@@ -21,7 +21,7 @@ export async function runSessionOptionsSmoke() {
   assert.equal(options.thinkingLevel, "medium");
   assert.ok(options.customTools.some((tool) => tool.name === "terminal_list"));
   assert.ok(options.customTools.some((tool) => tool.name === "remember"));
-  assert.deepEqual(options.tools.slice(0, 3), ["read", "grep", "ls"]);
+  assert.deepEqual(options.tools.slice(0, 4), ["read", "grep", "find", "ls"]);
   assert.ok(!options.tools.includes("bash"));
   assert.ok(!options.tools.includes("powershell"));
   assert.ok(!options.tools.includes("edit"));
