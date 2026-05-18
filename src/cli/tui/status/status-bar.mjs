@@ -41,8 +41,8 @@ export class StatusBar {
     const parts = statusParts(this.text);
     const cwdName = currentDirectoryName(this.cwd);
     const lsp = parts.lsp || "lsp:off";
-    const leftText = [cwdName, lsp].filter(Boolean).join(" | ");
-    const line = composeMetaLine({ left: leftText, right: parts.context, width: innerWidth });
+    const leftText = [cwdName, lsp, parts.context].filter(Boolean).join(" • ");
+    const line = composeMetaLine({ left: leftText, right: "", width: innerWidth });
     return [`${left}${line}${right}`, ""];
   }
 
