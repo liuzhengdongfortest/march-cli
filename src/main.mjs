@@ -33,6 +33,7 @@ import { runProviderConfigCommand } from "./provider/config-command.mjs";
 import { runWebSearchConfigCommand } from "./web/config-command.mjs";
 import { createDesktopTurnNotifier } from "./notification/desktop-notifier.mjs";
 import { registerSuperGrokOAuthProvider } from "./supergrok/oauth-provider.mjs";
+import { installNetworkEnvironment } from "./network/environment.mjs";
 
 export async function run(argv) {
   const cwd = process.cwd();
@@ -40,12 +41,13 @@ export async function run(argv) {
   registerSuperGrokOAuthProvider();
 
   const args = parseCliArgs(argv);
-
   if (args.help) {
     showHelp();
     return 0;
   }
 
+  const config = loadConfig(cwd);
+  installNetworkEnvironment(config.network);
   if (args.command?.name === "login") {
     try {
       return await runLoginCommand({
@@ -67,8 +69,6 @@ export async function run(argv) {
   const stateRoot = join(homedir(), ".march");
   if (!existsSync(stateRoot)) mkdirSync(stateRoot, { recursive: true });
 
-  // Load config (CLI args override config file values)
-  const config = loadConfig(cwd);
   const provider = args.provider ?? config.provider ?? null;
   const serviceTier = config.serviceTier ?? null;
   const model = args.model ?? config.model ?? null;

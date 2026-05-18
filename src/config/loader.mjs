@@ -46,6 +46,7 @@ function mergeLayers(layers) {
     serviceTier: null,
     providers: {},
     webSearch: { provider: null, providers: {} },
+    network: { proxy: "system", ca: "system" },
     maxTurns: null,
     trimBatch: null,
     memoryRoot: null,
@@ -67,6 +68,12 @@ function mergeLayers(layers) {
       result.notifications = {
         ...result.notifications,
         ...layer.notifications,
+      };
+    }
+    if (layer.network && typeof layer.network === "object" && !Array.isArray(layer.network)) {
+      result.network = {
+        ...result.network,
+        ...layer.network,
       };
     }
     if (layer.memoryRoot) result.memoryRoot = layer.memoryRoot;

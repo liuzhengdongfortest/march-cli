@@ -27,6 +27,7 @@ import { runLoginCommandSmoke } from "./login-command.smoke.mjs";
 import { runMarkdownMemorySmoke } from "./markdown-memory.smoke.mjs";
 import { runMcpInjectionsSmoke } from "./mcp-injections.smoke.mjs";
 import { runMemorySystemSmoke, runDiffAndUiSmoke } from "./memory-and-diff.smoke.mjs";
+import { runNetworkEnvironmentSmoke } from "./network-environment.smoke.mjs";
 import { runModeStateSmoke } from "./mode-state.smoke.mjs";
 import { runModelContextDumperSmoke } from "./model-context-dumper.smoke.mjs";
 import { runNodePtyAdapterSmoke } from "./node-pty-adapter.smoke.mjs";
@@ -213,6 +214,7 @@ await runContextSessionStatusSmoke();
 await runContextStatsToolSmoke({ setupTmp, cleanup });
 
 await runConfigLoadingSmoke({ setupTmp, cleanup });
+await runNetworkEnvironmentSmoke();
 await runMcpInjectionsSmoke();
 await runMarkdownMemorySmoke({ setupTmp, cleanup });
 
