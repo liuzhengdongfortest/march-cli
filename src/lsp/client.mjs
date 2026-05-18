@@ -1,5 +1,5 @@
-import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
+import { spawnCommand } from "../platform/spawn-command.mjs";
 import { extname } from "node:path";
 import { readFileSync } from "node:fs";
 
@@ -36,7 +36,7 @@ export class LspClient {
   }
 
   async start() {
-    this.process = spawn(this.command, this.args, {
+    this.process = spawnCommand(this.command, this.args, {
       cwd: this.cwd,
       env: process.env,
       stdio: ["pipe", "pipe", "pipe"],

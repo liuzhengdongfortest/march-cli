@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { formatLspSegment } from "../src/cli/commands/status-command.mjs";
 import { resolveLspServerStatus } from "../src/lsp/servers.mjs";
+import { resolveSpawnCommand } from "../src/platform/spawn-command.mjs";
 
 export async function runLspSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: lsp resolver and status ---");
@@ -46,6 +47,16 @@ export async function runLspSmoke({ setupTmp, cleanup }) {
       delete process.env.MARCH_LSP_NODE_ROOT;
       cleanup(managedDir);
       cleanup(noLocalDir);
+    }
+
+    const npmSpawn = resolveSpawnCommand(process.platform === "win32" ? "npm.cmd" : "npm", ["--version"]);
+    if (process.platform === "win32") {
+      assert.equal(npmSpawn.command, "cmd.exe");
+      assert.deepEqual(npmSpawn.args, ["/d", "/s", "/c", "\"npm.cmd --version\""]);
+      assert.equal(npmSpawn.options.windowsVerbatimArguments, true);
+    } else {
+      assert.equal(npmSpawn.command, "npm");
+      assert.deepEqual(npmSpawn.args, ["--version"]);
     }
 
     assert.equal(formatLspSegment({ servers: [] }), "lsp:off");

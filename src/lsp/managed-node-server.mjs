@@ -1,5 +1,5 @@
-import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { spawnCommand } from "../platform/spawn-command.mjs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -79,7 +79,7 @@ function platformCommandNames(name) {
 
 function run(command, args, { cwd }) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd, stdio: ["ignore", "ignore", "pipe"], windowsHide: true });
+    const child = spawnCommand(command, args, { cwd, stdio: ["ignore", "ignore", "pipe"], windowsHide: true });
     let stderr = "";
     child.stderr.on("data", (chunk) => {
       stderr += chunk.toString("utf8");
