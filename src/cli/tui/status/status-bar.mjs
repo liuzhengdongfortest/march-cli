@@ -4,11 +4,9 @@ import { statusBar, R } from "../ui-theme.mjs";
 const ANSI_RE = /\x1b\[[0-?]*[ -/]*[@-~]/g;
 const DEFAULT_STATUS_TEXT = "March";
 const DEFAULT_HELP_TEXT = "/ commands · ? help";
-const INPUT_BG = "\x1b[48;5;236m";
-const INPUT_PROMPT = "› ";
+const INPUT_BG = "\x1b[48;2;32;34;38m";
+const INPUT_PROMPT = "> ";
 const HORIZONTAL_INSET = 2;
-const MIN_INPUT_BLOCK_WIDTH = 28;
-const INPUT_BLOCK_PADDING = 2;
 
 export class StatusBar {
   constructor(text = DEFAULT_STATUS_TEXT, { cwd = process.cwd(), helpText = DEFAULT_HELP_TEXT } = {}) {
@@ -39,36 +37,42 @@ export class StatusBar {
 
   renderTop(width) {
     if (width <= 0) return [""];
-    const { left, innerWidth } = insetForWidth(width);
-    const cwd = compactPathForDisplay(this.cwd, innerWidth);
-    return [`${left}${statusBar.cwd(clipToWidth(cwd, innerWidth))}`];
+    const { left, innerWidth, right } = insetForWidth(width);
+    const parts = statusParts(this.text);
+    const cwdName = currentDirectoryName(this.cwd);
+    const lsp = parts.lsp || "lsp:off";
+    const leftText = [cwdName, lsp].filter(Boolean).join(" | ");
+    const line = composeMetaLine({ left: leftText, right: parts.context, width: innerWidth });
+    return [`${left}${line}${right}`, ""];
   }
 
   renderInputLines(lines, width) {
     if (width <= 0) return [""];
-    const { left, innerWidth } = insetForWidth(width);
+    const { left, innerWidth, right } = insetForWidth(width);
     const contentLines = lines.filter((line) => !isEditorChromeLine(line));
     const visibleLines = contentLines.length > 0 ? contentLines : [""];
-    return visibleLines.map((line, index) => `${left}${this.renderInputLine(line, innerWidth, { isFirst: index === 0 })}`);
+    return visibleLines.map((line, index) =>
+      `${left}${this.renderInputLine(line, innerWidth, { isFirst: index === 0 })}${right}`,
+    );
   }
 
   renderInputLine(line, width, { isFirst = true } = {}) {
     if (width <= 0) return "";
     const prompt = isFirst ? statusBar.prompt(INPUT_PROMPT) : "  ";
     const promptWidth = visibleWidth(stripAnsi(INPUT_PROMPT));
-    const maxContentWidth = Math.max(1, width - promptWidth - INPUT_BLOCK_PADDING);
+    const maxContentWidth = Math.max(1, width - promptWidth - 2);
     const content = clipToWidth(line, maxContentWidth);
-    const raw = `${prompt}${content}`;
-    const blockWidth = Math.min(width, Math.max(MIN_INPUT_BLOCK_WIDTH, visibleWidth(stripAnsi(raw)) + INPUT_BLOCK_PADDING));
-    return applyInputBackground(padToWidth(raw, blockWidth));
+    return applyInputBackground(padToWidth(`${prompt}${content}`, width));
   }
 
   renderBottom(width) {
     if (width <= 0) return [""];
     const { left: insetLeft, innerWidth, right: insetRight } = insetForWidth(width);
-    const model = modelSegment(this.text);
-    const left = leftStatusSegment(this.text, this.helpText);
-    return [`${insetLeft}${composeBottomLine({ left, right: model, width: innerWidth })}${insetRight}`];
+    const parts = statusParts(this.text);
+    const mode = parts.mode || DEFAULT_STATUS_TEXT;
+    const right = [parts.model, parts.thinking].filter(Boolean).join(" • ");
+    const line = composeMetaLine({ left: mode, right, width: innerWidth });
+    return ["", `${insetLeft}${line}${insetRight}`];
   }
 }
 
@@ -80,18 +84,18 @@ function insetForWidth(width) {
   return { left, innerWidth: Math.max(1, safeWidth - inset * 2), right };
 }
 
-function composeBottomLine({ left, right, width }) {
+function composeMetaLine({ left, right, width }) {
   const safeWidth = Math.max(1, Math.trunc(width));
-  const rightText = right ? statusBar.accent(right) : "";
   const rightWidth = visibleWidth(stripAnsi(right));
   if (!right) return statusBar.muted(padToWidth(clipToWidth(left, safeWidth), safeWidth));
-  if (rightWidth >= safeWidth) return statusBar.accent(padToWidth(clipToWidth(right, safeWidth), safeWidth));
+  if (rightWidth >= safeWidth) return statusBar.muted(padToWidth(clipToWidth(right, safeWidth), safeWidth));
 
   const maxLeftWidth = Math.max(0, safeWidth - rightWidth - 1);
   const fittedLeft = maxLeftWidth > 0 ? clipToWidth(left, maxLeftWidth) : "";
   const gap = Math.max(1, safeWidth - visibleWidth(stripAnsi(fittedLeft)) - rightWidth);
-  return `${statusBar.muted(fittedLeft)}${" ".repeat(gap)}${rightText}${R}`;
+  return `${statusBar.muted(fittedLeft)}${" ".repeat(gap)}${statusBar.muted(right)}${R}`;
 }
+
 
 function applyInputBackground(line) {
   return `${INPUT_BG}${String(line).replaceAll(R, `${R}${INPUT_BG}`)}${R}`;
@@ -102,26 +106,20 @@ function isEditorChromeLine(line) {
   return plain.length > 0 && (/^─+$/.test(plain) || /^─+\s[↑↓].*more\s─*$/.test(plain));
 }
 
-function compactPathForDisplay(path, width) {
+function currentDirectoryName(path) {
   const normalized = normalizeStatusText(path);
-  if (visibleWidth(normalized) <= width) return normalized;
   const parts = normalized.split(/[\\/]+/).filter(Boolean);
-  if (parts.length <= 1) return normalized;
-  const drive = normalized.match(/^[A-Za-z]:/)?.[0];
-  const root = drive || (normalized.startsWith("\\\\") ? "\\\\" : "…");
-  const tail = parts.slice(-2).join("\\");
-  return `${root}\\…\\${tail}`;
+  return parts.at(-1) || normalized || DEFAULT_STATUS_TEXT;
 }
 
-function modelSegment(text) {
+function statusParts(text) {
   const segments = plainSegments(text);
-  return segments[1] || segments[0] || "March";
-}
-
-function leftStatusSegment(text, helpText) {
-  const segments = plainSegments(text);
-  const left = [segments[0], ...segments.slice(2)].filter(Boolean).join(" · ");
-  return left || helpText;
+  const runtime = segments.find((segment) => segment.includes("·")) || "";
+  const [model = "", thinking = ""] = runtime.split("·").map((part) => part.trim());
+  const lsp = segments.find((segment) => segment.startsWith("lsp:")) || "";
+  const context = [...segments].reverse().find((segment) => /^\d+(?:\.\d+)?[KM]?$/.test(segment)) || "";
+  const mode = segments.find((segment) => segment && segment !== runtime && segment !== lsp && segment !== context) || segments[0] || "";
+  return { mode, model, thinking, lsp, context };
 }
 
 function plainSegments(text) {

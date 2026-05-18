@@ -22,49 +22,57 @@ export async function runStatusBarSmoke() {
   assert.ok(fitted.includes("gpt-5.4"));
   assert.ok(!fitted.includes("\x1b"));
 
-  const statusBar = new StatusBar("Do | deepseek·medium", { cwd: "D:\\playground\\pi-go\\march-cli" });
-  const [line] = statusBar.render(16);
-  assert.ok(visibleWidth(line) <= 16);
-  assert.ok(stripAnsi(line).trim().length > 0);
-  const [bottomLine] = statusBar.renderBottom(32);
-  assert.equal(visibleWidth(bottomLine), 32);
-  assert.equal(bottomLine.includes("\x1b[48;5;236m"), false);
-  assert.ok(stripAnsi(bottomLine).trimEnd().endsWith("deepseek·medium"));
+  const statusBar = new StatusBar("Do | deepseek·medium | lsp:ts✓ | 11.3K", { cwd: "D:\\playground\\pi-go\\march-cli" });
+  const [line] = statusBar.render(64);
+  assert.equal(visibleWidth(line), 64);
+  const topPlain = stripAnsi(line);
+  assert.ok(topPlain.trimStart().startsWith("march-cli | lsp:ts✓"));
+  assert.ok(topPlain.trimEnd().endsWith("11.3K"));
+  const bottomLines = statusBar.renderBottom(64);
+  assert.deepEqual(bottomLines.map(stripAnsi), ["", stripAnsi(bottomLines.at(-1))]);
+  const bottomLine = bottomLines.at(-1);
+  assert.equal(visibleWidth(bottomLine), 64);
+  assert.equal(bottomLine.includes("\x1b[48;2;32;34;38m"), false);
+  const bottomPlain = stripAnsi(bottomLine);
+  assert.ok(bottomPlain.trimStart().startsWith("Do"));
+  assert.ok(bottomPlain.trimEnd().endsWith("deepseek • medium"));
   const inputLine = statusBar.renderInputLine("hello", 80);
-  assert.equal(visibleWidth(inputLine), 28);
-  assert.ok(inputLine.includes("\x1b[48;5;236m"));
-  assert.ok(stripAnsi(inputLine).startsWith("› hello"));
+  assert.equal(visibleWidth(inputLine), 80);
+  assert.ok(inputLine.includes("\x1b[48;2;32;34;38m"));
+  assert.ok(stripAnsi(inputLine).startsWith("> hello"));
   const inputLines = statusBar.renderInputLines(["\x1b[38;5;238m────────\x1b[0m", "hello", "\x1b[38;5;238m────────\x1b[0m"], 80);
-  assert.deepEqual(inputLines.map((l) => stripAnsi(l).trimEnd()), ["  › hello"]);
+  assert.deepEqual(inputLines.map((l) => stripAnsi(l).trimEnd()), ["  > hello"]);
 
   assert.equal(statusBar.setText("Discuss | gpt-5.4·medium"), true);
   assert.equal(statusBar.setText("Discuss | gpt-5.4·medium"), false);
-  const [narrow] = statusBar.renderBottom(40);
+  const narrow = statusBar.renderBottom(40).at(-1);
   assert.equal(visibleWidth(narrow), 40);
   assert.ok(stripAnsi(narrow).includes("gpt-5.4"));
+  assert.ok(stripAnsi(narrow).includes("medium"));
 
   statusBar.setText("next");
   assert.ok(visibleWidth(statusBar.render(8)[0]) <= 8);
-  assert.equal(visibleWidth(statusBar.renderBottom(8)[0]), 8);
+  assert.equal(visibleWidth(statusBar.renderBottom(8).at(-1)), 8);
 
   const { MainPaneLayout } = await import("../src/cli/tui/layout/main-pane-layout.mjs");
-  const layoutStatusBar = new StatusBar("Do | gpt-5-codex·medium", { cwd: "D:\\work" });
+  const layoutStatusBar = new StatusBar("Do | gpt-5-codex·medium | lsp:ts✓ | 11.3K", { cwd: "D:\\work\\march-cli" });
   const layout = new MainPaneLayout({
     output: { setViewportHeight: () => {}, render: () => ["out"], invalidate: () => {} },
     statusBar: layoutStatusBar,
     editor: { render: () => ["────────", "hello", "────────"], invalidate: () => {} },
-    terminal: { rows: 6 },
+    terminal: { rows: 8 },
   });
-  const layoutLines = layout.render(24);
-  assert.equal(layoutLines.length, 6);
-  assert.ok(stripAnsi(layoutLines.at(-3)).includes("D:\\work"));
-  assert.equal(stripAnsi(layoutLines.at(-2)).startsWith("  "), true);
-  assert.ok(layoutLines.at(-2).includes("\x1b[48;5;236m"));
-  assert.equal(visibleWidth(layoutLines.at(-2)) < 24, true);
-  assert.ok(stripAnsi(layoutLines.at(-2)).trimStart().startsWith("› hello"));
-  assert.equal(layoutLines.at(-1).includes("\x1b[48;5;236m"), false);
-  assert.ok(stripAnsi(layoutLines.at(-1)).trimEnd().endsWith("gpt-5-codex·medium"));
-
+  const layoutLines = layout.render(80);
+  assert.ok(stripAnsi(layoutLines.at(-5)).includes("march-cli | lsp:ts✓"));
+  assert.ok(stripAnsi(layoutLines.at(-5)).trimEnd().endsWith("11.3K"));
+  assert.equal(stripAnsi(layoutLines.at(-4)), "");
+  assert.equal(stripAnsi(layoutLines.at(-3)).startsWith("  "), true);
+  assert.ok(layoutLines.at(-3).includes("\x1b[48;2;32;34;38m"));
+  assert.equal(visibleWidth(layoutLines.at(-3)), 80);
+  assert.ok(stripAnsi(layoutLines.at(-3)).trimStart().startsWith("> hello"));
+  assert.equal(stripAnsi(layoutLines.at(-2)), "");
+  assert.equal(layoutLines.at(-1).includes("\x1b[48;2;32;34;38m"), false);
+  assert.ok(stripAnsi(layoutLines.at(-1)).includes("gpt-5-codex • medium"));
   const noop = createStatusLineUpdater({
     ui: {},
     runner: { engine: {} },
