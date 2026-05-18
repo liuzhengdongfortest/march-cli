@@ -5,7 +5,7 @@ import { Type } from "typebox";
 import { toolText } from "./tool-result.mjs";
 import { applyReplaceTextPatch, applyReplaceRangePatch } from "./editing/diff-apply.mjs";
 import { formatAppliedDiff, formatDiff } from "./editing/diff-format.mjs";
-import { buildDiagnosticsForPath } from "../context/diagnostics.mjs";
+import { formatLspDiagnosticsForPath } from "../lsp/diagnostics-format.mjs";
 
 export { formatDiff } from "./editing/diff-format.mjs";
 
@@ -117,7 +117,7 @@ async function waitForDiagnosticsForPath({ lspService, path, timeoutMs, interval
   if (!lspService?.snapshot || !path) return "";
   const deadline = Date.now() + timeoutMs;
   for (;;) {
-    const diagnostics = buildDiagnosticsForPath({ snapshot: lspService.snapshot(), path });
+    const diagnostics = formatLspDiagnosticsForPath({ snapshot: lspService.snapshot(), path });
     if (diagnostics) return diagnostics;
     const remaining = deadline - Date.now();
     if (remaining <= 0) return "";

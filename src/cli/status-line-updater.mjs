@@ -27,6 +27,7 @@ export function createStatusLineUpdater({
       mode: getMode(),
       contextTokens,
       activity: formatActivity(activity, frameIndex),
+      lspStatus: runner.getLspStatus?.() ?? null,
     });
     ui.setStatusBar(line);
     return line;

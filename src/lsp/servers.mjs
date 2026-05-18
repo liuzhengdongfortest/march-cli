@@ -11,7 +11,11 @@ const LSP_SERVERS = [
     rootMarkers: NODE_ROOT_MARKERS,
     command: ["vue-language-server"],
     args: ["--stdio"],
-    initialization: () => ({}),
+    initialization: ({ root, workspaceRoot }) => {
+      const tsdk = resolveTypeScriptSdk({ root, workspaceRoot });
+      return tsdk ? { typescript: { tsdk } } : null;
+    },
+    missingInitialization: "missing project typescript SDK",
   },
   {
     id: "typescript",
@@ -20,10 +24,10 @@ const LSP_SERVERS = [
     command: ["typescript-language-server"],
     args: ["--stdio"],
     initialization: ({ root, workspaceRoot }) => {
-      const tsserver = resolveModule("typescript/lib/tsserver.js", workspaceRoot) ?? resolveModule("typescript/lib/tsserver.js", root);
-      if (!tsserver) return null;
-      return { tsserver: { path: tsserver } };
+      const tsserver = resolveTypeScriptServer({ root, workspaceRoot });
+      return tsserver ? { tsserver: { path: tsserver } } : null;
     },
+    missingInitialization: "missing project typescript/tsserver.js",
   },
   {
     id: "python",
@@ -68,10 +72,10 @@ const LSP_SERVERS = [
     command: ["astro-ls", "@astrojs/language-server"],
     args: ["--stdio"],
     initialization: ({ root, workspaceRoot }) => {
-      const tsserver = resolveModule("typescript/lib/tsserver.js", workspaceRoot) ?? resolveModule("typescript/lib/tsserver.js", root);
-      if (!tsserver) return null;
-      return { typescript: { tsdk: dirname(tsserver) } };
+      const tsdk = resolveTypeScriptSdk({ root, workspaceRoot });
+      return tsdk ? { typescript: { tsdk } } : null;
     },
+    missingInitialization: "missing project typescript SDK",
   },
   {
     id: "yaml",
@@ -126,23 +130,30 @@ const LSP_SERVERS = [
 ];
 
 export function resolveLspServer({ filePath, workspaceRoot }) {
+  const result = resolveLspServerStatus({ filePath, workspaceRoot });
+  return result.status === "available" ? result.server : null;
+}
+
+export function resolveLspServerStatus({ filePath, workspaceRoot }) {
   const ext = extensionOf(filePath);
   const def = LSP_SERVERS.find((server) => server.extensions.includes(ext));
-  if (!def) return null;
+  if (!def) return { status: "unsupported", extension: ext };
 
   const root = def.rootMarkers.length > 0
     ? findNearestRoot(dirname(filePath), workspaceRoot, def.rootMarkers) ?? workspaceRoot
     : workspaceRoot;
   const command = findCommand(def.command, { root, workspaceRoot });
-  if (!command) return null;
+  if (!command) {
+    return { status: "unavailable", id: def.id, root, reason: `missing ${def.command[0]}` };
+  }
+
   const initialization = def.initialization?.({ root, workspaceRoot }) ?? {};
-  if (initialization === null) return null;
+  if (initialization === null) {
+    return { status: "unavailable", id: def.id, root, reason: def.missingInitialization ?? "missing SDK" };
+  }
   return {
-    id: def.id,
-    command,
-    args: def.args,
-    root,
-    initialization,
+    status: "available",
+    server: { id: def.id, command, args: def.args, root, initialization },
   };
 }
 
@@ -160,7 +171,7 @@ function findCommand(names, { root, workspaceRoot }) {
 
 function findBin(name, { root, workspaceRoot }) {
   const names = platformCommandNames(name);
-  for (const base of [root, workspaceRoot]) {
+  for (const base of uniquePaths([root, workspaceRoot])) {
     for (const bin of names) {
       const candidate = join(base, "node_modules", ".bin", bin);
       if (existsSync(candidate)) return candidate;
@@ -185,12 +196,34 @@ function findOnPath(names) {
   return null;
 }
 
+function resolveTypeScriptServer({ root, workspaceRoot }) {
+  return resolveModuleFromRoots("typescript/lib/tsserver.js", { root, workspaceRoot });
+}
+
+function resolveTypeScriptSdk({ root, workspaceRoot }) {
+  const serverLibrary = resolveModuleFromRoots("typescript/lib/tsserverlibrary.js", { root, workspaceRoot });
+  const tsserver = serverLibrary ?? resolveTypeScriptServer({ root, workspaceRoot });
+  return tsserver ? dirname(tsserver) : null;
+}
+
+function resolveModuleFromRoots(id, { root, workspaceRoot }) {
+  for (const base of uniquePaths([root, workspaceRoot])) {
+    const hit = resolveModule(id, base);
+    if (hit) return hit;
+  }
+  return null;
+}
+
 function resolveModule(id, base) {
   try {
     return createRequire(join(base, "package.json")).resolve(id);
   } catch {
     return null;
   }
+}
+
+function uniquePaths(paths) {
+  return [...new Set(paths.map((path) => resolve(path)))];
 }
 
 function findNearestRoot(start, stop, markers) {

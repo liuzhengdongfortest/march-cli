@@ -8,6 +8,7 @@ import { ContextEngine } from "../context/engine.mjs";
 import { createMarchLifecycleAdapter } from "../extensions/lifecycle-adapter.mjs";
 import { syncPiSessionSidecar } from "../session/sidecar-sync.mjs";
 import { LspService } from "../lsp/service.mjs";
+import { formatLspServiceEvent } from "../lsp/status-message.mjs";
 import { formatRecallHints } from "../memory/markdown-store.mjs";
 import { appendProviderUserMessage, estimateProviderPayloadTokens, installModelPayloadDumper, replaceProviderContextMessages } from "./model-payload-dumper.mjs";
 import { resolveInitialModel, resolveRunnerSessionManager } from "./runner/runner-init.mjs";
@@ -48,7 +49,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     compaction: { enabled: false },
     retry: { enabled: true, maxRetries: 3, baseDelayMs: 2000 },
   });
-  const lspService = new LspService({ cwd });
+  const lspService = new LspService({ cwd, onEvent: (event) => ui.status?.(formatLspServiceEvent(event)) });
   const engine = new ContextEngine({ cwd, modelId, provider, namespace, memoryRoot, centerMemoryPath, shellRuntime, lspService, injections: mcpInjections, maxTurns, trimBatch });
   const resolvedSessionManager = resolveRunnerSessionManager(cwd, sessionManager);
   const sessionBinding = createSessionBinding(null);
@@ -218,6 +219,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     },
     getExtensionDiagnostics() { return runtimeHost?.getDiagnostics?.() ?? []; },
     getExtensionLifecycleState() { return lifecycleAdapter.getState(); },
+    getLspStatus() { return lspService.snapshot(); },
     async switchPiSession(sessionPath) {
       if (!runtimeHost) throw new Error("pi runtime host is not enabled");
       nextTurnContextMode = "rebuild";

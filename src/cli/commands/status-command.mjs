@@ -31,6 +31,7 @@ export function statusBarLine({
   mode = MODES.DO,
   contextTokens = null,
   activity = null,
+  lspStatus = null,
 }) {
   return formatStatusBarLine({
     engine: runner.engine,
@@ -43,6 +44,7 @@ export function statusBarLine({
     mode,
     contextTokens,
     activity,
+    lspStatus,
   });
 }
 
@@ -80,6 +82,7 @@ export function formatStatusBarLine({
   mode = MODES.DO,
   contextTokens = null,
   activity = null,
+  lspStatus = null,
 }) {
   const model = engine.modelId || "model?";
   const thinking = engine.thinkingLevel || "thinking?";
@@ -91,6 +94,8 @@ export function formatStatusBarLine({
   const modeSegment = `${mode === MODES.DISCUSS ? WARN : OK}${formatModeLabel(mode)}`;
   const runtime = `${C.cyan}${model}${DIM}·${thinking}`;
   const segments = [modeSegment, runtime];
+  const lspText = formatLspSegment(lspStatus);
+  if (lspText) segments.push(`${C.fg250}${lspText}`);
   const activityText = formatActivitySegment(activity);
   if (activityText) segments.push(`${C.fg250}${activityText}`);
   const compactTokens = formatCompactTokenCount(contextTokens);
@@ -100,11 +105,30 @@ export function formatStatusBarLine({
   return `${inner}${R}`;
 }
 
+export function formatLspSegment(lspStatus) {
+  if (!lspStatus) return "";
+  const servers = lspStatus.servers ?? [];
+  const visible = servers.filter((server) => server.id);
+  if (visible.length === 0) return "lsp:off";
+  if (servers.some((server) => server.status === "failed")) return "lsp:failed";
+  if (servers.some((server) => server.status === "starting")) return "lsp:starting";
+  if (servers.every((server) => server.status === "unavailable")) return "lsp:off";
+  const active = visible.filter((server) => server.status !== "unavailable");
+  if (active.length === 0) return "lsp:off";
+  const ids = [...new Set(active.map((server) => shortLspId(server.id)))].join(",");
+  return `lsp:${ids}✓`;
+}
+
 function formatActivitySegment(activity) {
   if (!activity) return "";
   const label = String(activity.label ?? "").trim();
   const frame = String(activity.frame ?? "").trim();
   return [frame, label].filter(Boolean).join(" ");
+}
+
+function shortLspId(id) {
+  if (id === "typescript") return "ts";
+  return String(id ?? "?");
 }
 
 export function formatCompactTokenCount(tokens) {

@@ -1,6 +1,6 @@
 const MAX_DIAGNOSTICS = 20;
 
-export function buildDiagnosticsLayer({ snapshot } = {}) {
+export function formatLspDiagnostics({ snapshot } = {}) {
   const diagnostics = snapshot?.diagnostics ?? [];
   if (diagnostics.length === 0) return "[diagnostics]";
 
@@ -17,12 +17,12 @@ export function buildDiagnosticsLayer({ snapshot } = {}) {
   return lines.join("\n");
 }
 
-export function buildDiagnosticsForPath({ snapshot, path } = {}) {
+export function formatLspDiagnosticsForPath({ snapshot, path } = {}) {
   const targetPath = String(path ?? "");
   if (!targetPath) return "";
   const diagnostics = (snapshot?.diagnostics ?? []).filter((diagnostic) => diagnostic.path === targetPath);
   if (diagnostics.length === 0) return "";
-  return buildDiagnosticsLayer({
+  return formatLspDiagnostics({
     snapshot: {
       ...snapshot,
       diagnostics,

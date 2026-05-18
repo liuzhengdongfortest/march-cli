@@ -1,28 +1,40 @@
 import { LspClient } from "./client.mjs";
 import { LspDiagnosticStore } from "./diagnostic-store.mjs";
-import { resolveLspServer } from "./servers.mjs";
+import { resolveLspServerStatus } from "./servers.mjs";
 
 export class LspService {
-  constructor({ cwd }) {
+  constructor({ cwd, onEvent = null }) {
     this.cwd = cwd;
+    this.onEvent = onEvent;
     this.store = new LspDiagnosticStore();
     this.clients = new Map();
     this.spawning = new Map();
+    this.unavailable = new Map();
+    this.announced = new Set();
   }
 
   touchFile(path) {
-    const server = resolveLspServer({ filePath: path, workspaceRoot: this.cwd });
-    if (!server) return;
+    const result = resolveLspServerStatus({ filePath: path, workspaceRoot: this.cwd });
+    if (result.status === "unsupported") return result;
+    if (result.status === "unavailable") {
+      this.unavailable.set(result.id, result);
+      this.#emitOnce(`unavailable:${result.id}:${result.reason}`, result);
+      return result;
+    }
+
+    const server = result.server;
     const key = `${server.id}:${server.root}`;
     const existing = this.clients.get(key);
     if (existing) {
       existing.touchFile(path);
-      return;
+      return { status: "already_attached", id: server.id, root: server.root };
     }
     if (this.spawning.has(key)) {
       this.spawning.get(key).then((client) => client?.touchFile(path)).catch(() => {});
-      return;
+      return { status: "starting", id: server.id, root: server.root };
     }
+
+    this.#emitOnce(`starting:${key}`, { status: "starting", id: server.id, root: server.root });
     const task = this.#startClient(server, key).then((client) => {
       client?.touchFile(path);
       return client;
@@ -31,13 +43,25 @@ export class LspService {
     task.finally(() => {
       if (this.spawning.get(key) === task) this.spawning.delete(key);
     }).catch(() => {});
+    return { status: "starting", id: server.id, root: server.root };
   }
 
   snapshot() {
     const diagnostics = this.store.snapshot();
-    const statuses = [...this.clients.values()].map((client) => client.status);
-    const status = statuses.includes("busy") ? "busy" : statuses.includes("starting") ? "starting" : statuses.includes("failed") ? "failed" : statuses.length > 0 ? "idle" : "";
-    return { status, diagnostics };
+    const servers = [
+      ...[...this.clients.values()].map((client) => ({
+        id: client.serverId,
+        root: client.cwd,
+        status: client.status,
+      })),
+      ...[...this.spawning.keys()].map((key) => ({
+        id: key.slice(0, key.indexOf(":")),
+        root: key.slice(key.indexOf(":") + 1),
+        status: "starting",
+      })),
+      ...this.unavailable.values(),
+    ];
+    return { status: summarizeStatus(servers), diagnostics, servers };
   }
 
   async dispose() {
@@ -56,10 +80,31 @@ export class LspService {
     try {
       await client.start();
       this.clients.set(key, client);
+      this.unavailable.delete(server.id);
+      this.#emitOnce(`attached:${key}`, { status: "attached", id: server.id, root: server.root });
       return client;
-    } catch {
+    } catch (err) {
       client.status = "failed";
+      const event = { status: "failed", id: server.id, root: server.root, reason: err.message };
+      this.unavailable.set(server.id, event);
+      this.#emitOnce(`failed:${key}:${err.message}`, event);
       return null;
     }
   }
+
+  #emitOnce(key, event) {
+    if (this.announced.has(key)) return;
+    this.announced.add(key);
+    this.onEvent?.(event);
+  }
+}
+
+function summarizeStatus(servers) {
+  const statuses = servers.map((server) => server.status);
+  if (statuses.includes("busy")) return "busy";
+  if (statuses.includes("starting")) return "starting";
+  if (statuses.includes("failed")) return "failed";
+  if (statuses.includes("ready") || statuses.includes("idle")) return "idle";
+  if (statuses.includes("unavailable")) return "unavailable";
+  return "";
 }
