@@ -13,10 +13,13 @@ export async function runStartupBannerSmoke() {
   assert.ok(plain.includes("╭"));
   assert.ok(plain.includes("█▙  ▟█"));
   assert.ok(plain.includes("March v0.1.12"));
-  assert.ok(plain.includes("Terminal-native coding agent"));
-  assert.ok(plain.includes("deepseek-v4-flash · high"));
-  assert.ok(plain.includes("Workspace: D:/repo"));
-  assert.ok(plain.includes("Tip: Tab to Discuss · /help"));
+  assert.ok(plain.includes("Describe a task to get started."));
+  assert.ok(plain.includes("Tip: Tab to Discuss · /help for commands"));
+  assert.ok(plain.includes("March uses AI. Check for mistakes."));
+  assert.equal(plain.includes("Terminal-native coding agent"), false);
+  assert.equal(plain.includes("Workspace:"), false);
+  assert.equal(plain.includes("deepseek-v4-flash · high"), false);
+  assert.equal(plain.includes("D:/repo"), false);
   assert.equal(plain.includes("Do ·"), false);
   assert.equal(plain.includes("Starting March session"), false);
   assert.equal(plain.includes("March REPL. Type"), false);
@@ -28,7 +31,8 @@ export async function runStartupBannerSmoke() {
     mode: "discuss",
     dumpContextPath: ".march/context-dumps/session",
   }).join("\n"));
-  assert.ok(withDump.includes("dumps: .march/context-dumps/session"));
+  assert.ok(withDump.includes("Tip: dumps: .march/context-dumps/session"));
+  assert.ok(withDump.includes("March uses AI. Check for mistakes."));
   assert.equal(withDump.includes("Discuss ·"), false);
   assert.equal(withDump.includes("Tab to"), false);
   console.log("  PASS");

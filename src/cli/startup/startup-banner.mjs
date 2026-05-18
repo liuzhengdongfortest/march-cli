@@ -9,18 +9,18 @@ const { version: packageVersion = "0.1" } = createRequire(import.meta.url)("../.
 
 export function formatStartupBanner({ cwd, modelId = "model?", thinkingLevel = "thinking?", mode = MODES.DO, dumpContextPath = null } = {}) {
   const nextMode = mode === MODES.DISCUSS ? "Do" : "Discuss";
-  const hint = dumpContextPath
-    ? `dumps: ${dumpContextPath}`
-    : `Tab to ${nextMode} · /help`;
+  const tip = dumpContextPath
+    ? `${brightBlack("Tip:")} ${cyan("dumps:")} ${brightBlack(dumpContextPath)}`
+    : `${brightBlack("Tip:")} ${brightBlack("Tab to")} ${cyan(nextMode)} ${brightBlack("·")} ${cyan("/help")} ${brightBlack("for commands")}`;
   return [
     "",
     ...renderStartupCard([
       `${cyan("  █▙  ▟█")}   ${violet("March")} ${brightBlack(`v${packageVersion}`)}`,
-      `${cyan("  █▜▙▟▛█")}   ${brightBlack("Terminal-native coding agent")}`,
-      `${cyan("  ▀    ▀")}   ${brightBlack(`${modelId} · ${thinkingLevel}`)}`,
+      `${cyan("  █▜▙▟▛█")}   ${brightBlack("Describe a task to get started.")}`,
+      `${cyan("  ▀    ▀")}`,
       "",
-      `${brightBlack("Workspace:")} ${brightBlack(cwd ?? "")}`,
-      `${brightBlack("Tip:")} ${cyan(hint)}`,
+      tip,
+      brightBlack("March uses AI. Check for mistakes."),
     ]),
     "",
   ];
