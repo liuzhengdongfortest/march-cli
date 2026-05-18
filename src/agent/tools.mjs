@@ -3,7 +3,8 @@ import { Type } from "typebox";
 import { createCommandExecTool } from "./command-exec-tool.mjs";
 import { createContextStatsTool } from "./context-stats-tool.mjs";
 import { createEditFileTool } from "./file-edit-tool.mjs";
-import { createReadFileTool } from "./read-file-tool.mjs";
+import { createReadFileTool } from "./file-tools/read-file-tool.mjs";
+import { createReadImageTool } from "./file-tools/read-image-tool.mjs";
 import { toolText } from "./tool-result.mjs";
 import { createShellTools } from "../shell/tools.mjs";
 import { createWebTools } from "../web/tools.mjs";
@@ -14,9 +15,11 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], shel
   const contextStatsTool = createContextStatsTool({ engine });
   const editFileTool = createEditFileTool({ engine, ui, lspService });
   const readFileTool = createReadFileTool({ engine });
+  const readImageTool = createReadImageTool({ engine });
 
   const tools = [
     readFileTool,
+    readImageTool,
     contextStatsTool,
     commandExecTool,
     editFileTool,

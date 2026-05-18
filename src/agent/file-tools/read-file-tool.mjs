@@ -2,7 +2,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-import { toolText } from "./tool-result.mjs";
+import { toolText } from "../tool-result.mjs";
 
 const DEFAULT_LIMIT = 30;
 const DEFAULT_DIRECTORY_LIMIT = 200;
