@@ -25,7 +25,7 @@ export async function runStatusBarSmoke() {
   const statusBar = new StatusBar("git:main session:abc model:deepseek");
   const [line] = statusBar.render(16);
   assert.equal(visibleWidth(line), 16);
-  assert.ok(line.includes("\x1b[48;5;236m"));
+  assert.ok(line.includes("\x1b[48;5;235m"));
 
   assert.equal(statusBar.setText("Discuss | gpt-5.4·medium"), true);
   assert.equal(statusBar.setText("Discuss | gpt-5.4·medium"), false);

@@ -10,11 +10,13 @@ export async function runStartupBannerSmoke() {
     thinkingLevel: "high",
     mode: "do",
   }).join("\n"));
+  assert.ok(plain.includes("╭"));
   assert.ok(plain.includes("█▙  ▟█"));
-  assert.ok(plain.includes("March"));
+  assert.ok(plain.includes("March v0.1.12"));
+  assert.ok(plain.includes("Terminal-native coding agent"));
   assert.ok(plain.includes("deepseek-v4-flash · high"));
-  assert.ok(plain.includes("D:/repo"));
-  assert.ok(plain.includes("Tab to Discuss · /help"));
+  assert.ok(plain.includes("Workspace: D:/repo"));
+  assert.ok(plain.includes("Tip: Tab to Discuss · /help"));
   assert.equal(plain.includes("Do ·"), false);
   assert.equal(plain.includes("Starting March session"), false);
   assert.equal(plain.includes("March REPL. Type"), false);

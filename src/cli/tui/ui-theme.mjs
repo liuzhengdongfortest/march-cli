@@ -17,6 +17,7 @@ const brightRed = (s) => `\x1b[91m${s}${R}`;
 const brightGreen = (s) => `\x1b[92m${s}${R}`;
 const orange = (s) => `\x1b[38;2;245;167;66m${s}${R}`;
 const softGreen = (s) => `\x1b[38;2;127;216;143m${s}${R}`;
+const violet = (s) => `\x1b[38;2;232;91;226m${s}${R}`;
 
 // ── Formatters ───────────────────────────────────────────────────────
 const bold = (s) => `${B}${s}${R}`;
@@ -79,9 +80,9 @@ const message = {
 };
 
 const statusBar = {
-  background: bg256(236),
+  background: bg256(235),
   text: fg256(250),
-  accent: cyan,
+  accent: violet,
 };
 
 const shell = {
@@ -105,7 +106,7 @@ const selectList = {
 
 // ── Editor theme (consumed by pi-tui Editor component) ──────────────
 const EDITOR_THEME = {
-  borderColor: border.default,
+  borderColor: fg256(238),
   selectList,
 };
 
@@ -127,7 +128,7 @@ export {
   R, B, D,
   black, red, green, yellow, blue, magenta, cyan, white,
   brightBlack, brightRed, brightGreen,
-  orange, softGreen,
+  orange, softGreen, violet,
   bold, dim, inverse,
   fg256, bg256,
   // Semantic
