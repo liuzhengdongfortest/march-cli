@@ -202,7 +202,7 @@ export async function run(argv) {
     modelContextDumper,
     turnNotifier,
     logger,
-    refreshStatusBar,
+    refreshStatusBar: (...args) => refreshStatusBar?.(...args),
   });
 
   refreshStatusBar = createStatusLineUpdater({
@@ -212,7 +212,10 @@ export async function run(argv) {
     sessionSource,
     getMode: () => modeState.get(),
   });
-  refreshStatusBar();
+  const initialContextTokens = typeof runner.estimateContextTokens === "function"
+    ? await runner.estimateContextTokens("")
+    : null;
+  refreshStatusBar(initialContextTokens ? { contextTokens: initialContextTokens } : undefined);
 
   wireTuiHandlers({
     ui,
