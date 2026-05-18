@@ -14,6 +14,7 @@
   "scripts": {
     "dev": "cd .. && node march-cli/bin/march.mjs",
     "test": "node test/smoke.test.mjs",
+    "test:fast": "node test/fast.test.mjs",
     "test:real": "npm run test:shell-runtime-real && npm run test:shell-tui-real && npm run test:tui-key-real",
     "test:shell-runtime-real": "node test/shell-real-runtime.acceptance.mjs",
     "test:shell-tui-real": "node test/shell-tui-real.acceptance.mjs",
