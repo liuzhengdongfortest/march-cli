@@ -3,8 +3,8 @@ import { strict as assert } from "node:assert";
 export async function runRuntimeIpcSmoke() {
   console.log("--- smoke: runtime IPC peer ---");
   const { EventEmitter } = await import("node:events");
-  const { createRuntimeIpcPeer } = await import("../src/agent/runtime/ipc-peer.mjs");
-  const { createProcessRuntimeIpcPeer } = await import("../src/agent/runtime/process-ipc-transport.mjs");
+  const { createRuntimeIpcPeer } = await import("../src/agent/runtime/ipc/ipc-peer.mjs");
+  const { createProcessRuntimeIpcPeer } = await import("../src/agent/runtime/ipc/process-ipc-transport.mjs");
   const { createRemoteRuntimeUiClient } = await import("../src/agent/runtime/remote-ui-client.mjs");
   const { createRuntimeUiEventTarget } = await import("../src/agent/runtime/ui-event-bridge.mjs");
 
