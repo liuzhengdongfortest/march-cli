@@ -36,6 +36,10 @@ export async function runStatusBarSmoke() {
   const bottomPlain = stripAnsi(bottomLine);
   assert.ok(bottomPlain.trimStart().startsWith("Do"));
   assert.ok(bottomPlain.trimEnd().endsWith("deepseek • medium"));
+  statusBar.setText("Do | deepseek·medium | lsp:ts✓ | ⠋ Working | 11.3K");
+  const workingBottomPlain = stripAnsi(statusBar.renderBottom(64).at(-1));
+  assert.ok(workingBottomPlain.trimStart().startsWith("⠋ Working · Do"));
+  assert.ok(workingBottomPlain.trimEnd().endsWith("deepseek • medium"));
   const inputLine = statusBar.renderInputLine("hello", 80);
   assert.equal(visibleWidth(inputLine), 80);
   assert.ok(inputLine.includes("\x1b[48;2;32;34;38m"));

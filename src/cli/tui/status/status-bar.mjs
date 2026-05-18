@@ -70,8 +70,9 @@ export class StatusBar {
     const { left: insetLeft, innerWidth, right: insetRight } = insetForWidth(width);
     const parts = statusParts(this.text);
     const mode = parts.mode || DEFAULT_STATUS_TEXT;
+    const activity = parts.activity ? `${parts.activity} · ` : "";
     const right = [parts.model, parts.thinking].filter(Boolean).join(" • ");
-    const line = composeMetaLine({ left: mode, right, width: innerWidth });
+    const line = composeMetaLine({ left: `${activity}${mode}`, right, width: innerWidth });
     return ["", `${insetLeft}${line}${insetRight}`];
   }
 }
@@ -118,8 +119,9 @@ function statusParts(text) {
   const [model = "", thinking = ""] = runtime.split("·").map((part) => part.trim());
   const lsp = segments.find((segment) => segment.startsWith("lsp:")) || "";
   const context = [...segments].reverse().find((segment) => /^\d+(?:\.\d+)?[KM]?$/.test(segment)) || "";
-  const mode = segments.find((segment) => segment && segment !== runtime && segment !== lsp && segment !== context) || segments[0] || "";
-  return { mode, model, thinking, lsp, context };
+  const activity = segments.find((segment) => /(?:Working|Aborted)$/.test(segment)) || "";
+  const mode = segments.find((segment) => segment && segment !== runtime && segment !== lsp && segment !== activity && segment !== context) || segments[0] || "";
+  return { mode, model, thinking, lsp, activity, context };
 }
 
 function plainSegments(text) {
