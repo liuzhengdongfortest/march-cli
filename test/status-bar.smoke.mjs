@@ -35,6 +35,7 @@ export async function runStatusBarSmoke() {
   assert.equal(bottomLine.includes("\x1b[48;2;32;34;38m"), false);
   const bottomPlain = stripAnsi(bottomLine);
   assert.ok(bottomPlain.trimStart().startsWith("Do"));
+  assert.ok(bottomLine.includes("\x1b[38;2;245;167;66mDo\x1b[0m"));
   assert.ok(bottomPlain.trimEnd().endsWith("deepseek • medium"));
   statusBar.setText("Do | deepseek·medium | lsp:ts✓ | ⠋ Working | 11.3K");
   const workingBottomPlain = stripAnsi(statusBar.renderBottom(64).at(-1));
@@ -48,6 +49,7 @@ export async function runStatusBarSmoke() {
   assert.deepEqual(inputLines.map((l) => stripAnsi(l).trimEnd()), ["", "▌ hello", ""]);
   assert.equal(inputLines.every((l) => l.includes("\x1b[48;2;32;34;38m")), true);
   assert.equal(statusBar.setText("Discuss | gpt-5.4·medium"), true);
+  assert.ok(statusBar.renderBottom(64).at(-1).includes("\x1b[32mDiscuss\x1b[0m"));
   assert.equal(statusBar.setText("Discuss | gpt-5.4·medium"), false);
   const narrow = statusBar.renderBottom(40).at(-1);
   assert.equal(visibleWidth(narrow), 40);

@@ -1,5 +1,5 @@
 import { visibleWidth } from "@earendil-works/pi-tui";
-import { statusBar, R } from "../ui-theme.mjs";
+import { modeLabel, statusBar, R } from "../ui-theme.mjs";
 
 const ANSI_RE = /\x1b\[[0-?]*[ -/]*[@-~]/g;
 const DEFAULT_STATUS_TEXT = "March";
@@ -70,10 +70,10 @@ export class StatusBar {
     if (width <= 0) return [""];
     const { left: insetLeft, innerWidth, right: insetRight } = insetForWidth(width);
     const parts = statusParts(this.text);
-    const mode = parts.mode || DEFAULT_STATUS_TEXT;
-    const activity = parts.activity ? `${parts.activity} · ` : "";
+    const mode = formatModeLabel(parts.mode || DEFAULT_STATUS_TEXT);
+    const activity = parts.activity ? statusBar.muted(`${parts.activity} · `) : "";
     const right = [parts.model, parts.thinking].filter(Boolean).join(" • ");
-    const line = composeMetaLine({ left: `${activity}${mode}`, right, width: innerWidth });
+    const line = composeMetaLine({ left: `${activity}${mode}`, right, width: innerWidth, muteLeft: false });
     return ["", `${insetLeft}${line}${insetRight}`];
   }
 }
@@ -83,16 +83,17 @@ function insetForWidth(width) {
   return { left: "", innerWidth: safeWidth, right: "" };
 }
 
-function composeMetaLine({ left, right, width }) {
+function composeMetaLine({ left, right, width, muteLeft = true }) {
   const safeWidth = Math.max(1, Math.trunc(width));
   const rightWidth = visibleWidth(stripAnsi(right));
-  if (!right) return statusBar.muted(padToWidth(clipToWidth(left, safeWidth), safeWidth));
+  const colorLeft = (text) => (muteLeft ? statusBar.muted(text) : text);
+  if (!right) return colorLeft(padToWidth(clipToWidth(left, safeWidth), safeWidth));
   if (rightWidth >= safeWidth) return statusBar.muted(padToWidth(clipToWidth(right, safeWidth), safeWidth));
 
   const maxLeftWidth = Math.max(0, safeWidth - rightWidth - 1);
   const fittedLeft = maxLeftWidth > 0 ? clipToWidth(left, maxLeftWidth) : "";
   const gap = Math.max(1, safeWidth - visibleWidth(stripAnsi(fittedLeft)) - rightWidth);
-  return `${statusBar.muted(fittedLeft)}${" ".repeat(gap)}${statusBar.muted(right)}${R}`;
+  return `${colorLeft(fittedLeft)}${" ".repeat(gap)}${statusBar.muted(right)}${R}`;
 }
 
 function renderInputPaddingLine(width) {
@@ -118,6 +119,12 @@ function formatLspStatus(lsp) {
   if (!lsp) return "LSP off";
   const server = lsp.replace(/^lsp:/, "").replace(/[✓✗]$/u, "").trim();
   return server ? `LSP [${server}]` : "LSP off";
+}
+
+function formatModeLabel(mode) {
+  const label = normalizeStatusText(mode);
+  const color = modeLabel[label.toLowerCase()] || modeLabel.fallback;
+  return color(label);
 }
 
 function statusParts(text) {
@@ -168,15 +175,15 @@ export function fitStatusText(text, width) {
 }
 
 export function clipToWidth(text, width) {
-  // For ANSI-containing text, build output character by character and measure plain width
   let output = "";
   let plainWidth = 0;
-  let inAnsi = false;
-  for (const ch of Array.from(String(text || ""))) {
-    if (ch === "\x1b") inAnsi = true;
-    if (inAnsi) {
-      output += ch;
-      if (/[@-~]/.test(ch)) inAnsi = false;
+  const chars = Array.from(String(text || ""));
+  for (let index = 0; index < chars.length; index += 1) {
+    const ch = chars[index];
+    if (ch === "\x1b") {
+      const { sequence, nextIndex } = readAnsiSequence(chars, index);
+      output += sequence;
+      index = nextIndex;
       continue;
     }
     const charWidth = visibleWidth(ch);
@@ -185,6 +192,24 @@ export function clipToWidth(text, width) {
     plainWidth += charWidth;
   }
   return output;
+}
+
+function readAnsiSequence(chars, startIndex) {
+  let sequence = chars[startIndex];
+  let index = startIndex;
+  const intro = chars[startIndex + 1];
+  if (!intro) return { sequence, nextIndex: index };
+  sequence += intro;
+  index += 1;
+  if (intro !== "[") return { sequence, nextIndex: index };
+
+  while (index + 1 < chars.length) {
+    index += 1;
+    const ch = chars[index];
+    sequence += ch;
+    if (/[\x40-\x7e]/.test(ch)) break;
+  }
+  return { sequence, nextIndex: index };
 }
 
 function stripAnsi(text) {
