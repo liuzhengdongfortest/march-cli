@@ -54,7 +54,7 @@ export class StatusBar {
     const inputContent = visibleLines.map((line, index) =>
       `${left}${this.renderInputLine(line, innerWidth, { isFirst: index === 0 })}${right}`,
     );
-    return [inputPadding, ...inputContent, inputPadding];
+    return [...inputContent, inputPadding];
   }
 
   renderInputLine(line, width, { isFirst = true } = {}) {

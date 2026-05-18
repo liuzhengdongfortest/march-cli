@@ -22,8 +22,12 @@ export async function createRuntimeRunner({
   logger,
   refreshStatusBar,
 } = {}) {
+  const onModelPayload = ({ estimatedTokens }) => {
+    refreshStatusBar?.({ contextTokens: estimatedTokens });
+  };
+
   const runner = useRuntimeProcess
-    ? (await createRunnerProcessClient({ runnerOptions, ui })).runner
+    ? (await createRunnerProcessClient({ runnerOptions, ui, onModelPayload })).runner
     : await createRunner({
       ...runnerOptions,
       ui,
@@ -49,9 +53,7 @@ export async function createRuntimeRunner({
       modelContextDumper,
       turnNotifier,
       logger,
-      onModelPayload: ({ estimatedTokens }) => {
-        refreshStatusBar?.({ contextTokens: estimatedTokens });
-      },
+      onModelPayload,
     });
 
   runner.shellRuntime ??= shellRuntime;

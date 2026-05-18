@@ -74,7 +74,7 @@ async function createIsolatedRunner(options = {}) {
       config: options.config?.notifications,
     }),
     logger,
-    onModelPayload: ({ estimatedTokens }) => ui.status?.(`context ${estimatedTokens} tokens`),
+    onModelPayload: (event) => peer.notify("modelPayload", pickModelPayloadEvent(event)),
   });
 
   const originalDispose = runner.dispose;
@@ -86,4 +86,8 @@ async function createIsolatedRunner(options = {}) {
     }
   };
   return runner;
+}
+
+function pickModelPayloadEvent({ estimatedTokens, provider, model, kind, turnId } = {}) {
+  return { estimatedTokens, provider, model, kind, turnId };
 }

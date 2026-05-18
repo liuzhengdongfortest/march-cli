@@ -9,6 +9,7 @@ const DEFAULT_ENTRY = new URL("./runner-process-entry.mjs", import.meta.url);
 export async function createRunnerProcessClient({
   runnerOptions,
   ui,
+  onModelPayload = null,
   entry = fileURLToPath(DEFAULT_ENTRY),
   forkImpl = fork,
   timeoutMs = 0,
@@ -18,7 +19,10 @@ export async function createRunnerProcessClient({
   });
   const peer = createProcessRuntimeIpcPeer({
     processLike: child,
-    target: createRuntimeUiEventTarget(ui),
+    target: {
+      ...createRuntimeUiEventTarget(ui),
+      modelPayload: (event) => onModelPayload?.(event),
+    },
     timeoutMs,
   });
   const runner = createRemoteRunnerClient(peer);
