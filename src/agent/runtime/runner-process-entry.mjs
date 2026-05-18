@@ -39,7 +39,7 @@ async function createIsolatedRunner(options = {}) {
     stateRoot: options.stateRoot,
     ui,
     memoryRoot: options.memoryRoot,
-    centerMemoryPath: options.centerMemoryPath,
+    profilePaths: options.profilePaths,
     memoryStore,
     memoryTools,
     shellRuntime,

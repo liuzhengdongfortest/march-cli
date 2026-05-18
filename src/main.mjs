@@ -29,7 +29,7 @@ import { initializeMcp } from "./mcp/index.mjs";
 import { createWebToolsFromConfig } from "./web/tools.mjs";
 import { createModelContextDumper } from "./debug/model-context-dumper.mjs";
 import { createLogger, installProcessLogHandlers } from "./debug/logger.mjs";
-import { defaultCenterMemoryPath } from "./context/center-memory.mjs";
+import { defaultProfilePaths, ensureProfileFiles } from "./context/profiles.mjs";
 import { runProviderConfigCommand } from "./provider/config-command.mjs";
 import { runWebSearchConfigCommand } from "./web/config-command.mjs";
 import { createDesktopTurnNotifier } from "./notification/desktop-notifier.mjs";
@@ -103,7 +103,8 @@ export async function run(argv) {
   const modeState = createModeState();
   const namespace = loadOrCreateProjectId(projectMarchDir);
   const memoryRoot = resolveMemoryRoot(config.memoryRoot, stateRoot);
-  const centerMemoryPath = defaultCenterMemoryPath();
+  const profilePaths = defaultProfilePaths();
+  ensureProfileFiles(profilePaths);
   const memoryStore = new MarkdownMemoryStore({ root: memoryRoot });
   const memoryTools = createMarkdownMemoryTools(memoryStore);
   const currentProject = basename(cwd);
@@ -169,7 +170,7 @@ export async function run(argv) {
     config,
     stateRoot,
     memoryRoot,
-    centerMemoryPath,
+    profilePaths,
     namespace,
     projectMarchDir,
     extensionPaths,

@@ -3,14 +3,14 @@ import { buildSessionIdentity } from "./session-status.mjs";
 import { buildSystemCore, resolveSystemCorePromptKey } from "./system-core.mjs";
 import { buildInjectionsLayer } from "./injections.mjs";
 import { buildProjectContext } from "./project-context.mjs";
-import { buildCenterMemory } from "./center-memory.mjs";
+import { buildProfileLayers } from "./profiles.mjs";
 import { formatRecallHints } from "../memory/markdown-store.mjs";
 
 export class ContextEngine {
-  constructor({ cwd, modelId, provider = "deepseek", thinkingLevel = "medium", namespace = "", memoryRoot = null, centerMemoryPath = null, shellRuntime = null, lspService = null, injections = [], maxTurns, trimBatch }) {
+  constructor({ cwd, modelId, provider = "deepseek", thinkingLevel = "medium", namespace = "", memoryRoot = null, profilePaths = null, shellRuntime = null, lspService = null, injections = [], maxTurns, trimBatch }) {
     this.cwd = cwd;
     this.memoryRoot = memoryRoot;
-    this.centerMemoryPath = centerMemoryPath;
+    this.profilePaths = profilePaths;
     this.modelId = modelId;
     this.provider = provider;
     this.thinkingLevel = thinkingLevel;
@@ -62,8 +62,7 @@ export class ContextEngine {
     const projectCtx = buildProjectContext(this.cwd);
     if (projectCtx) layers.push({ name: "project_context", text: projectCtx });
 
-    const centerMemory = buildCenterMemory(this.centerMemoryPath);
-    if (centerMemory) layers.push({ name: "center_memory", text: centerMemory });
+    layers.push(...buildProfileLayers(this.profilePaths));
 
     layers.push({ name: "recent_chat", text: this.#buildRecentChat() });
 

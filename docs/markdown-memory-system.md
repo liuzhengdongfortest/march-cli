@@ -28,6 +28,20 @@ memory hint: id + name + short_description
 memory_open(id) reads Markdown body when needed
 ```
 
+## Profiles 与 Memories
+
+Profiles 是每轮固定注入的长期身份/偏好，不属于按需召回记忆。
+
+```text
+~/.march/memory/profiles/
+├─ agent.md   # Agent Profile: March 如何工作、表达和协作
+└─ user.md    # User Profile: 用户偏好、长期目标和稳定事实
+```
+
+March 启动时会自动创建缺失的 profile 文件，并在 context 中注入为 `[agent_profile]` 和 `[user_profile]`。
+
+Markdown Memories 是事件型、经验型或项目型记忆，通过 `memory_search` / `memory_open` 按需召回。不要把可检索的历史事件塞进 Profiles；也不要把稳定身份偏好拆成普通 memory hint。
+
 Markdown 文件是真相：用户可以直接用 Obsidian 打开、编辑、移动或删除。March 不依赖 Obsidian API，只读写文件系统。
 
 FTS5 tag index 是缓存：它服务 March 内部被动召回，不承担长期事实存储。索引错了就重建，不能让索引反过来覆盖 Markdown。

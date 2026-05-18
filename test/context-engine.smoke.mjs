@@ -1,10 +1,11 @@
 import { strict as assert } from "node:assert";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: context engine ---");
   const { ContextEngine } = await import("../src/context/engine.mjs");
+  const { ensureProfileFiles } = await import("../src/context/profiles.mjs");
   const dir = setupTmp();
 
   const engine = new ContextEngine({
@@ -45,25 +46,37 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   assert.ok(providerCtx.userMessages.at(-1).content.includes("[recent_chat]"));
   assert.ok(providerCtx.userMessages.at(-1).content.includes("[current_user]\n装備を確認する"));
 
-  const centerDir = setupTmp();
-  const centerMemoryPath = join(centerDir, ".march", "memory", "center.md");
-  const centerEngine = new ContextEngine({ cwd: centerDir, modelId: "test", provider: "deepseek", centerMemoryPath });
-  assert.ok(!centerEngine.buildContext("").includes("[center_memory]"));
-  mkdirSync(join(centerDir, ".march", "memory"), { recursive: true });
-  writeFileSync(centerMemoryPath, "   \n", "utf8");
-  assert.ok(!centerEngine.buildContext("").includes("[center_memory]"));
-  writeFileSync(join(centerDir, "AGENTS.md"), "# Project Rule\n\nproject-rule: center follows project context\n", "utf8");
-  writeFileSync(centerMemoryPath, "# Center Memory\n\n- Prefer concise answers.\n", "utf8");
-  const centerCtx = centerEngine.buildContext("");
-  assert.ok(centerCtx.includes("[center_memory]"));
-  assert.ok(centerCtx.includes(`--- ${centerMemoryPath} ---`));
-  assert.ok(centerCtx.includes("- Prefer concise answers."));
-  assert.ok(centerCtx.indexOf("[project_context]") < centerCtx.indexOf("[center_memory]"));
-  assert.ok(centerCtx.indexOf("[center_memory]") < centerCtx.indexOf("[recent_chat]"));
-  const centerProviderCtx = centerEngine.buildProviderContext("hello");
-  assert.ok(centerProviderCtx.userMessages.some((message) => message.name === "center_memory" && message.content.includes("# Center Memory")));
-  assert.equal(centerProviderCtx.userMessages.at(-1).name, "recent_chat");
-  cleanup(centerDir);
+  const profileDir = setupTmp();
+  const profilePaths = {
+    agent: join(profileDir, ".march", "memory", "profiles", "agent.md"),
+    user: join(profileDir, ".march", "memory", "profiles", "user.md"),
+  };
+  const profileEngine = new ContextEngine({ cwd: profileDir, modelId: "test", provider: "deepseek", profilePaths });
+  assert.ok(!profileEngine.buildContext("").includes("[agent_profile]"));
+  ensureProfileFiles(profilePaths);
+  assert.ok(existsSync(profilePaths.agent));
+  assert.ok(existsSync(profilePaths.user));
+  assert.ok(readFileSync(profilePaths.agent, "utf8").includes("# Agent Profile"));
+  assert.ok(readFileSync(profilePaths.user, "utf8").includes("# User Profile"));
+  mkdirSync(join(profileDir, ".march", "memory", "profiles"), { recursive: true });
+  writeFileSync(join(profileDir, "AGENTS.md"), "# Project Rule\n\nproject-rule: profiles follow project context\n", "utf8");
+  writeFileSync(profilePaths.agent, "# Agent Profile\n\n- Prefer concise answers.\n", "utf8");
+  writeFileSync(profilePaths.user, "# User Profile\n\n- User prefers direct explanations.\n", "utf8");
+  const profileCtx = profileEngine.buildContext("");
+  assert.ok(profileCtx.includes("[agent_profile]"));
+  assert.ok(profileCtx.includes("[user_profile]"));
+  assert.ok(profileCtx.includes(`--- ${profilePaths.agent} ---`));
+  assert.ok(profileCtx.includes(`--- ${profilePaths.user} ---`));
+  assert.ok(profileCtx.includes("- Prefer concise answers."));
+  assert.ok(profileCtx.includes("- User prefers direct explanations."));
+  assert.ok(profileCtx.indexOf("[project_context]") < profileCtx.indexOf("[agent_profile]"));
+  assert.ok(profileCtx.indexOf("[agent_profile]") < profileCtx.indexOf("[user_profile]"));
+  assert.ok(profileCtx.indexOf("[user_profile]") < profileCtx.indexOf("[recent_chat]"));
+  const profileProviderCtx = profileEngine.buildProviderContext("hello");
+  assert.ok(profileProviderCtx.userMessages.some((message) => message.name === "agent_profile" && message.content.includes("# Agent Profile")));
+  assert.ok(profileProviderCtx.userMessages.some((message) => message.name === "user_profile" && message.content.includes("# User Profile")));
+  assert.equal(profileProviderCtx.userMessages.at(-1).name, "recent_chat");
+  cleanup(profileDir);
 
   const modelPromptEngine = new ContextEngine({
     cwd: dir,
