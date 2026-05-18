@@ -38,6 +38,7 @@ import { runProviderConfigCommandSmoke } from "./provider-config-command.smoke.m
 import { runReadFileToolSmoke } from "./read-file-tool.smoke.mjs";
 import { runRipgrepResolverSmoke } from "./ripgrep-resolver.smoke.mjs";
 import { runRunnerCoreSmoke } from "./runner-core.smoke.mjs";
+import { runRuntimeIpcSmoke } from "./runtime-ipc.smoke.mjs";
 import { runRuntimeUiEventsSmoke } from "./runtime-ui-events.smoke.mjs";
 import { runSettingsCommandSmoke } from "./settings-command.smoke.mjs";
 import { runPiSessionManagerFactorySmoke, runPiSessionSidecarSmoke, runPiSessionSidecarSyncSmoke, runPiSessionTranscriptSmoke, runSessionPersistenceSmoke, runSessionTreeSmoke } from "./session.smoke.mjs";
@@ -229,6 +230,7 @@ await runContextEngineSmoke({ setupTmp, cleanup });
 await runProjectContextSmoke({ setupTmp, cleanup });
 
 await runRuntimeUiEventsSmoke();
+await runRuntimeIpcSmoke();
 await runRunnerCoreSmoke();
 
 // ── 3d. Autocomplete provider ───────────────────────────────────────

@@ -1,3 +1,10 @@
+export function createRuntimeUiEventTarget(ui) {
+  return {
+    uiEvent: (event) => dispatchRuntimeUiEvent(ui, event),
+    uiRequest: (event) => dispatchRuntimeUiEvent(ui, event),
+  };
+}
+
 export function createRuntimeUiEventBus() {
   const listeners = new Set();
   return {
