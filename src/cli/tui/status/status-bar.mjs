@@ -3,10 +3,14 @@ import { statusBar, R } from "../ui-theme.mjs";
 
 const ANSI_RE = /\x1b\[[0-?]*[ -/]*[@-~]/g;
 const DEFAULT_STATUS_TEXT = "March";
+const DEFAULT_HELP_TEXT = "/help for commands · Tab toggles mode · Ctrl+C exits";
+const PANEL_BG = "\x1b[48;5;235m";
 
 export class StatusBar {
-  constructor(text = DEFAULT_STATUS_TEXT) {
+  constructor(text = DEFAULT_STATUS_TEXT, { cwd = process.cwd(), helpText = DEFAULT_HELP_TEXT } = {}) {
     this.text = normalizeStatusText(text);
+    this.cwd = normalizeStatusText(cwd);
+    this.helpText = normalizeStatusText(helpText);
   }
 
   setText(text) {
@@ -16,22 +20,70 @@ export class StatusBar {
     return true;
   }
 
+  setCwd(cwd) {
+    const next = normalizeStatusText(cwd);
+    if (next === this.cwd) return false;
+    this.cwd = next;
+    return true;
+  }
+
   invalidate() {}
 
   render(width) {
+    return this.renderTop(width);
+  }
+
+  renderTop(width) {
     if (width <= 0) return [""];
-    const text = fitStatusText(this.text, width);
-    const padded = padToWidth(text, width);
-    // If text already has ANSI coloring, only apply background
-    if (hasAnsi(padded)) {
-      return [statusBar.background(`${padded}${R}`)];
-    }
-    return [statusBar.background(statusBar.text(padded))];
+    return [statusBar.cwd(padToWidth(clipToWidth(this.cwd, width), width))];
+  }
+
+  renderInputLine(line, width) {
+    if (width <= 0) return "";
+    return applyBackground(padToWidth(line, width));
+  }
+
+  renderBottom(width) {
+    if (width <= 0) return [""];
+    const model = modelSegment(this.text);
+    const left = leftStatusSegment(this.text, this.helpText);
+    return [applyBackground(composeBottomLine({ left, right: model, width }))];
   }
 }
 
-function hasAnsi(text) {
-  return ANSI_RE.test(text);
+function composeBottomLine({ left, right, width }) {
+  const safeWidth = Math.max(1, Math.trunc(width));
+  const rightText = right ? statusBar.accent(right) : "";
+  const rightWidth = visibleWidth(stripAnsi(right));
+  if (!right) return statusBar.muted(padToWidth(clipToWidth(left, safeWidth), safeWidth));
+  if (rightWidth >= safeWidth) return statusBar.accent(padToWidth(clipToWidth(right, safeWidth), safeWidth));
+
+  const maxLeftWidth = Math.max(0, safeWidth - rightWidth - 1);
+  const fittedLeft = maxLeftWidth > 0 ? clipToWidth(left, maxLeftWidth) : "";
+  const gap = Math.max(1, safeWidth - visibleWidth(stripAnsi(fittedLeft)) - rightWidth);
+  return `${statusBar.muted(fittedLeft)}${" ".repeat(gap)}${rightText}${R}`;
+}
+
+function applyBackground(line) {
+  return `${PANEL_BG}${String(line).replaceAll(R, `${R}${PANEL_BG}`)}${R}`;
+}
+
+function modelSegment(text) {
+  const segments = plainSegments(text);
+  return segments[1] || segments[0] || "March";
+}
+
+function leftStatusSegment(text, helpText) {
+  const segments = plainSegments(text);
+  const left = [segments[0], ...segments.slice(2)].filter(Boolean).join(" · ");
+  return left || helpText;
+}
+
+function plainSegments(text) {
+  return stripAnsi(normalizeStatusText(text))
+    .split(" | ")
+    .map((segment) => segment.trim())
+    .filter(Boolean);
 }
 
 export function normalizeStatusText(text) {

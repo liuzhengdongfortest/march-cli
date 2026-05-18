@@ -22,19 +22,41 @@ export async function runStatusBarSmoke() {
   assert.ok(fitted.includes("gpt-5.4"));
   assert.ok(!fitted.includes("\x1b"));
 
-  const statusBar = new StatusBar("git:main session:abc model:deepseek");
+  const statusBar = new StatusBar("Do | deepseek·medium", { cwd: "D:\\playground\\pi-go\\march-cli" });
   const [line] = statusBar.render(16);
   assert.equal(visibleWidth(line), 16);
-  assert.ok(line.includes("\x1b[48;5;235m"));
+  assert.ok(stripAnsi(line).includes("D:\\playground"));
+  const [bottomLine] = statusBar.renderBottom(32);
+  assert.equal(visibleWidth(bottomLine), 32);
+  assert.ok(bottomLine.includes("\x1b[48;5;235m"));
+  assert.ok(stripAnsi(bottomLine).trimEnd().endsWith("deepseek·medium"));
+  const inputLine = statusBar.renderInputLine("\x1b[38;5;238m──\x1b[0m", 8);
+  assert.equal(visibleWidth(inputLine), 8);
+  assert.ok(inputLine.includes("\x1b[48;5;235m"));
 
   assert.equal(statusBar.setText("Discuss | gpt-5.4·medium"), true);
   assert.equal(statusBar.setText("Discuss | gpt-5.4·medium"), false);
-  const [narrow] = statusBar.render(40);
+  const [narrow] = statusBar.renderBottom(40);
   assert.equal(visibleWidth(narrow), 40);
-  assert.ok(narrow.includes("gpt-5.4"));
+  assert.ok(stripAnsi(narrow).includes("gpt-5.4"));
 
   statusBar.setText("next");
   assert.equal(visibleWidth(statusBar.render(8)[0]), 8);
+  assert.equal(visibleWidth(statusBar.renderBottom(8)[0]), 8);
+
+  const { MainPaneLayout } = await import("../src/cli/tui/layout/main-pane-layout.mjs");
+  const layoutStatusBar = new StatusBar("Do | gpt-5-codex·medium", { cwd: "D:\\work" });
+  const layout = new MainPaneLayout({
+    output: { setViewportHeight: () => {}, render: () => ["out"], invalidate: () => {} },
+    statusBar: layoutStatusBar,
+    editor: { render: () => ["> hello"], invalidate: () => {} },
+    terminal: { rows: 6 },
+  });
+  const layoutLines = layout.render(24);
+  assert.equal(layoutLines.length, 6);
+  assert.ok(stripAnsi(layoutLines.at(-3)).includes("D:\\work"));
+  assert.ok(layoutLines.at(-2).includes("\x1b[48;5;235m"));
+  assert.ok(stripAnsi(layoutLines.at(-1)).trimEnd().endsWith("gpt-5-codex·medium"));
 
   const noop = createStatusLineUpdater({
     ui: {},

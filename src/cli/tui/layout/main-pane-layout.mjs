@@ -9,9 +9,12 @@ export class MainPaneLayout {
 
   render(width) {
     const safeWidth = Math.max(1, Math.trunc(width));
-    const statusLines = this.statusBar.render(safeWidth);
-    const editorLines = this.editor.render(safeWidth);
-    const fixedHeight = statusLines.length + editorLines.length;
+    const statusTopLines = this.statusBar.renderTop?.(safeWidth) ?? this.statusBar.render(safeWidth);
+    const editorLines = this.editor.render(safeWidth).map((line) =>
+      this.statusBar.renderInputLine?.(line, safeWidth) ?? line
+    );
+    const statusBottomLines = this.statusBar.renderBottom?.(safeWidth) ?? [];
+    const fixedHeight = statusTopLines.length + editorLines.length + statusBottomLines.length;
     const viewportHeight = Math.max(1, (this.terminal?.rows || 30) - fixedHeight);
     this.output.setViewportHeight(viewportHeight);
     const outputLines = this.output.render(safeWidth);
@@ -20,8 +23,9 @@ export class MainPaneLayout {
     const selectedOutputLines = this.selection?.apply(outputLines) ?? outputLines;
     return [
       ...padToHeight(selectedOutputLines, viewportHeight),
-      ...statusLines,
+      ...statusTopLines,
       ...editorLines,
+      ...statusBottomLines,
     ];
   }
 

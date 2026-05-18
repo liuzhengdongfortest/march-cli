@@ -80,8 +80,8 @@ const message = {
 };
 
 const statusBar = {
-  background: bg256(235),
-  text: fg256(250),
+  muted: brightBlack,
+  cwd: fg256(250),
   accent: violet,
 };
 

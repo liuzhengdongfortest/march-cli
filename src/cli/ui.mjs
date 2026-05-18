@@ -41,7 +41,7 @@ export function createTuiUI({
   const tui = new TUI(terminal);
   const output = new OutputBuffer();
   const shellDrawer = new ShellDrawer({ shellRuntime });
-  const statusBar = new StatusBar();
+  const statusBar = new StatusBar(undefined, { cwd });
   const editor = new Editor(tui, EDITOR_THEME, { paddingX: 1 });
   const selection = new ScreenSelection();
   const mainPane = new MainPaneLayout({ output, statusBar, editor, terminal, selection });
