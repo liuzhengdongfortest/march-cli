@@ -30,7 +30,7 @@ import { createWebToolsFromConfig } from "./web/tools.mjs";
 import { createModelContextDumper } from "./debug/model-context-dumper.mjs";
 import { createLogger, installProcessLogHandlers } from "./debug/logger.mjs";
 import { defaultProfilePaths, ensureProfileFiles } from "./context/profiles.mjs";
-import { runProviderConfigCommand } from "./provider/config-command.mjs";
+import { runProviderCommand } from "./provider/command.mjs";
 import { runWebSearchConfigCommand } from "./web/config-command.mjs";
 import { createDesktopTurnNotifier } from "./notification/desktop-notifier.mjs";
 import { registerSuperGrokOAuthProvider } from "./supergrok/oauth-provider.mjs";
@@ -60,11 +60,12 @@ export async function run(argv) {
       return 1;
     }
   }
-
-  if (args.command?.name === "provider" || args.command?.name === "websearch") {
-    const command = args.command.name === "provider" ? runProviderConfigCommand : runWebSearchConfigCommand;
-    if (args.providerConfig) return await command({ homeDir: homedir() });
-    process.stderr.write(`Usage: march ${args.command.name} --config\n`);
+  if (args.command?.name === "provider") {
+    return await runProviderCommand(args);
+  }
+  if (args.command?.name === "websearch") {
+    if (args.providerConfig) return await runWebSearchConfigCommand({ homeDir: homedir() });
+    process.stderr.write("Usage: march websearch --config\n");
     return 1;
   }
 

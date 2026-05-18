@@ -38,6 +38,17 @@ export function upsertProviderProfile({ path = globalConfigJsonPath(), id, type,
   return config;
 }
 
+export function upsertSharedProviderProfile({ path = globalConfigJsonPath(), id, provider }) {
+  const config = readConfigJson(path);
+  const providers = config.providers && typeof config.providers === "object" && !Array.isArray(config.providers)
+    ? config.providers
+    : {};
+  providers[id] = provider;
+  config.providers = providers;
+  writeConfigJson(path, config);
+  return config;
+}
+
 export function upsertModelSelection({ path = globalConfigJsonPath(), provider, model, serviceTier }) {
   const config = readConfigJson(path);
   config.provider = provider;

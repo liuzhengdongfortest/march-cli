@@ -35,6 +35,7 @@ import { runModelContextDumperSmoke } from "./model-context-dumper.smoke.mjs";
 import { runNodePtyAdapterSmoke } from "./node-pty-adapter.smoke.mjs";
 import { runPromptTemplatesSmoke } from "./prompt-templates.smoke.mjs";
 import { runProviderConfigCommandSmoke } from "./provider-config-command.smoke.mjs";
+import { runProviderShareCommandSmoke } from "./provider-share-command.smoke.mjs";
 import { runReadFileToolSmoke } from "./read-file-tool.smoke.mjs";
 import { runRipgrepResolverSmoke } from "./ripgrep-resolver.smoke.mjs";
 import { runRunnerCoreSmoke } from "./runner-core.smoke.mjs";
@@ -137,6 +138,10 @@ function delay(ms) {
   assert.deepEqual(providerConfig.command, { name: "provider", args: [] });
   assert.equal(providerConfig.providerConfig, true);
 
+  const providerShare = parseCliArgs(["provider", "share", "ephone", "--include-key"]);
+  assert.deepEqual(providerShare.command, { name: "provider", args: ["share", "ephone"] });
+  assert.equal(providerShare.includeKey, true);
+
   const websearchConfig = parseCliArgs(["websearch", "--config"]);
   assert.deepEqual(websearchConfig.command, { name: "websearch", args: [] });
   assert.equal(websearchConfig.providerConfig, true);
@@ -174,6 +179,7 @@ await runKeybindingsSmoke({ setupTmp, cleanup });
 await runPromptTemplatesSmoke({ setupTmp, cleanup });
 await runSettingsCommandSmoke({ setupTmp, cleanup });
 await runProviderConfigCommandSmoke({ setupTmp, cleanup });
+await runProviderShareCommandSmoke({ setupTmp, cleanup });
 await runCustomProviderSmoke();
 await runWebSearchConfigCommandSmoke({ setupTmp, cleanup });
 await runWebToolsSmoke();

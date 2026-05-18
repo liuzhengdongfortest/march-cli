@@ -11,6 +11,8 @@ export function parseCliArgs(argv) {
       extension: { type: "string", short: "e", multiple: true },
       extension: { type: "string", short: "e", multiple: true },
       config: { type: "boolean" },
+      "include-key": { type: "boolean" },
+      "profile-only": { type: "boolean" },
       "dump-context": { type: "boolean" },
       "pi-sessions": { type: "boolean" },
       "pi-runtime-host": { type: "boolean" },
@@ -33,6 +35,8 @@ export function parseCliArgs(argv) {
     extensions: values.extension ?? [],
     dumpContext: values["dump-context"] ?? false,
     providerConfig: values.config ?? false,
+    includeKey: values["include-key"] ?? false,
+    profileOnly: values["profile-only"] ?? false,
     piSessions: values["pi-sessions"] ?? false,
     piRuntimeHost: values["pi-runtime-host"] ?? false,
     shellRuntime: values["no-shell-runtime"] ? false : true,
@@ -50,6 +54,8 @@ Usage:
   march [options]            (starts REPL)
   march login [provider]     Login to an OAuth provider
   march provider --config    Configure provider credentials
+  march provider share [id]  Share a provider profile
+  march provider accept <token>
   march websearch --config  Configure web search credentials
 
 Options:
@@ -58,6 +64,8 @@ Options:
   --resume <id>        Resume a pi session by default
   --json               JSON output mode (no TUI)
   --config             With provider/websearch command, open configuration
+  --include-key        With provider share, include API key
+  --profile-only       With provider share, omit API key
   --dump-context       Write every prompt sent to the model under .march/context-dumps/
   --pi-sessions        Force pi JSONL SessionManager persistence
   --pi-runtime-host    Force pi AgentSessionRuntime host path
