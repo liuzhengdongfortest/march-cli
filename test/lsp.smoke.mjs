@@ -28,6 +28,16 @@ export async function runLspSmoke({ setupTmp, cleanup }) {
     const vueTsdk = vue.server.initialization.typescript.tsdk.replaceAll("\\", "/");
     assert.ok(vueTsdk.endsWith("typescript/lib"));
 
+    const appDir = join(dir, "apps", "web");
+    mkdirSync(join(appDir, "src"), { recursive: true });
+    writeFileSync(join(dir, "tsconfig.json"), JSON.stringify({ include: ["server/**/*"] }));
+    writeFileSync(join(dir, "tsconfig.web-base.json"), JSON.stringify({ include: ["apps/web/src/**/*"] }));
+    writeFileSync(join(appDir, "tsconfig.app.json"), JSON.stringify({ extends: "../../tsconfig.web-base.json" }));
+    writeFileSync(join(appDir, "src", "main.ts"), "export const app = true;\n");
+    const appTs = await resolveLspServerStatus({ filePath: join(appDir, "src", "main.ts"), workspaceRoot: dir });
+    assert.equal(appTs.status, "available");
+    assert.equal(appTs.server.root, appDir);
+
     const managedDir = setupTmp();
     const noLocalDir = setupTmp();
     const originalPath = process.env.PATH;

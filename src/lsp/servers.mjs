@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { createRequire } from "node:module";
 import { ensureManagedNodeCommand, ensureManagedTypeScript, findManagedTypeScriptSdk, findManagedTypeScriptServer } from "./managed-node-server.mjs";
+import { resolveTypeScriptProjectRoot } from "./typescript-project-resolver.mjs";
 
 const NODE_ROOT_MARKERS = ["package-lock.json", "bun.lockb", "bun.lock", "pnpm-lock.yaml", "yarn.lock", "package.json"];
 
@@ -24,6 +25,7 @@ const LSP_SERVERS = [
     id: "typescript",
     extensions: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"],
     rootMarkers: NODE_ROOT_MARKERS,
+    projectRoot: resolveTypeScriptProjectRoot,
     command: ["typescript-language-server"],
     managedCommand: "typescript-language-server",
     args: ["--stdio"],
@@ -144,9 +146,7 @@ export async function resolveLspServerStatus({ filePath, workspaceRoot, onEvent 
   const def = LSP_SERVERS.find((server) => server.extensions.includes(ext));
   if (!def) return { status: "unsupported", extension: ext };
 
-  const root = def.rootMarkers.length > 0
-    ? findNearestRoot(dirname(filePath), workspaceRoot, def.rootMarkers) ?? workspaceRoot
-    : workspaceRoot;
+  const root = resolveServerRoot(def, { filePath, workspaceRoot });
   const command = await resolveCommand(def, { root, workspaceRoot, onEvent });
   if (command?.error) return { status: "unavailable", id: def.id, root, reason: command.error };
   if (!command) return { status: "unavailable", id: def.id, root, reason: `missing ${def.command[0]}` };
@@ -194,6 +194,14 @@ async function ensureTypeScriptFallback(def, { root, workspaceRoot, onEvent }) {
     onEvent?.({ status: "failed", id: def.id, root, reason });
     return { error: reason };
   }
+}
+
+function resolveServerRoot(def, { filePath, workspaceRoot }) {
+  const projectRoot = def.projectRoot?.({ filePath, workspaceRoot });
+  if (projectRoot) return projectRoot;
+  return def.rootMarkers.length > 0
+    ? findNearestRoot(dirname(filePath), workspaceRoot, def.rootMarkers) ?? workspaceRoot
+    : workspaceRoot;
 }
 
 function findCommand(names, { root, workspaceRoot }) {
