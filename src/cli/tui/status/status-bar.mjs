@@ -50,7 +50,8 @@ export class StatusBar {
     const { left, innerWidth, right } = insetForWidth(width);
     const contentLines = lines.filter((line) => !isEditorChromeLine(line));
     const visibleLines = contentLines.length > 0 ? contentLines : [""];
-    const inputPadding = `${left}${renderInputPaddingLine(innerWidth)}${right}`;
+    const paintWidth = inputPaintWidth(innerWidth);
+    const inputPadding = `${left}${renderInputPaddingLine(paintWidth)}${right}`;
     const inputContent = visibleLines.map((line, index) =>
       `${left}${this.renderInputLine(line, innerWidth, { isFirst: index === 0 })}${right}`,
     );
@@ -59,11 +60,12 @@ export class StatusBar {
 
   renderInputLine(line, width, { isFirst = true } = {}) {
     if (width <= 0) return "";
+    const paintWidth = inputPaintWidth(width);
     const prompt = isFirst ? statusBar.prompt(INPUT_PROMPT) : "  ";
     const promptWidth = visibleWidth(stripAnsi(INPUT_PROMPT));
-    const maxContentWidth = Math.max(1, width - promptWidth - 2);
+    const maxContentWidth = Math.max(0, paintWidth - promptWidth - 2);
     const content = clipToWidth(line, maxContentWidth);
-    return applyInputBackground(padToWidth(`${prompt}${content}`, width));
+    return applyInputBackground(padToWidth(`${prompt}${content}`, paintWidth));
   }
 
   renderBottom(width) {
@@ -98,6 +100,11 @@ function composeMetaLine({ left, right, width, muteLeft = true }) {
 
 function renderInputPaddingLine(width) {
   return applyInputBackground(" ".repeat(Math.max(1, Math.trunc(width))));
+}
+
+function inputPaintWidth(width) {
+  const safeWidth = Math.max(1, Math.trunc(width));
+  return safeWidth > 1 ? safeWidth - 1 : safeWidth;
 }
 
 function applyInputBackground(line) {

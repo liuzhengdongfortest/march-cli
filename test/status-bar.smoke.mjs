@@ -42,9 +42,12 @@ export async function runStatusBarSmoke() {
   assert.ok(workingBottomPlain.trimStart().startsWith("⠋ Working · Do"));
   assert.ok(workingBottomPlain.trimEnd().endsWith("deepseek • medium"));
   const inputLine = statusBar.renderInputLine("hello", 80);
-  assert.equal(visibleWidth(inputLine), 80);
+  assert.equal(visibleWidth(inputLine), 79);
   assert.ok(inputLine.includes("\x1b[48;2;32;34;38m"));
   assert.ok(stripAnsi(inputLine).startsWith("▌hello"));
+  const cjkInputLine = statusBar.renderInputLines(["你好，我能复制嘛？:c"], 80).at(1);
+  assert.equal(visibleWidth(cjkInputLine), 79);
+  assert.ok(stripAnsi(cjkInputLine).startsWith("▌你好，我能复制嘛？:c"));
   const inputLines = statusBar.renderInputLines(["\x1b[38;5;238m────────\x1b[0m", "hello", "\x1b[38;5;238m────────\x1b[0m"], 80);
   assert.deepEqual(inputLines.map((l) => stripAnsi(l).trimEnd()), ["", "▌hello", ""]);
   assert.equal(inputLines.every((l) => l.includes("\x1b[48;2;32;34;38m")), true);
@@ -75,7 +78,7 @@ export async function runStatusBarSmoke() {
   assert.ok(layoutLines.at(-5).includes("\x1b[48;2;32;34;38m"));
   assert.equal(stripAnsi(layoutLines.at(-5)).trim(), "");
   assert.ok(layoutLines.at(-4).includes("\x1b[48;2;32;34;38m"));
-  assert.equal(visibleWidth(layoutLines.at(-4)), 80);
+  assert.equal(visibleWidth(layoutLines.at(-4)), 79);
   assert.ok(stripAnsi(layoutLines.at(-4)).startsWith("▌hello"));
   assert.equal(stripAnsi(layoutLines.at(-3)).trim(), "");
   assert.ok(layoutLines.at(-3).includes("\x1b[48;2;32;34;38m"));
