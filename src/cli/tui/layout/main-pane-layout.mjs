@@ -19,12 +19,17 @@ export class MainPaneLayout {
     this.output.setViewportHeight(viewportHeight);
     const outputLines = this.output.render(safeWidth);
     const outputTop = Math.max(0, viewportHeight - outputLines.length);
-    this.selection?.setViewport({ topRow: outputTop, leftCol: 0, width: safeWidth, lines: outputLines });
-    const selectedOutputLines = this.selection?.apply(outputLines) ?? outputLines;
+    const editorTop = viewportHeight + statusTopLines.length;
+    this.selection?.setRegions?.([
+      { id: "output", topRow: outputTop, leftCol: 0, width: safeWidth, lines: outputLines },
+      { id: "editor", topRow: editorTop, leftCol: 0, width: safeWidth, lines: editorLines },
+    ]);
+    const selectedOutputLines = this.selection?.applyRegion?.("output", outputLines) ?? outputLines;
+    const selectedEditorLines = this.selection?.applyRegion?.("editor", editorLines) ?? editorLines;
     return [
       ...padToHeight(selectedOutputLines, viewportHeight),
       ...statusTopLines,
-      ...editorLines,
+      ...selectedEditorLines,
       ...statusBottomLines,
     ];
   }

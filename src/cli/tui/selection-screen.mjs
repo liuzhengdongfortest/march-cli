@@ -9,30 +9,37 @@ export class ScreenSelection {
     this.active = false;
     this.anchor = null;
     this.focus = null;
-    this.lines = [];
-    this._plainLines = [];
+    this.regions = [];
+    this._plainLines = new Map();
     this.viewport = { topRow: 0, leftCol: 0, width: Infinity, height: 0 };
   }
 
   setLines(lines) {
-    this.lines = [...lines];
-    this._plainLines = [];
-    this.viewport = { topRow: 0, leftCol: 0, width: Infinity, height: this.lines.length };
+    this.setViewport({ topRow: 0, leftCol: 0, width: Infinity, lines });
   }
 
   setViewport({ topRow = 0, leftCol = 0, width = Infinity, lines = [] } = {}) {
-    this.lines = lines;
-    this._plainLines = [];
-    this.viewport = {
-      topRow: Math.max(0, Math.trunc(topRow)),
-      leftCol: Math.max(0, Math.trunc(leftCol)),
-      width: Number.isFinite(width) ? Math.max(1, Math.trunc(width)) : Infinity,
-      height: this.lines.length,
-    };
+    this.setRegions([{ id: "default", topRow, leftCol, width, lines }]);
+  }
+
+  setRegions(regions = []) {
+    let docRow = 0;
+    this.regions = regions
+      .map((region, index) => normalizeRegion(region, index))
+      .filter((region) => region.lines.length > 0)
+      .sort((a, b) => a.topRow - b.topRow || a.leftCol - b.leftCol)
+      .map((region) => {
+        const normalized = { ...region, docStart: docRow };
+        docRow += region.lines.length;
+        return normalized;
+      });
+    this.lines = this.regions.flatMap((region) => region.lines);
+    this._plainLines = new Map();
+    this.viewport = { topRow: 0, leftCol: 0, width: Infinity, height: this.lines.length };
   }
 
   start(point) {
-    const normalized = normalizePoint(point, this.viewport, true);
+    const normalized = normalizePoint(point, this.regions, true);
     if (!normalized) {
       this.clear();
       return false;
@@ -45,13 +52,13 @@ export class ScreenSelection {
 
   update(point) {
     if (!this.active || !this.anchor) return false;
-    this.focus = normalizePoint(point, this.viewport, true) ?? this.focus;
+    this.focus = normalizePoint(point, this.regions, true) ?? this.focus;
     return true;
   }
 
   finish(point, { clear = true } = {}) {
     if (!this.active || !this.anchor) return "";
-    this.focus = normalizePoint(point, this.viewport, true) ?? this.focus;
+    this.focus = normalizePoint(point, this.regions, true) ?? this.focus;
     const text = this.text();
     if (clear) this.clear();
     else this.active = false;
@@ -80,21 +87,27 @@ export class ScreenSelection {
   }
 
   apply(lines) {
+    return this.applyRegion("default", lines);
+  }
+
+  applyRegion(id, lines) {
     const range = this.range();
-    if (!range) return lines;
+    const region = this.regions.find((candidate) => candidate.id === id);
+    if (!range || !region) return lines;
     return lines.map((line, row) => {
-      if (row < range.start.row || row > range.end.row) return line;
-      const plain = this._plainLine(row);
-      const startCol = row === range.start.row ? range.start.col : 0;
-      const endCol = row === range.end.row ? range.end.col : visibleWidth(plain);
+      const docRow = region.docStart + row;
+      if (docRow < range.start.row || docRow > range.end.row) return line;
+      const plain = this._plainLine(docRow);
+      const startCol = docRow === range.start.row ? range.start.col : 0;
+      const endCol = docRow === range.end.row ? range.end.col : visibleWidth(plain);
       if (endCol <= startCol) return line;
       return highlightAnsiLine(line, startCol, endCol);
     });
   }
 
   _plainLine(row) {
-    if (this._plainLines[row] == null) this._plainLines[row] = stripAnsi(this.lines[row] ?? "");
-    return this._plainLines[row];
+    if (!this._plainLines.has(row)) this._plainLines.set(row, stripAnsi(this.lines[row] ?? ""));
+    return this._plainLines.get(row);
   }
 
   range() {
@@ -111,19 +124,55 @@ export function stripAnsi(text) {
   return String(text ?? "").replace(CONTROL_RE, "");
 }
 
-function normalizePoint({ row, col }, viewport, clamp) {
+function normalizeRegion(region, index) {
+  const lines = [...(region.lines ?? [])];
+  const width = Number.isFinite(region.width) ? Math.max(1, Math.trunc(region.width)) : Infinity;
+  return {
+    id: region.id ?? `region-${index}`,
+    lines,
+    topRow: Math.max(0, Math.trunc(region.topRow ?? 0)),
+    leftCol: Math.max(0, Math.trunc(region.leftCol ?? 0)),
+    width,
+  };
+}
+
+function normalizePoint({ row, col }, regions, clamp) {
   const screenRow = Math.trunc(row) - 1;
   const screenCol = Math.trunc(col) - 1;
-  const height = viewport?.height ?? 0;
-  if (height <= 0) return null;
+  if (regions.length === 0) return null;
 
-  let localRow = screenRow - (viewport?.topRow ?? 0);
-  let localCol = screenCol - (viewport?.leftCol ?? 0);
-  const maxCol = Number.isFinite(viewport?.width) ? viewport.width : Infinity;
-  if (!clamp && (localRow < 0 || localRow >= height || localCol < 0 || localCol > maxCol)) return null;
-  localRow = clampNumber(localRow, 0, height - 1);
-  localCol = clampNumber(localCol, 0, maxCol);
-  return { row: localRow, col: localCol };
+  for (const region of regions) {
+    const localRow = screenRow - region.topRow;
+    const localCol = screenCol - region.leftCol;
+    const maxCol = Number.isFinite(region.width) ? region.width : Infinity;
+    if (localRow >= 0 && localRow < region.lines.length) {
+      if (!clamp && (localCol < 0 || localCol > maxCol)) return null;
+      return {
+        row: region.docStart + localRow,
+        col: clampNumber(localCol, 0, maxCol),
+      };
+    }
+  }
+
+  if (!clamp) return null;
+  const first = regions[0];
+  const last = regions.at(-1);
+  if (screenRow < first.topRow) return { row: first.docStart, col: 0 };
+  if (screenRow > last.topRow + last.lines.length - 1) {
+    return { row: last.docStart + last.lines.length - 1, col: last.width };
+  }
+
+  let nearest = null;
+  for (const region of regions) {
+    const beforeDistance = Math.abs(screenRow - region.topRow);
+    const afterDistance = Math.abs(screenRow - (region.topRow + region.lines.length - 1));
+    const before = { row: region.docStart, col: 0, distance: beforeDistance };
+    const after = { row: region.docStart + region.lines.length - 1, col: region.width, distance: afterDistance };
+    for (const candidate of [before, after]) {
+      if (!nearest || candidate.distance < nearest.distance) nearest = candidate;
+    }
+  }
+  return nearest ? { row: nearest.row, col: nearest.col } : null;
 }
 
 function comparePoints(a, b) {

@@ -25,6 +25,16 @@ export async function runTuiSelectionSmoke() {
   selection.update({ row: 4, col: 3 });
   assert.equal(selection.text(), "lpha\nbe");
 
+  const regionalSelection = new ScreenSelection();
+  regionalSelection.setRegions([
+    { id: "output", topRow: 0, width: 20, lines: ["alpha"] },
+    { id: "editor", topRow: 4, width: 20, lines: ["hello copy"] },
+  ]);
+  regionalSelection.start({ row: 5, col: 1 });
+  regionalSelection.update({ row: 5, col: 11 });
+  assert.equal(regionalSelection.text(), "hello copy");
+  assert.ok(regionalSelection.applyRegion("editor", ["hello copy"])[0].includes("\x1b[7m"));
+
   const coloredSelection = new ScreenSelection();
   const colored = "\x1b[31malpha\x1b[0m";
   coloredSelection.setLines([colored]);
@@ -65,7 +75,14 @@ export async function runTuiSelectionSmoke() {
   terminal.input("\x03");
   assert.ok(copied.includes("alpha"));
   assert.ok(copied.includes("beta"));
-
+  ui.insertTextAtCursor("hello copy");
+  await delay(50);
+  copied = "";
+  terminal.input("\x1b[<0;1;9M");
+  terminal.input("\x1b[<32;30;9M");
+  terminal.input("\x1b[<0;30;9m");
+  terminal.input("\x03");
+  assert.ok(copied.includes("hello copy"));
   await ui.close();
   assert.ok(terminal.writes.join("").includes("\x1b[?1002l\x1b[?1006l"));
 
