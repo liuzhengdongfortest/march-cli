@@ -287,6 +287,13 @@ await runTuiAutocompleteEscSmoke({ setupTmp, cleanup });
   assert.ok(rendered.includes("thinking (12 tokens)"));
   assert.ok(rendered.includes("reasoning line"));
   assert.ok(rendered.includes("Thinking..."));
+  buffer.tick();
+  assert.ok(buffer.render(80).join("\n").includes("reasoning line"));
+  buffer.startThinking();
+  buffer.setSpinner(true, "Thinking...");
+  buffer.render(80);
+  buffer.appendThinking("new reasoning");
+  assert.ok(buffer.render(80).join("\n").includes("new reasoning"));
   buffer.clear();
   assert.equal(stripAnsi(buffer.render(80).join("\n")), "");
 

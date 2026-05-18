@@ -72,6 +72,7 @@ export class OutputBuffer {
     this.overlayStatus = null;
     this.scrollState = new OutputScrollState();
     this._segmentLinesCache = new Map();
+    this._baseLinesCache = new Map();
   }
 
   get scrollOffset() {
@@ -89,6 +90,7 @@ export class OutputBuffer {
     this.overlayStatus = null;
     this.scrollState.clear();
     this._segmentLinesCache = new Map();
+    this._baseLinesCache = new Map();
   }
 
   write(text) {
@@ -101,6 +103,7 @@ export class OutputBuffer {
 
   _writeText(text, markdown) {
     this.overlayStatus = null;
+    this._invalidateBaseLines();
     const current = this.currentText.at(-1);
     if (current.markdown !== markdown && current.text !== "") {
       this.currentText.push({ text: "", markdown });
@@ -114,6 +117,7 @@ export class OutputBuffer {
 
   writeln(text) {
     this.overlayStatus = null;
+    this._invalidateBaseLines();
     this.currentText[this.currentText.length - 1].text += text;
     this.currentText.push({ text: "", markdown: false });
   }
@@ -122,6 +126,7 @@ export class OutputBuffer {
     const current = this.currentText.at(-1);
     if (!current || current.text === "") return false;
     this.currentText.push({ text: "", markdown: false });
+    this._invalidateBaseLines();
     return true;
   }
 
@@ -141,12 +146,14 @@ export class OutputBuffer {
     if (lastIdx >= 0) this._activeThinking.content[lastIdx] += parts[0];
     else this._activeThinking.content.push(parts[0]);
     for (let i = 1; i < parts.length; i++) this._activeThinking.content.push(parts[i]);
+    this._invalidateBaseLines();
   }
 
   endThinking(tokens) {
     if (this._activeThinking) {
       this._activeThinking.tokens = tokens;
       this._activeThinking = null;
+      this._invalidateSegmentLines();
     }
   }
 
@@ -166,10 +173,12 @@ export class OutputBuffer {
 
   setOverlayStatus(lines) {
     this.overlayStatus = Array.isArray(lines) ? { type: "status", lines } : null;
+    this._invalidateBaseLines();
   }
 
   clearOverlayStatus() {
     this.overlayStatus = null;
+    this._invalidateBaseLines();
   }
 
   sealCurrentText() {
@@ -232,6 +241,11 @@ export class OutputBuffer {
 
   _invalidateSegmentLines() {
     this._segmentLinesCache.clear();
+    this._invalidateBaseLines();
+  }
+
+  _invalidateBaseLines() {
+    this._baseLinesCache.clear();
   }
 
   render(width) {
@@ -245,21 +259,21 @@ export class OutputBuffer {
   }
 
   _computeLines(width) {
+    const base = this._renderBaseLines(width);
+    if (!this.spinning) return base;
+    const frame = SPINNER_FRAMES[this.spinnerIdx];
+    return [...base, brightBlack(`${frame} ${this.spinnerText}`)];
+  }
+
+  _renderBaseLines(width) {
+    const cached = this._baseLinesCache.get(width);
+    if (cached) return cached;
     const lines = [...this._renderCachedSegmentLines(width)];
     const dynamicStart = this._cachedSegmentPrefixCount();
-    for (const seg of this.segments.slice(dynamicStart)) {
-      for (const line of renderBlock(seg, width)) lines.push(line);
-    }
-    for (const block of currentTextToBlocks(this.currentText, false, this.currentTextCache)) {
-      for (const line of renderBlock(block, width)) lines.push(line);
-    }
-    if (this.overlayStatus) {
-      for (const line of renderBlock(this.overlayStatus, width)) lines.push(line);
-    }
-    if (this.spinning) {
-      const frame = SPINNER_FRAMES[this.spinnerIdx];
-      lines.push(brightBlack(`${frame} ${this.spinnerText}`));
-    }
+    for (const seg of this.segments.slice(dynamicStart)) for (const line of renderBlock(seg, width)) lines.push(line);
+    for (const block of currentTextToBlocks(this.currentText, false, this.currentTextCache)) for (const line of renderBlock(block, width)) lines.push(line);
+    if (this.overlayStatus) for (const line of renderBlock(this.overlayStatus, width)) lines.push(line);
+    this._baseLinesCache.set(width, lines);
     return lines;
   }
 
