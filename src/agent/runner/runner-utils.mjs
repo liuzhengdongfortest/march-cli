@@ -16,3 +16,9 @@ export async function notifyTurnEndBestEffort(turnNotifier, event) {
     return { ok: false, reason: err?.message ?? String(err), results: [] };
   }
 }
+
+export function notifyTurnEndDetached(turnNotifier, event, onResult = () => {}) {
+  const pending = notifyTurnEndBestEffort(turnNotifier, event);
+  pending.then(onResult, () => {});
+  return pending;
+}

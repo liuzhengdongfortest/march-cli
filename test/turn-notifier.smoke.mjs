@@ -139,12 +139,38 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
   });
 
   await runner.runTurn("ok", "ok");
+  await flushPromises();
   assert.deepEqual(events.slice(-2), [["turnEnd"], ["notify", "success", "assistant reply"]]);
   assert.equal(runner.getLastNotificationResult().ok, true);
 
   await assert.rejects(() => runner.runTurn("fail", "fail"), /boom/);
+  await flushPromises();
   assert.deepEqual(events.slice(-2), [["turnEnd"], ["notify", "error", "boom"]]);
   assert.equal(runner.getLastNotificationResult().ok, true);
+
+  let releaseSlowNotify;
+  let slowNotifyFinished = false;
+  const slowRunner = await createRunner({
+    cwd: dir,
+    modelId: "deepseek-v4-pro",
+    provider: "deepseek",
+    stateRoot: join(dir, ".state-slow"),
+    ui: createFakeUi([]),
+    turnNotifier: {
+      notifyTurnEnd: async () => {
+        await new Promise((resolve) => { releaseSlowNotify = resolve; });
+        slowNotifyFinished = true;
+        return { ok: true, results: [{ channel: "slow", ok: true }] };
+      },
+    },
+    createAgentSessionImpl: async () => ({ session: createFakeSession() }),
+  });
+  await slowRunner.runTurn("ok", "ok");
+  assert.equal(slowNotifyFinished, false);
+  assert.equal(slowRunner.getLastNotificationResult(), null);
+  releaseSlowNotify();
+  await waitFor(() => slowRunner.getLastNotificationResult()?.results?.[0]?.channel === "slow");
+  assert.equal(slowNotifyFinished, true);
 
   const resilientRunner = await createRunner({
     cwd: dir,
@@ -156,6 +182,7 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
     createAgentSessionImpl: async () => ({ session: createFakeSession() }),
   });
   await resilientRunner.runTurn("still ok", "still ok");
+  await waitFor(() => resilientRunner.getLastNotificationResult()?.reason?.includes("notify failed"));
   assert.match(resilientRunner.getLastNotificationResult().reason, /notify failed/);
 
   const slashLines = [];
@@ -174,6 +201,19 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
   }
   cleanup(dir);
   console.log("  PASS");
+}
+
+function flushPromises() {
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
+async function waitFor(predicate, { timeoutMs = 1000 } = {}) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (predicate()) return;
+    await flushPromises();
+  }
+  assert.ok(predicate(), "condition was not met before timeout");
 }
 
 function createFakeUi(events) {

@@ -12,7 +12,7 @@ import { runRunnerCleanup } from "./runner/runner-cleanup.mjs";
 import { createRunnerRuntimeHost } from "./runtime/runner-runtime-host.mjs";
 import { createRuntimeUiBridge } from "./runtime/ui-event-bridge.mjs";
 import { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
-import { notifyTurnEndBestEffort, providerContextToPayload } from "./runner/runner-utils.mjs";
+import { notifyTurnEndBestEffort, notifyTurnEndDetached, providerContextToPayload } from "./runner/runner-utils.mjs";
 import { resolveRunnerSessionOptions } from "./session/session-options.mjs";
 import { createSessionBinding } from "./session/session-binding.mjs";
 import { maybeAutoNameSession } from "./session/session-auto-name.mjs";
@@ -128,21 +128,21 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
           autoNameSession,
           contextMode,
         });
-        lastNotificationResult = await notifyTurnEndBestEffort(turnNotifier, {
+        notifyTurnEndDetached(turnNotifier, {
           status: "success",
           sessionName: engine.sessionName,
           draft: result?.draft ?? "",
           durationMs: Date.now() - turnStartedAt,
-        });
+        }, (notificationResult) => { lastNotificationResult = notificationResult; });
         turnLog.endSuccess(result);
         return result;
       } catch (err) {
-        lastNotificationResult = await notifyTurnEndBestEffort(turnNotifier, {
+        notifyTurnEndDetached(turnNotifier, {
           status: "error",
           sessionName: engine.sessionName,
           errorMessage: err?.message ?? String(err),
           durationMs: Date.now() - turnStartedAt,
-        });
+        }, (notificationResult) => { lastNotificationResult = notificationResult; });
         turnLog.endError(err);
         throw err;
       } finally {
