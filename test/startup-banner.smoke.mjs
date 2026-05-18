@@ -1,4 +1,7 @@
 import { strict as assert } from "node:assert";
+import { createRequire } from "node:module";
+
+const { version: packageVersion } = createRequire(import.meta.url)("../package.json");
 
 export async function runStartupBannerSmoke() {
   console.log("--- smoke: startup banner ---");
@@ -14,7 +17,7 @@ export async function runStartupBannerSmoke() {
   const plain = stripAnsi(rawPlain);
   assert.ok(plain.includes("╭"));
   assert.ok(plain.includes("█▙  ▟█"));
-  assert.ok(plain.includes("March v0.1.12"));
+  assert.ok(plain.includes(`March v${packageVersion}`));
   assert.ok(plain.includes("Describe a task to get started."));
   assert.ok(plain.includes("Tip: Tab to Discuss · /help for commands"));
   assert.ok(plain.includes("March uses AI. Check for mistakes."));

@@ -31,7 +31,7 @@ export async function runStatusBarSmoke() {
   const bottomLines = statusBar.renderBottom(64);
   assert.deepEqual(bottomLines.map(stripAnsi), ["", stripAnsi(bottomLines.at(-1))]);
   const bottomLine = bottomLines.at(-1);
-  assert.equal(visibleWidth(bottomLine), 64);
+  assert.equal(visibleWidth(bottomLine), 63);
   assert.equal(bottomLine.includes("\x1b[48;2;32;34;38m"), false);
   const bottomPlain = stripAnsi(bottomLine);
   assert.ok(bottomPlain.trimStart().startsWith("Do"));
@@ -55,13 +55,13 @@ export async function runStatusBarSmoke() {
   assert.ok(statusBar.renderBottom(64).at(-1).includes("\x1b[32mDiscuss\x1b[0m"));
   assert.equal(statusBar.setText("Discuss | gpt-5.4·medium"), false);
   const narrow = statusBar.renderBottom(40).at(-1);
-  assert.equal(visibleWidth(narrow), 40);
+  assert.equal(visibleWidth(narrow), 39);
   assert.ok(stripAnsi(narrow).includes("gpt-5.4"));
   assert.ok(stripAnsi(narrow).includes("medium"));
 
   statusBar.setText("next");
   assert.ok(visibleWidth(statusBar.render(8)[0]) <= 8);
-  assert.equal(visibleWidth(statusBar.renderBottom(8).at(-1)), 8);
+  assert.equal(visibleWidth(statusBar.renderBottom(8).at(-1)), 7);
 
   const { MainPaneLayout } = await import("../src/cli/tui/layout/main-pane-layout.mjs");
   const layoutStatusBar = new StatusBar("Do | gpt-5-codex·medium | lsp:ts✓ | 11.3K", { cwd: "D:\\work\\march-cli" });
@@ -84,6 +84,7 @@ export async function runStatusBarSmoke() {
   assert.ok(layoutLines.at(-3).includes("\x1b[48;2;32;34;38m"));
   assert.equal(stripAnsi(layoutLines.at(-2)), "");
   assert.equal(layoutLines.at(-1).includes("\x1b[48;2;32;34;38m"), false);
+  assert.equal(visibleWidth(layoutLines.at(-1)), 79);
   assert.ok(stripAnsi(layoutLines.at(-1)).includes("gpt-5-codex • medium"));
   const noop = createStatusLineUpdater({
     ui: {},

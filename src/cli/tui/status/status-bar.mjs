@@ -75,7 +75,8 @@ export class StatusBar {
     const mode = formatModeLabel(parts.mode || DEFAULT_STATUS_TEXT);
     const activity = parts.activity ? statusBar.muted(`${parts.activity} · `) : "";
     const right = [parts.model, parts.thinking].filter(Boolean).join(" • ");
-    const line = composeMetaLine({ left: `${activity}${mode}`, right, width: innerWidth, muteLeft: false });
+    const paintWidth = inputPaintWidth(innerWidth);
+    const line = composeMetaLine({ left: `${activity}${mode}`, right, width: paintWidth, muteLeft: false });
     return ["", `${insetLeft}${line}${insetRight}`];
   }
 }
