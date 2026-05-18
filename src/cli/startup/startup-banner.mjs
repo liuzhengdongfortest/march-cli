@@ -1,7 +1,7 @@
 import { createRequire } from "node:module";
 import { visibleWidth } from "@earendil-works/pi-tui";
 import { MODES, formatModeLabel } from "../input/mode-state.mjs";
-import { brightBlack, cyan, modeLabel, violet } from "../tui/ui-theme.mjs";
+import { brightBlack, cyan, modeLabel, white } from "../tui/ui-theme.mjs";
 
 const CARD_WIDTH = 76;
 const ANSI_RE = /\x1b\[[0-?]*[ -/]*[@-~]/g;
@@ -15,7 +15,7 @@ export function formatStartupBanner({ cwd, modelId = "model?", thinkingLevel = "
   return [
     "",
     ...renderStartupCard([
-      `${cyan("  █▙  ▟█")}   ${violet("March")} ${brightBlack(`v${packageVersion}`)}`,
+      `${cyan("  █▙  ▟█")}   ${white("March")} ${brightBlack(`v${packageVersion}`)}`,
       `${cyan("  █▜▙▟▛█")}   ${brightBlack("Describe a task to get started.")}`,
       `${cyan("  ▀    ▀")}`,
       "",
@@ -35,9 +35,9 @@ function renderStartupCard(contentLines, width = CARD_WIDTH) {
   const safeWidth = Math.max(24, Math.trunc(width));
   const innerWidth = safeWidth - 4;
   return [
-    violet(`╭${"─".repeat(safeWidth - 2)}╮`),
-    ...contentLines.map((line) => violet("│ ") + padAnsi(line, innerWidth) + violet(" │")),
-    violet(`╰${"─".repeat(safeWidth - 2)}╯`),
+    white(`╭${"─".repeat(safeWidth - 2)}╮`),
+    ...contentLines.map((line) => white("│ ") + padAnsi(line, innerWidth) + white(" │")),
+    white(`╰${"─".repeat(safeWidth - 2)}╯`),
   ];
 }
 
