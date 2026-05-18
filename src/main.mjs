@@ -48,7 +48,7 @@ export async function run(argv) {
   }
 
   const config = loadConfig(cwd);
-  const useRuntimeProcess = process.env.MARCH_RUNTIME_PROCESS === "1";
+  const useRuntimeProcess = process.env.MARCH_RUNTIME_PROCESS !== "0";
   installNetworkEnvironment(config.network);
   if (args.command?.name === "login") {
     try {
