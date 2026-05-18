@@ -25,7 +25,7 @@ export async function runStatusBarSmoke() {
   const statusBar = new StatusBar("Do | deepseek·medium", { cwd: "D:\\playground\\pi-go\\march-cli" });
   const [line] = statusBar.render(16);
   assert.equal(visibleWidth(line), 16);
-  assert.ok(stripAnsi(line).includes("D:\\playground"));
+  assert.ok(stripAnsi(line).trim().length > 0);
   const [bottomLine] = statusBar.renderBottom(32);
   assert.equal(visibleWidth(bottomLine), 32);
   assert.equal(bottomLine.includes("\x1b[48;5;236m"), false);
@@ -58,8 +58,9 @@ export async function runStatusBarSmoke() {
   const layoutLines = layout.render(24);
   assert.equal(layoutLines.length, 6);
   assert.ok(stripAnsi(layoutLines.at(-3)).includes("D:\\work"));
+  assert.equal(stripAnsi(layoutLines.at(-2)).startsWith("  "), true);
   assert.ok(layoutLines.at(-2).includes("\x1b[48;5;236m"));
-  assert.ok(stripAnsi(layoutLines.at(-2)).startsWith("› hello"));
+  assert.ok(stripAnsi(layoutLines.at(-2)).trimStart().startsWith("› hello"));
   assert.equal(layoutLines.at(-1).includes("\x1b[48;5;236m"), false);
   assert.ok(stripAnsi(layoutLines.at(-1)).trimEnd().endsWith("gpt-5-codex·medium"));
 

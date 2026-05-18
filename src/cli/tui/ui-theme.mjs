@@ -81,7 +81,7 @@ const message = {
 
 const statusBar = {
   muted: brightBlack,
-  cwd: fg256(250),
+  cwd: (s) => `${D}\x1b[38;5;244m${s}${R}`,
   prompt: fg256(250),
   accent: violet,
 };

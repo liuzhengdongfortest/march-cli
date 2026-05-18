@@ -6,6 +6,7 @@ const DEFAULT_STATUS_TEXT = "March";
 const DEFAULT_HELP_TEXT = "/ commands · ? help";
 const INPUT_BG = "\x1b[48;5;236m";
 const INPUT_PROMPT = "› ";
+const HORIZONTAL_INSET = 2;
 
 export class StatusBar {
   constructor(text = DEFAULT_STATUS_TEXT, { cwd = process.cwd(), helpText = DEFAULT_HELP_TEXT } = {}) {
@@ -36,15 +37,17 @@ export class StatusBar {
 
   renderTop(width) {
     if (width <= 0) return [""];
-    return [statusBar.cwd(padToWidth(clipToWidth(this.cwd, width), width))];
+    const { left, innerWidth, right } = insetForWidth(width);
+    const cwd = compactPathForDisplay(this.cwd, innerWidth);
+    return [`${left}${statusBar.cwd(padToWidth(clipToWidth(cwd, innerWidth), innerWidth))}${right}`];
   }
 
   renderInputLines(lines, width) {
     if (width <= 0) return [""];
-    const inputWidth = Math.max(1, Math.trunc(width));
+    const { left, innerWidth, right } = insetForWidth(width);
     const contentLines = lines.filter((line) => !isEditorChromeLine(line));
     const visibleLines = contentLines.length > 0 ? contentLines : [""];
-    return visibleLines.map((line, index) => this.renderInputLine(line, inputWidth, { isFirst: index === 0 }));
+    return visibleLines.map((line, index) => `${left}${this.renderInputLine(line, innerWidth, { isFirst: index === 0 })}${right}`);
   }
 
   renderInputLine(line, width, { isFirst = true } = {}) {
@@ -56,10 +59,19 @@ export class StatusBar {
 
   renderBottom(width) {
     if (width <= 0) return [""];
+    const { left: insetLeft, innerWidth, right: insetRight } = insetForWidth(width);
     const model = modelSegment(this.text);
     const left = leftStatusSegment(this.text, this.helpText);
-    return [composeBottomLine({ left, right: model, width })];
+    return [`${insetLeft}${composeBottomLine({ left, right: model, width: innerWidth })}${insetRight}`];
   }
+}
+
+function insetForWidth(width) {
+  const safeWidth = Math.max(1, Math.trunc(width));
+  const inset = safeWidth > HORIZONTAL_INSET * 2 + 12 ? HORIZONTAL_INSET : 0;
+  const left = " ".repeat(inset);
+  const right = " ".repeat(inset);
+  return { left, innerWidth: Math.max(1, safeWidth - inset * 2), right };
 }
 
 function composeBottomLine({ left, right, width }) {
@@ -82,6 +94,17 @@ function applyInputBackground(line) {
 function isEditorChromeLine(line) {
   const plain = stripAnsi(line).trim();
   return plain.length > 0 && (/^─+$/.test(plain) || /^─+\s[↑↓].*more\s─*$/.test(plain));
+}
+
+function compactPathForDisplay(path, width) {
+  const normalized = normalizeStatusText(path);
+  if (visibleWidth(normalized) <= width) return normalized;
+  const parts = normalized.split(/[\\/]+/).filter(Boolean);
+  if (parts.length <= 1) return normalized;
+  const drive = normalized.match(/^[A-Za-z]:/)?.[0];
+  const root = drive || (normalized.startsWith("\\\\") ? "\\\\" : "…");
+  const tail = parts.slice(-2).join("\\");
+  return `${root}\\…\\${tail}`;
 }
 
 function modelSegment(text) {
