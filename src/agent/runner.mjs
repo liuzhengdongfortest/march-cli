@@ -23,13 +23,12 @@ import { runRunnerTurn } from "./turn/turn-runner.mjs";
 import { appendFastVariants, createFastModelEntry, fromFastEntryModel, isFastProvider } from "./runner/fast-model.mjs";
 import { registerSuperGrokProvider } from "../supergrok/provider.mjs";
 import { registerCustomProviders } from "../provider/custom-provider.mjs";
-
+import { injectHostedTools } from "../provider/hosted-tools.mjs";
 export { MARCH_BASE_TOOL_NAMES };
 export { installModelPayloadDumper } from "./model-payload-dumper.mjs";
 export { createDefaultSessionManager, resolveRunnerSessionManager } from "./runner/runner-init.mjs";
 export { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
-
-export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, memoryRoot = null, centerMemoryPath = null, memoryStore = null, memoryTools = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, modelContextDumper = null, turnNotifier = null, onModelPayload = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices, maxTurns, trimBatch, serviceTier = null }) {
+export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, memoryRoot = null, centerMemoryPath = null, memoryStore = null, memoryTools = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, modelContextDumper = null, turnNotifier = null, onModelPayload = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices, maxTurns, trimBatch, serviceTier = null, hostedTools = {} }) {
   if (!useRuntimeHost && extensionPaths.length > 0) {
     throw new Error("--extension requires the default pi runtime host path");
   }
@@ -70,7 +69,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       sessionManager: resolvedSessionManager, sessionBinding, engine, ui,
       projectMarchDir,
       memoryTools, memoryStore, shellRuntime, lspService, mcpTools, webTools,
-      permissionController, extensionPaths,
+      permissionController, extensionPaths, hostedTools,
       onRebind: (session) => {
         installModelPayloadDumper(session, modelContextDumper, () => currentModelCallKind, onModelPayload, injectMarchSystemContext);
         syncEngineSessionState(engine, session);
@@ -265,11 +264,12 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       },
     });
   }
-  function injectMarchSystemContext(payload, { kind } = {}) {
+  function injectMarchSystemContext(payload, { kind, model } = {}) {
     if (kind !== "user") return payload;
     let nextPayload = currentTurnContextMode === "continueExistingPiTranscript"
       ? payload
       : replaceProviderContextMessages(payload, engine.buildProviderContext(currentPromptForContext));
+    nextPayload = injectHostedTools(nextPayload, model, hostedTools);
     if (_currentFastEntry) nextPayload = { ...nextPayload, service_tier: "priority" };
     if (pendingMidTurnRecallHints.length > 0) {
       nextPayload = appendProviderUserMessage(nextPayload, formatRecallHints("assistant", pendingMidTurnRecallHints));

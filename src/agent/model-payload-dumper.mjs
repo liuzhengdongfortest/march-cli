@@ -170,12 +170,13 @@ function formatContentPart(part) {
 }
 
 function formatToolSummary(tool) {
-  const name = tool?.function?.name ?? tool?.name ?? "unnamed_tool";
+  const name = tool?.function?.name ?? tool?.name ?? tool?.type ?? "unnamed_tool";
   const description = tool?.function?.description ?? tool?.description ?? "";
   return description ? `${name}: ${description}` : name;
 }
 
 function extractPayloadTools(payload) {
+
   if (!payload || typeof payload !== "object") return null;
   if (Array.isArray(payload.tools)) return payload.tools;
   if (payload.body && typeof payload.body === "object" && Array.isArray(payload.body.tools)) return payload.body.tools;

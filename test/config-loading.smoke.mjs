@@ -14,9 +14,21 @@ export async function runConfigLoadingSmoke({ setupTmp, cleanup }) {
   assert.equal(empty.memoryRoot, null);
   assert.deepEqual(empty.webSearch, { provider: null, providers: {} });
   assert.deepEqual(empty.network, { proxy: "system", ca: "system" });
+  assert.deepEqual(empty.hostedTools, {
+    openai: { webSearch: "auto" },
+    xai: { webSearch: "auto", xSearch: "auto" },
+  });
   assert.deepEqual(empty.notifications, { turnEnd: true, desktop: true, bell: false, command: null, minDurationMs: 0, sound: true });
 
-  writeFileSync(join(dir, ".marchrc"), JSON.stringify({ model: "test-model", memoryRoot: "D:/vault/March Memories", skills: ["ignored-legacy-skill"], network: { proxy: "direct" }, notifications: { turnEnd: false, bell: true, minDurationMs: 250 }, webSearch: { provider: "tavily", providers: { tavily: { apiKey: "tvly" } } } }));
+  writeFileSync(join(dir, ".marchrc"), JSON.stringify({
+    model: "test-model",
+    memoryRoot: "D:/vault/March Memories",
+    skills: ["ignored-legacy-skill"],
+    network: { proxy: "direct" },
+    notifications: { turnEnd: false, bell: true, minDurationMs: 250 },
+    hostedTools: { openai: { webSearch: false } },
+    webSearch: { provider: "tavily", providers: { tavily: { apiKey: "tvly" } } },
+  }));
   const withRc = loadConfig(dir, { homeDir: dir });
   assert.equal(withRc.model, "test-model");
   assert.equal(withRc.memoryRoot, "D:/vault/March Memories");
@@ -24,6 +36,8 @@ export async function runConfigLoadingSmoke({ setupTmp, cleanup }) {
   assert.deepEqual(withRc.network, { proxy: "direct", ca: "system" });
   assert.equal(withRc.webSearch.provider, "tavily");
   assert.equal(withRc.webSearch.providers.tavily.apiKey, "tvly");
+  assert.equal(withRc.hostedTools.openai.webSearch, false);
+  assert.equal(withRc.hostedTools.xai.xSearch, "auto");
   assert.equal(Object.hasOwn(withRc, "skills"), false);
 
   const marchDir = join(dir, ".march");

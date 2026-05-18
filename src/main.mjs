@@ -96,7 +96,6 @@ export async function run(argv) {
   const memoryStore = new MarkdownMemoryStore({ root: memoryRoot });
   const memoryTools = createMarkdownMemoryTools(memoryStore);
   const currentProject = basename(cwd);
-
   const shellRuntime = args.shellRuntime ? createCliShellRuntime({ cwd }) : null;
 
   // MCP: connect to configured MCP servers
@@ -182,6 +181,7 @@ export async function run(argv) {
     authStorage: authConfig.authStorage,
     maxTurns: config.maxTurns ?? undefined,
     trimBatch: config.trimBatch ?? undefined,
+    hostedTools: config.hostedTools,
     permissionController,
     modelContextDumper,
     turnNotifier,

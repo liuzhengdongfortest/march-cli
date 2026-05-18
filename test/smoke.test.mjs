@@ -20,6 +20,7 @@ import { runExtensionLifecycleManifestSmoke } from "./extension-lifecycle-manife
 import { runExternalEditorSmoke } from "./external-editor.smoke.mjs";
 import { runFindToolSmoke } from "./find-tool.smoke.mjs";
 import { runImageSmokeSuite } from "./image-smoke-suite.smoke.mjs";
+import { runHostedToolsSmoke } from "./hosted-tools.smoke.mjs";
 import { runImageGenSmoke } from "./image-gen.smoke.mjs";
 import { runInputHistorySmoke } from "./input-history.smoke.mjs";
 import { runKeybindingsSmoke } from "./keybindings.smoke.mjs";
@@ -172,6 +173,7 @@ await runProviderConfigCommandSmoke({ setupTmp, cleanup });
 await runCustomProviderSmoke();
 await runWebSearchConfigCommandSmoke({ setupTmp, cleanup });
 await runWebToolsSmoke();
+await runHostedToolsSmoke();
 await runSuperGrokToolSmoke({ setupTmp, cleanup });
 await runRipgrepResolverSmoke();
 await runModelContextDumperSmoke({ setupTmp, cleanup });

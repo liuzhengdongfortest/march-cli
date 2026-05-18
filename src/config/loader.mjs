@@ -46,13 +46,16 @@ function mergeLayers(layers) {
     serviceTier: null,
     providers: {},
     webSearch: { provider: null, providers: {} },
+    hostedTools: {
+      openai: { webSearch: "auto" },
+      xai: { webSearch: "auto", xSearch: "auto" },
+    },
     network: { proxy: "system", ca: "system" },
     maxTurns: null,
     trimBatch: null,
     memoryRoot: null,
     notifications: { turnEnd: true, desktop: true, bell: false, command: null, minDurationMs: 0, sound: true },
   };
-
   for (const layer of layers) {
     if (!layer) continue;
     if (layer.model != null) result.model = layer.model;
@@ -63,6 +66,9 @@ function mergeLayers(layers) {
     }
     if (layer.webSearch && typeof layer.webSearch === "object" && !Array.isArray(layer.webSearch)) {
       result.webSearch = mergeWebSearch(result.webSearch, layer.webSearch);
+    }
+    if (layer.hostedTools && typeof layer.hostedTools === "object" && !Array.isArray(layer.hostedTools)) {
+      result.hostedTools = mergeHostedTools(result.hostedTools, layer.hostedTools);
     }
     if (layer.notifications && typeof layer.notifications === "object" && !Array.isArray(layer.notifications)) {
       result.notifications = {
@@ -94,6 +100,19 @@ function mergeWebSearch(current, next) {
         ...(merged.providers[id] ?? {}),
         ...profile,
       };
+    }
+  }
+  return merged;
+}
+
+function mergeHostedTools(current, next) {
+  const merged = {
+    openai: { ...(current.openai ?? {}) },
+    xai: { ...(current.xai ?? {}) },
+  };
+  for (const provider of ["openai", "xai"]) {
+    if (next[provider] && typeof next[provider] === "object" && !Array.isArray(next[provider])) {
+      merged[provider] = { ...merged[provider], ...next[provider] };
     }
   }
   return merged;

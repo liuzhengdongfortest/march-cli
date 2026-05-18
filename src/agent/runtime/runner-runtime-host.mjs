@@ -26,6 +26,7 @@ export async function createRunnerRuntimeHost({
   webTools = [],
   permissionController = null,
   extensionPaths = [],
+  hostedTools = {},
   onRebind = null,
   createAgentSessionRuntimeImpl = createAgentSessionRuntime,
   createServices,
@@ -60,6 +61,7 @@ export async function createRunnerRuntimeHost({
         permissionController,
         authStorage,
         projectMarchDir,
+        hostedTools,
       });
     },
   });
