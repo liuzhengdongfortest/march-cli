@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { MODES, formatModeLabel } from "../input/mode-state.mjs";
-import { PREFIX, R } from "../tui/ui-theme.mjs";
+import { modeLabel, PREFIX, R } from "../tui/ui-theme.mjs";
 
 export function statusCommand({
   runner,
@@ -78,9 +78,7 @@ export function formatStatusBarLine({
 
   const C = PREFIX; // foreground-only color prefixes (no reset)
   const DIM = C.brightBlack;
-  const OK = "\x1b[32m";  // green, no reset
-  const WARN = "\x1b[33m"; // yellow, no reset
-  const modeSegment = `${mode === MODES.DISCUSS ? WARN : OK}${formatModeLabel(mode)}`;
+  const modeSegment = formatModeSegment(mode);
   const runtime = `${C.cyan}${model}${DIM}·${thinking}`;
   const segments = [modeSegment, runtime];
   const lspText = formatLspSegment(lspStatus);
@@ -92,6 +90,11 @@ export function formatStatusBarLine({
 
   const inner = segments.join(` ${DIM}|${C.fg250} `);
   return `${inner}${R}`;
+}
+
+function formatModeSegment(mode) {
+  const label = formatModeLabel(mode);
+  return (modeLabel[mode] ?? modeLabel.fallback)(label);
 }
 
 export function formatLspSegment(lspStatus) {

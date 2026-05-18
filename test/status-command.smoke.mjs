@@ -52,7 +52,7 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(line.includes("tokens:10in/20out"));
   assert.ok(line.includes("ext:1warning"));
   assert.equal(shortSessionId("019e0ff8-8f03-74d3-a8cb-39635eae5ca1"), "019e0ff8");
-  const doStatusBar = stripAnsi(formatStatusBarLine({
+  const rawDoStatusBar = formatStatusBarLine({
     engine,
     sessionState: { sessionId: "legacy1" },
     sessionStats,
@@ -60,14 +60,16 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
     extensionDiagnostics: [{ type: "warning", message: "a" }],
     lifecycleState: { diagnostics: [] },
     gitBranch: "main",
-  }));
+  });
+  assert.ok(rawDoStatusBar.startsWith("\x1b[38;2;245;167;66mDo\x1b[0m"));
+  const doStatusBar = stripAnsi(rawDoStatusBar);
   assert.equal(doStatusBar, "Do | deepseek-chat·high");
   assert.equal(doStatusBar.includes("git"), false);
   assert.equal(doStatusBar.includes("/deepseek"), false);
   assert.equal(doStatusBar.includes("think:"), false);
   assert.equal(doStatusBar.includes("ext:"), false);
   assert.equal(doStatusBar.includes("pi:"), false);
-  assert.equal(stripAnsi(formatStatusBarLine({
+  const rawDiscussStatusBar = formatStatusBarLine({
     engine,
     sessionState: { sessionId: "019e0ff8-8f03-74d3-a8cb-39635eae5ca1" },
     sessionStats: { sessionId: "019e0ff8-8f03-74d3-a8cb-39635eae5ca1", tokens: { input: 0, output: 0 } },
@@ -76,7 +78,9 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
     lifecycleState: null,
     gitBranch: "march-cli",
     mode: "discuss",
-  })), "Discuss | deepseek-chat·high");
+  });
+  assert.ok(rawDiscussStatusBar.startsWith("\x1b[32mDiscuss\x1b[0m"));
+  assert.equal(stripAnsi(rawDiscussStatusBar), "Discuss | deepseek-chat·high");
   assert.equal(stripAnsi(formatStatusBarLine({
     engine,
     mode: "do",

@@ -1,17 +1,17 @@
 import { createRequire } from "node:module";
 import { visibleWidth } from "@earendil-works/pi-tui";
-import { MODES } from "../input/mode-state.mjs";
-import { brightBlack, cyan, violet } from "../tui/ui-theme.mjs";
+import { MODES, formatModeLabel } from "../input/mode-state.mjs";
+import { brightBlack, cyan, modeLabel, violet } from "../tui/ui-theme.mjs";
 
 const CARD_WIDTH = 76;
 const ANSI_RE = /\x1b\[[0-?]*[ -/]*[@-~]/g;
 const { version: packageVersion = "0.1" } = createRequire(import.meta.url)("../../../package.json");
 
 export function formatStartupBanner({ cwd, modelId = "model?", thinkingLevel = "thinking?", mode = MODES.DO, dumpContextPath = null } = {}) {
-  const nextMode = mode === MODES.DISCUSS ? "Do" : "Discuss";
+  const nextMode = mode === MODES.DISCUSS ? MODES.DO : MODES.DISCUSS;
   const tip = dumpContextPath
     ? `${brightBlack("Tip:")} ${cyan("dumps:")} ${brightBlack(dumpContextPath)}`
-    : `${brightBlack("Tip:")} ${brightBlack("Tab to")} ${cyan(nextMode)} ${brightBlack("·")} ${cyan("/help")} ${brightBlack("for commands")}`;
+    : `${brightBlack("Tip:")} ${brightBlack("Tab to")} ${formatModeTip(nextMode)} ${brightBlack("·")} ${cyan("/help")} ${brightBlack("for commands")}`;
   return [
     "",
     ...renderStartupCard([
@@ -24,6 +24,11 @@ export function formatStartupBanner({ cwd, modelId = "model?", thinkingLevel = "
     ]),
     "",
   ];
+}
+
+function formatModeTip(mode) {
+  const label = formatModeLabel(mode);
+  return (modeLabel[mode] ?? modeLabel.fallback)(label);
 }
 
 function renderStartupCard(contentLines, width = CARD_WIDTH) {

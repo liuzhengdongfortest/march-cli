@@ -86,6 +86,12 @@ const statusBar = {
   accent: violet,
 };
 
+const modeLabel = {
+  do: orange,
+  discuss: green,
+  fallback: orange,
+};
+
 const shell = {
   header: bold,
   divider: fg256(238),
@@ -142,6 +148,7 @@ export {
   tool,
   message,
   statusBar,
+  modeLabel,
   shell,
   spinner,
   selectList,
