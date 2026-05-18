@@ -24,6 +24,7 @@ import { writeMemoryHint } from "./tui/recall-rendering.mjs";
 import { writeToolEnd, writeToolStart } from "./tui/tool-rendering.mjs";
 import { EDITOR_THEME, brightBlack } from "./tui/ui-theme.mjs";
 import { createRenderScheduler } from "./tui/render/render-scheduler.mjs";
+import { createStreamDeltaBuffer } from "./tui/render/stream-delta-buffer.mjs";
 import { writeTranscriptToOutput } from "../session/transcript.mjs";
 
 export { buildMarchCommands, MarchAutocompleteProvider } from "./input/autocomplete.mjs";
@@ -61,8 +62,9 @@ export function createTuiUI({
   let toolsExpanded = false;
   const activeToolBlocks = [];
   const renderScheduler = createRenderScheduler({ requestRender: () => tui.requestRender() });
-  const requestRender = renderScheduler.renderNow;
-
+  const streamDeltas = createStreamDeltaBuffer({ writeText: (delta) => output.writeMarkdown(delta), writeThinking: (delta) => output.appendThinking(delta), renderSoon: renderScheduler.renderSoon });
+  const flushStreamDeltas = () => streamDeltas.flush({ notify: false });
+  const requestRender = () => { flushStreamDeltas(); renderScheduler.renderNow(); };
   const spinnerStatus = createSpinnerStatusController({ output, requestRender });
   const retryStatus = createRetryStatusController({ output, requestRender, stopSpinner: spinnerStatus.stop });
   const shellDrawerControls = createShellDrawerControls({ shellDrawer, output, requestRender });
@@ -169,12 +171,10 @@ export function createTuiUI({
       retryStatus.stop(); output.startThinking(); requestRender();
     },
 
-    thinkingDelta: (delta) => {
-      output.appendThinking(delta);
-      renderScheduler.renderSoon();
-    },
+    thinkingDelta: (delta) => streamDeltas.thinking(delta),
 
     thinkingEnd: (tokens) => {
+      flushStreamDeltas();
       output.endThinking(tokens);
       requestRender();
     },
@@ -186,7 +186,7 @@ export function createTuiUI({
     toggleLastThinking: () => false,
 
     toolStart: (name, args) => {
-      ensureStarted(); retryStatus.stop(); spinnerStatus.stop(); activeToolBlocks.push(writeToolStart({ output, name, args })); requestRender();
+      ensureStarted(); flushStreamDeltas(); retryStatus.stop(); spinnerStatus.stop(); activeToolBlocks.push(writeToolStart({ output, name, args })); requestRender();
     },
 
     toolEnd: (name, isError, result) => {
@@ -194,30 +194,26 @@ export function createTuiUI({
     },
 
     textDelta: (delta) => {
-      ensureStarted(); retryStatus.stop(); spinnerStatus.stop();
-      output.writeMarkdown(delta);
-      renderScheduler.renderSoon();
+      ensureStarted(); retryStatus.stop(); spinnerStatus.stop(); streamDeltas.text(delta);
     },
     assistantReplyEnd: () => {
       ensureStarted();
+      flushStreamDeltas();
       const changed = output.ensureNewline();
       if (output.sealCurrentText() || changed) requestRender();
     },
     status: (text) => {
-      ensureStarted(); retryStatus.stop(); spinnerStatus.stop(); output.setOverlayStatus([brightBlack(`● ${text}`)]); requestRender();
+      ensureStarted(); flushStreamDeltas(); retryStatus.stop(); spinnerStatus.stop(); output.setOverlayStatus([brightBlack(`● ${text}`)]); requestRender();
     },
     memoryHint: ({ hints }) => {
-      ensureStarted(); retryStatus.stop(); spinnerStatus.stop(); output.ensureNewline(); writeMemoryHint({ output, hints }); requestRender();
+      ensureStarted(); flushStreamDeltas(); retryStatus.stop(); spinnerStatus.stop(); output.ensureNewline(); writeMemoryHint({ output, hints }); requestRender();
     },
 
     clearOutput: () => {
-      ensureStarted(); spinnerStatus.stop(); retryStatus.stop(); output.clear(); requestRender();
+      ensureStarted(); flushStreamDeltas(); spinnerStatus.stop(); retryStatus.stop(); output.clear(); requestRender();
     },
-
     restoreTranscript: (turns) => {
-      ensureStarted(); spinnerStatus.stop(); retryStatus.stop(); output.clear();
-      writeTranscriptToOutput(output, turns);
-      requestRender();
+      ensureStarted(); flushStreamDeltas(); spinnerStatus.stop(); retryStatus.stop(); output.clear(); writeTranscriptToOutput(output, turns); requestRender();
     },
 
     setStatusBar: (text) => {
@@ -229,6 +225,7 @@ export function createTuiUI({
     },
 
     turnEnd: () => {
+      flushStreamDeltas();
       const changed = output.ensureNewline();
       if (output.sealCurrentText() || changed) requestRender();
     },
@@ -238,6 +235,7 @@ export function createTuiUI({
 
     editDiff: (path, diffLines) => {
       ensureStarted();
+      flushStreamDeltas();
       spinnerStatus.stop();
       writeEditDiff({ output, path, diffLines });
       requestRender();
@@ -278,6 +276,7 @@ export function createTuiUI({
     toggleShellDrawer: () => shellDrawerControls.toggle(),
     requestExit: () => inputController.requestExit(),
     close: async () => {
+      flushStreamDeltas();
       renderScheduler.clearPending();
       spinnerStatus.stop();
       retryStatus.stop();

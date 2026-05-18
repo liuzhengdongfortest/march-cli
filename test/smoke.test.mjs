@@ -51,6 +51,7 @@ import { runSourceDirectoryLimitSmoke } from "./source-directory-limit.smoke.mjs
 import { runSourceLineLimitSmoke } from "./source-line-limit.smoke.mjs";
 import { runStartupBannerSmoke } from "./startup-banner.smoke.mjs";
 import { runStartupResumeSmoke } from "./startup-resume.smoke.mjs";
+import { runStreamDeltaBufferSmoke } from "./stream-delta-buffer.smoke.mjs";
 import { runSuperGrokToolSmoke } from "./supergrok-tool.smoke.mjs";
 import { runSyntaxHighlightingSmoke } from "./syntax-highlighting.smoke.mjs";
 import { runTuiAutocompleteEscSmoke } from "./tui-autocomplete-esc.smoke.mjs";
@@ -192,6 +193,7 @@ await runShellToolsSmoke();
 await runNodePtyAdapterSmoke();
 await runTuiShellDrawerSmoke({ setupTmp, cleanup });
 await runTuiSelectionSmoke();
+await runStreamDeltaBufferSmoke();
 
 {
   console.log("--- smoke: TUI resize clears scrollback ---");
