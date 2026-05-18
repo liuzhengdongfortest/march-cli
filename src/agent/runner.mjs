@@ -1,8 +1,4 @@
-import {
-  createAgentSession,
-  ModelRegistry,
-  SettingsManager,
-} from "@earendil-works/pi-coding-agent";
+import { createAgentSession, ModelRegistry, SettingsManager } from "@earendil-works/pi-coding-agent";
 import { createMarchAuthStorage } from "../auth/storage.mjs";
 import { ContextEngine } from "../context/engine.mjs";
 import { createMarchLifecycleAdapter } from "../extensions/lifecycle-adapter.mjs";
@@ -14,6 +10,7 @@ import { appendProviderUserMessage, estimateProviderPayloadTokens, installModelP
 import { resolveInitialModel, resolveRunnerSessionManager } from "./runner/runner-init.mjs";
 import { runRunnerCleanup } from "./runner/runner-cleanup.mjs";
 import { createRunnerRuntimeHost } from "./runtime/runner-runtime-host.mjs";
+import { createRuntimeUiBridge } from "./runtime/ui-event-bridge.mjs";
 import { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
 import { notifyTurnEndBestEffort, providerContextToPayload } from "./runner/runner-utils.mjs";
 import { resolveRunnerSessionOptions } from "./session/session-options.mjs";
@@ -50,7 +47,8 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     compaction: { enabled: false },
     retry: { enabled: true, maxRetries: 3, baseDelayMs: 2000 },
   });
-  const lspService = new LspService({ cwd, onEvent: (event) => ui.status?.(formatLspServiceEvent(event)) });
+  const { ui: runtimeUi, eventBus: runtimeUiEvents, detach: detachRuntimeUi } = createRuntimeUiBridge(ui);
+  const lspService = new LspService({ cwd, onEvent: (event) => runtimeUi.status?.(formatLspServiceEvent(event)) });
   const engine = new ContextEngine({ cwd, modelId, provider, namespace, memoryRoot, centerMemoryPath, shellRuntime, lspService, injections: mcpInjections, maxTurns, trimBatch });
   const resolvedSessionManager = resolveRunnerSessionManager(cwd, sessionManager);
   const sessionBinding = createSessionBinding(null);
@@ -68,7 +66,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       cwd, stateRoot, provider, modelId,
       authStorage: resolvedAuth, settingsManager, modelRegistry,
       providers,
-      sessionManager: resolvedSessionManager, sessionBinding, engine, ui,
+      sessionManager: resolvedSessionManager, sessionBinding, engine, ui: runtimeUi,
       projectMarchDir,
       memoryTools, memoryStore, shellRuntime, lspService, mcpTools, webTools,
       permissionController, extensionPaths, hostedTools,
@@ -82,7 +80,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     });
   } else {
     const sessionOptions = resolveRunnerSessionOptions({
-      cwd, provider, modelId, modelRegistry, engine, ui,
+      cwd, provider, modelId, modelRegistry, engine, ui: runtimeUi,
       memoryTools, shellRuntime, lspService, mcpTools, webTools, permissionController,
       authStorage: resolvedAuth, projectMarchDir,
     });
@@ -109,6 +107,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     engine,
     get session() { return sessionBinding.get(); },
     shellRuntime,
+    runtimeUiEvents,
     async runTurn(prompt, userMessage, { userRecallHints = [], currentProject = "" } = {}) {
       currentPromptForContext = prompt;
       const contextMode = nextTurnContextMode;
@@ -120,7 +119,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       try {
         const result = await runRunnerTurn({
           prompt, userMessage, options: { userRecallHints, currentProject },
-          sessionBinding, engine, ui, projectMarchDir, memoryStore,
+          sessionBinding, engine, ui: runtimeUi, projectMarchDir, memoryStore,
           setModelCallKind: (kind) => { currentModelCallKind = kind; },
           logger: turnLog.logger,
           setPhase: turnLog.setPhase,
@@ -251,6 +250,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
         () => shellRuntime?.dispose?.() ?? shellRuntime?.killAll?.(),
         () => lspService.dispose(),
         () => mcpClientManager?.disconnectAll?.(),
+        () => detachRuntimeUi(),
       ]);
     },
   };
