@@ -61,13 +61,27 @@ export function writeSystemClipboardAsync(text, { platform = process.platform } 
   });
 }
 
-function clipboardCommand(platform) {
+export function clipboardCommand(platform) {
   if (platform === "win32") {
     return {
       bin: "powershell.exe",
-      args: ["-NoProfile", "-Command", "Set-Clipboard -Value ([Console]::In.ReadToEnd())"],
+      args: ["-NoProfile", "-EncodedCommand", encodePowerShellCommand(readUtf8StdinToClipboardScript())],
     };
   }
   if (platform === "darwin") return { bin: "pbcopy", args: [] };
   return { bin: "sh", args: ["-lc", "command -v wl-copy >/dev/null && wl-copy || xclip -selection clipboard || xsel --clipboard --input"] };
+}
+
+function readUtf8StdinToClipboardScript() {
+  return [
+    "$stdin = [Console]::OpenStandardInput()",
+    "$memory = New-Object System.IO.MemoryStream",
+    "$stdin.CopyTo($memory)",
+    "$text = [System.Text.Encoding]::UTF8.GetString($memory.ToArray())",
+    "Set-Clipboard -Value $text",
+  ].join("; ");
+}
+
+function encodePowerShellCommand(script) {
+  return Buffer.from(script, "utf16le").toString("base64");
 }

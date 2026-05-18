@@ -5,6 +5,7 @@ export async function runCopyCommandSmoke() {
   const {
     copyLastAssistantMessage,
     findLastAssistantMessage,
+    clipboardCommand,
     writeSystemClipboard,
   } = await import("../src/cli/commands/copy-command.mjs");
 
@@ -38,5 +39,14 @@ export async function runCopyCommandSmoke() {
   }), ["Error: clipboard unavailable"]);
 
   assert.equal(writeSystemClipboard("x", { platform: "plan9" }).ok, false);
+
+  const winCommand = clipboardCommand("win32");
+  assert.equal(winCommand.bin, "powershell.exe");
+  assert.deepEqual(winCommand.args.slice(0, 2), ["-NoProfile", "-EncodedCommand"]);
+  const script = Buffer.from(winCommand.args[2], "base64").toString("utf16le");
+  assert.match(script, /OpenStandardInput\(\)/);
+  assert.match(script, /UTF8\.GetString/);
+  assert.doesNotMatch(script, /In\.ReadToEnd/);
+
   console.log("  PASS");
 }
