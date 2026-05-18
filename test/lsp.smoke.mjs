@@ -29,7 +29,15 @@ export async function runLspSmoke({ setupTmp, cleanup }) {
 
     assert.equal(formatLspSegment({ servers: [] }), "lsp:off");
     assert.equal(formatLspSegment({ servers: [{ id: "typescript", status: "idle" }] }), "lsp:ts✓");
-    assert.equal(formatLspSegment({ servers: [{ id: "vue", status: "starting" }] }), "lsp:starting");
+    assert.equal(formatLspSegment({ servers: [{ id: "vue", status: "starting" }] }), "lsp:vue…");
+    assert.equal(formatLspSegment({ servers: [
+      { id: "typescript", status: "idle" },
+      { id: "vue", status: "starting" },
+    ] }), "lsp:ts✓,vue…");
+    assert.equal(formatLspSegment({ servers: [
+      { id: "typescript", status: "idle" },
+      { id: "vue", status: "failed" },
+    ] }), "lsp:ts✓,vue!");
     console.log("  PASS");
   } finally {
     cleanup(dir);

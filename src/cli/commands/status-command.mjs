@@ -110,13 +110,35 @@ export function formatLspSegment(lspStatus) {
   const servers = lspStatus.servers ?? [];
   const visible = servers.filter((server) => server.id);
   if (visible.length === 0) return "lsp:off";
-  if (servers.some((server) => server.status === "failed")) return "lsp:failed";
-  if (servers.some((server) => server.status === "starting")) return "lsp:starting";
-  if (servers.every((server) => server.status === "unavailable")) return "lsp:off";
-  const active = visible.filter((server) => server.status !== "unavailable");
-  if (active.length === 0) return "lsp:off";
-  const ids = [...new Set(active.map((server) => shortLspId(server.id)))].join(",");
-  return `lsp:${ids}✓`;
+  const parts = buildLspStatusParts(visible);
+  if (parts.length === 0) return "lsp:off";
+  return `lsp:${parts.join(",")}`;
+}
+
+function buildLspStatusParts(servers) {
+  const byId = new Map();
+  for (const server of servers) {
+    const id = shortLspId(server.id);
+    byId.set(id, mergeLspStatus(byId.get(id), server.status));
+  }
+  return [...byId.entries()]
+    .filter(([, status]) => status !== "unavailable")
+    .map(([id, status]) => `${id}${formatLspStatusMark(status)}`);
+}
+
+function mergeLspStatus(current, next) {
+  const rank = { failed: 4, starting: 3, busy: 2, ready: 1, idle: 1, unavailable: 0 };
+  if (!current) return next ?? "unavailable";
+  const currentRank = rank[current] ?? 0;
+  const nextRank = rank[next] ?? 0;
+  return nextRank > currentRank ? next : current;
+}
+
+function formatLspStatusMark(status) {
+  if (status === "failed") return "!";
+  if (status === "starting") return "…";
+  if (status === "unavailable") return "";
+  return "✓";
 }
 
 function formatActivitySegment(activity) {
