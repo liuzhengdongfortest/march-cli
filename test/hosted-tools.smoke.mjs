@@ -17,8 +17,9 @@ export async function runHostedToolsSmoke() {
   assert.deepEqual(payload.tools.map((tool) => tool.type), ["function", "web_search_preview"]);
 
   const codex = { provider: "openai-codex", api: "openai-codex-responses" };
-  assert.deepEqual(resolveHostedToolCapabilities(codex), []);
-  assert.equal(injectHostedTools({ input: [] }, codex).tools, undefined);
+  assert.deepEqual(resolveHostedToolCapabilities(codex), ["openaiCodex.webSearch"]);
+  assert.deepEqual(injectHostedTools({ input: [] }, codex).tools, [{ type: "web_search" }]);
+  assert.equal(injectHostedTools({ input: [] }, codex, { openaiCodex: { webSearch: false } }).tools, undefined);
 
   const nested = injectHostedTools({ body: { input: [] } }, openai);
   assert.deepEqual(nested.body.tools, [{ type: "web_search_preview" }]);

@@ -1,4 +1,5 @@
 const OPENAI_PROVIDERS = new Set(["openai"]);
+const OPENAI_CODEX_PROVIDERS = new Set(["openai-codex"]);
 const AZURE_OPENAI_PROVIDERS = new Set(["azure-openai-responses"]);
 const ANTHROPIC_PROVIDERS = new Set(["anthropic"]);
 const GOOGLE_PROVIDERS = new Set(["google", "google-vertex"]);
@@ -17,6 +18,9 @@ export function resolveHostedTools(model, config = {}) {
 export function resolveHostedToolCapabilities(model) {
   if (!model || typeof model !== "object") return [];
   if (OPENAI_PROVIDERS.has(model.provider) && isOpenAiResponsesApi(model.api)) return ["openai.webSearch"];
+  if (OPENAI_CODEX_PROVIDERS.has(model.provider) && model.api === "openai-codex-responses") {
+    return ["openaiCodex.webSearch"];
+  }
   if (AZURE_OPENAI_PROVIDERS.has(model.provider) && model.api === "azure-openai-responses") {
     return ["azureOpenai.webSearch"];
   }
@@ -34,6 +38,7 @@ function isToolEnabled(tool, config) {
 
 function createHostedTool(tool) {
   if (tool === "openai.webSearch" || tool === "azureOpenai.webSearch") return { type: "web_search_preview" };
+  if (tool === "openaiCodex.webSearch") return { type: "web_search" };
   if (tool === "anthropic.webSearch") return { type: "web_search_20250305", name: "web_search" };
   if (tool === "google.webSearch") return { googleSearch: {} };
   if (tool === "xai.webSearch") return { type: "web_search", enable_image_understanding: true };

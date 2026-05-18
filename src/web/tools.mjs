@@ -6,8 +6,8 @@ import { fetchWebPage } from "./fetch.mjs";
 
 export function createWebTools({ tavilyKey, braveKey } = {}) {
   const webSearchTool = defineTool({
-    name: "web_search",
-    label: "Web Search",
+    name: "external_web_search",
+    label: "External Web Search",
     description:
       "Search the web for current information on any topic. " +
       "Requires TAVILY_API_KEY or BRAVE_API_KEY; if neither is configured, use web_fetch when you already know the URL. " +

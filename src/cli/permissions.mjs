@@ -40,7 +40,7 @@ const DEFAULT_CATEGORIES = {
   terminal_search: PERM.COMMAND_EXEC,
   terminal_read: PERM.COMMAND_EXEC,
   terminal_snapshot: PERM.COMMAND_EXEC,
-  web_search: PERM.NETWORK_EXTERNAL,
+  external_web_search: PERM.NETWORK_EXTERNAL,
   web_fetch: PERM.NETWORK_EXTERNAL,
 };
 

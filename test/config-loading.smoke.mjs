@@ -16,6 +16,7 @@ export async function runConfigLoadingSmoke({ setupTmp, cleanup }) {
   assert.deepEqual(empty.network, { proxy: "system", ca: "system" });
   assert.deepEqual(empty.hostedTools, {
     openai: { webSearch: "auto" },
+    openaiCodex: { webSearch: "auto" },
     azureOpenai: { webSearch: "auto" },
     anthropic: { webSearch: "auto" },
     google: { webSearch: "auto" },
@@ -40,6 +41,7 @@ export async function runConfigLoadingSmoke({ setupTmp, cleanup }) {
   assert.equal(withRc.webSearch.provider, "tavily");
   assert.equal(withRc.webSearch.providers.tavily.apiKey, "tvly");
   assert.equal(withRc.hostedTools.openai.webSearch, false);
+  assert.equal(withRc.hostedTools.openaiCodex.webSearch, "auto");
   assert.equal(withRc.hostedTools.azureOpenai.webSearch, "auto");
   assert.equal(withRc.hostedTools.anthropic.webSearch, "auto");
   assert.equal(withRc.hostedTools.google.webSearch, "auto");
