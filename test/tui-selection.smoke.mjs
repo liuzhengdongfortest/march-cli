@@ -45,7 +45,7 @@ export async function runTuiSelectionSmoke() {
   let copied = "";
   const terminal = new FakeTerminal();
   terminal.columns = 40;
-  terminal.rows = 8;
+  terminal.rows = 12;
   const ui = createTuiUI({
     terminal,
     writeClipboard: (text) => {
@@ -59,8 +59,8 @@ export async function runTuiSelectionSmoke() {
   assert.ok(terminal.writes.join("").includes("\x1b[?1002h\x1b[?1006h"));
 
   terminal.input("\x1b[<0;1;1M");
-  terminal.input("\x1b[<32;40;8M");
-  terminal.input("\x1b[<0;40;8m");
+  terminal.input("\x1b[<32;40;12M");
+  terminal.input("\x1b[<0;40;12m");
   assert.equal(copied, "");
   terminal.input("\x03");
   assert.ok(copied.includes("alpha"));

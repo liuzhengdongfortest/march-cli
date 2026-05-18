@@ -5,8 +5,7 @@ const ANSI_RE = /\x1b\[[0-?]*[ -/]*[@-~]/g;
 const DEFAULT_STATUS_TEXT = "March";
 const DEFAULT_HELP_TEXT = "/ commands · ? help";
 const INPUT_BG = "\x1b[48;2;32;34;38m";
-const INPUT_PROMPT = "> ";
-const HORIZONTAL_INSET = 2;
+const INPUT_PROMPT = "▌ ";
 
 export class StatusBar {
   constructor(text = DEFAULT_STATUS_TEXT, { cwd = process.cwd(), helpText = DEFAULT_HELP_TEXT } = {}) {
@@ -51,9 +50,11 @@ export class StatusBar {
     const { left, innerWidth, right } = insetForWidth(width);
     const contentLines = lines.filter((line) => !isEditorChromeLine(line));
     const visibleLines = contentLines.length > 0 ? contentLines : [""];
-    return visibleLines.map((line, index) =>
+    const inputPadding = `${left}${renderInputPaddingLine(innerWidth)}${right}`;
+    const inputContent = visibleLines.map((line, index) =>
       `${left}${this.renderInputLine(line, innerWidth, { isFirst: index === 0 })}${right}`,
     );
+    return [inputPadding, ...inputContent, inputPadding];
   }
 
   renderInputLine(line, width, { isFirst = true } = {}) {
@@ -79,10 +80,7 @@ export class StatusBar {
 
 function insetForWidth(width) {
   const safeWidth = Math.max(1, Math.trunc(width));
-  const inset = safeWidth > HORIZONTAL_INSET * 2 + 12 ? HORIZONTAL_INSET : 0;
-  const left = " ".repeat(inset);
-  const right = " ".repeat(inset);
-  return { left, innerWidth: Math.max(1, safeWidth - inset * 2), right };
+  return { left: "", innerWidth: safeWidth, right: "" };
 }
 
 function composeMetaLine({ left, right, width }) {
@@ -97,6 +95,9 @@ function composeMetaLine({ left, right, width }) {
   return `${statusBar.muted(fittedLeft)}${" ".repeat(gap)}${statusBar.muted(right)}${R}`;
 }
 
+function renderInputPaddingLine(width) {
+  return applyInputBackground(" ".repeat(Math.max(1, Math.trunc(width))));
+}
 
 function applyInputBackground(line) {
   return `${INPUT_BG}${String(line).replaceAll(R, `${R}${INPUT_BG}`)}${R}`;
