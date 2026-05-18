@@ -68,6 +68,10 @@ export async function runShellRuntimeSmoke() {
   assert.equal(runtime.snapshotShell("sh1").plain, "out:hello");
   assert.ok(runtime.snapshotShell("sh1").ansi.includes("\x1b[32m"));
   assert.equal(runtime.snapshotShell("sh1").screen.plain, "out:hello");
+  const screenOnly = runtime.snapshotShellScreen("sh1");
+  assert.equal(screenOnly.screen.plain, "out:hello");
+  assert.equal(screenOnly.plain, undefined);
+  assert.equal(screenOnly.ansi, undefined);
   assert.deepEqual(runtime.searchShell("sh1", "hello").matches.map((match) => match.line), ["out:hello"]);
   assert.deepEqual(runtime.resizeShell("sh1", { cols: 120, rows: 30 }), { ok: true, changed: false, shell: runtime.getShell("sh1") });
   const resized = runtime.resizeShell("sh1", { cols: 100.9, rows: 12.1 });

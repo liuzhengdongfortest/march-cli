@@ -76,6 +76,25 @@ export async function runShellDrawerSmoke() {
   drawer.render(100);
   assert.deepEqual(resizes.at(-1), ["sh2", { cols: 100, rows: 2 }]);
 
+  let lightSnapshotCalls = 0;
+  const lightDrawer = new ShellDrawer({
+    shellRuntime: {
+      listShells: () => [{ id: "sh1", name: "dev", status: "running", command: "pwsh", args: [] }],
+      snapshotShellScreen: (id) => {
+        lightSnapshotCalls += 1;
+        assert.equal(id, "sh1");
+        return { screen: { ansi: "\x1b[32mscreen\x1b[0m\n", plain: "screen\n" } };
+      },
+      snapshotShell: () => {
+        throw new Error("drawer should use screen snapshot without full scrollback join");
+      },
+    },
+    maxOutputLines: 1,
+  });
+  lightDrawer.toggle();
+  assert.ok(lightDrawer.render(40).join("\n").includes("screen"));
+  assert.equal(lightSnapshotCalls, 1);
+
   const ansiLines = formatAnsiLines({
     ansi: "\x1b[?25l\x1b[31mred\x1b[0m\n\x1b]0;title\x07done",
     plain: "plain",

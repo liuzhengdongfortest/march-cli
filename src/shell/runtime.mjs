@@ -10,7 +10,6 @@ import {
   normalizeSize,
   publicShell,
   requireShell,
-  stripAnsi,
   touch,
   uniqueName,
 } from "./runtime-state.mjs";
@@ -194,6 +193,14 @@ export function createShellRuntime({
     };
   }
 
+  function snapshotShellScreen(id) {
+    const shell = requireShell(shells, id);
+    return {
+      shell: publicShell(shell),
+      screen: shell.screen?.snapshot?.() ?? null,
+    };
+  }
+
   function clearShell(id) {
     const shell = requireShell(shells, id);
     shell.rawChunks = [];
@@ -238,6 +245,7 @@ export function createShellRuntime({
     getShell,
     searchShell,
     snapshotShell,
+    snapshotShellScreen,
     clearShell,
     dispose,
   };

@@ -137,7 +137,7 @@ export class ShellDrawer {
 
   getOutputLines(shellId = this.getSelectedShell()?.id) {
     if (!shellId || !this.shellRuntime) return [];
-    const snapshot = this.shellRuntime.snapshotShell(shellId);
+    const snapshot = this.shellRuntime.snapshotShellScreen?.(shellId) ?? this.shellRuntime.snapshotShell(shellId);
     return formatAnsiLines(snapshot);
   }
 
