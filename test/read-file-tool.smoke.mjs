@@ -12,8 +12,8 @@ export async function runReadFileToolSmoke({ setupTmp, cleanup }) {
 
   const result = readFileSlice({ engine, path, offset: 2, limit: 2 });
   assert.ok(result.content[0].text.includes(`--- ${path} (lines 2-3 of 4) ---`));
-  assert.ok(result.content[0].text.includes("2 | beta"));
-  assert.ok(result.content[0].text.includes("3 | gamma"));
+  assert.ok(result.content[0].text.includes("2| beta"));
+  assert.ok(result.content[0].text.includes("3| gamma"));
   assert.ok(result.content[0].text.includes("Use offset=4 to continue"));
   assert.equal(result.details.totalLines, 4);
   assert.equal(result.details.truncated, true);

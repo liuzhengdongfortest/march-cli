@@ -47,7 +47,7 @@ export function readFileSlice({ engine, path, offset = 1, limit = DEFAULT_LIMIT 
   const count = clampLimit(limit);
   const selected = lines.slice(start - 1, start - 1 + count);
   const end = start + selected.length - 1;
-  const body = selected.map((line, index) => `${start + index} | ${line}`).join("\n");
+  const body = selected.map((line, index) => `${start + index}| ${line}`).join("\n");
   const header = `--- ${absPath} (lines ${start}-${end} of ${lines.length}) ---`;
   const remaining = lines.length - end;
   const footer = remaining > 0 ? `\n\n[${remaining} more lines in file. Use offset=${end + 1} to continue.]` : "";
