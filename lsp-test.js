@@ -1,4 +1,4 @@
-const message = 'lsp check'
+const message = 'lsp check after spawn fix'
 
 console.log(message.toUpperCase())
 
