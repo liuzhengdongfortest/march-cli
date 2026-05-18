@@ -13,14 +13,14 @@ export function createSuperGrokTool({ authStorage, projectMarchDir, resolveCrede
     name: "supergrok",
     label: "SuperGrok",
     description:
-      "Use SuperGrok capabilities through xAI: realtime web search, X/Twitter search, and Grok image generation. " +
-      "Default search behavior is broad and enables image/video understanding where supported. Requires SuperGrok OAuth or XAI_API_KEY.",
-    promptSnippet: "supergrok(action, query, options?) - Use SuperGrok web_search, x_search, or image_generate",
+      "Use SuperGrok for complex research tasks that would otherwise require multiple searches or source comparison. " +
+      "It is backed by an agent team that can search repeatedly, verify across sources, and synthesize an answer.",
+    promptSnippet: "supergrok(action, query, options?) - Prefer SuperGrok for complex web/X research or Grok image generation",
     promptGuidelines: [
-      "Use action=web_search for current web/news/documentation facts.",
-      "Use action=x_search for current X/Twitter posts, reactions, profiles, and threads.",
+      "Prefer action=web_search for broad, ambiguous, current, or multi-step research.",
+      "Use action=x_search for targeted X/Twitter posts, reactions, profiles, and threads.",
       "Use action=image_generate when the user asks Grok/SuperGrok to create an image.",
-      "Do not add domain, handle, or date filters unless the user asks for that narrower scope.",
+      "Use narrower tools instead for simple lookups, exact URL fetching, targeted X search, or non-Grok image generation.",
     ],
     parameters: Type.Object({
       action: Type.String({ enum: ACTIONS, description: "SuperGrok capability to invoke" }),
