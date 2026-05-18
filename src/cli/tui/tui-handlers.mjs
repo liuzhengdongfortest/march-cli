@@ -56,7 +56,7 @@ export function wireTuiHandlers({
         ui.writeln(brightBlack(`● thinking: unchanged`));
         return;
       }
-      ui.writeln(brightBlack(`● thinking: ${runner.setThinkingLevel(item.level)}`));
+      ui.writeln(brightBlack(`● thinking: ${await runner.setThinkingLevel(item.level)}`));
       refreshStatusBar();
     } catch (err) {
       ui.writeln(`Error: ${err.message}`);

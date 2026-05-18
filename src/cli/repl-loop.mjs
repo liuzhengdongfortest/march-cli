@@ -119,7 +119,9 @@ export async function runInteractiveRepl({
 export function contextTokenRefreshOptions(slashResult, runner) {
   if (!slashResult?.refreshContextTokens) return undefined;
   if (typeof runner.estimateContextTokens !== "function") return undefined;
-  return { contextTokens: runner.estimateContextTokens("") };
+  const contextTokens = runner.estimateContextTokens("");
+  if (contextTokens && typeof contextTokens.then === "function") return undefined;
+  return { contextTokens };
 }
 
 function handleInlineCommand(trimmed, { cwd, ui, lastInlineShellCommand }) {

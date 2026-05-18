@@ -100,17 +100,27 @@ export function createRunnerIpcTarget({ createRunnerImpl, runnerOptions = {} } =
 }
 
 export function getRunnerState(runner) {
+  const currentModel = runner.getCurrentModel?.() ?? null;
+  const scopedModels = runner.getScopedModels?.() ?? [];
+  const thinkingLevel = runner.getThinkingLevel?.() ?? runner.engine?.thinkingLevel ?? null;
   return {
     engine: {
-      modelId: runner.engine?.modelId ?? null,
-      provider: runner.engine?.provider ?? null,
-      thinkingLevel: runner.engine?.thinkingLevel ?? null,
+      cwd: runner.engine?.cwd ?? null,
+      modelId: runner.engine?.modelId ?? currentModel?.id ?? null,
+      provider: runner.engine?.provider ?? currentModel?.provider ?? null,
+      thinkingLevel,
       sessionName: runner.engine?.sessionName ?? "",
       turns: runner.engine?.turns ?? [],
     },
+    currentModel,
+    scopedModels,
+    configuredProviders: runner.getConfiguredProviders?.() ?? [],
+    availableThinkingLevels: runner.getAvailableThinkingLevels?.() ?? [],
+    canSwitchPiSession: runner.canSwitchPiSession?.() ?? false,
     sessionStats: runner.getSessionStats?.() ?? null,
     lspStatus: runner.getLspStatus?.() ?? null,
     extensionDiagnostics: runner.getExtensionDiagnostics?.() ?? [],
     extensionLifecycleState: runner.getExtensionLifecycleState?.() ?? null,
   };
 }
+

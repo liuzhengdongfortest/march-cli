@@ -18,6 +18,9 @@ export async function runRuntimeRunnerIpcSmoke() {
 
   await remote.init({ cwd: "D:/repo" });
   assert.equal(remote.engine.modelId, "model-a");
+  assert.deepEqual(remote.getScopedModels(), [{ model: { id: "model-a" } }]);
+  assert.equal(remote.canSwitchPiSession(), true);
+  assert.deepEqual(remote.getLspStatus(), { ready: true });
   assert.deepEqual(calls, [["create", "D:/repo"]]);
   assert.deepEqual(await remote.runTurn("prompt", "hello", { currentProject: "repo" }), { draft: "ok:hello" });
   assert.equal(remote.engine.sessionName, "after-turn");

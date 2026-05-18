@@ -55,9 +55,9 @@ export async function handleThinkingCommand(parsed, { runner, ui = null } = {}) 
       runner.getThinkingLevel?.(),
     );
   }
-  if (parsed.type === "select") return [selectThinkingByIndex(parsed.index, { runner })];
+  if (parsed.type === "select") return [await selectThinkingByIndexAsync(parsed.index, { runner })];
   if (parsed.type === "set") {
-    const level = runner.setThinkingLevel(parsed.level);
+    const level = await runner.setThinkingLevel(parsed.level);
     return [`thinking: ${level}`];
   }
   if (parsed.type === "error") return [`Error: ${parsed.message}`];
@@ -76,5 +76,12 @@ async function selectThinkingInteractively({ runner, ui }) {
     suppressInitialConfirm: true,
   });
   if (!item) return "thinking: unchanged";
-  return `thinking: ${runner.setThinkingLevel(item.level)}`;
+  return `thinking: ${await runner.setThinkingLevel(item.level)}`;
+}
+
+async function selectThinkingByIndexAsync(index, { runner }) {
+  const levels = runner.getAvailableThinkingLevels?.() || THINKING_LEVELS;
+  const level = levels[index - 1];
+  if (!level) return `Error: thinking index out of range: ${index}`;
+  return `thinking: ${await runner.setThinkingLevel(level)}`;
 }

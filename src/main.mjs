@@ -15,7 +15,7 @@ import { createStatusLineUpdater } from "./cli/status-line-updater.mjs";
 import { wireTuiHandlers } from "./cli/tui/tui-handlers.mjs";
 import { createMarchAuthStorage } from "./auth/storage.mjs";
 import { runLoginCommand } from "./auth/login-command.mjs";
-import { createRunner } from "./agent/runner.mjs";
+import { createRuntimeRunner } from "./cli/startup/create-runtime-runner.mjs";
 import { createCliShellRuntime } from "./shell/cli-runtime.mjs";
 import { MarkdownMemoryStore } from "./memory/markdown-store.mjs";
 import { createMarkdownMemoryTools } from "./memory/markdown-tools.mjs";
@@ -23,7 +23,6 @@ import { loadDotEnv } from "./config/dotenv.mjs";
 import { loadConfig } from "./config/loader.mjs";
 import { discoverProjectExtensionPaths } from "./extensions/discovery.mjs";
 import { loadProjectLifecycleHookManifests } from "./extensions/lifecycle-manifest.mjs";
-import { resolvePiSessionManager } from "./session/pi-manager.mjs";
 import { loadOrCreateProjectId, resumeStartupSession } from "./cli/startup/startup-session.mjs";
 import { formatStartupBanner } from "./cli/startup/startup-banner.mjs";
 import { initializeMcp } from "./mcp/index.mjs";
@@ -49,6 +48,7 @@ export async function run(argv) {
   }
 
   const config = loadConfig(cwd);
+  const useRuntimeProcess = process.env.MARCH_RUNTIME_PROCESS === "1";
   installNetworkEnvironment(config.network);
   if (args.command?.name === "login") {
     try {
@@ -109,8 +109,9 @@ export async function run(argv) {
   const currentProject = basename(cwd);
   const shellRuntime = args.shellRuntime ? createCliShellRuntime({ cwd }) : null;
 
-  // MCP: connect to configured MCP servers
-  const mcpInit = await initializeMcp({ projectDir: cwd });
+  const mcpInit = useRuntimeProcess
+    ? { clientManager: null, mcpTools: [], mcpInjections: [], errors: [] }
+    : await initializeMcp({ projectDir: cwd });
   const { clientManager: mcpClientManager, mcpTools, mcpInjections } = mcpInit;
   for (const { server, error } of mcpInit.errors) {
     if (args.json) {
@@ -159,17 +160,33 @@ export async function run(argv) {
   let turnRunning = false;
   let refreshStatusBar = null;
 
-  const runner = await createRunner({
+  const runnerOptions = {
     cwd,
     modelId: model,
     provider,
     serviceTier,
-
     providers: config.providers,
+    config,
     stateRoot,
-    ui,
     memoryRoot,
     centerMemoryPath,
+    namespace,
+    projectMarchDir,
+    extensionPaths,
+    permissionMode,
+    shellRuntime: Boolean(shellRuntime),
+    lifecycleHooks: lifecycleManifests.hooks,
+    lifecycleDiagnostics: lifecycleManifests.diagnostics,
+    modelContextDumper: {
+      enabled: args.dumpContext,
+      rootDir: contextDumpRoot,
+    },
+  };
+
+  const runner = await createRuntimeRunner({
+    useRuntimeProcess,
+    runnerOptions,
+    ui,
     memoryStore,
     memoryTools,
     shellRuntime,
@@ -177,29 +194,14 @@ export async function run(argv) {
     mcpInjections,
     mcpClientManager,
     webTools,
-    namespace,
-    projectMarchDir,
-    extensionPaths,
-    sessionManager: resolvePiSessionManager({
-      cwd,
-      projectMarchDir,
-      enabled: usePiSessions,
-    }),
-    useRuntimeHost: usePiRuntimeHost,
-    syncPiSidecar: usePiSessions || usePiRuntimeHost,
-    lifecycleHooks: lifecycleManifests.hooks,
-    lifecycleDiagnostics: lifecycleManifests.diagnostics,
+    usePiSessions,
+    usePiRuntimeHost,
     authStorage: authConfig.authStorage,
-    maxTurns: config.maxTurns ?? undefined,
-    trimBatch: config.trimBatch ?? undefined,
-    hostedTools: config.hostedTools,
     permissionController,
     modelContextDumper,
     turnNotifier,
     logger,
-    onModelPayload: ({ estimatedTokens }) => {
-      refreshStatusBar?.({ contextTokens: estimatedTokens });
-    },
+    refreshStatusBar,
   });
 
   refreshStatusBar = createStatusLineUpdater({

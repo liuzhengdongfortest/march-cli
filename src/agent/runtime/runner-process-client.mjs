@@ -30,15 +30,14 @@ export async function createRunnerProcessClient({
     throw error;
   }
 
-  return {
-    runner,
-    child,
-    async dispose() {
-      try {
-        await runner.dispose();
-      } finally {
-        child.kill?.();
-      }
-    },
+  const remoteDispose = runner.dispose;
+  const dispose = async () => {
+    try {
+      await remoteDispose.call(runner);
+    } finally {
+      child.kill?.();
+    }
   };
+  runner.dispose = dispose;
+  return { runner, child, dispose };
 }

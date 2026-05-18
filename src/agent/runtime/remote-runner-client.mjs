@@ -2,7 +2,7 @@ export function createRemoteRunnerClient(peer, { initialState = null } = {}) {
   let state = initialState;
 
   const client = {
-    get engine() { return state?.engine ?? {}; },
+    get engine() { return createEngineFacade(); },
     get runtimeState() { return state; },
     async init(options = {}) {
       state = await peer.call("init", options);
@@ -16,25 +16,25 @@ export function createRemoteRunnerClient(peer, { initialState = null } = {}) {
     abort: () => peer.call("abort"),
     async cycleModel() { return applyResultWithState(await peer.call("cycleModel")); },
     async setModel(model) { return applyResultWithState(await peer.call("setModel", model)); },
-    getCurrentModel: () => peer.call("getCurrentModel"),
-    getScopedModels: () => peer.call("getScopedModels"),
-    getConfiguredProviders: () => peer.call("getConfiguredProviders"),
-    getSessionStats: () => peer.call("getSessionStats"),
+    getCurrentModel: () => state?.currentModel ?? null,
+    getScopedModels: () => state?.scopedModels ?? [],
+    getConfiguredProviders: () => state?.configuredProviders ?? [],
+    getSessionStats: () => state?.sessionStats ?? null,
     async refreshState() { return refreshState(); },
     getLastNotificationResult: () => peer.call("getLastNotificationResult"),
     notifyTest: (options) => peer.call("notifyTest", options),
     estimateContextTokens: (userMessage = "") => peer.call("estimateContextTokens", userMessage),
     async setSessionName(name) { return applyResultWithState(await peer.call("setSessionName", name)); },
-    canSwitchPiSession: () => peer.call("canSwitchPiSession"),
+    canSwitchPiSession: () => Boolean(state?.canSwitchPiSession),
     async startNewSession() { return applyResultWithState(await peer.call("startNewSession")); },
-    getExtensionDiagnostics: () => peer.call("getExtensionDiagnostics"),
-    getExtensionLifecycleState: () => peer.call("getExtensionLifecycleState"),
-    getLspStatus: () => peer.call("getLspStatus"),
+    getExtensionDiagnostics: () => state?.extensionDiagnostics ?? [],
+    getExtensionLifecycleState: () => state?.extensionLifecycleState ?? null,
+    getLspStatus: () => state?.lspStatus ?? null,
     async switchPiSession(sessionPath) { return applyResultWithState(await peer.call("switchPiSession", sessionPath)); },
     async cycleThinkingLevel() { return applyResultWithState(await peer.call("cycleThinkingLevel")); },
-    getThinkingLevel: () => peer.call("getThinkingLevel"),
+    getThinkingLevel: () => state?.engine?.thinkingLevel ?? null,
     async setThinkingLevel(level) { return applyResultWithState(await peer.call("setThinkingLevel", level)); },
-    getAvailableThinkingLevels: () => peer.call("getAvailableThinkingLevels"),
+    getAvailableThinkingLevels: () => state?.availableThinkingLevels ?? [],
     async dispose() {
       await peer.call("dispose");
       peer.dispose();
@@ -54,5 +54,20 @@ export function createRemoteRunnerClient(peer, { initialState = null } = {}) {
       return response.result;
     }
     return response;
+  }
+
+  function createEngineFacade() {
+    const engine = state?.engine ?? {};
+    return {
+      ...engine,
+      hasRenderedPendingAssistantRecallHints: () => true,
+      takePendingAssistantRecallHints: () => [],
+      peekPendingAssistantRecallHints: () => [],
+      markPendingAssistantRecallHintsRendered: () => {},
+      getRecentRecallMemoryIds: () => [],
+      restoreSession: () => {
+        throw new Error("remote runner session restore is not available");
+      },
+    };
   }
 }
