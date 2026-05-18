@@ -26,7 +26,7 @@ export async function runStatusBarSmoke() {
   const [line] = statusBar.render(64);
   assert.equal(visibleWidth(line), 64);
   const topPlain = stripAnsi(line);
-  assert.ok(topPlain.trimStart().startsWith("march-cli • lsp:ts✓ • 11.3K"));
+  assert.ok(topPlain.trimStart().startsWith("march-cli • LSP [ts] • 11.3K"));
   assert.ok(topPlain.indexOf("11.3K") < 32);
   const bottomLines = statusBar.renderBottom(64);
   assert.deepEqual(bottomLines.map(stripAnsi), ["", stripAnsi(bottomLines.at(-1))]);
@@ -67,7 +67,7 @@ export async function runStatusBarSmoke() {
     terminal: { rows: 8 },
   });
   const layoutLines = layout.render(80);
-  assert.ok(stripAnsi(layoutLines.at(-5)).includes("march-cli • lsp:ts✓ • 11.3K"));
+  assert.ok(stripAnsi(layoutLines.at(-5)).includes("march-cli • LSP [ts] • 11.3K"));
   assert.ok(stripAnsi(layoutLines.at(-5)).indexOf("11.3K") < 32);
   assert.equal(stripAnsi(layoutLines.at(-4)), "");
   assert.equal(stripAnsi(layoutLines.at(-3)).startsWith("  "), true);

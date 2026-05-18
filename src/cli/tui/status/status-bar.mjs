@@ -40,7 +40,7 @@ export class StatusBar {
     const { left, innerWidth, right } = insetForWidth(width);
     const parts = statusParts(this.text);
     const cwdName = currentDirectoryName(this.cwd);
-    const lsp = parts.lsp || "lsp:off";
+    const lsp = formatLspStatus(parts.lsp);
     const leftText = [cwdName, lsp, parts.context].filter(Boolean).join(" • ");
     const line = composeMetaLine({ left: leftText, right: "", width: innerWidth });
     return [`${left}${line}${right}`, ""];
@@ -111,6 +111,12 @@ function currentDirectoryName(path) {
   const normalized = normalizeStatusText(path);
   const parts = normalized.split(/[\\/]+/).filter(Boolean);
   return parts.at(-1) || normalized || DEFAULT_STATUS_TEXT;
+}
+
+function formatLspStatus(lsp) {
+  if (!lsp) return "LSP off";
+  const server = lsp.replace(/^lsp:/, "").replace(/[✓✗]$/u, "").trim();
+  return server ? `LSP [${server}]` : "LSP off";
 }
 
 function statusParts(text) {
