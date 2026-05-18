@@ -60,6 +60,28 @@ export async function runEditFileToolSmoke({ setupTmp, cleanup }) {
   assert.deepEqual(diffs[0].diff.map((line) => line.lineNum), [2, 3, 2, 3]);
   assert.deepEqual(touched, [file]);
 
+  let snapshotCalls = 0;
+  result = await executeEditFile({
+    params: {
+      path: file,
+      edits: [{ type: "replace_text", oldText: "TWO", newText: "two" }],
+    },
+    engine,
+    ui,
+    lspService: {
+      touchFile: () => ({ status: "starting", id: "test-lsp", root: dir }),
+      snapshot: () => {
+        snapshotCalls++;
+        return snapshotCalls === 1
+          ? { status: "starting", diagnostics: [], files: [], servers: [{ id: "test-lsp", root: dir, status: "starting" }] }
+          : { status: "idle", diagnostics: [], files: [{ path: file, updatedAt: Date.now(), diagnostics: 0 }], servers: [{ id: "test-lsp", root: dir, status: "idle" }] };
+      },
+    },
+  });
+  assert.equal(result.details.error, undefined);
+  assert.ok(result.content[0].text.includes("summary: 0 diagnostics"));
+  assert.ok(!result.content[0].text.includes("diagnostics pending"));
+
   result = await executeEditFile({
     params: {
       path: file,

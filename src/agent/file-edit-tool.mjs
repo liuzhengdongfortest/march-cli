@@ -5,7 +5,7 @@ import { Type } from "typebox";
 import { toolText } from "./tool-result.mjs";
 import { applyReplaceTextPatch, applyReplaceRangePatch } from "./editing/diff-apply.mjs";
 import { formatAppliedDiff, formatDiff } from "./editing/diff-format.mjs";
-import { formatLspDiagnosticsForPath } from "../lsp/diagnostics-format.mjs";
+import { waitForLspReport } from "./editing/lsp-report.mjs";
 
 export { formatDiff } from "./editing/diff-format.mjs";
 
@@ -72,10 +72,11 @@ async function writeFullFile({ absPath, path, content, mode, engine, ui, lspServ
   try {
     mkdirSync(dirname(absPath), { recursive: true });
     writeFileSync(absPath, content, "utf8");
+    const lspTouchedAt = Date.now();
     const lspResult = await lspService?.touchFile?.(absPath);
     ui.editDiff(absPath, diffLines);
 
-    return await toolTextWithDiagnostics(`${mode === WRITE_MODE ? "Wrote" : "Overwrote"} ${path}\n\n${formatAppliedDiff([{ oldText, newText: content, startLine: 1 }])}`, { path: absPath }, { lspService, path: absPath, lspResult });
+    return await toolTextWithDiagnostics(`${mode === WRITE_MODE ? "Wrote" : "Overwrote"} ${path}\n\n${formatAppliedDiff([{ oldText, newText: content, startLine: 1 }])}`, { path: absPath }, { lspService, path: absPath, lspResult, since: lspTouchedAt });
   } catch (err) {
     return toolText(`Error writing ${absPath}: ${err.message}`, { error: true });
   }
@@ -100,44 +101,18 @@ async function patchFile({ absPath, path, edits, engine, ui, lspService }) {
   try {
     mkdirSync(dirname(absPath), { recursive: true });
     writeFileSync(absPath, newContent, "utf8");
+    const lspTouchedAt = Date.now();
     const lspResult = await lspService?.touchFile?.(absPath);
     ui.editDiff(absPath, prepared.edits.flatMap((edit) => formatDiff(edit.oldText, edit.newText, { startLine: edit.startLine })));
-    return await toolTextWithDiagnostics(`Edited ${absPath}\n\n${formatAppliedDiff(prepared.edits)}`, { path: absPath, edits: prepared.edits.length }, { lspService, path: absPath, lspResult });
+    return await toolTextWithDiagnostics(`Edited ${absPath}\n\n${formatAppliedDiff(prepared.edits)}`, { path: absPath, edits: prepared.edits.length }, { lspService, path: absPath, lspResult, since: lspTouchedAt });
   } catch (err) {
     return toolText(`Error writing ${absPath}: ${err.message}`, { error: true });
   }
 }
 
-async function toolTextWithDiagnostics(text, details, { lspService, path, lspResult, timeoutMs = 3000, intervalMs = 150 } = {}) {
-  const diagnostics = await waitForDiagnosticsForPath({ lspService, path, timeoutMs, intervalMs });
-  const lspMessage = formatLspResultMessage(lspResult);
-  const suffix = [diagnostics, lspMessage].filter(Boolean).join("\n\n");
-  return toolText(suffix ? `${text}\n\n${suffix}` : text, details);
-}
-
-function formatLspResultMessage(result) {
-  if (!result || result.status === "unsupported") return "";
-  if (result.status === "unavailable" || result.status === "failed") {
-    return `<lsp status="${result.status}" server="${result.id ?? "unknown"}">${result.reason ?? "unavailable"}</lsp>`;
-  }
-  if (result.status === "starting") return `<lsp status="starting" server="${result.id}">diagnostics pending</lsp>`;
-  return "";
-}
-
-async function waitForDiagnosticsForPath({ lspService, path, timeoutMs, intervalMs }) {
-  if (!lspService?.snapshot || !path) return "";
-  const deadline = Date.now() + timeoutMs;
-  for (;;) {
-    const diagnostics = formatLspDiagnosticsForPath({ snapshot: lspService.snapshot(), path });
-    if (diagnostics) return diagnostics;
-    const remaining = deadline - Date.now();
-    if (remaining <= 0) return "";
-    await sleep(Math.min(intervalMs, remaining));
-  }
-}
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+async function toolTextWithDiagnostics(text, details, { lspService, path, lspResult, since = Date.now(), timeoutMs = 3000, intervalMs = 150 } = {}) {
+  const lspReport = await waitForLspReport({ lspService, path, lspResult, since, timeoutMs, intervalMs });
+  return toolText(lspReport ? `${text}\n\n${lspReport}` : text, details);
 }
 
 export function preparePatchEdits(content, edits, path = "file") {

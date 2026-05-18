@@ -47,7 +47,7 @@ export class LspService {
   }
 
   snapshot() {
-    const diagnostics = this.store.snapshot();
+    const storeSnapshot = this.store.snapshot();
     const servers = [
       ...[...this.clients.values()].map((client) => ({
         id: client.serverId,
@@ -61,7 +61,7 @@ export class LspService {
       })),
       ...this.unavailable.values(),
     ];
-    return { status: summarizeStatus(servers), diagnostics, servers };
+    return { status: summarizeStatus(servers), diagnostics: storeSnapshot.diagnostics, files: storeSnapshot.files, servers };
   }
 
   async dispose() {

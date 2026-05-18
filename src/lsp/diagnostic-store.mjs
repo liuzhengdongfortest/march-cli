@@ -22,10 +22,12 @@ export class LspDiagnosticStore {
 
   snapshot() {
     const diagnostics = [];
+    const files = [];
     for (const entry of this.byPath.values()) {
       diagnostics.push(...entry.diagnostics);
+      files.push({ path: entry.path, updatedAt: entry.updatedAt, diagnostics: entry.diagnostics.length });
     }
-    return diagnostics;
+    return { diagnostics, files };
   }
 }
 
