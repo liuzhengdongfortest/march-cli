@@ -10,6 +10,7 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
     getGitBranch,
     shortSessionId,
     statusCommand,
+    statusBarLine,
   } = await import("../src/cli/commands/status-command.mjs");
   const dir = setupTmp();
   const engine = {
@@ -98,6 +99,19 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
     mode: "do",
     contextTokens: 11300,
   })).includes("ctx:"), false);
+  const statusBarWithoutCwd = stripAnsi(statusBarLine({
+    runner: {
+      engine: {
+        get cwd() {
+          throw new Error("status bar must not read cwd");
+        },
+        modelId: "deepseek-chat",
+        provider: "deepseek",
+        thinkingLevel: "high",
+      },
+    },
+  }));
+  assert.equal(statusBarWithoutCwd, "Do | deepseek-chat·high");
   const branch = getGitBranch(dir);
   assert.ok(branch === null || typeof branch === "string");
   assert.deepEqual(statusCommand({

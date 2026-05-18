@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { MODES, formatModeLabel } from "../input/mode-state.mjs";
-import { accent, text, PREFIX, R } from "../tui/ui-theme.mjs";
+import { PREFIX, R } from "../tui/ui-theme.mjs";
 
 export function statusCommand({
   runner,
@@ -23,11 +23,6 @@ export function statusCommand({
 
 export function statusBarLine({
   runner,
-  sessionState,
-  sessionSource = "pi",
-  extensionDiagnostics = [],
-  lifecycleState = null,
-  gitBranch = getGitBranch(runner.engine.cwd),
   mode = MODES.DO,
   contextTokens = null,
   activity = null,
@@ -35,12 +30,6 @@ export function statusBarLine({
 }) {
   return formatStatusBarLine({
     engine: runner.engine,
-    sessionState,
-    sessionStats: runner.getSessionStats?.() ?? null,
-    sessionSource,
-    extensionDiagnostics,
-    lifecycleState,
-    gitBranch,
     mode,
     contextTokens,
     activity,
