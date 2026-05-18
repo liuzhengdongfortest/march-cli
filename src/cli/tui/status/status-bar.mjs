@@ -3,8 +3,9 @@ import { statusBar, R } from "../ui-theme.mjs";
 
 const ANSI_RE = /\x1b\[[0-?]*[ -/]*[@-~]/g;
 const DEFAULT_STATUS_TEXT = "March";
-const DEFAULT_HELP_TEXT = "/help for commands · Tab toggles mode · Ctrl+C exits";
-const PANEL_BG = "\x1b[48;5;235m";
+const DEFAULT_HELP_TEXT = "/ commands · ? help";
+const INPUT_BG = "\x1b[48;5;236m";
+const INPUT_PROMPT = "› ";
 
 export class StatusBar {
   constructor(text = DEFAULT_STATUS_TEXT, { cwd = process.cwd(), helpText = DEFAULT_HELP_TEXT } = {}) {
@@ -38,16 +39,26 @@ export class StatusBar {
     return [statusBar.cwd(padToWidth(clipToWidth(this.cwd, width), width))];
   }
 
-  renderInputLine(line, width) {
+  renderInputLines(lines, width) {
+    if (width <= 0) return [""];
+    const inputWidth = Math.max(1, Math.trunc(width));
+    const contentLines = lines.filter((line) => !isEditorChromeLine(line));
+    const visibleLines = contentLines.length > 0 ? contentLines : [""];
+    return visibleLines.map((line, index) => this.renderInputLine(line, inputWidth, { isFirst: index === 0 }));
+  }
+
+  renderInputLine(line, width, { isFirst = true } = {}) {
     if (width <= 0) return "";
-    return applyBackground(padToWidth(line, width));
+    const prompt = isFirst ? statusBar.prompt(INPUT_PROMPT) : "  ";
+    const contentWidth = Math.max(1, width - visibleWidth(stripAnsi(INPUT_PROMPT)));
+    return applyInputBackground(padToWidth(`${prompt}${clipToWidth(line, contentWidth)}`, width));
   }
 
   renderBottom(width) {
     if (width <= 0) return [""];
     const model = modelSegment(this.text);
     const left = leftStatusSegment(this.text, this.helpText);
-    return [applyBackground(composeBottomLine({ left, right: model, width }))];
+    return [composeBottomLine({ left, right: model, width })];
   }
 }
 
@@ -64,8 +75,13 @@ function composeBottomLine({ left, right, width }) {
   return `${statusBar.muted(fittedLeft)}${" ".repeat(gap)}${rightText}${R}`;
 }
 
-function applyBackground(line) {
-  return `${PANEL_BG}${String(line).replaceAll(R, `${R}${PANEL_BG}`)}${R}`;
+function applyInputBackground(line) {
+  return `${INPUT_BG}${String(line).replaceAll(R, `${R}${INPUT_BG}`)}${R}`;
+}
+
+function isEditorChromeLine(line) {
+  const plain = stripAnsi(line).trim();
+  return plain.length > 0 && (/^─+$/.test(plain) || /^─+\s[↑↓].*more\s─*$/.test(plain));
 }
 
 function modelSegment(text) {

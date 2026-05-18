@@ -82,6 +82,7 @@ const message = {
 const statusBar = {
   muted: brightBlack,
   cwd: fg256(250),
+  prompt: fg256(250),
   accent: violet,
 };
 

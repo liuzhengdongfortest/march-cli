@@ -28,11 +28,14 @@ export async function runStatusBarSmoke() {
   assert.ok(stripAnsi(line).includes("D:\\playground"));
   const [bottomLine] = statusBar.renderBottom(32);
   assert.equal(visibleWidth(bottomLine), 32);
-  assert.ok(bottomLine.includes("\x1b[48;5;235m"));
+  assert.equal(bottomLine.includes("\x1b[48;5;236m"), false);
   assert.ok(stripAnsi(bottomLine).trimEnd().endsWith("deepseek·medium"));
-  const inputLine = statusBar.renderInputLine("\x1b[38;5;238m──\x1b[0m", 8);
+  const inputLine = statusBar.renderInputLine("hello", 8);
   assert.equal(visibleWidth(inputLine), 8);
-  assert.ok(inputLine.includes("\x1b[48;5;235m"));
+  assert.ok(inputLine.includes("\x1b[48;5;236m"));
+  assert.ok(stripAnsi(inputLine).startsWith("› hello"));
+  const inputLines = statusBar.renderInputLines(["\x1b[38;5;238m────────\x1b[0m", "hello", "\x1b[38;5;238m────────\x1b[0m"], 8);
+  assert.deepEqual(inputLines.map(stripAnsi), ["› hello "]);
 
   assert.equal(statusBar.setText("Discuss | gpt-5.4·medium"), true);
   assert.equal(statusBar.setText("Discuss | gpt-5.4·medium"), false);
@@ -49,13 +52,15 @@ export async function runStatusBarSmoke() {
   const layout = new MainPaneLayout({
     output: { setViewportHeight: () => {}, render: () => ["out"], invalidate: () => {} },
     statusBar: layoutStatusBar,
-    editor: { render: () => ["> hello"], invalidate: () => {} },
+    editor: { render: () => ["────────", "hello", "────────"], invalidate: () => {} },
     terminal: { rows: 6 },
   });
   const layoutLines = layout.render(24);
   assert.equal(layoutLines.length, 6);
   assert.ok(stripAnsi(layoutLines.at(-3)).includes("D:\\work"));
-  assert.ok(layoutLines.at(-2).includes("\x1b[48;5;235m"));
+  assert.ok(layoutLines.at(-2).includes("\x1b[48;5;236m"));
+  assert.ok(stripAnsi(layoutLines.at(-2)).startsWith("› hello"));
+  assert.equal(layoutLines.at(-1).includes("\x1b[48;5;236m"), false);
   assert.ok(stripAnsi(layoutLines.at(-1)).trimEnd().endsWith("gpt-5-codex·medium"));
 
   const noop = createStatusLineUpdater({
