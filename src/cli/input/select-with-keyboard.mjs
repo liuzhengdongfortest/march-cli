@@ -45,7 +45,12 @@ export async function selectWithKeyboard({ input = process.stdin, output = proce
       input.off("data", onData);
       input.setRawMode(false);
       input.pause();
-      if (renderedLines > 0) output.write(`\x1b[${renderedLines}F`);
+      if (renderedLines > 0) {
+        output.write(`\x1b[${renderedLines}F`);
+        // clear all previously rendered lines
+        for (let i = 0; i < renderedLines; i++) output.write("\x1b[2K\r\n");
+        output.write(`\x1b[${renderedLines}F`);
+      }
       // final render shows just the selected item
       const lines = formatSelectionList({ message, items, selected, viewportStart: 0, viewportEnd: items.length, done: value != null });
       output.write(`\x1b[2K\r${lines[0]}\n`);
