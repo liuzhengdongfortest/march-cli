@@ -1,4 +1,4 @@
-const OPENAI_PROVIDERS = new Set(["openai", "openai-codex"]);
+const OPENAI_PROVIDERS = new Set(["openai"]);
 const AZURE_OPENAI_PROVIDERS = new Set(["azure-openai-responses"]);
 const ANTHROPIC_PROVIDERS = new Set(["anthropic"]);
 const GOOGLE_PROVIDERS = new Set(["google", "google-vertex"]);
@@ -44,7 +44,7 @@ function createHostedTool(tool) {
 }
 
 function isOpenAiResponsesApi(api) {
-  return api === "openai-responses" || api === "openai-codex-responses";
+  return api === "openai-responses";
 }
 
 function isGoogleApi(api) {
