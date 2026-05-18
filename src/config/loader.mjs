@@ -48,6 +48,9 @@ function mergeLayers(layers) {
     webSearch: { provider: null, providers: {} },
     hostedTools: {
       openai: { webSearch: "auto" },
+      azureOpenai: { webSearch: "auto" },
+      anthropic: { webSearch: "auto" },
+      google: { webSearch: "auto" },
       xai: { webSearch: "auto", xSearch: "auto" },
     },
     network: { proxy: "system", ca: "system" },
@@ -108,9 +111,12 @@ function mergeWebSearch(current, next) {
 function mergeHostedTools(current, next) {
   const merged = {
     openai: { ...(current.openai ?? {}) },
+    azureOpenai: { ...(current.azureOpenai ?? {}) },
+    anthropic: { ...(current.anthropic ?? {}) },
+    google: { ...(current.google ?? {}) },
     xai: { ...(current.xai ?? {}) },
   };
-  for (const provider of ["openai", "xai"]) {
+  for (const provider of ["openai", "azureOpenai", "anthropic", "google", "xai"]) {
     if (next[provider] && typeof next[provider] === "object" && !Array.isArray(next[provider])) {
       merged[provider] = { ...merged[provider], ...next[provider] };
     }
