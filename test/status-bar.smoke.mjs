@@ -24,18 +24,18 @@ export async function runStatusBarSmoke() {
 
   const statusBar = new StatusBar("Do | deepseek·medium", { cwd: "D:\\playground\\pi-go\\march-cli" });
   const [line] = statusBar.render(16);
-  assert.equal(visibleWidth(line), 16);
+  assert.ok(visibleWidth(line) <= 16);
   assert.ok(stripAnsi(line).trim().length > 0);
   const [bottomLine] = statusBar.renderBottom(32);
   assert.equal(visibleWidth(bottomLine), 32);
   assert.equal(bottomLine.includes("\x1b[48;5;236m"), false);
   assert.ok(stripAnsi(bottomLine).trimEnd().endsWith("deepseek·medium"));
-  const inputLine = statusBar.renderInputLine("hello", 8);
-  assert.equal(visibleWidth(inputLine), 8);
+  const inputLine = statusBar.renderInputLine("hello", 80);
+  assert.equal(visibleWidth(inputLine), 28);
   assert.ok(inputLine.includes("\x1b[48;5;236m"));
   assert.ok(stripAnsi(inputLine).startsWith("› hello"));
-  const inputLines = statusBar.renderInputLines(["\x1b[38;5;238m────────\x1b[0m", "hello", "\x1b[38;5;238m────────\x1b[0m"], 8);
-  assert.deepEqual(inputLines.map(stripAnsi), ["› hello "]);
+  const inputLines = statusBar.renderInputLines(["\x1b[38;5;238m────────\x1b[0m", "hello", "\x1b[38;5;238m────────\x1b[0m"], 80);
+  assert.deepEqual(inputLines.map((l) => stripAnsi(l).trimEnd()), ["  › hello"]);
 
   assert.equal(statusBar.setText("Discuss | gpt-5.4·medium"), true);
   assert.equal(statusBar.setText("Discuss | gpt-5.4·medium"), false);
@@ -44,7 +44,7 @@ export async function runStatusBarSmoke() {
   assert.ok(stripAnsi(narrow).includes("gpt-5.4"));
 
   statusBar.setText("next");
-  assert.equal(visibleWidth(statusBar.render(8)[0]), 8);
+  assert.ok(visibleWidth(statusBar.render(8)[0]) <= 8);
   assert.equal(visibleWidth(statusBar.renderBottom(8)[0]), 8);
 
   const { MainPaneLayout } = await import("../src/cli/tui/layout/main-pane-layout.mjs");
@@ -60,6 +60,7 @@ export async function runStatusBarSmoke() {
   assert.ok(stripAnsi(layoutLines.at(-3)).includes("D:\\work"));
   assert.equal(stripAnsi(layoutLines.at(-2)).startsWith("  "), true);
   assert.ok(layoutLines.at(-2).includes("\x1b[48;5;236m"));
+  assert.equal(visibleWidth(layoutLines.at(-2)) < 24, true);
   assert.ok(stripAnsi(layoutLines.at(-2)).trimStart().startsWith("› hello"));
   assert.equal(layoutLines.at(-1).includes("\x1b[48;5;236m"), false);
   assert.ok(stripAnsi(layoutLines.at(-1)).trimEnd().endsWith("gpt-5-codex·medium"));

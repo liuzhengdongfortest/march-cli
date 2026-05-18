@@ -7,6 +7,8 @@ const DEFAULT_HELP_TEXT = "/ commands · ? help";
 const INPUT_BG = "\x1b[48;5;236m";
 const INPUT_PROMPT = "› ";
 const HORIZONTAL_INSET = 2;
+const MIN_INPUT_BLOCK_WIDTH = 28;
+const INPUT_BLOCK_PADDING = 2;
 
 export class StatusBar {
   constructor(text = DEFAULT_STATUS_TEXT, { cwd = process.cwd(), helpText = DEFAULT_HELP_TEXT } = {}) {
@@ -37,24 +39,28 @@ export class StatusBar {
 
   renderTop(width) {
     if (width <= 0) return [""];
-    const { left, innerWidth, right } = insetForWidth(width);
+    const { left, innerWidth } = insetForWidth(width);
     const cwd = compactPathForDisplay(this.cwd, innerWidth);
-    return [`${left}${statusBar.cwd(padToWidth(clipToWidth(cwd, innerWidth), innerWidth))}${right}`];
+    return [`${left}${statusBar.cwd(clipToWidth(cwd, innerWidth))}`];
   }
 
   renderInputLines(lines, width) {
     if (width <= 0) return [""];
-    const { left, innerWidth, right } = insetForWidth(width);
+    const { left, innerWidth } = insetForWidth(width);
     const contentLines = lines.filter((line) => !isEditorChromeLine(line));
     const visibleLines = contentLines.length > 0 ? contentLines : [""];
-    return visibleLines.map((line, index) => `${left}${this.renderInputLine(line, innerWidth, { isFirst: index === 0 })}${right}`);
+    return visibleLines.map((line, index) => `${left}${this.renderInputLine(line, innerWidth, { isFirst: index === 0 })}`);
   }
 
   renderInputLine(line, width, { isFirst = true } = {}) {
     if (width <= 0) return "";
     const prompt = isFirst ? statusBar.prompt(INPUT_PROMPT) : "  ";
-    const contentWidth = Math.max(1, width - visibleWidth(stripAnsi(INPUT_PROMPT)));
-    return applyInputBackground(padToWidth(`${prompt}${clipToWidth(line, contentWidth)}`, width));
+    const promptWidth = visibleWidth(stripAnsi(INPUT_PROMPT));
+    const maxContentWidth = Math.max(1, width - promptWidth - INPUT_BLOCK_PADDING);
+    const content = clipToWidth(line, maxContentWidth);
+    const raw = `${prompt}${content}`;
+    const blockWidth = Math.min(width, Math.max(MIN_INPUT_BLOCK_WIDTH, visibleWidth(stripAnsi(raw)) + INPUT_BLOCK_PADDING));
+    return applyInputBackground(padToWidth(raw, blockWidth));
   }
 
   renderBottom(width) {
