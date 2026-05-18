@@ -7,4 +7,4 @@ const user = {
   active: true,
 }
 
-user.
+console.log(`${user.name} active: ${user.active}`)
