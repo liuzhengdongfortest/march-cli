@@ -53,7 +53,8 @@ The user primarily asks for software engineering work: fixing bugs, adding behav
 </git_contract>
 
 <memory_system>
-- [memory_hint source="..."] blocks in recent_chat show memory hints matched from your thinking output. Use memory_open(id) to read the full content.
+- [memory_hint source="..."] blocks in recent_chat are lightweight recall hints matched from prior thinking output. Treat them as possibly relevant pointers, not as complete facts.
+- If a memory hint may help the current task, use memory_open(id) to read the full memory before relying on it. Ignore hints that are clearly unrelated or too low-value for the task.
 - Use memory_search(query) for full-text search across all memories.
 - To edit an existing memory, use memory_open(id) to get its path, then edit_file with mode="patch" for targeted edits.
 - Use memory_save() to create memories or update whole fields. Before creating a new memory, first search/open related memories and merge updates into an existing memory when they share the same topic, project, or decision thread; prefer modifying the existing memory file over creating a scattered new one. Tags are the primary retrieval key for future recall. Prefer lowercase kebab-case tags like 'march-cli', 'tooling', 'permissions'.
