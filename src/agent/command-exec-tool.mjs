@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
@@ -21,23 +21,22 @@ export function createCommandExecTool({ cwd }) {
   });
 }
 
-export function executeCommand({ cwd, command, shell = "auto", timeout = 60, spawnSyncImpl = spawnSync }) {
+export async function executeCommand({ cwd, command, shell = "auto", timeout = 60, spawnImpl = spawn }) {
   let resolved;
   try {
     resolved = resolveCommandShell(shell);
   } catch (err) {
     return toolText(`Error: ${err.message}`, { error: true });
   }
-  const result = spawnSyncImpl(resolved.bin, [...resolved.args, String(command ?? "")], {
+
+  const timeoutMs = Math.max(1, Number(timeout) || 60) * 1000;
+  const result = await spawnCommand(spawnImpl, resolved.bin, [...resolved.args, String(command ?? "")], {
     cwd,
-    encoding: "utf8",
-    timeout: Math.max(1, Number(timeout) || 60) * 1000,
+    timeoutMs,
     windowsHide: true,
-    maxBuffer: OUTPUT_LIMIT,
   });
   if (result.error) {
-    const isTimeout = result.error.code === "ETIMEDOUT" || result.signal === "SIGTERM";
-    const detail = isTimeout ? ` (timed out after ${timeout}s)` : "";
+    const detail = result.timedOut ? ` (timed out after ${timeout}s)` : "";
     return toolText(`Error: ${result.error.message}${detail}`, { error: true });
   }
   const stdout = stripAnsi(result.stdout ?? "");
@@ -50,6 +49,41 @@ export function executeCommand({ cwd, command, shell = "auto", timeout = 60, spa
     shell: resolved.name,
     error: result.status !== 0,
   });
+}
+
+function spawnCommand(spawnImpl, bin, args, options) {
+  return new Promise((resolve) => {
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    let timedOut = false;
+    const child = spawnImpl(bin, args, { cwd: options.cwd, windowsHide: options.windowsHide });
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill?.("SIGTERM");
+    }, options.timeoutMs);
+    timer.unref?.();
+
+    child.stdout?.setEncoding?.("utf8");
+    child.stderr?.setEncoding?.("utf8");
+    child.stdout?.on?.("data", (chunk) => { stdout = appendLimited(stdout, chunk); });
+    child.stderr?.on?.("data", (chunk) => { stderr = appendLimited(stderr, chunk); });
+    child.once?.("error", (error) => finish({ error }));
+    child.once?.("close", (status, signal) => finish({ status, signal }));
+
+    function finish(result) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      const error = result.error ?? (timedOut ? Object.assign(new Error("Command timed out"), { code: "ETIMEDOUT" }) : null);
+      resolve({ ...result, error, stdout, stderr, timedOut });
+    }
+  });
+}
+
+function appendLimited(current, chunk) {
+  const next = current + String(chunk ?? "");
+  return next.length <= OUTPUT_LIMIT ? next : next.slice(-OUTPUT_LIMIT);
 }
 
 export function resolveCommandShell(shell = "auto", platform = process.platform) {
