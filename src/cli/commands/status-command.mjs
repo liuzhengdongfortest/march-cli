@@ -122,12 +122,11 @@ function buildLspStatusParts(servers) {
     byId.set(id, mergeLspStatus(byId.get(id), server.status));
   }
   return [...byId.entries()]
-    .filter(([, status]) => status !== "unavailable")
     .map(([id, status]) => `${id}${formatLspStatusMark(status)}`);
 }
 
 function mergeLspStatus(current, next) {
-  const rank = { failed: 4, starting: 3, busy: 2, ready: 1, idle: 1, unavailable: 0 };
+  const rank = { failed: 5, installing: 4, starting: 3, busy: 2, ready: 1, idle: 1, unavailable: 0 };
   if (!current) return next ?? "unavailable";
   const currentRank = rank[current] ?? 0;
   const nextRank = rank[next] ?? 0;
@@ -136,8 +135,8 @@ function mergeLspStatus(current, next) {
 
 function formatLspStatusMark(status) {
   if (status === "failed") return "!";
-  if (status === "starting") return "…";
-  if (status === "unavailable") return "";
+  if (status === "starting" || status === "installing") return "…";
+  if (status === "unavailable") return "?";
   return "✓";
 }
 

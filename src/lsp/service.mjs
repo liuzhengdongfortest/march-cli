@@ -13,8 +13,8 @@ export class LspService {
     this.announced = new Set();
   }
 
-  touchFile(path) {
-    const result = resolveLspServerStatus({ filePath: path, workspaceRoot: this.cwd });
+  async touchFile(path) {
+    const result = await resolveLspServerStatus({ filePath: path, workspaceRoot: this.cwd, onEvent: (event) => this.onEvent?.(event) });
     if (result.status === "unsupported") return result;
     if (result.status === "unavailable") {
       this.unavailable.set(result.id, result);
@@ -34,7 +34,7 @@ export class LspService {
       return { status: "starting", id: server.id, root: server.root };
     }
 
-    this.#emitOnce(`starting:${key}`, { status: "starting", id: server.id, root: server.root });
+    this.#emitOnce(`starting:${key}`, { status: "starting", id: server.id, root: server.root, managed: server.managed });
     const task = this.#startClient(server, key).then((client) => {
       client?.touchFile(path);
       return client;
@@ -81,7 +81,7 @@ export class LspService {
       await client.start();
       this.clients.set(key, client);
       this.unavailable.delete(server.id);
-      this.#emitOnce(`attached:${key}`, { status: "attached", id: server.id, root: server.root });
+      this.#emitOnce(`attached:${key}`, { status: "attached", id: server.id, root: server.root, managed: server.managed });
       return client;
     } catch (err) {
       client.status = "failed";

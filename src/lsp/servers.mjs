@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { createRequire } from "node:module";
+import { ensureManagedNodeCommand, ensureManagedTypeScript, findManagedTypeScriptSdk, findManagedTypeScriptServer } from "./managed-node-server.mjs";
 
 const NODE_ROOT_MARKERS = ["package-lock.json", "bun.lockb", "bun.lock", "pnpm-lock.yaml", "yarn.lock", "package.json"];
 
@@ -10,11 +11,13 @@ const LSP_SERVERS = [
     extensions: [".vue"],
     rootMarkers: NODE_ROOT_MARKERS,
     command: ["vue-language-server"],
+    managedCommand: "vue-language-server",
     args: ["--stdio"],
     initialization: ({ root, workspaceRoot }) => {
       const tsdk = resolveTypeScriptSdk({ root, workspaceRoot });
       return tsdk ? { typescript: { tsdk } } : null;
     },
+    managedTypeScript: true,
     missingInitialization: "missing project typescript SDK",
   },
   {
@@ -22,11 +25,13 @@ const LSP_SERVERS = [
     extensions: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"],
     rootMarkers: NODE_ROOT_MARKERS,
     command: ["typescript-language-server"],
+    managedCommand: "typescript-language-server",
     args: ["--stdio"],
     initialization: ({ root, workspaceRoot }) => {
       const tsserver = resolveTypeScriptServer({ root, workspaceRoot });
       return tsserver ? { tsserver: { path: tsserver } } : null;
     },
+    managedTypeScript: true,
     missingInitialization: "missing project typescript/tsserver.js",
   },
   {
@@ -129,12 +134,12 @@ const LSP_SERVERS = [
   },
 ];
 
-export function resolveLspServer({ filePath, workspaceRoot }) {
-  const result = resolveLspServerStatus({ filePath, workspaceRoot });
+export async function resolveLspServer({ filePath, workspaceRoot, onEvent = null } = {}) {
+  const result = await resolveLspServerStatus({ filePath, workspaceRoot, onEvent });
   return result.status === "available" ? result.server : null;
 }
 
-export function resolveLspServerStatus({ filePath, workspaceRoot }) {
+export async function resolveLspServerStatus({ filePath, workspaceRoot, onEvent = null } = {}) {
   const ext = extensionOf(filePath);
   const def = LSP_SERVERS.find((server) => server.extensions.includes(ext));
   if (!def) return { status: "unsupported", extension: ext };
@@ -142,10 +147,12 @@ export function resolveLspServerStatus({ filePath, workspaceRoot }) {
   const root = def.rootMarkers.length > 0
     ? findNearestRoot(dirname(filePath), workspaceRoot, def.rootMarkers) ?? workspaceRoot
     : workspaceRoot;
-  const command = findCommand(def.command, { root, workspaceRoot });
-  if (!command) {
-    return { status: "unavailable", id: def.id, root, reason: `missing ${def.command[0]}` };
-  }
+  const command = await resolveCommand(def, { root, workspaceRoot, onEvent });
+  if (command?.error) return { status: "unavailable", id: def.id, root, reason: command.error };
+  if (!command) return { status: "unavailable", id: def.id, root, reason: `missing ${def.command[0]}` };
+
+  const managedTypeScript = await ensureTypeScriptFallback(def, { root, workspaceRoot, onEvent });
+  if (managedTypeScript?.error) return { status: "unavailable", id: def.id, root, reason: managedTypeScript.error };
 
   const initialization = def.initialization?.({ root, workspaceRoot }) ?? {};
   if (initialization === null) {
@@ -153,12 +160,40 @@ export function resolveLspServerStatus({ filePath, workspaceRoot }) {
   }
   return {
     status: "available",
-    server: { id: def.id, command, args: def.args, root, initialization },
+    server: { id: def.id, command: command.command, args: def.args, root, initialization, managed: command.managed },
   };
 }
 
 export function listLspServerDefinitions() {
   return LSP_SERVERS.map(({ id, extensions, rootMarkers, command, args }) => ({ id, extensions, rootMarkers, command, args }));
+}
+
+async function resolveCommand(def, { root, workspaceRoot, onEvent }) {
+  const local = findCommand(def.command, { root, workspaceRoot });
+  if (local) return { command: local, managed: false };
+  if (!def.managedCommand) return null;
+  onEvent?.({ status: "installing", id: def.id, root, reason: `installing ${def.managedCommand}` });
+  try {
+    const managed = await ensureManagedNodeCommand(def.managedCommand);
+    return { command: managed.command, managed: true };
+  } catch (err) {
+    const reason = err.message;
+    onEvent?.({ status: "failed", id: def.id, root, reason });
+    return { error: reason };
+  }
+}
+
+async function ensureTypeScriptFallback(def, { root, workspaceRoot, onEvent }) {
+  if (!def.managedTypeScript || resolveTypeScriptServer({ root, workspaceRoot })) return null;
+  onEvent?.({ status: "installing", id: def.id, root, reason: "installing typescript" });
+  try {
+    await ensureManagedTypeScript();
+    return null;
+  } catch (err) {
+    const reason = err.message;
+    onEvent?.({ status: "failed", id: def.id, root, reason });
+    return { error: reason };
+  }
 }
 
 function findCommand(names, { root, workspaceRoot }) {
@@ -197,13 +232,13 @@ function findOnPath(names) {
 }
 
 function resolveTypeScriptServer({ root, workspaceRoot }) {
-  return resolveModuleFromRoots("typescript/lib/tsserver.js", { root, workspaceRoot });
+  return resolveModuleFromRoots("typescript/lib/tsserver.js", { root, workspaceRoot }) ?? findManagedTypeScriptServer();
 }
 
 function resolveTypeScriptSdk({ root, workspaceRoot }) {
   const serverLibrary = resolveModuleFromRoots("typescript/lib/tsserverlibrary.js", { root, workspaceRoot });
   const tsserver = serverLibrary ?? resolveTypeScriptServer({ root, workspaceRoot });
-  return tsserver ? dirname(tsserver) : null;
+  return tsserver ? dirname(tsserver) : findManagedTypeScriptSdk();
 }
 
 function resolveModuleFromRoots(id, { root, workspaceRoot }) {

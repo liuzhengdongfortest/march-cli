@@ -15,21 +15,43 @@ export async function runLspSmoke({ setupTmp, cleanup }) {
     writeFileSync(join(dir, "src.ts"), "const n: number = 1;\n");
     writeFileSync(join(dir, "App.vue"), "<script setup lang=\"ts\"></script>\n");
 
-    const ts = resolveLspServerStatus({ filePath: join(dir, "src.ts"), workspaceRoot: dir });
+    const ts = await resolveLspServerStatus({ filePath: join(dir, "src.ts"), workspaceRoot: dir });
     assert.equal(ts.status, "available");
     assert.equal(ts.server.id, "typescript");
     assert.ok(ts.server.command.includes("typescript-language-server"));
     assert.ok(ts.server.initialization.tsserver.path.endsWith("tsserver.js"));
 
-    const vue = resolveLspServerStatus({ filePath: join(dir, "App.vue"), workspaceRoot: dir });
+    const vue = await resolveLspServerStatus({ filePath: join(dir, "App.vue"), workspaceRoot: dir });
     assert.equal(vue.status, "available");
     assert.equal(vue.server.id, "vue");
     const vueTsdk = vue.server.initialization.typescript.tsdk.replaceAll("\\", "/");
     assert.ok(vueTsdk.endsWith("typescript/lib"));
 
+    const managedDir = setupTmp();
+    const noLocalDir = setupTmp();
+    const originalPath = process.env.PATH;
+    try {
+      process.env.MARCH_LSP_NODE_ROOT = managedDir;
+      process.env.PATH = "";
+      writeFileSync(join(noLocalDir, "package.json"), "{}\n");
+      writeNodeBin(managedDir, "typescript-language-server");
+      writeTypeScriptSdk(managedDir);
+      const managedTs = await resolveLspServerStatus({ filePath: join(noLocalDir, "managed.ts"), workspaceRoot: noLocalDir });
+      assert.equal(managedTs.status, "available");
+      assert.equal(managedTs.server.managed, true);
+      assert.ok(managedTs.server.command.includes("typescript-language-server"));
+    } finally {
+      if (originalPath === undefined) delete process.env.PATH;
+      else process.env.PATH = originalPath;
+      delete process.env.MARCH_LSP_NODE_ROOT;
+      cleanup(managedDir);
+      cleanup(noLocalDir);
+    }
+
     assert.equal(formatLspSegment({ servers: [] }), "lsp:off");
     assert.equal(formatLspSegment({ servers: [{ id: "typescript", status: "idle" }] }), "lsp:ts✓");
     assert.equal(formatLspSegment({ servers: [{ id: "vue", status: "starting" }] }), "lsp:vue…");
+    assert.equal(formatLspSegment({ servers: [{ id: "typescript", status: "unavailable" }] }), "lsp:ts?");
     assert.equal(formatLspSegment({ servers: [
       { id: "typescript", status: "idle" },
       { id: "vue", status: "starting" },

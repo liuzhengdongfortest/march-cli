@@ -72,10 +72,10 @@ async function writeFullFile({ absPath, path, content, mode, engine, ui, lspServ
   try {
     mkdirSync(dirname(absPath), { recursive: true });
     writeFileSync(absPath, content, "utf8");
-    lspService?.touchFile?.(absPath);
+    const lspResult = await lspService?.touchFile?.(absPath);
     ui.editDiff(absPath, diffLines);
 
-    return await toolTextWithDiagnostics(`${mode === WRITE_MODE ? "Wrote" : "Overwrote"} ${path}\n\n${formatAppliedDiff([{ oldText, newText: content, startLine: 1 }])}`, { path: absPath }, { lspService, path: absPath });
+    return await toolTextWithDiagnostics(`${mode === WRITE_MODE ? "Wrote" : "Overwrote"} ${path}\n\n${formatAppliedDiff([{ oldText, newText: content, startLine: 1 }])}`, { path: absPath }, { lspService, path: absPath, lspResult });
   } catch (err) {
     return toolText(`Error writing ${absPath}: ${err.message}`, { error: true });
   }
@@ -100,17 +100,28 @@ async function patchFile({ absPath, path, edits, engine, ui, lspService }) {
   try {
     mkdirSync(dirname(absPath), { recursive: true });
     writeFileSync(absPath, newContent, "utf8");
-    lspService?.touchFile?.(absPath);
+    const lspResult = await lspService?.touchFile?.(absPath);
     ui.editDiff(absPath, prepared.edits.flatMap((edit) => formatDiff(edit.oldText, edit.newText, { startLine: edit.startLine })));
-    return await toolTextWithDiagnostics(`Edited ${absPath}\n\n${formatAppliedDiff(prepared.edits)}`, { path: absPath, edits: prepared.edits.length }, { lspService, path: absPath });
+    return await toolTextWithDiagnostics(`Edited ${absPath}\n\n${formatAppliedDiff(prepared.edits)}`, { path: absPath, edits: prepared.edits.length }, { lspService, path: absPath, lspResult });
   } catch (err) {
     return toolText(`Error writing ${absPath}: ${err.message}`, { error: true });
   }
 }
 
-async function toolTextWithDiagnostics(text, details, { lspService, path, timeoutMs = 3000, intervalMs = 150 } = {}) {
+async function toolTextWithDiagnostics(text, details, { lspService, path, lspResult, timeoutMs = 3000, intervalMs = 150 } = {}) {
   const diagnostics = await waitForDiagnosticsForPath({ lspService, path, timeoutMs, intervalMs });
-  return toolText(diagnostics ? `${text}\n\n${diagnostics}` : text, details);
+  const lspMessage = formatLspResultMessage(lspResult);
+  const suffix = [diagnostics, lspMessage].filter(Boolean).join("\n\n");
+  return toolText(suffix ? `${text}\n\n${suffix}` : text, details);
+}
+
+function formatLspResultMessage(result) {
+  if (!result || result.status === "unsupported") return "";
+  if (result.status === "unavailable" || result.status === "failed") {
+    return `<lsp status="${result.status}" server="${result.id ?? "unknown"}">${result.reason ?? "unavailable"}</lsp>`;
+  }
+  if (result.status === "starting") return `<lsp status="starting" server="${result.id}">diagnostics pending</lsp>`;
+  return "";
 }
 
 async function waitForDiagnosticsForPath({ lspService, path, timeoutMs, intervalMs }) {
