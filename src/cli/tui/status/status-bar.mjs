@@ -5,7 +5,7 @@ const ANSI_RE = /\x1b\[[0-?]*[ -/]*[@-~]/g;
 const DEFAULT_STATUS_TEXT = "March";
 const DEFAULT_HELP_TEXT = "/ commands · ? help";
 const INPUT_BG = "\x1b[48;2;32;34;38m";
-const INPUT_PROMPT = "▌ ";
+const INPUT_PROMPT = "▌";
 
 export class StatusBar {
   constructor(text = DEFAULT_STATUS_TEXT, { cwd = process.cwd(), helpText = DEFAULT_HELP_TEXT } = {}) {
