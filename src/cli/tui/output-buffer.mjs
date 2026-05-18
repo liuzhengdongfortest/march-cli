@@ -4,6 +4,7 @@ import { renderMarkdown, renderStreamingMarkdown } from "./markdown-renderer.mjs
 import { renderEditDiffBlock } from "./tui-diff-rendering.mjs";
 import { OutputScrollState } from "./output/scroll-state.mjs";
 import { appendTextLines, wrapLine } from "./output/text-line-renderer.mjs";
+import { sliceLinesWithTail } from "./output/visible-lines.mjs";
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
@@ -249,20 +250,14 @@ export class OutputBuffer {
   }
 
   render(width) {
-    const allLines = this._computeLines(width);
-    this._cachedTotalLines = allLines.length;
-    this.scrollState.setTotalLines(allLines.length);
-    const range = this.scrollState.sliceRange();
-    if (!range) return allLines;
-    const { start, end } = range;
-    return allLines.slice(start, end);
+    const baseLines = this._renderBaseLines(width);
+    const tailLine = this.spinning ? this._spinnerLine() : null;
+    this.scrollState.setTotalLines(baseLines.length + (tailLine == null ? 0 : 1));
+    return sliceLinesWithTail(baseLines, tailLine, this.scrollState.sliceRange());
   }
 
-  _computeLines(width) {
-    const base = this._renderBaseLines(width);
-    if (!this.spinning) return base;
-    const frame = SPINNER_FRAMES[this.spinnerIdx];
-    return [...base, brightBlack(`${frame} ${this.spinnerText}`)];
+  _spinnerLine() {
+    return brightBlack(`${SPINNER_FRAMES[this.spinnerIdx]} ${this.spinnerText}`);
   }
 
   _renderBaseLines(width) {

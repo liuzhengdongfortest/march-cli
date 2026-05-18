@@ -411,6 +411,14 @@ await runTuiAutocompleteEscSmoke({ setupTmp, cleanup });
   fastScroll.render(80);
   fastScroll.scroll(-1);
   assert.equal(fastScroll.scrollOffset, 4);
+
+  const spinnerScroll = new OutputBuffer();
+  for (let i = 1; i <= 8; i += 1) spinnerScroll.writeln(`line${i}`);
+  spinnerScroll.setViewportHeight(3);
+  spinnerScroll.setSpinner(true, "Working...");
+  assert.deepEqual(stripAnsi(spinnerScroll.render(80).join("\n")).split("\n"), ["line8", "", "⠋ Working..."]);
+  spinnerScroll.scroll(-1);
+  assert.ok(!stripAnsi(spinnerScroll.render(80).join("\n")).includes("Working..."));
   console.log("  PASS");
 }
 
