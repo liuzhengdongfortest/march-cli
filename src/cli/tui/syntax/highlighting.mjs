@@ -19,7 +19,6 @@ import {
 } from "./languages.mjs";
 
 const RESOURCE_DIR = join(dirname(fileURLToPath(import.meta.url)), "tree-sitter");
-const ENCODER = new TextEncoder();
 
 let initPromise;
 let initialized = false;
@@ -87,11 +86,10 @@ function treeSitterRuns(text, lang) {
   if (!initialized || !parser || !text) return null;
   try {
     const tree = parser.parse(text);
-    const byteToIndex = buildByteToIndex(text);
     const scopes = Array.from({ length: text.length }, () => ({ scope: "default", priority: 0 }));
     const query = queries.get(lang);
-    if (query) applyQueryScopes(query, tree.rootNode, byteToIndex, scopes);
-    collectNodeScopes(tree.rootNode, byteToIndex, scopes);
+    if (query) applyQueryScopes(query, tree.rootNode, scopes);
+    collectNodeScopes(tree.rootNode, scopes);
     return scopesToRuns(text, scopes);
   } catch {
     return null;
@@ -109,11 +107,11 @@ function loadHighlightQuery(language, queryFile) {
   }
 }
 
-function applyQueryScopes(query, rootNode, byteToIndex, scopes) {
+function applyQueryScopes(query, rootNode, scopes) {
   for (const capture of query.captures(rootNode)) {
     const scope = captureScope(capture.name);
     if (!scope) continue;
-    applyScope(scopes, byteToIndex[capture.node.startIndex] ?? 0, byteToIndex[capture.node.endIndex] ?? scopes.length, scope);
+    applyScope(scopes, capture.node.startIndex, capture.node.endIndex, scope);
   }
 }
 
@@ -135,10 +133,10 @@ function captureScope(name) {
   return null;
 }
 
-function collectNodeScopes(node, byteToIndex, scopes) {
+function collectNodeScopes(node, scopes) {
   const scope = classifyNode(node);
-  if (scope) applyScope(scopes, byteToIndex[node.startIndex] ?? 0, byteToIndex[node.endIndex] ?? scopes.length, scope);
-  for (const child of node.children ?? []) collectNodeScopes(child, byteToIndex, scopes);
+  if (scope) applyScope(scopes, node.startIndex, node.endIndex, scope);
+  for (const child of node.children ?? []) collectNodeScopes(child, scopes);
 }
 
 function classifyNode(node) {
@@ -257,21 +255,6 @@ export function styleSyntax(text, scope = "default", bg = "") {
   const codes = [SCOPE_STYLE[scope] ?? SCOPE_STYLE.default];
   if (bg) codes.push(bg);
   return `\x1b[${codes.join(";")}m${text}${R}`;
-}
-
-function buildByteToIndex(text) {
-  const map = [];
-  let byte = 0;
-  for (let index = 0; index < text.length;) {
-    const codePoint = text.codePointAt(index);
-    const char = String.fromCodePoint(codePoint);
-    const bytes = ENCODER.encode(char).length;
-    for (let i = 0; i < bytes; i++) map[byte + i] = index;
-    byte += bytes;
-    index += char.length;
-  }
-  map[byte] = text.length;
-  return map;
 }
 
 void initializeTreeSitterHighlighting();

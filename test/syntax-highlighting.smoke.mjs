@@ -7,6 +7,7 @@ export async function runSyntaxHighlightingSmoke() {
   await initializeTreeSitterHighlighting();
   assert.equal(isTreeSitterHighlightingReady(), true);
   assert.equal(normalizeLanguage("src/app.tsx"), "tsx");
+  assert.equal(normalizeLanguage("Component.jsx"), "tsx");
   assert.equal(normalizeLanguage("main.py"), "python");
   assert.equal(normalizeLanguage("Dockerfile.unknown"), "");
 
@@ -32,6 +33,12 @@ export async function runSyntaxHighlightingSmoke() {
     assert.ok(rendered.includes("\x1b["), `expected ANSI highlighting for ${lang}`);
     assert.ok(stripAnsi(rendered).includes(expected), `expected token for ${lang}`);
   }
+
+  const chineseMixed = 'const 名字 = "张三";\nconsole.log(名字);';
+  const chineseRendered = highlightCodeLines(chineseMixed, "js").join("\n");
+  assert.equal(stripAnsi(chineseRendered), chineseMixed);
+  assert.ok(chineseRendered.includes("console"), "expected ANSI ranges not to split tokens after Chinese text");
+  assert.ok(chineseRendered.includes('"张三"'), "expected ANSI ranges not to split Chinese string literals");
 
   const fallback = highlightCodeLines("plain text", "unknown").join("\n");
   assert.ok(stripAnsi(fallback).includes("plain text"));

@@ -25,7 +25,7 @@ export const LANG_ALIASES = new Map([
   ["cs", "csharp"], ["css", "css"], ["cts", "typescript"], ["csharp", "csharp"], ["cxx", "cpp"],
   ["diff", "diff"], ["go", "go"], ["h", "c"], ["hh", "cpp"], ["htm", "html"], ["html", "html"],
   ["hpp", "cpp"], ["hxx", "cpp"], ["java", "java"], ["javascript", "javascript"], ["js", "javascript"],
-  ["json", "json"], ["jsonc", "json"], ["jsx", "jsx"], ["mjs", "javascript"], ["mts", "typescript"],
+  ["json", "json"], ["jsonc", "json"], ["jsx", "tsx"], ["mjs", "javascript"], ["mts", "typescript"],
   ["patch", "diff"], ["php", "php"], ["py", "python"], ["python", "python"], ["rb", "ruby"],
   ["rs", "rust"], ["ruby", "ruby"], ["rust", "rust"], ["sh", "bash"], ["toml", "toml"],
   ["ts", "typescript"], ["tsx", "tsx"], ["typescript", "typescript"], ["yaml", "yaml"], ["yml", "yaml"],
