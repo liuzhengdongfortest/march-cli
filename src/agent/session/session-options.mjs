@@ -17,6 +17,7 @@ export function resolveRunnerSessionOptions({
   permissionController = null,
   authStorage = null,
   projectMarchDir = null,
+  getCurrentModel = null,
 }) {
   if (engine.cwd !== cwd) {
     throw new Error(`Runtime session cwd mismatch: engine=${engine.cwd}, session=${cwd}`);
@@ -28,7 +29,7 @@ export function resolveRunnerSessionOptions({
     ?? (provider && modelId ? getModel(provider, modelId) : null);
   if (!model) throw new Error(`Model not found: ${provider}/${modelId}`);
 
-  const customTools = createMarchCustomTools({ cwd, engine, ui, memoryTools, shellRuntime, lspService, mcpTools, webTools, permissionController, authStorage, projectMarchDir });
+  const customTools = createMarchCustomTools({ cwd, engine, ui, memoryTools, shellRuntime, lspService, mcpTools, webTools, permissionController, authStorage, projectMarchDir, getCurrentModel: () => getCurrentModel?.() ?? model });
   const customToolNames = customTools.map((tool) => tool.name);
   const tools = [
     ...customToolNames.filter((name) => name === "read"),

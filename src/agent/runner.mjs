@@ -83,6 +83,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       cwd, provider, modelId, modelRegistry, engine, ui: runtimeUi,
       memoryTools, shellRuntime, lspService, mcpTools, webTools, permissionController,
       authStorage: resolvedAuth, projectMarchDir,
+      getCurrentModel: () => sessionBinding.get()?.model ?? selectedModel,
     });
     const { session } = await createAgentSessionImpl({
       cwd, agentDir: stateRoot, ...sessionOptions,

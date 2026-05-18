@@ -62,6 +62,7 @@ export async function createRunnerRuntimeHost({
         authStorage,
         projectMarchDir,
         hostedTools,
+        getCurrentModel: () => sessionBinding.get()?.model ?? null,
       });
     },
   });

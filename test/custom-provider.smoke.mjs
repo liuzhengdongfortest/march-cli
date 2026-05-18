@@ -44,6 +44,12 @@ export async function runCustomProviderSmoke() {
     }],
   });
 
+  calls.length = 0;
+  registerCustomProviders({ registerProvider: (provider, config) => calls.push([provider, config]) }, {
+    vision: { type: "openai-compatible", baseUrl: "http://localhost:1234/v1", models: [{ id: "vision-model", capabilities: { images: true } }] },
+  });
+  assert.deepEqual(calls[0][1].models[0].input, ["text", "image"]);
+
   assert.throws(
     () => registerCustomProviders({ registerProvider: () => {} }, {
       bad: { type: "openai-compatible", baseUrl: "http://localhost:1234/v1", models: [{ id: "m", api: "other" }] },

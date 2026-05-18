@@ -2,7 +2,7 @@ import { readFileSync, statSync } from "node:fs";
 import { extname } from "node:path";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-
+import { currentModelImageInputError } from "../vision-capability.mjs";
 const IMAGE_MIME_BY_EXT = new Map([
   [".png", "image/png"],
   [".jpg", "image/jpeg"],
@@ -11,7 +11,7 @@ const IMAGE_MIME_BY_EXT = new Map([
   [".gif", "image/gif"],
 ]);
 
-export function createReadImageTool({ engine }) {
+export function createReadImageTool({ engine, getCurrentModel = null }) {
   return defineTool({
     name: "read_image",
     label: "Read Image",
@@ -19,7 +19,11 @@ export function createReadImageTool({ engine }) {
     parameters: Type.Object({
       path: Type.String({ description: "Absolute or relative path to the image file" }),
     }),
-    execute: async (_toolCallId, params) => readImageFile({ engine, ...params }),
+    execute: async (_toolCallId, params) => {
+      const capabilityError = currentModelImageInputError(getCurrentModel);
+      if (capabilityError) return imageError(capabilityError, { unsupportedModel: true });
+      return readImageFile({ engine, ...params });
+    },
   });
 }
 

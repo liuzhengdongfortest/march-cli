@@ -1,25 +1,29 @@
-import { defineTool } from "@earendil-works/pi-coding-agent";
-import { Type } from "typebox";
 import { createCommandExecTool } from "./command-exec-tool.mjs";
 import { createContextStatsTool } from "./context-stats-tool.mjs";
 import { createEditFileTool } from "./file-edit-tool.mjs";
 import { createReadFileTool } from "./file-tools/read-file-tool.mjs";
 import { createReadImageTool } from "./file-tools/read-image-tool.mjs";
+import { createScreenTool } from "./screen-tools/screen-tool.mjs";
+import { createListWindowsTool } from "./screen-tools/list-windows-tool.mjs";
 import { toolText } from "./tool-result.mjs";
 import { createShellTools } from "../shell/tools.mjs";
-import { createWebTools } from "../web/tools.mjs";
 import { initImageGen } from "../image-gen/index.mjs";
 import { createSuperGrokTool } from "../supergrok/tool.mjs";
-export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], shellRuntime = null, lspService = null, mcpTools = [], webTools = [], permissionController = null, authStorage = null, projectMarchDir = null }) {
+
+export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], shellRuntime = null, lspService = null, mcpTools = [], webTools = [], permissionController = null, authStorage = null, projectMarchDir = null, getCurrentModel = null }) {
   const commandExecTool = createCommandExecTool({ cwd });
   const contextStatsTool = createContextStatsTool({ engine });
   const editFileTool = createEditFileTool({ engine, ui, lspService });
   const readFileTool = createReadFileTool({ engine });
-  const readImageTool = createReadImageTool({ engine });
+  const readImageTool = createReadImageTool({ engine, getCurrentModel });
+  const screenTool = createScreenTool({ getCurrentModel });
+  const listWindowsTool = createListWindowsTool();
 
   const tools = [
     readFileTool,
     readImageTool,
+    screenTool,
+    listWindowsTool,
     contextStatsTool,
     commandExecTool,
     editFileTool,

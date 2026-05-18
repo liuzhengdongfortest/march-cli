@@ -37,9 +37,12 @@ export async function runReadImageToolSmoke({ setupTmp, cleanup }) {
     assert.equal(directoryResult.details.error, true);
     assert.equal(directoryResult.details.isDirectory, true);
 
-    const tool = createReadImageTool({ engine });
+    const tool = createReadImageTool({ engine, getCurrentModel: () => ({ id: "vision", provider: "test", input: ["text", "image"] }) });
     assert.equal(tool.name, "read_image");
-    const tools = createMarchCustomTools({ cwd: dir, engine, ui: {} });
+    const blockedTool = createReadImageTool({ engine, getCurrentModel: () => ({ id: "text", provider: "test", input: ["text"] }) });
+    const blocked = await blockedTool.execute("call", { path: imagePath });
+    assert.equal(blocked.details.unsupportedModel, true);
+    const tools = createMarchCustomTools({ cwd: dir, engine, ui: {}, getCurrentModel: () => ({ id: "vision", provider: "test", input: ["text", "image"] }) });
     assert.ok(tools.some((candidate) => candidate.name === "read_image"));
   } finally {
     cleanup(dir);

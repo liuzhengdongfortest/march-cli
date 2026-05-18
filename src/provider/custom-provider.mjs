@@ -52,7 +52,7 @@ function normalizeModels(providerId, models, { api, baseUrl }) {
       api: normalizeApi(providerId, model.api ?? api),
       baseUrl: typeof model.baseUrl === "string" && model.baseUrl.trim() ? model.baseUrl : baseUrl,
       reasoning: typeof model.reasoning === "boolean" ? model.reasoning : false,
-      input: normalizeInput(model.input),
+      input: normalizeInput(model.input, model.capabilities),
       cost: normalizeCost(model.cost),
       contextWindow: normalizePositiveNumber(model.contextWindow, 128000),
       maxTokens: normalizePositiveNumber(model.maxTokens, 4096),
@@ -75,9 +75,10 @@ function requireString(providerId, field, value) {
   return value;
 }
 
-function normalizeInput(input) {
-  if (!Array.isArray(input) || input.length === 0) return ["text"];
-  const normalized = input.filter((item) => item === "text" || item === "image");
+function normalizeInput(input, capabilities = null) {
+  const normalized = Array.isArray(input) ? input.filter((item) => item === "text" || item === "image") : [];
+  if ((capabilities?.images === true || capabilities?.vision === true) && !normalized.includes("image")) normalized.push("image");
+  if (!normalized.includes("text")) normalized.unshift("text");
   return normalized.length > 0 ? normalized : ["text"];
 }
 
