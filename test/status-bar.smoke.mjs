@@ -45,7 +45,7 @@ export async function runStatusBarSmoke() {
   assert.ok(inputLine.includes("\x1b[48;2;32;34;38m"));
   assert.ok(stripAnsi(inputLine).startsWith("▌ hello"));
   const inputLines = statusBar.renderInputLines(["\x1b[38;5;238m────────\x1b[0m", "hello", "\x1b[38;5;238m────────\x1b[0m"], 80);
-  assert.deepEqual(inputLines.map((l) => stripAnsi(l).trimEnd()), ["▌ hello", ""]);
+  assert.deepEqual(inputLines.map((l) => stripAnsi(l).trimEnd()), ["", "▌ hello", ""]);
   assert.equal(inputLines.every((l) => l.includes("\x1b[48;2;32;34;38m")), true);
   assert.equal(statusBar.setText("Discuss | gpt-5.4·medium"), true);
   assert.equal(statusBar.setText("Discuss | gpt-5.4·medium"), false);
@@ -64,12 +64,14 @@ export async function runStatusBarSmoke() {
     output: { setViewportHeight: () => {}, render: () => ["out"], invalidate: () => {} },
     statusBar: layoutStatusBar,
     editor: { render: () => ["────────", "hello", "────────"], invalidate: () => {} },
-    terminal: { rows: 8 },
+    terminal: { rows: 9 },
   });
   const layoutLines = layout.render(80);
-  assert.ok(stripAnsi(layoutLines.at(-6)).includes("march-cli • LSP [ts] • 11.3K"));
-  assert.ok(stripAnsi(layoutLines.at(-6)).indexOf("11.3K") < 32);
-  assert.equal(stripAnsi(layoutLines.at(-5)), "");
+  assert.ok(stripAnsi(layoutLines.at(-7)).includes("march-cli • LSP [ts] • 11.3K"));
+  assert.ok(stripAnsi(layoutLines.at(-7)).indexOf("11.3K") < 32);
+  assert.equal(stripAnsi(layoutLines.at(-6)), "");
+  assert.ok(layoutLines.at(-5).includes("\x1b[48;2;32;34;38m"));
+  assert.equal(stripAnsi(layoutLines.at(-5)).trim(), "");
   assert.ok(layoutLines.at(-4).includes("\x1b[48;2;32;34;38m"));
   assert.equal(visibleWidth(layoutLines.at(-4)), 80);
   assert.ok(stripAnsi(layoutLines.at(-4)).startsWith("▌ hello"));
