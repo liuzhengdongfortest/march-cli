@@ -10,16 +10,19 @@ export class ScreenSelection {
     this.anchor = null;
     this.focus = null;
     this.lines = [];
+    this._plainLines = [];
     this.viewport = { topRow: 0, leftCol: 0, width: Infinity, height: 0 };
   }
 
   setLines(lines) {
-    this.lines = lines.map((line) => stripAnsi(line));
+    this.lines = [...lines];
+    this._plainLines = [];
     this.viewport = { topRow: 0, leftCol: 0, width: Infinity, height: this.lines.length };
   }
 
   setViewport({ topRow = 0, leftCol = 0, width = Infinity, lines = [] } = {}) {
-    this.lines = lines.map((line) => stripAnsi(line));
+    this.lines = lines;
+    this._plainLines = [];
     this.viewport = {
       topRow: Math.max(0, Math.trunc(topRow)),
       leftCol: Math.max(0, Math.trunc(leftCol)),
@@ -68,7 +71,7 @@ export class ScreenSelection {
     if (!range) return "";
     const selected = [];
     for (let row = range.start.row; row <= range.end.row; row += 1) {
-      const line = this.lines[row] ?? "";
+      const line = this._plainLine(row);
       const startCol = row === range.start.row ? range.start.col : 0;
       const endCol = row === range.end.row ? range.end.col : visibleWidth(line);
       selected.push(sliceColumns(line, startCol, endCol));
@@ -81,12 +84,17 @@ export class ScreenSelection {
     if (!range) return lines;
     return lines.map((line, row) => {
       if (row < range.start.row || row > range.end.row) return line;
-      const plain = stripAnsi(line);
+      const plain = this._plainLine(row);
       const startCol = row === range.start.row ? range.start.col : 0;
       const endCol = row === range.end.row ? range.end.col : visibleWidth(plain);
       if (endCol <= startCol) return line;
       return highlightAnsiLine(line, startCol, endCol);
     });
+  }
+
+  _plainLine(row) {
+    if (this._plainLines[row] == null) this._plainLines[row] = stripAnsi(this.lines[row] ?? "");
+    return this._plainLines[row];
   }
 
   range() {
