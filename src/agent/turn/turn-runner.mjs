@@ -11,6 +11,8 @@ export async function runRunnerTurn({
   projectMarchDir,
   memoryStore,
   setModelCallKind,
+  logger = null,
+  setPhase = null,
   onMidTurnRecallHints,
   syncCurrentPiSidecar,
   autoNameSession,
@@ -24,8 +26,16 @@ export async function runRunnerTurn({
   const turnState = createTurnEventState();
   const midTurnRecallHints = [];
   ui.turnStart();
+  setPhase?.("subscribed");
+  logger?.event("turn.ui.start");
 
   const unsubscribe = activeSession.subscribe((event) => {
+    logSessionEvent(logger, event);
+    if (event.type === "tool_execution_start") setPhase?.(`tool_running:${event.toolName ?? "unknown"}`);
+    if (event.type === "tool_execution_end") setPhase?.("model_streaming");
+    if (event.type === "auto_retry_start") setPhase?.("retry_wait");
+    if (event.type === "auto_retry_end") setPhase?.("model_streaming");
+    if (event.type === "message_update") setPhase?.("model_streaming");
     handleRunnerSessionEvent(event, { ui, engine, state: turnState });
     if (event.type === "tool_execution_start") {
       const hints = flushAssistantRecall({ memoryStore, engine, turnState, currentProject });
@@ -42,7 +52,10 @@ export async function runRunnerTurn({
       text: userMessage ?? prompt,
       projectMarchDir,
     });
+    logger?.event("turn.attachments.resolved", { imageCount: attachmentReferences.images.length });
     setModelCallKind("user");
+    setPhase?.("model_request");
+    logger?.event("model.prompt.start", { contextMode });
     try {
       if (contextMode === "rebuild") resetPiMessageHistory(activeSession);
       await activeSession.prompt(
@@ -51,8 +64,10 @@ export async function runRunnerTurn({
       );
     } finally {
       setModelCallKind("model");
+      logger?.event("model.prompt.end");
     }
 
+    setPhase?.("finalizing");
     finalizeTurn({
       prompt,
       userMessage,
@@ -68,9 +83,34 @@ export async function runRunnerTurn({
     });
     return { draft: turnState.draft };
   } finally {
+    logger?.event("turn.ui.end");
     ui.turnEnd();
     unsubscribe();
   }
+}
+
+function logSessionEvent(logger, event) {
+  if (!logger) return;
+  if (event.type === "message_update") {
+    const messageEvent = event.assistantMessageEvent;
+    logger.debug("session.event", {
+      type: event.type,
+      assistantMessageType: messageEvent?.type,
+      deltaLength: messageEvent?.delta?.length,
+    });
+    return;
+  }
+  logger.event("session.event", {
+    type: event.type,
+    toolName: event.toolName,
+    isError: event.isError,
+    attempt: event.attempt,
+    maxAttempts: event.maxAttempts,
+    delayMs: event.delayMs,
+    success: event.success,
+    errorMessage: event.errorMessage,
+    finalError: event.finalError,
+  });
 }
 
 function finalizeTurn({ prompt, userMessage, userRecallHints, currentProject, memoryStore, engine, ui, turnState, midTurnRecallHints, syncCurrentPiSidecar, autoNameSession }) {

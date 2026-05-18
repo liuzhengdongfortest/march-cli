@@ -10,6 +10,7 @@ import { createInputHistoryStore } from "./cli/input/history-store.mjs";
 import { createModeState } from "./cli/input/mode-state.mjs";
 import { loadPromptTemplates } from "./cli/input/prompt-templates.mjs";
 import { runInteractiveRepl, runSingleShotPrompt } from "./cli/repl-loop.mjs";
+import { closeMarchRuntime } from "./cli/startup/runtime-close.mjs";
 import { createStatusLineUpdater } from "./cli/status-line-updater.mjs";
 import { wireTuiHandlers } from "./cli/tui/tui-handlers.mjs";
 import { createMarchAuthStorage } from "./auth/storage.mjs";
@@ -28,6 +29,7 @@ import { formatStartupBanner } from "./cli/startup/startup-banner.mjs";
 import { initializeMcp } from "./mcp/index.mjs";
 import { createWebToolsFromConfig } from "./web/tools.mjs";
 import { createModelContextDumper } from "./debug/model-context-dumper.mjs";
+import { createLogger, installProcessLogHandlers } from "./debug/logger.mjs";
 import { defaultCenterMemoryPath } from "./context/center-memory.mjs";
 import { runProviderConfigCommand } from "./provider/config-command.mjs";
 import { runWebSearchConfigCommand } from "./web/config-command.mjs";
@@ -68,6 +70,15 @@ export async function run(argv) {
 
   const stateRoot = join(homedir(), ".march");
   if (!existsSync(stateRoot)) mkdirSync(stateRoot, { recursive: true });
+  const logger = createLogger({ logDir: join(stateRoot, "logs") });
+  installProcessLogHandlers(logger);
+  logger.event("process.start", {
+    cwd,
+    argv,
+    version: process.version,
+    platform: process.platform,
+    logPath: logger.path,
+  });
 
   const provider = args.provider ?? config.provider ?? null;
   const serviceTier = config.serviceTier ?? null;
@@ -185,6 +196,7 @@ export async function run(argv) {
     permissionController,
     modelContextDumper,
     turnNotifier,
+    logger,
     onModelPayload: ({ estimatedTokens }) => {
       refreshStatusBar?.({ contextTokens: estimatedTokens });
     },
@@ -235,8 +247,9 @@ export async function run(argv) {
       });
     } finally {
       turnRunning = false;
-      await closeMarchRuntime({ runner, memoryStore, ui, blankLine: true });
+      await closeMarchRuntime({ runner, memoryStore, ui, logger, blankLine: true });
     }
+    logger.event("process.exit", { code: 0 });
     return 0;
   }
 
@@ -264,30 +277,10 @@ export async function run(argv) {
       modeState,
     });
   } finally {
-    await closeMarchRuntime({ runner, memoryStore, ui });
+    await closeMarchRuntime({ runner, memoryStore, ui, logger });
   }
+  logger.event("process.exit", { code: 0 });
   return 0;
-}
-
-async function closeMarchRuntime({ runner, memoryStore, ui, blankLine = false }) {
-  let firstError = null;
-  try {
-    await runner.dispose();
-  } catch (err) {
-    firstError ??= err;
-  }
-  try {
-    memoryStore.close();
-  } catch (err) {
-    firstError ??= err;
-  }
-  try {
-    if (blankLine) ui.writeln("");
-    await ui.close();
-  } catch (err) {
-    firstError ??= err;
-  }
-  if (firstError) throw firstError;
 }
 
 function resolveMemoryRoot(configured, stateRoot) {

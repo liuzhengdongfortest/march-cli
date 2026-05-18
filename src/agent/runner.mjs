@@ -15,11 +15,13 @@ import { resolveInitialModel, resolveRunnerSessionManager } from "./runner/runne
 import { runRunnerCleanup } from "./runner/runner-cleanup.mjs";
 import { createRunnerRuntimeHost } from "./runtime/runner-runtime-host.mjs";
 import { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
+import { notifyTurnEndBestEffort, providerContextToPayload } from "./runner/runner-utils.mjs";
 import { resolveRunnerSessionOptions } from "./session/session-options.mjs";
 import { createSessionBinding } from "./session/session-binding.mjs";
 import { maybeAutoNameSession } from "./session/session-auto-name.mjs";
 import { MARCH_BASE_TOOL_NAMES } from "./tool-names.mjs";
 import { runRunnerTurn } from "./turn/turn-runner.mjs";
+import { beginLoggedTurn } from "./turn/turn-logging.mjs";
 import { appendFastVariants, createFastModelEntry, fromFastEntryModel, isFastProvider } from "./runner/fast-model.mjs";
 import { registerSuperGrokProvider } from "../supergrok/provider.mjs";
 import { registerCustomProviders } from "../provider/custom-provider.mjs";
@@ -28,7 +30,7 @@ export { MARCH_BASE_TOOL_NAMES };
 export { installModelPayloadDumper } from "./model-payload-dumper.mjs";
 export { createDefaultSessionManager, resolveRunnerSessionManager } from "./runner/runner-init.mjs";
 export { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
-export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, memoryRoot = null, centerMemoryPath = null, memoryStore = null, memoryTools = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, modelContextDumper = null, turnNotifier = null, onModelPayload = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices, maxTurns, trimBatch, serviceTier = null, hostedTools = {} }) {
+export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, memoryRoot = null, centerMemoryPath = null, memoryStore = null, memoryTools = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, modelContextDumper = null, turnNotifier = null, logger = null, onModelPayload = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices, maxTurns, trimBatch, serviceTier = null, hostedTools = {} }) {
   if (!useRuntimeHost && extensionPaths.length > 0) {
     throw new Error("--extension requires the default pi runtime host path");
   }
@@ -52,7 +54,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   const engine = new ContextEngine({ cwd, modelId, provider, namespace, memoryRoot, centerMemoryPath, shellRuntime, lspService, injections: mcpInjections, maxTurns, trimBatch });
   const resolvedSessionManager = resolveRunnerSessionManager(cwd, sessionManager);
   const sessionBinding = createSessionBinding(null);
-  let currentModelCallKind = "model";
+  let currentModelCallKind = "model", currentTurnId = null;
   let currentPromptForContext = "";
   let currentTurnContextMode = "rebuild";
   let nextTurnContextMode = "rebuild";
@@ -71,7 +73,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       memoryTools, memoryStore, shellRuntime, lspService, mcpTools, webTools,
       permissionController, extensionPaths, hostedTools,
       onRebind: (session) => {
-        installModelPayloadDumper(session, modelContextDumper, () => currentModelCallKind, onModelPayload, injectMarchSystemContext);
+        installModelPayloadDumper(session, modelContextDumper, () => currentModelCallKind, onLoggedModelPayload, injectMarchSystemContext);
         syncEngineSessionState(engine, session);
       },
       createAgentSessionRuntimeImpl,
@@ -90,7 +92,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       sessionManager: resolvedSessionManager, settingsManager,
     });
     sessionBinding.set(session);
-    installModelPayloadDumper(session, modelContextDumper, () => currentModelCallKind, onModelPayload, injectMarchSystemContext);
+    installModelPayloadDumper(session, modelContextDumper, () => currentModelCallKind, onLoggedModelPayload, injectMarchSystemContext);
   }
   syncEngineSessionState(engine, sessionBinding.get());
   lifecycleAdapter = createMarchLifecycleAdapter({
@@ -114,11 +116,14 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       nextTurnContextMode = "rebuild";
       pendingMidTurnRecallHints = [];
       const turnStartedAt = Date.now();
+      const turnLog = beginLoggedTurn({ logger, engine, modelId, provider, contextMode, userMessage, userRecallHints, startedAt: turnStartedAt }); currentTurnId = turnLog.turnId;
       try {
         const result = await runRunnerTurn({
           prompt, userMessage, options: { userRecallHints, currentProject },
           sessionBinding, engine, ui, projectMarchDir, memoryStore,
           setModelCallKind: (kind) => { currentModelCallKind = kind; },
+          logger: turnLog.logger,
+          setPhase: turnLog.setPhase,
           onMidTurnRecallHints: (hints) => { pendingMidTurnRecallHints.push(...hints); },
           syncCurrentPiSidecar,
           autoNameSession,
@@ -130,6 +135,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
           draft: result?.draft ?? "",
           durationMs: Date.now() - turnStartedAt,
         });
+        turnLog.endSuccess(result);
         return result;
       } catch (err) {
         lastNotificationResult = await notifyTurnEndBestEffort(turnNotifier, {
@@ -138,8 +144,10 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
           errorMessage: err?.message ?? String(err),
           durationMs: Date.now() - turnStartedAt,
         });
+        turnLog.endError(err);
         throw err;
       } finally {
+        currentTurnId = null;
         currentTurnContextMode = "rebuild";
       }
     },
@@ -264,6 +272,16 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       },
     });
   }
+  function onLoggedModelPayload(event) {
+    logger?.event("model.payload", {
+      kind: event.kind,
+      provider: event.model?.provider,
+      model: event.model?.id,
+      estimatedTokens: event.estimatedTokens,
+      turnId: currentTurnId,
+    });
+    onModelPayload?.(event);
+  }
   function injectMarchSystemContext(payload, { kind, model } = {}) {
     if (kind !== "user") return payload;
     let nextPayload = currentTurnContextMode === "continueExistingPiTranscript"
@@ -276,24 +294,5 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       pendingMidTurnRecallHints = [];
     }
     return nextPayload;
-  }
-}
-
-function providerContextToPayload(providerContext) {
-  return {
-    messages: [
-      { role: "system", content: providerContext.system },
-      ...(providerContext.userMessages ?? []).map((message) => ({ role: "user", content: message.content })),
-    ],
-  };
-}
-
-async function notifyTurnEndBestEffort(turnNotifier, event) {
-  if (!turnNotifier?.notifyTurnEnd) return { ok: false, reason: "not-configured", results: [] };
-  try {
-    return await turnNotifier.notifyTurnEnd(event);
-  } catch (err) {
-    // Notification must never change turn behavior.
-    return { ok: false, reason: err?.message ?? String(err), results: [] };
   }
 }
