@@ -1,4 +1,5 @@
 import { formatLspDiagnosticsForPath } from "../../lsp/diagnostics-format.mjs";
+import { sameLspPath } from "../../lsp/path-match.mjs";
 
 export async function waitForLspReport({ lspService, path, lspResult, since = Date.now(), timeoutMs = 3000, intervalMs = 150 }) {
   const immediate = formatLspResultMessage(lspResult);
@@ -38,7 +39,7 @@ function formatCurrentLspDiagnosticsForPath({ snapshot, path, since }) {
 }
 
 function hasCurrentDiagnosticPublish({ snapshot, path, since }) {
-  return (snapshot?.files ?? []).some((file) => file.path === path && (file.updatedAt ?? 0) >= since);
+  return (snapshot?.files ?? []).some((file) => sameLspPath(file.path, path) && (file.updatedAt ?? 0) >= since);
 }
 
 function formatNoLspDiagnostics({ snapshot }) {

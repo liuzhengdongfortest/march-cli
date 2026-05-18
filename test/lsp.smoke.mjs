@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { formatLspSegment } from "../src/cli/commands/status-command.mjs";
+import { formatLspDiagnosticsForPath } from "../src/lsp/diagnostics-format.mjs";
 import { resolveLspServerStatus } from "../src/lsp/servers.mjs";
 import { resolveSpawnCommand } from "../src/platform/spawn-command.mjs";
 
@@ -81,6 +82,23 @@ export async function runLspSmoke({ setupTmp, cleanup }) {
       { id: "typescript", status: "idle" },
       { id: "vue", status: "failed" },
     ] }), "lsp:ts✓,vue!");
+
+    const mixedCasePath = process.platform === "win32" ? "d:\\repo\\src\\app.js" : "/repo/src/app.js";
+    const requestedPath = process.platform === "win32" ? "D:\\repo\\src\\app.js" : "/repo/src/app.js";
+    const diagnosticReport = formatLspDiagnosticsForPath({
+      path: requestedPath,
+      snapshot: {
+        status: "idle",
+        diagnostics: [{
+          path: mixedCasePath,
+          severity: 1,
+          source: "typescript",
+          range: { start: { line: 0, character: 0 } },
+          message: "Expression expected.",
+        }],
+      },
+    });
+    assert.match(diagnosticReport, /summary: 1 errors/);
     console.log("  PASS");
   } finally {
     cleanup(dir);

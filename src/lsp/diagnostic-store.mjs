@@ -1,4 +1,5 @@
 import { fileURLToPath } from "node:url";
+import { lspPathKey } from "./path-match.mjs";
 
 export class LspDiagnosticStore {
   constructor() {
@@ -13,7 +14,7 @@ export class LspDiagnosticStore {
       serverId,
       path,
     }));
-    this.byPath.set(path, {
+    this.byPath.set(lspPathKey(path), {
       path,
       updatedAt: Date.now(),
       diagnostics: normalized,

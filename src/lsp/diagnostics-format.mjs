@@ -1,3 +1,5 @@
+import { sameLspPath } from "./path-match.mjs";
+
 const MAX_DIAGNOSTICS = 20;
 
 export function formatLspDiagnostics({ snapshot } = {}) {
@@ -20,7 +22,7 @@ export function formatLspDiagnostics({ snapshot } = {}) {
 export function formatLspDiagnosticsForPath({ snapshot, path } = {}) {
   const targetPath = String(path ?? "");
   if (!targetPath) return "";
-  const diagnostics = (snapshot?.diagnostics ?? []).filter((diagnostic) => diagnostic.path === targetPath);
+  const diagnostics = (snapshot?.diagnostics ?? []).filter((diagnostic) => sameLspPath(diagnostic.path, targetPath));
   if (diagnostics.length === 0) return "";
   return formatLspDiagnostics({
     snapshot: {
