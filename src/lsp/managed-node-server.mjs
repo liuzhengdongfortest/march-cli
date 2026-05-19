@@ -8,6 +8,11 @@ const DEFAULT_CACHE_ROOT = join(homedir(), ".march", "lsp", "node");
 const MANAGED_PACKAGES = {
   "typescript-language-server": ["typescript-language-server", "typescript"],
   "vue-language-server": ["@vue/language-server", "typescript"],
+  "pyright-langserver": ["pyright"],
+  "vscode-json-language-server": ["vscode-langservers-extracted"],
+  "vscode-html-language-server": ["vscode-langservers-extracted"],
+  "vscode-css-language-server": ["vscode-langservers-extracted"],
+  "docker-langserver": ["dockerfile-language-server-nodejs"],
 };
 
 const installs = new Map();

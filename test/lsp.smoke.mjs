@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { formatLspSegment } from "../src/cli/commands/status-command.mjs";
+import { languageIdForPath } from "../src/lsp/client.mjs";
 import { formatLspDiagnosticsForPath } from "../src/lsp/diagnostics-format.mjs";
 import { resolveLspServerStatus } from "../src/lsp/servers.mjs";
 import { resolveSpawnCommand } from "../src/platform/spawn-command.mjs";
@@ -47,11 +48,31 @@ export async function runLspSmoke({ setupTmp, cleanup }) {
       process.env.PATH = "";
       writeFileSync(join(noLocalDir, "package.json"), "{}\n");
       writeNodeBin(managedDir, "typescript-language-server");
+      writeNodeBin(managedDir, "pyright-langserver");
+      writeNodeBin(managedDir, "vscode-json-language-server");
+      writeNodeBin(managedDir, "vscode-html-language-server");
+      writeNodeBin(managedDir, "vscode-css-language-server");
+      writeNodeBin(managedDir, "docker-langserver");
       writeTypeScriptSdk(managedDir);
       const managedTs = await resolveLspServerStatus({ filePath: join(noLocalDir, "managed.ts"), workspaceRoot: noLocalDir });
       assert.equal(managedTs.status, "available");
       assert.equal(managedTs.server.managed, true);
       assert.ok(managedTs.server.command.includes("typescript-language-server"));
+
+      const managedServers = [
+        ["managed.py", "python", "pyright-langserver"],
+        ["package.json", "json", "vscode-json-language-server"],
+        ["index.html", "html", "vscode-html-language-server"],
+        ["style.css", "css", "vscode-css-language-server"],
+        ["Dockerfile", "dockerfile", "docker-langserver"],
+      ];
+      for (const [file, id, command] of managedServers) {
+        const result = await resolveLspServerStatus({ filePath: join(noLocalDir, file), workspaceRoot: noLocalDir });
+        assert.equal(result.status, "available");
+        assert.equal(result.server.id, id);
+        assert.equal(result.server.managed, true);
+        assert.ok(result.server.command.includes(command));
+      }
     } finally {
       if (originalPath === undefined) delete process.env.PATH;
       else process.env.PATH = originalPath;
@@ -82,6 +103,13 @@ export async function runLspSmoke({ setupTmp, cleanup }) {
       { id: "typescript", status: "idle" },
       { id: "vue", status: "failed" },
     ] }), "lsp:ts✓,vue!");
+
+    assert.equal(languageIdForPath(join(dir, "main.py")), "python");
+    assert.equal(languageIdForPath(join(dir, "main.go")), "go");
+    assert.equal(languageIdForPath(join(dir, "lib.rs")), "rust");
+    assert.equal(languageIdForPath(join(dir, "component.svelte")), "svelte");
+    assert.equal(languageIdForPath(join(dir, "Dockerfile")), "dockerfile");
+    assert.equal(languageIdForPath(join(dir, "unknown.txt")), "plaintext");
 
     const mixedCasePath = process.platform === "win32" ? "d:\\repo\\src\\app.js" : "/repo/src/app.js";
     const requestedPath = process.platform === "win32" ? "D:\\repo\\src\\app.js" : "/repo/src/app.js";

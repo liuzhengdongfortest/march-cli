@@ -1,140 +1,11 @@
 import { existsSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { createRequire } from "node:module";
 import { ensureManagedNodeCommand, ensureManagedTypeScript, findManagedTypeScriptSdk, findManagedTypeScriptServer } from "./managed-node-server.mjs";
+import { createLspServerDefinitions } from "./server-definitions.mjs";
 import { resolveTypeScriptProjectRoot } from "./typescript-project-resolver.mjs";
 
-const NODE_ROOT_MARKERS = ["package-lock.json", "bun.lockb", "bun.lock", "pnpm-lock.yaml", "yarn.lock", "package.json"];
-
-const LSP_SERVERS = [
-  {
-    id: "vue",
-    extensions: [".vue"],
-    rootMarkers: NODE_ROOT_MARKERS,
-    command: ["vue-language-server"],
-    managedCommand: "vue-language-server",
-    args: ["--stdio"],
-    initialization: ({ root, workspaceRoot }) => {
-      const tsdk = resolveTypeScriptSdk({ root, workspaceRoot });
-      return tsdk ? { typescript: { tsdk } } : null;
-    },
-    managedTypeScript: true,
-    missingInitialization: "missing project typescript SDK",
-  },
-  {
-    id: "typescript",
-    extensions: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"],
-    rootMarkers: NODE_ROOT_MARKERS,
-    projectRoot: resolveTypeScriptProjectRoot,
-    command: ["typescript-language-server"],
-    managedCommand: "typescript-language-server",
-    args: ["--stdio"],
-    initialization: ({ root, workspaceRoot }) => {
-      const tsserver = resolveTypeScriptServer({ root, workspaceRoot });
-      return tsserver ? { tsserver: { path: tsserver } } : null;
-    },
-    managedTypeScript: true,
-    missingInitialization: "missing project typescript/tsserver.js",
-  },
-  {
-    id: "python",
-    extensions: [".py", ".pyi"],
-    rootMarkers: ["pyproject.toml", "setup.py", "setup.cfg", "requirements.txt", "Pipfile", "pyrightconfig.json"],
-    command: ["pyright-langserver"],
-    args: ["--stdio"],
-  },
-  {
-    id: "go",
-    extensions: [".go"],
-    rootMarkers: ["go.work", "go.mod", "go.sum"],
-    command: ["gopls"],
-    args: [],
-  },
-  {
-    id: "rust",
-    extensions: [".rs"],
-    rootMarkers: ["Cargo.toml", "Cargo.lock"],
-    command: ["rust-analyzer"],
-    args: [],
-  },
-  {
-    id: "clangd",
-    extensions: [".c", ".cpp", ".cc", ".cxx", ".c++", ".h", ".hpp", ".hh", ".hxx", ".h++"],
-    rootMarkers: ["compile_commands.json", "compile_flags.txt", ".clangd"],
-    command: ["clangd"],
-    args: ["--background-index", "--clang-tidy"],
-  },
-  {
-    id: "svelte",
-    extensions: [".svelte"],
-    rootMarkers: NODE_ROOT_MARKERS,
-    command: ["svelteserver", "svelte-language-server"],
-    args: ["--stdio"],
-    initialization: () => ({}),
-  },
-  {
-    id: "astro",
-    extensions: [".astro"],
-    rootMarkers: NODE_ROOT_MARKERS,
-    command: ["astro-ls", "@astrojs/language-server"],
-    args: ["--stdio"],
-    initialization: ({ root, workspaceRoot }) => {
-      const tsdk = resolveTypeScriptSdk({ root, workspaceRoot });
-      return tsdk ? { typescript: { tsdk } } : null;
-    },
-    missingInitialization: "missing project typescript SDK",
-  },
-  {
-    id: "yaml",
-    extensions: [".yaml", ".yml"],
-    rootMarkers: NODE_ROOT_MARKERS,
-    command: ["yaml-language-server"],
-    args: ["--stdio"],
-  },
-  {
-    id: "bash",
-    extensions: [".sh", ".bash", ".zsh", ".ksh"],
-    rootMarkers: [],
-    command: ["bash-language-server"],
-    args: ["start"],
-  },
-  {
-    id: "lua",
-    extensions: [".lua"],
-    rootMarkers: [".luarc.json", ".luarc.jsonc", ".luacheckrc", ".stylua.toml", "stylua.toml", "selene.toml", "selene.yml"],
-    command: ["lua-language-server"],
-    args: [],
-  },
-  {
-    id: "zig",
-    extensions: [".zig", ".zon"],
-    rootMarkers: ["build.zig"],
-    command: ["zls"],
-    args: [],
-  },
-  {
-    id: "dart",
-    extensions: [".dart"],
-    rootMarkers: ["pubspec.yaml", "analysis_options.yaml"],
-    command: ["dart"],
-    args: ["language-server", "--lsp"],
-  },
-  {
-    id: "php",
-    extensions: [".php"],
-    rootMarkers: ["composer.json", "composer.lock", ".php-version"],
-    command: ["intelephense"],
-    args: ["--stdio"],
-    initialization: () => ({ telemetry: { enabled: false } }),
-  },
-  {
-    id: "prisma",
-    extensions: [".prisma"],
-    rootMarkers: ["schema.prisma", "prisma/schema.prisma", "prisma"],
-    command: ["prisma"],
-    args: ["language-server"],
-  },
-];
+const LSP_SERVERS = createLspServerDefinitions({ resolveTypeScriptProjectRoot, resolveTypeScriptSdk, resolveTypeScriptServer });
 
 export async function resolveLspServer({ filePath, workspaceRoot, onEvent = null } = {}) {
   const result = await resolveLspServerStatus({ filePath, workspaceRoot, onEvent });
@@ -143,7 +14,7 @@ export async function resolveLspServer({ filePath, workspaceRoot, onEvent = null
 
 export async function resolveLspServerStatus({ filePath, workspaceRoot, onEvent = null } = {}) {
   const ext = extensionOf(filePath);
-  const def = LSP_SERVERS.find((server) => server.extensions.includes(ext));
+  const def = LSP_SERVERS.find((server) => matchesServer(server, filePath, ext));
   if (!def) return { status: "unsupported", extension: ext };
 
   const root = resolveServerRoot(def, { filePath, workspaceRoot });
@@ -165,7 +36,13 @@ export async function resolveLspServerStatus({ filePath, workspaceRoot, onEvent 
 }
 
 export function listLspServerDefinitions() {
-  return LSP_SERVERS.map(({ id, extensions, rootMarkers, command, args }) => ({ id, extensions, rootMarkers, command, args }));
+  return LSP_SERVERS.map(({ id, extensions, filenames, rootMarkers, command, args }) => ({ id, extensions, filenames, rootMarkers, command, args }));
+}
+
+function matchesServer(server, filePath, ext) {
+  if (server.extensions.includes(ext)) return true;
+  const name = basename(filePath).toLowerCase();
+  return server.filenames?.includes(name) ?? false;
 }
 
 async function resolveCommand(def, { root, workspaceRoot, onEvent }) {

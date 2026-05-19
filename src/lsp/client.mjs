@@ -1,22 +1,75 @@
 import { pathToFileURL } from "node:url";
 import { spawnCommand } from "../platform/spawn-command.mjs";
-import { extname } from "node:path";
+import { basename, extname } from "node:path";
 import { readFileSync } from "node:fs";
 
 const INITIALIZE_TIMEOUT_MS = 15000;
 const TEXT_DOCUMENT_SYNC_INCREMENTAL = 2;
 
 const LANGUAGE_IDS = {
+  ".astro": "astro",
+  ".bash": "shellscript",
+  ".c": "c",
+  ".c++": "cpp",
+  ".cc": "cpp",
+  ".cjs": "javascript",
+  ".cpp": "cpp",
+  ".css": "css",
+  ".cts": "typescript",
+  ".cxx": "cpp",
+  ".dart": "dart",
+  ".dockerfile": "dockerfile",
+  ".go": "go",
+  ".h": "c",
+  ".h++": "cpp",
+  ".hh": "cpp",
+  ".hpp": "cpp",
+  ".htm": "html",
+  ".html": "html",
+  ".hxx": "cpp",
   ".js": "javascript",
+  ".json": "json",
+  ".jsonc": "jsonc",
   ".jsx": "javascriptreact",
+  ".ksh": "shellscript",
+  ".less": "less",
+  ".lua": "lua",
+  ".markdown": "markdown",
+  ".md": "markdown",
+  ".mdx": "mdx",
+  ".mjs": "javascript",
+  ".mts": "typescript",
+  ".php": "php",
+  ".prisma": "prisma",
+  ".py": "python",
+  ".pyi": "python",
+  ".rs": "rust",
+  ".sass": "sass",
+  ".scss": "scss",
+  ".sh": "shellscript",
+  ".svelte": "svelte",
+  ".tf": "terraform",
+  ".tfvars": "terraform-vars",
+  ".toml": "toml",
   ".ts": "typescript",
   ".tsx": "typescriptreact",
-  ".mjs": "javascript",
-  ".cjs": "javascript",
-  ".mts": "typescript",
-  ".cts": "typescript",
   ".vue": "vue",
+  ".yaml": "yaml",
+  ".yml": "yaml",
+  ".zig": "zig",
+  ".zon": "zig",
+  ".zsh": "shellscript",
 };
+
+const FILENAME_LANGUAGE_IDS = {
+  containerfile: "dockerfile",
+  dockerfile: "dockerfile",
+};
+
+export function languageIdForPath(path) {
+  const name = basename(path).toLowerCase();
+  return FILENAME_LANGUAGE_IDS[name] ?? LANGUAGE_IDS[extname(path).toLowerCase()] ?? "plaintext";
+}
 
 export class LspClient {
   constructor({ serverId, command, args = [], cwd, initialization = {}, store }) {
@@ -94,7 +147,7 @@ export class LspClient {
     this.#notify("textDocument/didOpen", {
       textDocument: {
         uri,
-        languageId: LANGUAGE_IDS[extname(path).toLowerCase()] ?? "plaintext",
+        languageId: languageIdForPath(path),
         version: 0,
         text,
       },
