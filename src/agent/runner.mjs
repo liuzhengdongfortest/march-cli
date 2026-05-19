@@ -12,6 +12,7 @@ import { createRunnerRuntimeHost } from "./runtime/runner-runtime-host.mjs";
 import { createRuntimeUiBridge } from "./runtime/ui-event-bridge.mjs";
 import { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
 import { notifyTurnEndBestEffort, notifyTurnEndDetached, providerContextToPayload } from "./runner/runner-utils.mjs";
+import { dumpCodexTransportDebug, getCodexTransportDebugSnapshot } from "./runner/codex-transport-debug.mjs";
 import { resolveRunnerSessionOptions } from "./session/session-options.mjs";
 import { createSessionBinding } from "./session/session-binding.mjs";
 import { maybeAutoNameSession } from "./session/session-auto-name.mjs";
@@ -110,6 +111,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       currentTurnContextMode = contextMode;
       nextTurnContextMode = "rebuild";
       const turnStartedAt = Date.now();
+      const codexTransportStatsBefore = getCodexTransportDebugSnapshot(sessionBinding.get());
       const turnLog = beginLoggedTurn({ logger, engine, modelId, provider, contextMode, userMessage, userRecallHints, startedAt: turnStartedAt }); currentTurnId = turnLog.turnId;
       try {
         const result = await runRunnerTurn({
@@ -140,6 +142,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
         turnLog.endError(err);
         throw err;
       } finally {
+        dumpCodexTransportDebug({ before: codexTransportStatsBefore, session: sessionBinding.get(), ui, logger });
         currentTurnId = null;
         currentTurnContextMode = "rebuild";
       }
