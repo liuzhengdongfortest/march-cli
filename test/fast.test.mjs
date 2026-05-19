@@ -8,6 +8,7 @@ import { runConfigLoadingSmoke } from "./config-loading.smoke.mjs";
 import { runNetworkEnvironmentSmoke } from "./network-environment.smoke.mjs";
 import { runCustomProviderSmoke } from "./custom-provider.smoke.mjs";
 import { runEditFileToolSmoke } from "./edit-file-tool.smoke.mjs";
+import { runFileSearchIndexSmoke } from "./file-search-index.smoke.mjs";
 import { runProviderConfigCommandSmoke } from "./provider-config-command.smoke.mjs";
 import { runReadFileToolSmoke } from "./read-file-tool.smoke.mjs";
 import { runReadImageToolSmoke } from "./read-image-tool.smoke.mjs";
@@ -56,6 +57,7 @@ await runReadFileToolSmoke({ setupTmp, cleanup });
 await runReadImageToolSmoke({ setupTmp, cleanup });
 await runScreenToolsSmoke();
 await runEditFileToolSmoke({ setupTmp, cleanup });
+await runFileSearchIndexSmoke();
 await runProviderConfigCommandSmoke({ setupTmp, cleanup });
 await runCustomProviderSmoke();
 
