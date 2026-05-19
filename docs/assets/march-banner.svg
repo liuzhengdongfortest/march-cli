@@ -17,8 +17,8 @@
       <path d="M32 0H0V32" stroke="#e8e5dc" stroke-width="1" opacity="0.5"/>
     </pattern>
     <style>
-      .serif { font-family: ui-serif, Georgia, Cambria, 'Times New Roman', serif; }
-      .sans { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+      .soft { font-family: Inter, 'SF Pro Display', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+      .sans { font-family: Inter, 'SF Pro Text', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
       .mono { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }
       .muted { fill: #6b6f76; }
       .ink { fill: #1f2328; }
@@ -43,7 +43,7 @@
   </g>
 
   <g transform="translate(0 8)">
-    <text x="800" y="144" text-anchor="middle" class="serif ink" font-size="88" letter-spacing="8">March</text>
+    <text x="800" y="144" text-anchor="middle" class="soft ink" font-size="88" font-weight="500" letter-spacing="2.5">March</text>
     <text x="800" y="194" text-anchor="middle" class="sans muted" font-size="25" letter-spacing="0.8">Forget Skills. Embrace Memory. Keep context light.</text>
   </g>
 
@@ -90,27 +90,27 @@
     <g transform="translate(124 330)">
       <rect width="214" height="136" rx="18" fill="#ffffff" stroke="#e4dfd5"/>
       <text x="22" y="36" class="sans muted" font-size="13">Memory</text>
-      <text x="22" y="72" class="serif ink" font-size="23">Project rules</text>
+      <text x="22" y="72" class="soft ink" font-size="22" font-weight="500">Project rules</text>
       <text x="22" y="104" class="sans muted" font-size="14">recalled when relevant</text>
       <circle cx="184" cy="34" r="5" fill="#2563eb"/>
     </g>
     <g transform="translate(1264 330)">
       <rect width="214" height="136" rx="18" fill="#ffffff" stroke="#e4dfd5"/>
       <text x="22" y="36" class="sans muted" font-size="13">Memory</text>
-      <text x="22" y="72" class="serif ink" font-size="23">Design taste</text>
+      <text x="22" y="72" class="soft ink" font-size="22" font-weight="500">Design taste</text>
       <text x="22" y="104" class="sans muted" font-size="14">preferences persist</text>
       <circle cx="184" cy="34" r="5" fill="#0f766e"/>
     </g>
     <g transform="translate(182 558)">
       <rect width="244" height="126" rx="18" fill="#ffffff" stroke="#e4dfd5"/>
       <text x="22" y="36" class="sans muted" font-size="13">Provider</text>
-      <text x="22" y="72" class="serif ink" font-size="23">OpenAI-compatible</text>
+      <text x="22" y="72" class="soft ink" font-size="22" font-weight="500">OpenAI-compatible</text>
       <text x="22" y="102" class="sans muted" font-size="14">local or cloud models</text>
     </g>
     <g transform="translate(1174 558)">
       <rect width="244" height="126" rx="18" fill="#ffffff" stroke="#e4dfd5"/>
       <text x="22" y="36" class="sans muted" font-size="13">Tools</text>
-      <text x="22" y="72" class="serif ink" font-size="23">Search + image</text>
+      <text x="22" y="72" class="soft ink" font-size="22" font-weight="500">Search + image</text>
       <text x="22" y="102" class="sans muted" font-size="14">built into the agent</text>
     </g>
   </g>
