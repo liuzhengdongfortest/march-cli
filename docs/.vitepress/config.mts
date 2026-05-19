@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitepress';
 
 export default defineConfig({
+  base: '/march-cli/',
   title: 'March CLI',
   description: 'Terminal-native coding agent with context reconstruction and Markdown memory.',
   cleanUrls: true,
