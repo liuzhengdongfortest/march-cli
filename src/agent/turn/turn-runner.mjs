@@ -1,3 +1,4 @@
+import { formatRecallHints } from "../../memory/markdown-store.mjs";
 import { resolveImageAttachmentReferences } from "../../session/attachment-references.mjs";
 import { closeAssistantReply, compactAssistantContext, createTurnEventState, handleRunnerSessionEvent } from "./turn-events.mjs";
 
@@ -13,7 +14,6 @@ export async function runRunnerTurn({
   setModelCallKind,
   logger = null,
   setPhase = null,
-  onMidTurnRecallHints,
   syncCurrentPiSidecar,
   autoNameSession,
   contextMode = "rebuild",
@@ -41,7 +41,7 @@ export async function runRunnerTurn({
       const hints = flushAssistantRecall({ memoryStore, engine, turnState, currentProject });
       if (hints.length > 0) {
         midTurnRecallHints.push(...hints);
-        onMidTurnRecallHints?.(hints);
+        queueMidTurnRecallHints(activeSession, hints, logger);
         ui.memoryHint?.({ source: "assistant", hints });
       }
     }
@@ -87,6 +87,20 @@ export async function runRunnerTurn({
     ui.turnEnd();
     unsubscribe();
   }
+}
+
+function queueMidTurnRecallHints(session, hints, logger) {
+  const content = formatRecallHints("assistant", hints);
+  if (!content) return;
+  const injected = session.sendCustomMessage?.({
+    customType: "march.memory_hint",
+    content,
+    display: false,
+    details: { source: "assistant" },
+  }, { deliverAs: "steer" });
+  void injected?.catch?.((err) => {
+    logger?.debug("memory.mid_turn_recall.inject_failed", { errorMessage: err?.message ?? String(err) });
+  });
 }
 
 function logSessionEvent(logger, event) {

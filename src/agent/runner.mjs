@@ -5,8 +5,7 @@ import { createMarchLifecycleAdapter } from "../extensions/lifecycle-adapter.mjs
 import { syncPiSessionSidecar } from "../session/sidecar-sync.mjs";
 import { LspService } from "../lsp/service.mjs";
 import { formatLspServiceEvent } from "../lsp/status-message.mjs";
-import { formatRecallHints } from "../memory/markdown-store.mjs";
-import { appendProviderUserMessage, estimateProviderPayloadTokens, installModelPayloadDumper, replaceProviderContextMessages } from "./model-payload-dumper.mjs";
+import { estimateProviderPayloadTokens, installModelPayloadDumper, replaceProviderContextMessages } from "./model-payload-dumper.mjs";
 import { resolveInitialModel, resolveRunnerSessionManager } from "./runner/runner-init.mjs";
 import { runRunnerCleanup } from "./runner/runner-cleanup.mjs";
 import { createRunnerRuntimeHost } from "./runtime/runner-runtime-host.mjs";
@@ -55,7 +54,6 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   let currentModelCallKind = "model", currentTurnId = null, currentPromptForContext = "";
   let currentTurnContextMode = "rebuild";
   let nextTurnContextMode = "rebuild";
-  let pendingMidTurnRecallHints = [];
   let lastNotificationResult = null, runtimeHost = null, lifecycleAdapter = null;
   let _currentFastEntry = null;
   if (useRuntimeHost) {
@@ -111,7 +109,6 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       const contextMode = nextTurnContextMode;
       currentTurnContextMode = contextMode;
       nextTurnContextMode = "rebuild";
-      pendingMidTurnRecallHints = [];
       const turnStartedAt = Date.now();
       const turnLog = beginLoggedTurn({ logger, engine, modelId, provider, contextMode, userMessage, userRecallHints, startedAt: turnStartedAt }); currentTurnId = turnLog.turnId;
       try {
@@ -121,7 +118,6 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
           setModelCallKind: (kind) => { currentModelCallKind = kind; },
           logger: turnLog.logger,
           setPhase: turnLog.setPhase,
-          onMidTurnRecallHints: (hints) => { pendingMidTurnRecallHints.push(...hints); },
           syncCurrentPiSidecar,
           autoNameSession,
           contextMode,
@@ -289,10 +285,6 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       : replaceProviderContextMessages(payload, engine.buildProviderContext(currentPromptForContext));
     nextPayload = injectHostedTools(nextPayload, model, hostedTools);
     if (_currentFastEntry) nextPayload = { ...nextPayload, service_tier: "priority" };
-    if (pendingMidTurnRecallHints.length > 0) {
-      nextPayload = appendProviderUserMessage(nextPayload, formatRecallHints("assistant", pendingMidTurnRecallHints));
-      pendingMidTurnRecallHints = [];
-    }
     return nextPayload;
   }
 }
