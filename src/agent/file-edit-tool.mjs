@@ -4,6 +4,7 @@ import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { toolText } from "./tool-result.mjs";
 import { applyReplaceTextPatch, applyReplaceRangePatch } from "./editing/diff-apply.mjs";
+import { buildCohesionWarning } from "./editing/cohesion-warning.mjs";
 import { formatAppliedDiff, formatDiff } from "./editing/diff-format.mjs";
 import { waitForLspReport } from "./editing/lsp-report.mjs";
 
@@ -68,6 +69,7 @@ async function writeFullFile({ absPath, path, content, mode, engine, ui, lspServ
     return toolText(`Error: ${absPath} already exists. Use mode=overwrite to replace it.`, { error: true });
   }
   const oldText = mode === OVERWRITE_MODE && existsSync(absPath) ? readFileSync(absPath, "utf8") : "";
+  const cohesionWarning = buildCohesionWarning({ path: absPath, oldText, newText: content });
   const diffLines = formatDiff(oldText, content, { startLine: 1 });
   try {
     mkdirSync(dirname(absPath), { recursive: true });
@@ -76,7 +78,8 @@ async function writeFullFile({ absPath, path, content, mode, engine, ui, lspServ
     const lspResult = await lspService?.touchFile?.(absPath);
     ui.editDiff(absPath, diffLines);
 
-    return await toolTextWithDiagnostics(`${mode === WRITE_MODE ? "Wrote" : "Overwrote"} ${path}\n\n${formatAppliedDiff([{ oldText, newText: content, startLine: 1 }])}`, { path: absPath }, { lspService, path: absPath, lspResult, since: lspTouchedAt });
+    const baseText = `${mode === WRITE_MODE ? "Wrote" : "Overwrote"} ${path}\n\n${formatAppliedDiff([{ oldText, newText: content, startLine: 1 }])}`;
+    return await toolTextWithDiagnostics(appendSections(baseText, [cohesionWarning]), withWarnings({ path: absPath }, cohesionWarning), { lspService, path: absPath, lspResult, since: lspTouchedAt });
   } catch (err) {
     return toolText(`Error writing ${absPath}: ${err.message}`, { error: true });
   }
@@ -98,13 +101,16 @@ async function patchFile({ absPath, path, edits, engine, ui, lspService }) {
   if (prepared.error) return toolText(prepared.error, { error: true });
 
   const newContent = applyPreparedEdits(content, prepared.edits);
+  const cohesionWarning = buildCohesionWarning({ path: absPath, oldText: content, newText: newContent });
   try {
     mkdirSync(dirname(absPath), { recursive: true });
     writeFileSync(absPath, newContent, "utf8");
     const lspTouchedAt = Date.now();
     const lspResult = await lspService?.touchFile?.(absPath);
     ui.editDiff(absPath, prepared.edits.flatMap((edit) => formatDiff(edit.oldText, edit.newText, { startLine: edit.startLine })));
-    return await toolTextWithDiagnostics(`Edited ${absPath}\n\n${formatAppliedDiff(prepared.edits)}`, { path: absPath, edits: prepared.edits.length }, { lspService, path: absPath, lspResult, since: lspTouchedAt });
+    const baseText = `Edited ${absPath}\n\n${formatAppliedDiff(prepared.edits)}`;
+    const details = withWarnings({ path: absPath, edits: prepared.edits.length }, cohesionWarning);
+    return await toolTextWithDiagnostics(appendSections(baseText, [cohesionWarning]), details, { lspService, path: absPath, lspResult, since: lspTouchedAt });
   } catch (err) {
     return toolText(`Error writing ${absPath}: ${err.message}`, { error: true });
   }
@@ -113,6 +119,15 @@ async function patchFile({ absPath, path, edits, engine, ui, lspService }) {
 async function toolTextWithDiagnostics(text, details, { lspService, path, lspResult, since = Date.now(), timeoutMs = 3000, intervalMs = 150 } = {}) {
   const lspReport = await waitForLspReport({ lspService, path, lspResult, since, timeoutMs, intervalMs });
   return toolText(lspReport ? `${text}\n\n${lspReport}` : text, details);
+}
+
+function appendSections(text, sections) {
+  return [text, ...sections.filter(Boolean)].join("\n\n");
+}
+
+function withWarnings(details, cohesionWarning) {
+  if (!cohesionWarning) return details;
+  return { ...details, warnings: ["cohesion"] };
 }
 
 export function preparePatchEdits(content, edits, path = "file") {

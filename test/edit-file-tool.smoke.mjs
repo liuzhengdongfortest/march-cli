@@ -199,6 +199,56 @@ export async function runEditFileToolSmoke({ setupTmp, cleanup }) {
   assert.ok(multiDiffs[0].diff.some((line) => line.type === "add" && line.text === "BETA"));
   assert.ok(multiDiffs[0].diff.some((line) => line.type === "add" && line.text === "DELTA"));
 
+  const largeCodeFile = join(dir, "large.mjs");
+  result = await executeEditFile({
+    params: { path: largeCodeFile, mode: "write", content: numberedLines(320, "const item") },
+    engine,
+    ui,
+    lspService: { touchFile: (path) => touched.push(path) },
+  });
+  assert.equal(result.details.error, undefined);
+  assert.deepEqual(result.details.warnings, ["cohesion"]);
+  assert.ok(result.content[0].text.includes("[cohesion]"));
+  assert.ok(result.content[0].text.includes("is now 320 lines after a +320 line edit"));
+
+  const largeMarkdownFile = join(dir, "large.md");
+  result = await executeEditFile({
+    params: { path: largeMarkdownFile, mode: "write", content: numberedLines(500, "paragraph") },
+    engine,
+    ui,
+    lspService: { touchFile: (path) => touched.push(path) },
+  });
+  assert.equal(result.details.error, undefined);
+  assert.equal(result.details.warnings, undefined);
+  assert.ok(!result.content[0].text.includes("[cohesion]"));
+
+  const oldLargeFile = join(dir, "old-large.mjs");
+  writeFileSync(oldLargeFile, numberedLines(350, "const oldItem"), "utf8");
+  result = await executeEditFile({
+    params: { path: oldLargeFile, edits: [{ type: "replace_range", startLine: 1, endLine: 1, newText: "const oldItem1 = 'changed';" }] },
+    engine,
+    ui,
+    lspService: { touchFile: (path) => touched.push(path) },
+  });
+  assert.equal(result.details.error, undefined);
+  assert.equal(result.details.warnings, undefined);
+  assert.ok(!result.content[0].text.includes("[cohesion]"));
+
+  const growingFile = join(dir, "growing.mjs");
+  writeFileSync(growingFile, numberedLines(250, "const growingItem"), "utf8");
+  result = await executeEditFile({
+    params: {
+      path: growingFile,
+      edits: [{ type: "replace_range", startLine: 250, endLine: 250, newText: `const growingItem250 = 250;\n${numberedLines(80, "const addedItem")}` }],
+    },
+    engine,
+    ui,
+    lspService: { touchFile: (path) => touched.push(path) },
+  });
+  assert.equal(result.details.error, undefined);
+  assert.deepEqual(result.details.warnings, ["cohesion"]);
+  assert.ok(result.content[0].text.includes("[cohesion]"));
+
   cleanup(dir);
   console.log("  PASS");
 }
@@ -207,4 +257,8 @@ function createEngine(cwd) {
   return {
     resolvePath: (path) => resolve(cwd, path),
   };
+}
+
+function numberedLines(count, prefix) {
+  return Array.from({ length: count }, (_, index) => `${prefix}${index + 1} = ${index + 1};`).join("\n");
 }
