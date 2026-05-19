@@ -1,54 +1,63 @@
-# 忘记 Skill，拥抱记忆，让你的模型永远工作在甜点区。
+<p align="center">
+  <img src="docs/assets/march-banner.png" alt="March CLI banner" width="800">
+</p>
+
+<p align="center"><strong>Forget Skills. Embrace Memory. Keep your model in the sweet spot.</strong></p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/march-cli"><img alt="npm" src="https://img.shields.io/npm/v/march-cli?style=flat-square" /></a>
+</p>
+
+<p align="center">
+  <a href="README.md">English</a> |
+  <a href="README.zh.md">简体中文</a>
+</p>
+
+---
+
+### Installation
 
 ```bash
 npm install -g march-cli
 ```
 
----
+### Why Token Efficient?
 
-## 为什么省 Token？
+March is obsessively token-efficient. After each turn, context resets to ~8K — we **discard** all intermediate execution and keep only two things: the user's question and the AI's final response.
 
-March 极端地省 Token。每轮对话结束后，上下文会回滚到约 8K——我们**丢弃**模型中间的所有执行过程，只保留两样东西：用户的问题和 AI 的最终回复。
+Most agents fight context bloat with compression, truncation, retrieval, summarization. March's answer: just throw away what you don't need.
 
-大多数 Agent 系统用压缩、裁剪、检索、摘要来对抗上下文膨胀。March 的答案是：直接扔掉不需要的。
+The result:
 
-结果：
+- **91% cache hit rate**, individual model calls rarely exceed 50K tokens
+- Context never grows unbounded — **no context rot**
+- Your model always operates in the sweet spot, not drowning in 100K of noise
 
-- **缓存命中率 91%**，单次模型调用几乎不超过 50K
-- 上下文不会越聊越大，**不存在上下文腐烂**
-- 你的模型永远在最佳状态工作，而不是在 100K 的噪音里大海捞针
+### Memory System
 
----
+March has a built-in memory system. Anything you tell March — preferences, project conventions, technical decisions — it remembers. When you need it again, March **automatically recalls** relevant memories during its thinking process. No manual search required.
 
-## 记忆系统
+#### No Skill Files
 
-March 内置了记忆系统。你在对话中告诉 March 的任何东西——偏好、项目约定、技术决策——它都能记住。当你再次需要时，March 会在思考过程中**自动召回**相关记忆，你不需要手动检索。
+The problem with Skill systems: Skill files inject context upfront. What happens when you have too many?
 
-### 不需要 Skill 文件
+March takes a different approach: every memory is a "latent skill," recalled on-demand rather than always sitting in context. What you've discussed is the best prompt.
 
-Skill 系统的问题是：Skill 文件在一开始就注入了上下文，Skill 多了怎么办？
+#### Managing Memories
 
-March 换了一种方式：每条记忆就是一条"潜在的 Skill"，由 March 在需要时动态召回，而不是常驻在上下文里。你聊过的内容就是最好的提示词。
+March stores memories as Markdown files under `~/.march/March Memories/`. You can directly edit, delete, or add files — March auto-detects changes.
 
-### 管理记忆
+### Built-in Capabilities
 
-March 会在你的 `~/.march/March Memories/` 目录下以 Markdown 文件存储记忆。你可以直接编辑、删除或新增这些文件，March 会自动感知变化。
+**Image Generation**: If you have access to ChatGPT Codex, March can generate images directly — no extra API keys or third-party services.
 
----
+**Web Search**: Connect SuperGrok and **all your configured models** gain web search. March dispatches Grok to search and injects results into the current conversation.
 
-## 更多内置能力
+**More Search**: Tavily Search and Brave Search are built in.
 
-**生图**：如果你有 ChatGPT Pro 订阅，March 可以直接生图，不需要额外的 API Key 或第三方服务。
+### Configuration
 
-**联网搜索**：接入 SuperGrok 后，你配置的**所有模型**都会获得联网搜索能力——March 会派遣 Grok 去搜索，搜索结果注入当前对话。
-
-**更多搜索渠道**：Tavily Search、Brave Search 均已内置。
-
----
-
-## 配置
-
-March 通过 `~/.march/config.json`（全局）或 `<project>/.march/config.json`（项目级）配置模型和 provider。支持所有 OpenAI 兼容接口。
+March uses `~/.march/config.json` (global) or `<project>/.march/config.json` (project-level) for model and provider configuration. Compatible with any OpenAI-compatible API.
 
 ```json
 {
@@ -57,13 +66,23 @@ March 通过 `~/.march/config.json`（全局）或 `<project>/.march/config.json
 }
 ```
 
-自定义 provider、多模型切换等详细配置见 [文档](docs/custom-provider.md)。
+See the [docs](docs/custom-provider.md) for custom providers, multi-model setup, and more.
 
----
+### FAQ
 
-## 文档
+#### How is this different from Claude Code?
 
-- [完整文档](docs/) — 配置、上下文管理、记忆系统
-- [自定义 Provider](docs/custom-provider.md) — 接入本地模型或第三方 API
-- [上下文管理](docs/context-core.md) — March 的上下文架构详解
-- [记忆系统](docs/markdown-memory-system.md) — 记忆存储与召回机制
+March is similarly capable but takes a fundamentally different approach to context. Instead of keeping everything in context and relying on compression, March resets context each turn — you get ~8K clean context every time, with 91% cache hit rate. March also replaces Skill files with a built-in memory system that recalls on demand.
+
+#### How is this different from OpenCode?
+
+Both are open source, terminal-native agents. March's key differentiators: extreme token efficiency via per-turn context reset, a built-in Markdown memory system with automatic recall, and the philosophy that memories should be recalled on-demand — not injected upfront like Skills.
+
+### Documentation
+
+- [Full Documentation](docs/) — configuration, context management, memory system
+- [Custom Provider](docs/custom-provider.md) — connect local models or third-party APIs
+- [Context Management](docs/context-core.md) — March's context architecture explained
+- [Memory System](docs/markdown-memory-system.md) — storage and recall mechanism
+
+
