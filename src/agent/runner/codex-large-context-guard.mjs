@@ -15,8 +15,8 @@ export function installCodexLargeContextGuard() {
   globalThis[ORIGINAL_FETCH] = originalFetch;
   globalThis.fetch = async function marchCodexLargeContextGuardedFetch(input, init) {
     const bodyBytes = getBodyBytes(init?.body);
-    if (isCodexResponsesHttpRequest(input, init) && bodyBytes > getMaxHttpFallbackBytes()) {
-      throw new Error(`Codex HTTP fallback blocked for large payload (${bodyBytes} bytes); retrying WebSocket instead`);
+    if (isCodexResponsesHttpRequest(input, init) && !isZstdEncoded(input, init) && bodyBytes > getMaxHttpFallbackBytes()) {
+      throw new Error(`Codex HTTP fallback blocked for uncompressed large payload (${bodyBytes} bytes); retrying WebSocket instead`);
     }
     return originalFetch.call(this, input, init);
   };
@@ -63,6 +63,10 @@ function getRequestUrl(input) {
   if (input instanceof URL) return input.toString();
   if (input && typeof input.url === "string") return input.url;
   return "";
+}
+
+function isZstdEncoded(input, init) {
+  return headerValue(init?.headers ?? input?.headers, "content-encoding").toLowerCase() === "zstd";
 }
 
 function getBodyBytes(body) {

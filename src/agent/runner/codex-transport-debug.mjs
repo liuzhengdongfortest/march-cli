@@ -1,4 +1,5 @@
 import { getOpenAICodexWebSocketDebugStats } from "@earendil-works/pi-ai/openai-codex-responses";
+import { getCodexTransportCompressionStats } from "./codex-transport-compression.mjs";
 import { getCodexWebSocketLastEvent } from "./codex-websocket-event-debug.mjs";
 
 export function getCodexTransportDebugSnapshot(session) {
@@ -44,6 +45,7 @@ function formatCodexTransportDebugFields(sessionId, before, after) {
     lastInputItems: after?.lastInputItems ?? 0,
     lastDeltaInputItems: after?.lastDeltaInputItems ?? 0,
     lastWebSocketError: after?.lastWebSocketError ?? null,
+    compression: getCodexTransportCompressionStats(),
     lastWebSocketEvent: getCodexWebSocketLastEvent(sessionId),
     hasStats: Boolean(after),
   };
@@ -59,6 +61,7 @@ function formatCodexTransportDebugLines(fields, logPath) {
     `  fallback websocketFailures=${fields.websocketFailures} sseFallbacks=${fields.sseFallbacks} active=${fields.websocketFallbackActive}`,
     `  error lastWebSocketError=${formatDebugValue(fields.lastWebSocketError)}`,
     `  lastInputItems=${fields.lastInputItems} lastDeltaInputItems=${fields.lastDeltaInputItems}`,
+    `  compression httpZstd=${formatDebugValue(fields.compression?.httpZstdRequests ?? 0)} lastBytes=${formatDebugValue(fields.compression ? `${fields.compression.lastHttpPreBytes}->${fields.compression.lastHttpPostBytes}` : null)} ratio=${formatDebugValue(fields.compression?.lastHttpRatio)} wsDeflate=${formatDebugValue(fields.compression?.wsPerMessageDeflate)} wsConnections=${formatDebugValue(fields.compression?.wsCompressedConnections ?? 0)}`,
   ];
   if (isCodexTransportDebugEventsVisible()) {
     lines.push(...formatWebSocketEventLines(fields.lastWebSocketEvent));
