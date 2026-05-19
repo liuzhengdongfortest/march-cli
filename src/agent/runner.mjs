@@ -142,7 +142,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
         turnLog.endError(err);
         throw err;
       } finally {
-        dumpCodexTransportDebug({ before: codexTransportStatsBefore, session: sessionBinding.get(), ui, logger });
+        dumpCodexTransportDebug({ before: codexTransportStatsBefore, session: sessionBinding.get(), ui: runtimeUi, logger });
         currentTurnId = null;
         currentTurnContextMode = "rebuild";
       }

@@ -49,6 +49,7 @@ export function createRuntimeUiClient(eventBus) {
     retryStart: (event) => eventBus.emit({ type: "retry_start", ...event }),
     retryEnd: (event) => eventBus.emit({ type: "retry_end", ...event }),
     status: (text) => eventBus.emit({ type: "status", text }),
+    debugLines: (lines) => eventBus.emit({ type: "debug_lines", lines }),
     memoryHint: ({ source, hints }) => eventBus.emit({ type: "memory_hint", source, hints }),
     editDiff: (path, diffLines) => eventBus.emit({ type: "edit_diff", path, diffLines }),
     requestPermission: (request) => eventBus.request({ type: "permission_request", ...request }),
@@ -69,11 +70,18 @@ export function dispatchRuntimeUiEvent(ui, event) {
     case "retry_start": return ui.retryStart?.(pickRetryStart(event));
     case "retry_end": return ui.retryEnd?.(pickRetryEnd(event));
     case "status": return ui.status?.(event.text);
+    case "debug_lines": return writeDebugLines(ui, event.lines);
     case "memory_hint": return ui.memoryHint?.({ source: event.source, hints: event.hints });
     case "edit_diff": return ui.editDiff?.(event.path, event.diffLines);
     case "permission_request": return ui.requestPermission?.({ toolName: event.toolName, params: event.params, category: event.category });
     default: return undefined;
   }
+}
+
+function writeDebugLines(ui, lines) {
+  if (!ui?.writeln || !Array.isArray(lines)) return undefined;
+  for (const line of lines) ui.writeln(line);
+  return undefined;
 }
 
 function pickRetryStart({ attempt, maxAttempts, delayMs, errorMessage }) {

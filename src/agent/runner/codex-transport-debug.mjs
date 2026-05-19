@@ -56,7 +56,10 @@ function formatCodexTransportDebugLines(fields) {
 }
 
 function writeCodexTransportDebug(ui, lines) {
-  const writeLine = ui?.writeln ?? ui?.status;
-  if (!writeLine) return;
-  for (const line of lines) writeLine(line);
+  if (ui?.debugLines) {
+    ui.debugLines(lines);
+    return;
+  }
+  if (!ui?.writeln) return;
+  for (const line of lines) ui.writeln(line);
 }
