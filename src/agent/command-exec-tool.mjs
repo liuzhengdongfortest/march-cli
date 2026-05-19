@@ -6,6 +6,8 @@ import { toolText } from "./tool-result.mjs";
 import { stripAnsi } from "../text/ansi.mjs";
 
 const OUTPUT_LIMIT = 64 * 1024;
+const DEFAULT_COMMAND_TIMEOUT_SECONDS = 60;
+const COMMAND_KILL_GRACE_MS = 1000;
 
 export function createCommandExecTool({ cwd }) {
   return defineTool({
@@ -15,13 +17,13 @@ export function createCommandExecTool({ cwd }) {
     parameters: Type.Object({
       command: Type.String({ description: "Command to execute" }),
       shell: Type.Optional(Type.String({ description: "auto (default), bash, or powershell" })),
-      timeout: Type.Optional(Type.Number({ description: "Timeout in seconds; default 60" })),
+      timeout: Type.Optional(Type.Number({ description: "Timeout in seconds; default 60", default: DEFAULT_COMMAND_TIMEOUT_SECONDS })),
     }),
-    execute: async (_toolCallId, params) => executeCommand({ cwd, ...params }),
+    execute: async (_toolCallId, params, signal) => executeCommand({ cwd, signal, ...params }),
   });
 }
 
-export async function executeCommand({ cwd, command, shell = "auto", timeout = 60, spawnImpl = spawn }) {
+export async function executeCommand({ cwd, command, shell = "auto", timeout = DEFAULT_COMMAND_TIMEOUT_SECONDS, signal, spawnImpl = spawn, killProcessTreeImpl = killProcessTree, forceSettleMs = COMMAND_KILL_GRACE_MS }) {
   let resolved;
   try {
     resolved = resolveCommandShell(shell);
@@ -29,14 +31,18 @@ export async function executeCommand({ cwd, command, shell = "auto", timeout = 6
     return toolText(`Error: ${err.message}`, { error: true });
   }
 
-  const timeoutMs = Math.max(1, Number(timeout) || 60) * 1000;
+  const timeoutSeconds = Math.max(0.001, Number(timeout) || DEFAULT_COMMAND_TIMEOUT_SECONDS);
+  const timeoutMs = timeoutSeconds * 1000;
   const result = await spawnCommand(spawnImpl, resolved.bin, [...resolved.args, String(command ?? "")], {
     cwd,
     timeoutMs,
+    signal,
     windowsHide: true,
+    killProcessTreeImpl,
+    forceSettleMs,
   });
   if (result.error) {
-    const detail = result.timedOut ? ` (timed out after ${timeout}s)` : "";
+    const detail = result.timedOut ? ` (timed out after ${timeoutSeconds}s)` : "";
     return toolText(`Error: ${result.error.message}${detail}`, { error: true });
   }
   const stdout = stripAnsi(result.stdout ?? "");
@@ -57,12 +63,23 @@ function spawnCommand(spawnImpl, bin, args, options) {
     let stderr = "";
     let settled = false;
     let timedOut = false;
-    const child = spawnImpl(bin, args, { cwd: options.cwd, windowsHide: options.windowsHide });
+    let aborted = false;
+    let forceTimer = null;
+    const child = spawnImpl(bin, args, {
+      cwd: options.cwd,
+      windowsHide: options.windowsHide,
+      detached: process.platform !== "win32",
+    });
     const timer = setTimeout(() => {
       timedOut = true;
-      child.kill?.("SIGTERM");
+      terminateChild(new Error("Command timed out"));
     }, options.timeoutMs);
-    timer.unref?.();
+    const onAbort = () => {
+      aborted = true;
+      terminateChild(new Error("Command aborted"));
+    };
+    if (options.signal?.aborted) queueMicrotask(onAbort);
+    else options.signal?.addEventListener?.("abort", onAbort, { once: true });
 
     child.stdout?.setEncoding?.("utf8");
     child.stderr?.setEncoding?.("utf8");
@@ -71,14 +88,40 @@ function spawnCommand(spawnImpl, bin, args, options) {
     child.once?.("error", (error) => finish({ error }));
     child.once?.("close", (status, signal) => finish({ status, signal }));
 
+    function terminateChild(error) {
+      if (settled) return;
+      options.killProcessTreeImpl?.(child);
+      forceTimer ??= setTimeout(() => finish({ error }), options.forceSettleMs);
+    }
+
     function finish(result) {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      const error = result.error ?? (timedOut ? Object.assign(new Error("Command timed out"), { code: "ETIMEDOUT" }) : null);
-      resolve({ ...result, error, stdout, stderr, timedOut });
+      clearTimeout(forceTimer);
+      options.signal?.removeEventListener?.("abort", onAbort);
+      const error = result.error ?? (timedOut ? Object.assign(new Error("Command timed out"), { code: "ETIMEDOUT" }) : null) ?? (aborted ? Object.assign(new Error("Command aborted"), { code: "ABORT_ERR" }) : null);
+      resolve({ ...result, error, stdout, stderr, timedOut, aborted });
     }
   });
+}
+
+function killProcessTree(child, platform = process.platform) {
+  if (!child?.pid) {
+    child?.kill?.("SIGTERM");
+    return;
+  }
+  if (platform === "win32") {
+    try {
+      spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { windowsHide: true, stdio: "ignore", timeout: 5000 });
+      return;
+    } catch {}
+  }
+  try {
+    process.kill(-child.pid, "SIGTERM");
+    return;
+  } catch {}
+  child.kill?.("SIGTERM");
 }
 
 function appendLimited(current, chunk) {

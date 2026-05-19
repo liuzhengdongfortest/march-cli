@@ -2,10 +2,11 @@ import { strict as assert } from "node:assert";
 
 export async function runCommandExecToolSmoke() {
   console.log("--- smoke: command_exec tool ---");
-  const { executeCommand, resolveCommandShell } = await import("../src/agent/command-exec-tool.mjs");
+  const { createCommandExecTool, executeCommand, resolveCommandShell } = await import("../src/agent/command-exec-tool.mjs");
 
   assert.equal(resolveCommandShell("bash", "win32").name, "bash");
   assert.equal(resolveCommandShell("powershell", "linux").name, "powershell");
+  assert.equal(createCommandExecTool({ cwd: "D:/repo" }).parameters.properties.timeout.default, 60);
 
   const calls = [];
   const ok = await executeCommand({
@@ -44,23 +45,55 @@ export async function runCommandExecToolSmoke() {
   const unsupported = await executeCommand({ cwd: "D:/repo", command: "x", shell: "fish" });
   assert.equal(unsupported.details.error, true);
   assert.ok(unsupported.content[0].text.includes("unsupported shell"));
+
+  const timeoutKills = [];
+  const timedOut = await executeCommand({
+    cwd: "D:/repo",
+    command: "hang",
+    shell: "bash",
+    timeout: 0.001,
+    forceSettleMs: 1,
+    spawnImpl: createMockSpawn({ close: false }),
+    killProcessTreeImpl: (child) => timeoutKills.push(child.pid),
+  });
+  assert.equal(timedOut.details.error, true);
+  assert.ok(timedOut.content[0].text.includes("Command timed out"));
+  assert.deepEqual(timeoutKills, [1234]);
+
+  const controller = new AbortController();
+  controller.abort();
+  const abortKills = [];
+  const aborted = await executeCommand({
+    cwd: "D:/repo",
+    command: "hang",
+    shell: "bash",
+    timeout: 60,
+    signal: controller.signal,
+    forceSettleMs: 1,
+    spawnImpl: createMockSpawn({ close: false }),
+    killProcessTreeImpl: (child) => abortKills.push(child.pid),
+  });
+  assert.equal(aborted.details.error, true);
+  assert.ok(aborted.content[0].text.includes("Command aborted"));
+  assert.deepEqual(abortKills, [1234]);
   console.log("  PASS");
 }
 
-function createMockSpawn({ calls = [], status = 0, stdout = "", stderr = "", signal = null }) {
+function createMockSpawn({ calls = [], status = 0, stdout = "", stderr = "", signal = null, close = true }) {
   return (bin, args, options) => {
     calls.push({ bin, args, options });
     const listeners = new Map();
     const child = {
       stdout: createMockStream(stdout),
       stderr: createMockStream(stderr),
+      pid: 1234,
       kill: () => {},
       once: (event, listener) => {
         listeners.set(event, listener);
         return child;
       },
     };
-    setTimeout(() => listeners.get("close")?.(status, signal), 0);
+    if (close) setTimeout(() => listeners.get("close")?.(status, signal), 0);
     return child;
   };
 }

@@ -40,7 +40,7 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], shel
   return tools.map((tool) => {
     const execute = tool.execute;
     if (!execute) return tool;
-    const wrapped = async (toolCallId, params) => {
+    const wrapped = async (toolCallId, params, signal, onUpdate) => {
       const decision = await permissionController.requestApproval(
         tool.name,
         params,
@@ -51,7 +51,7 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], shel
       if (decision.behavior === "deny") {
         return toolText(`Permission denied: ${decision.message}`, { error: true, permissionDenied: true });
       }
-      return execute(toolCallId, params);
+      return execute(toolCallId, params, signal, onUpdate);
     };
     return { ...tool, execute: wrapped };
   });
