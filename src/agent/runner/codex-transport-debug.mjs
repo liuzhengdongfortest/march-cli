@@ -50,9 +50,19 @@ function formatCodexTransportDebugLines(fields) {
     `  wsConnections created=${fields.connectionsCreated} reused=${fields.connectionsReused}`,
     `  modes full=${fields.fullContextRequests} delta=${fields.deltaRequests} cached=${fields.cachedContextRequests} storeTrue=${fields.storeTrueRequests}`,
     `  fallback websocketFailures=${fields.websocketFailures} sseFallbacks=${fields.sseFallbacks} active=${fields.websocketFallbackActive}`,
+    `  error lastWebSocketError=${formatDebugValue(fields.lastWebSocketError)}`,
     `  lastInputItems=${fields.lastInputItems} lastDeltaInputItems=${fields.lastDeltaInputItems}`,
-    ...(fields.lastWebSocketError ? [`  lastWebSocketError=${fields.lastWebSocketError}`] : []),
   ];
+}
+
+function formatDebugValue(value) {
+  if (value === null || value === undefined || value === "") return "none";
+  if (typeof value === "string") return JSON.stringify(value);
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return JSON.stringify(String(value));
+  }
 }
 
 function writeCodexTransportDebug(ui, lines) {
