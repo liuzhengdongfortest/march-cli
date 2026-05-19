@@ -13,11 +13,16 @@ export function dumpCodexTransportDebug({ before, session, ui, logger }) {
   const after = sessionId ? (getOpenAICodexWebSocketDebugStats(sessionId) ?? null) : null;
   const fields = formatCodexTransportDebugFields(sessionId, before, after);
   logger?.event("codex.transport", fields);
-  writeCodexTransportDebug(ui, formatCodexTransportDebugLines(fields));
+  writeCodexTransportDebug(ui, formatCodexTransportDebugLines(fields, logger?.path));
 }
 
 function isCodexTransportDebugEnabled() {
   const value = process.env.MARCH_CODEX_TRANSPORT_DEBUG;
+  return value === "1" || value === "true" || value === "yes";
+}
+
+function isCodexTransportDebugEventsVisible() {
+  const value = process.env.MARCH_CODEX_TRANSPORT_DEBUG_EVENTS;
   return value === "1" || value === "true" || value === "yes";
 }
 
@@ -44,18 +49,23 @@ function formatCodexTransportDebugFields(sessionId, before, after) {
   };
 }
 
-function formatCodexTransportDebugLines(fields) {
+function formatCodexTransportDebugLines(fields, logPath) {
   if (!fields.hasStats) return [`[codex-transport] sessionId=${fields.sessionId} no Codex WebSocket stats`];
-  return [
+  const lines = [
     `[codex-transport] sessionId=${fields.sessionId}`,
     `  requests=${fields.requests} totalRequests=${fields.totalRequests}`,
     `  wsConnections created=${fields.connectionsCreated} reused=${fields.connectionsReused}`,
     `  modes full=${fields.fullContextRequests} delta=${fields.deltaRequests} cached=${fields.cachedContextRequests} storeTrue=${fields.storeTrueRequests}`,
     `  fallback websocketFailures=${fields.websocketFailures} sseFallbacks=${fields.sseFallbacks} active=${fields.websocketFallbackActive}`,
     `  error lastWebSocketError=${formatDebugValue(fields.lastWebSocketError)}`,
-    ...formatWebSocketEventLines(fields.lastWebSocketEvent),
     `  lastInputItems=${fields.lastInputItems} lastDeltaInputItems=${fields.lastDeltaInputItems}`,
   ];
+  if (isCodexTransportDebugEventsVisible()) {
+    lines.push(...formatWebSocketEventLines(fields.lastWebSocketEvent));
+  } else if (fields.lastWebSocketEvent && logPath) {
+    lines.push(`  rawWebSocketEventLog=${formatDebugValue(logPath)}`);
+  }
+  return lines;
 }
 
 function formatWebSocketEventLines(events) {
