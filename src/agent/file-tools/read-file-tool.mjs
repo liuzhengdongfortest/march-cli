@@ -4,7 +4,7 @@ import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { toolText } from "../tool-result.mjs";
 
-const DEFAULT_LIMIT = 30;
+const DEFAULT_LIMIT = 100;
 const DEFAULT_DIRECTORY_LIMIT = 200;
 const MAX_LIMIT = 2000;
 
@@ -16,7 +16,7 @@ export function createReadFileTool({ engine }) {
     parameters: Type.Object({
       path: Type.String({ description: "Absolute or relative path to read" }),
       offset: Type.Optional(Type.Number({ description: "1-based line number to start reading from; default 1" })),
-      limit: Type.Optional(Type.Number({ description: "Maximum number of lines to read; default 30, max 2000" })),
+      limit: Type.Optional(Type.Number({ description: "Maximum number of lines to read; default 100, max 2000" })),
     }),
     execute: async (_toolCallId, params) => readFileSlice({ engine, ...params }),
   });
