@@ -50,7 +50,10 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
     setModel: async (model) => model,
     canSwitchPiSession: () => true,
     startNewSession: async () => ({ sessionId: "new-session" }),
-    switchPiSession: async () => ({ cancelled: false }),
+    switchPiSession: async (_path, restoreState) => {
+      runner.engine.restoreSession(restoreState, null, { replace: true });
+      return { cancelled: false };
+    },
     getExtensionDiagnostics: () => [{ type: "warning", message: "extension skipped" }],
     getExtensionLifecycleState: () => ({
       status: "read-only",

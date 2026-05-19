@@ -30,7 +30,7 @@ export function createRemoteRunnerClient(peer, { initialState = null } = {}) {
     getExtensionDiagnostics: () => state?.extensionDiagnostics ?? [],
     getExtensionLifecycleState: () => state?.extensionLifecycleState ?? null,
     getLspStatus: () => state?.lspStatus ?? null,
-    async switchPiSession(sessionPath) { return applyResultWithState(await peer.call("switchPiSession", sessionPath)); },
+    async switchPiSession(sessionPath, restoreState = null) { return applyResultWithState(await peer.call("switchPiSession", sessionPath, restoreState)); },
     async cycleThinkingLevel() { return applyResultWithState(await peer.call("cycleThinkingLevel")); },
     getThinkingLevel: () => state?.engine?.thinkingLevel ?? null,
     async setThinkingLevel(level) { return applyResultWithState(await peer.call("setThinkingLevel", level)); },

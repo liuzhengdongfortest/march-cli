@@ -22,6 +22,8 @@ export async function runRuntimeRunnerIpcSmoke() {
   assert.equal(remote.canSwitchPiSession(), true);
   assert.deepEqual(remote.getLspStatus(), { ready: true });
   assert.deepEqual(calls, [["create", "D:/repo"]]);
+  assert.deepEqual(await remote.switchPiSession("session.jsonl", { turns: [{ assistantMessage: "restored" }] }), { sessionPath: "session.jsonl" });
+  assert.equal(remote.engine.turns[0].assistantMessage, "restored");
   assert.deepEqual(await remote.runTurn("prompt", "hello", { currentProject: "repo" }), { draft: "ok:hello" });
   assert.equal(remote.engine.sessionName, "after-turn");
   assert.equal(await remote.setSessionName("named"), "named");
@@ -96,7 +98,10 @@ function createFakeRunner({ calls, options }) {
     getExtensionDiagnostics: () => [],
     getExtensionLifecycleState: () => ({ running: false }),
     getLspStatus: () => ({ ready: true }),
-    switchPiSession: async (sessionPath) => ({ sessionPath }),
+    switchPiSession: async (sessionPath, restoreState = null) => {
+      if (restoreState?.turns) engine.turns = restoreState.turns;
+      return { sessionPath };
+    },
     cycleThinkingLevel() {
       engine.thinkingLevel = "high";
       return engine.thinkingLevel;

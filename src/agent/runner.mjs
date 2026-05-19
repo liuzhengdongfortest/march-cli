@@ -52,14 +52,11 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   const engine = new ContextEngine({ cwd, modelId, provider, namespace, memoryRoot, profilePaths, shellRuntime, lspService, injections: mcpInjections, maxTurns, trimBatch });
   const resolvedSessionManager = resolveRunnerSessionManager(cwd, sessionManager);
   const sessionBinding = createSessionBinding(null);
-  let currentModelCallKind = "model", currentTurnId = null;
-  let currentPromptForContext = "";
+  let currentModelCallKind = "model", currentTurnId = null, currentPromptForContext = "";
   let currentTurnContextMode = "rebuild";
   let nextTurnContextMode = "rebuild";
   let pendingMidTurnRecallHints = [];
-  let lastNotificationResult = null;
-  let runtimeHost = null;
-  let lifecycleAdapter = null;
+  let lastNotificationResult = null, runtimeHost = null, lifecycleAdapter = null;
   let _currentFastEntry = null;
   if (useRuntimeHost) {
     runtimeHost = await createRunnerRuntimeHost({
@@ -227,10 +224,12 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     getExtensionDiagnostics() { return runtimeHost?.getDiagnostics?.() ?? []; },
     getExtensionLifecycleState() { return lifecycleAdapter.getState(); },
     getLspStatus() { return lspService.snapshot(); },
-    async switchPiSession(sessionPath) {
+    async switchPiSession(sessionPath, restoreState = null) {
       if (!runtimeHost) throw new Error("pi runtime host is not enabled");
       nextTurnContextMode = "rebuild";
-      return runtimeHost.switchSession(sessionPath);
+      const result = await runtimeHost.switchSession(sessionPath);
+      if (!result?.cancelled && restoreState) engine.restoreSession(restoreState, null, { replace: true });
+      return result;
     },
     cycleThinkingLevel() {
       const level = sessionBinding.get().cycleThinkingLevel();

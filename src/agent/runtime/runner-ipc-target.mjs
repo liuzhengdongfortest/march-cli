@@ -67,8 +67,8 @@ export function createRunnerIpcTarget({ createRunnerImpl, runnerOptions = {} } =
     getLspStatus() {
       return getRunner().getLspStatus();
     },
-    async switchPiSession(sessionPath) {
-      const result = await getRunner().switchPiSession(sessionPath);
+    async switchPiSession(sessionPath, restoreState = null) {
+      const result = await getRunner().switchPiSession(sessionPath, restoreState);
       return { result, state: getRunnerState(runner) };
     },
     cycleThinkingLevel() {
@@ -123,4 +123,3 @@ export function getRunnerState(runner) {
     extensionLifecycleState: runner.getExtensionLifecycleState?.() ?? null,
   };
 }
-

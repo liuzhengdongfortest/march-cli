@@ -26,13 +26,13 @@ export async function resumePiSessionById(id, { runner, sessions, projectMarchDi
   }
 
   let result;
+  const restoreState = toContextSessionState(sidecar.state);
   try {
-    result = await runner.switchPiSession(session.path);
+    result = await runner.switchPiSession(session.path, restoreState);
   } catch (err) {
     return [`Error: failed to switch pi session ${session.id}: ${err.message}`];
   }
   if (result?.cancelled) return [`Resume pi session cancelled: ${session.id}`];
-  runner.engine.restoreSession(toContextSessionState(sidecar.state), null, { replace: true });
   return [`Resumed pi session: ${session.id}`];
 }
 

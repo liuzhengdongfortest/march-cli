@@ -59,8 +59,9 @@ export async function runSessionSourceCommandSmoke({ setupTmp, cleanup }) {
       },
     },
     canSwitchPiSession: () => true,
-    switchPiSession: async (path) => {
+    switchPiSession: async (path, restoreState) => {
       switchedPath = path;
+      runner.engine.restoreSession(restoreState, null, { replace: true });
       return { cancelled: false };
     },
     getSessionStats: () => ({ sessionId: "pi-slash" }),
@@ -76,6 +77,25 @@ export async function runSessionSourceCommandSmoke({ setupTmp, cleanup }) {
   assert.equal(restoredTranscript[0].assistantMessage, "ok");
   assert.equal(restored.turns[0].assistantMessage, "ok");
   assert.ok(switchedPath.endsWith("2026-05-10T00-00-00-000Z_pi.jsonl"));
+
+  restored = null;
+  const remoteRunner = {
+    ...runner,
+    engine: {
+      ...runner.engine,
+      restoreSession: () => {
+        throw new Error("remote runner session restore is not available");
+      },
+    },
+    switchPiSession: async (_path, restoreState) => {
+      restored = restoreState;
+      return { cancelled: false };
+    },
+  };
+  const remoteSession = await handleSessionSourceCommand("/session", { ui, runner: remoteRunner, sessionState, sessionsRoot, projectMarchDir });
+  assert.equal(remoteSession.handled, true);
+  assert.equal(restored.turns[0].assistantMessage, "ok");
+
   assert.equal((await handleSessionSourceCommand("/sessions", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
   assert.equal((await handleSessionSourceCommand("/sessions tree", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
   assert.equal((await handleSessionSourceCommand("/resume pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);

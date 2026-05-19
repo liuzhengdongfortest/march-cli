@@ -174,8 +174,9 @@ export async function runPiSessionSwitchCommandSmoke() {
   const runner = {
     canSwitchPiSession: () => true,
     engine,
-    switchPiSession: async (path) => {
+    switchPiSession: async (path, restoreState) => {
       switchedPath = path;
+      engine.restoreSession(restoreState, null, { replace: true });
       return { cancelled: false };
     },
   };
