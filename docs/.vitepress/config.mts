@@ -7,20 +7,19 @@ export default defineConfig({
   cleanUrls: true,
   lastUpdated: true,
   head: [
-    ['meta', { name: 'theme-color', content: '#181411' }],
+    ['meta', { name: 'theme-color', content: '#ffffff' }],
     ['meta', { property: 'og:title', content: 'March CLI' }],
     ['meta', { property: 'og:description', content: "Code with context that doesn't rot." }],
   ],
   themeConfig: {
-    logo: '/assets/march-banner.png',
     search: {
       provider: 'local',
     },
     nav: [
       { text: 'Start', link: '/start/install' },
       { text: 'Concepts', link: '/concepts/context' },
+      { text: 'Guides', link: '/start/configuration' },
       { text: 'Reference', link: '/reference/providers' },
-      { text: 'GitHub', link: 'https://github.com/decolua/march-cli' },
     ],
     sidebar: [
       {
@@ -55,8 +54,8 @@ export default defineConfig({
       { icon: 'github', link: 'https://github.com/decolua/march-cli' },
     ],
     footer: {
-      message: 'Released as source-first CLI software.',
-      copyright: 'Copyright © 2026 March CLI',
+      message: 'Free and open source. Source-first, terminal-native, and Markdown-based.',
+      copyright: 'March CLI documentation.',
     },
   },
 });

@@ -1,35 +1,32 @@
----
-layout: home
+# March CLI
 
-hero:
-  name: March CLI
-  text: Code with context that doesn't rot.
-  tagline: Terminal-native coding agent with context reconstruction, Markdown memory, shell tools, MCP, and web search.
-  actions:
-    - theme: brand
-      text: Install March
-      link: /start/install
-    - theme: alt
-      text: Learn the model
-      link: /concepts/context
+March is a terminal-native coding agent that rebuilds context for every turn, works directly in your repository, and stores long-term knowledge as Markdown.
 
-features:
-  - title: Fresh context every turn
-    details: March rebuilds prompt context from stable layers and current project facts instead of letting chat history grow forever.
-  - title: Markdown memory
-    details: Memories are ordinary Markdown files, recalled on demand as lightweight hints and opened only when needed.
-  - title: Terminal-native work
-    details: March reads, edits, runs commands, verifies changes, and reports exactly what happened.
----
+## Start Here
 
-## The shape
+- [Install March](/start/install)
+- [Configure providers](/start/configuration)
+- [Understand the context model](/concepts/context)
+- [Read about Markdown memory](/concepts/memory)
+
+## What March Keeps Simple
+
+| Area | Approach |
+| --- | --- |
+| Context | Reassembled from stable layers before each model call. |
+| Memory | Stored as ordinary Markdown files and recalled as lightweight hints. |
+| Tools | File edits, terminal commands, web access, and MCP integrations are explicit tool calls. |
+| Verification | Relevant tests or checks are run after code changes when practical. |
+
+## How A Turn Works
 
 ```text
 User request
-  → March context assembly
-  → Model call with tools
-  → Repository edits / terminal verification
-  → Concise final report
+  → Context assembly
+  → Model call
+  → Tool calls when needed
+  → Verification
+  → Final report
 ```
 
-March keeps the system small on purpose: source files are the truth, memory files are readable, and runtime caches are disposable.
+March is designed around readable source, clear boundaries, and disposable runtime state.
