@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runCommandExecToolSmoke() {
   console.log("--- smoke: command_exec tool ---");
-  const { createCommandExecTool, executeCommand, resolveCommandShell } = await import("../src/agent/command-exec-tool.mjs");
+  const { createCommandExecTool, executeCommand, killProcessTree, resolveCommandShell } = await import("../src/agent/command-exec-tool.mjs");
 
   assert.equal(resolveCommandShell("bash", "win32").name, "bash");
   assert.equal(resolveCommandShell("powershell", "linux").name, "powershell");
@@ -59,6 +59,27 @@ export async function runCommandExecToolSmoke() {
   assert.equal(timedOut.details.error, true);
   assert.ok(timedOut.content[0].text.includes("Command timed out"));
   assert.deepEqual(timeoutKills, [1234]);
+
+  const timeoutWithBrokenKill = await executeCommand({
+    cwd: "D:/repo",
+    command: "hang",
+    shell: "bash",
+    timeout: 0.001,
+    forceSettleMs: 1,
+    spawnImpl: createMockSpawn({ close: false }),
+    killProcessTreeImpl: () => { throw new Error("taskkill failed"); },
+  });
+  assert.equal(timeoutWithBrokenKill.details.error, true);
+  assert.ok(timeoutWithBrokenKill.content[0].text.includes("Command timed out"));
+
+  const taskkillCalls = [];
+  let taskkillUnref = false;
+  killProcessTree({ pid: 4321, kill: () => {} }, "win32", (bin, args, options) => {
+    taskkillCalls.push({ bin, args, options });
+    return { on: () => {}, unref: () => { taskkillUnref = true; } };
+  });
+  assert.deepEqual(taskkillCalls, [{ bin: "taskkill", args: ["/PID", "4321", "/T", "/F"], options: { windowsHide: true, stdio: "ignore" } }]);
+  assert.equal(taskkillUnref, true);
 
   const controller = new AbortController();
   controller.abort();

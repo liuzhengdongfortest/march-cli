@@ -90,8 +90,10 @@ function spawnCommand(spawnImpl, bin, args, options) {
 
     function terminateChild(error) {
       if (settled) return;
-      options.killProcessTreeImpl?.(child);
       forceTimer ??= setTimeout(() => finish({ error }), options.forceSettleMs);
+      try {
+        options.killProcessTreeImpl?.(child);
+      } catch {}
     }
 
     function finish(result) {
@@ -106,14 +108,16 @@ function spawnCommand(spawnImpl, bin, args, options) {
   });
 }
 
-function killProcessTree(child, platform = process.platform) {
+export function killProcessTree(child, platform = process.platform, spawnImpl = spawn) {
   if (!child?.pid) {
     child?.kill?.("SIGTERM");
     return;
   }
   if (platform === "win32") {
     try {
-      spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { windowsHide: true, stdio: "ignore", timeout: 5000 });
+      const killer = spawnImpl("taskkill", ["/PID", String(child.pid), "/T", "/F"], { windowsHide: true, stdio: "ignore" });
+      killer?.on?.("error", () => child.kill?.("SIGTERM"));
+      killer?.unref?.();
       return;
     } catch {}
   }
