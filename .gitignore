@@ -5,11 +5,9 @@
 
 node_modules
 docs/.vitepress/dist
+docs/.vitepress/cache
 pnpm-lock.yaml
 .gitignore
 pnpm-workspace.yaml
 
-
 .march
-
-**.vitepress
