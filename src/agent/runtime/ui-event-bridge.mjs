@@ -79,7 +79,9 @@ export function dispatchRuntimeUiEvent(ui, event) {
 }
 
 function writeDebugLines(ui, lines) {
-  if (!ui?.writeln || !Array.isArray(lines)) return undefined;
+  if (!Array.isArray(lines)) return undefined;
+  if (ui?.debugLines) return ui.debugLines(lines);
+  if (!ui?.writeln) return undefined;
   for (const line of lines) ui.writeln(line);
   return undefined;
 }
