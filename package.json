@@ -19,6 +19,9 @@
     "test:shell-runtime-real": "node test/shell-real-runtime.acceptance.mjs",
     "test:shell-tui-real": "node test/shell-tui-real.acceptance.mjs",
     "test:tui-key-real": "node test/tui-key-real.acceptance.mjs",
+    "docs:dev": "vitepress dev docs --host 127.0.0.1",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs --host 127.0.0.1",
     "context": "cd .. && node march-cli/bin/march.mjs --dump-context",
     "notify:experiment": "node scripts/notify-experiment.mjs",
     "publish:env": "node scripts/npm-publish-from-env.mjs"
@@ -39,5 +42,8 @@
   },
   "optionalDependencies": {
     "@vscode/ripgrep": "^1.18.0"
+  },
+  "devDependencies": {
+    "vitepress": "^1.6.4"
   }
 }

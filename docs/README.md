@@ -1,13 +1,18 @@
-# March CLI website
+# March CLI docs
 
-This folder is a static GitHub Pages site for March CLI.
+This folder is the VitePress documentation source for March CLI.
 
-## Publish on GitHub Pages
+## Local development
 
-1. Push this repository to GitHub.
-2. Open **Settings → Pages**.
-3. Set **Source** to the target branch.
-4. Set the folder to **/docs**.
-5. Save. GitHub Pages will serve `docs/index.html`.
+```bash
+npm run docs:dev
+```
 
-No build step is required.
+## Build
+
+```bash
+npm run docs:build
+npm run docs:preview
+```
+
+The site source lives in Markdown files under `docs/`; navigation and theme settings live in `docs/.vitepress/`.
