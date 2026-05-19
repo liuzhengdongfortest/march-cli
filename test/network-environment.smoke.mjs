@@ -23,5 +23,52 @@ export async function runNetworkEnvironmentSmoke() {
     noProxy: null,
   });
 
+  const { createIsolatedRunner } = await import("../src/agent/runtime/runner-process-factory.mjs");
+  const calls = [];
+  const runner = await createIsolatedRunner({
+    cwd: "D:/repo",
+    provider: "deepseek",
+    config: { network: { proxy: "http://proxy.example:8080", ca: "system" }, notifications: {} },
+  }, createFakeRuntimeDeps(calls));
+  assert.deepEqual(calls.slice(0, 4), [
+    ["network", { proxy: "http://proxy.example:8080", ca: "system" }],
+    ["ui"],
+    ["memory", undefined],
+    ["mcp", "D:/repo"],
+  ]);
+  assert.equal(calls.findIndex(([name]) => name === "network") < calls.findIndex(([name]) => name === "runner"), true);
+  await runner.dispose();
+  assert.deepEqual(calls.slice(-2), [["dispose"], ["memory-close"]]);
+
   console.log("  PASS");
+}
+
+function createFakeRuntimeDeps(calls) {
+  return {
+    peer: { notify: () => {} },
+    installNetworkEnvironment: (network) => calls.push(["network", network]),
+    createRemoteRuntimeUiClient: () => (calls.push(["ui"]), {}),
+    MarkdownMemoryStore: class {
+      constructor({ root }) { calls.push(["memory", root]); }
+      close() { calls.push(["memory-close"]); }
+    },
+    createMarkdownMemoryTools: () => ({}),
+    createCliShellRuntime: () => ({}),
+    initializeMcp: async ({ projectDir }) => {
+      calls.push(["mcp", projectDir]);
+      return { mcpTools: [], mcpInjections: [], clientManager: {} };
+    },
+    createWebToolsFromConfig: () => (calls.push(["web"]), {}),
+    createLogger: () => ({}),
+    installProcessLogHandlers: () => calls.push(["log-handlers"]),
+    resolvePiSessionManager: () => ({}),
+    createMarchAuthStorage: () => ({ authStorage: {} }),
+    createPermissionController: () => ({}),
+    createModelContextDumper: () => ({}),
+    createDesktopTurnNotifier: () => ({}),
+    createRunner: async () => {
+      calls.push(["runner"]);
+      return { dispose: async () => calls.push(["dispose"]) };
+    },
+  };
 }
