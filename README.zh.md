@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/march-banner.png" alt="March CLI banner" width="800">
+  <img src="docs/assets/march-banner.svg" alt="March CLI banner" width="800">
 </p>
 
 <p align="center"><strong>忘记 Skill，拥抱记忆，让你的模型永远工作在甜点区。</strong></p>

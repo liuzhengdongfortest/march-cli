@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/march-banner.png" alt="March CLI banner" width="800">
+  <img src="docs/assets/march-banner.svg" alt="March CLI banner" width="800">
 </p>
 
 <p align="center"><strong>Forget Skills. Embrace Memory. Keep your model in the sweet spot.</strong></p>
