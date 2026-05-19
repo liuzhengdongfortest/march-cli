@@ -1,3 +1,12 @@
 .env
 .npmrc.local
 *.tgz
+
+
+node_modules
+pnpm-lock.yaml
+.gitignore
+pnpm-workspace.yaml
+
+
+.march
