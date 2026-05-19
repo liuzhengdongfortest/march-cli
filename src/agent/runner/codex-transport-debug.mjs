@@ -1,4 +1,5 @@
 import { getOpenAICodexWebSocketDebugStats } from "@earendil-works/pi-ai/openai-codex-responses";
+import { getCodexWebSocketLastEvent } from "./codex-websocket-event-debug.mjs";
 
 export function getCodexTransportDebugSnapshot(session) {
   if (!isCodexTransportDebugEnabled()) return null;
@@ -38,6 +39,7 @@ function formatCodexTransportDebugFields(sessionId, before, after) {
     lastInputItems: after?.lastInputItems ?? 0,
     lastDeltaInputItems: after?.lastDeltaInputItems ?? 0,
     lastWebSocketError: after?.lastWebSocketError ?? null,
+    lastWebSocketEvent: getCodexWebSocketLastEvent(sessionId),
     hasStats: Boolean(after),
   };
 }
@@ -51,8 +53,31 @@ function formatCodexTransportDebugLines(fields) {
     `  modes full=${fields.fullContextRequests} delta=${fields.deltaRequests} cached=${fields.cachedContextRequests} storeTrue=${fields.storeTrueRequests}`,
     `  fallback websocketFailures=${fields.websocketFailures} sseFallbacks=${fields.sseFallbacks} active=${fields.websocketFallbackActive}`,
     `  error lastWebSocketError=${formatDebugValue(fields.lastWebSocketError)}`,
+    ...formatWebSocketEventLines(fields.lastWebSocketEvent),
     `  lastInputItems=${fields.lastInputItems} lastDeltaInputItems=${fields.lastDeltaInputItems}`,
   ];
+}
+
+function formatWebSocketEventLines(events) {
+  if (!events) return ["  wsEvent none"];
+  return [
+    ...formatSingleWebSocketEvent("wsEvent", events.lastEvent),
+    ...formatSingleWebSocketEvent("wsError", events.lastErrorEvent),
+    ...formatSingleWebSocketCloseEvent(events.lastCloseEvent),
+  ];
+}
+
+function formatSingleWebSocketEvent(prefix, event) {
+  if (!event) return [`  ${prefix} none`];
+  return [
+    `  ${prefix} phase=${formatDebugValue(event.phase)} type=${formatDebugValue(event.type)} keys=${formatDebugValue(event.eventKeys)} readyState=${formatDebugValue(event.readyState)}`,
+    `  ${prefix} errorName=${formatDebugValue(event.errorName)} errorMessage=${formatDebugValue(event.errorMessage)} errorCode=${formatDebugValue(event.errorCode)} errorString=${formatDebugValue(event.errorString)} eventMessage=${formatDebugValue(event.eventMessage)}`,
+  ];
+}
+
+function formatSingleWebSocketCloseEvent(event) {
+  if (!event) return ["  wsClose none"];
+  return [`  wsClose code=${formatDebugValue(event.closeCode)} reason=${formatDebugValue(event.closeReason)} wasClean=${formatDebugValue(event.closeWasClean)} readyState=${formatDebugValue(event.readyState)}`];
 }
 
 function formatDebugValue(value) {
