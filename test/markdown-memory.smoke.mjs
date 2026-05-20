@@ -6,7 +6,7 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: markdown memory system ---");
   const { MarkdownMemoryStore, formatRecallHints } = await import("../src/memory/markdown-store.mjs");
   const { createMarkdownMemoryTools } = await import("../src/memory/markdown-tools.mjs");
-  const { formatMemoryHintLines } = await import("../src/cli/tui/recall-rendering.mjs");
+  const { formatMemoryHintLines, writeMemoryHint } = await import("../src/cli/tui/recall-rendering.mjs");
   const dir = setupTmp();
 
   const store = new MarkdownMemoryStore({
@@ -34,12 +34,21 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   assert.equal(userHints.length, 1);
   assert.equal(userHints[0].id, entry.id);
   assert.ok(formatRecallHints("user", userHints).includes("[memory_hint source=\"user\"]"));
-  assert.deepEqual(formatMemoryHintLines(userHints), [`◈ memory hint: ${entry.id} Memory hint dedup`]);
-  assert.deepEqual(formatMemoryHintLines([userHints[0], { id: "mem_other", name: "Other memory" }]), [
-    "◈ memory hint: 2 memories",
-    `  ${entry.id} Memory hint dedup`,
-    "  mem_other Other memory",
+  assert.deepEqual(formatMemoryHintLines(userHints), [
+    "✦ Memory Recall · 1 note",
+    "  • Memory hint dedup",
+    "    User recall uses a rolling suppression window.",
   ]);
+  assert.deepEqual(formatMemoryHintLines([userHints[0], { id: "mem_other", name: "Other memory" }]), [
+    "✦ Memory Recall · 2 notes",
+    "  • Memory hint dedup",
+    "    User recall uses a rolling suppression window.",
+    "  • Other memory",
+  ]);
+  const renderedHints = [];
+  writeMemoryHint({ output: { writeln: (line) => renderedHints.push(line) }, hints: userHints });
+  assert.match(renderedHints[0], /^\x1b\[38;2;214;162;58m✦ Memory Recall/);
+  assert.match(renderedHints[2], /^\x1b\[90m    User recall/);
 
   const assistantHints = store.recallForAssistant("memory hint dedup again", { currentProject: "march-cli" });
   assert.equal(assistantHints.length, 0);

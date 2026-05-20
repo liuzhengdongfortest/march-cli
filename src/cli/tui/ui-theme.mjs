@@ -16,9 +16,9 @@ const brightBlack = (s) => `\x1b[90m${s}${R}`;
 const brightRed = (s) => `\x1b[91m${s}${R}`;
 const brightGreen = (s) => `\x1b[92m${s}${R}`;
 const orange = (s) => `\x1b[38;2;245;167;66m${s}${R}`;
+const warmAmber = (s) => `\x1b[38;2;214;162;58m${s}${R}`;
 const softGreen = (s) => `\x1b[38;2;127;216;143m${s}${R}`;
 const violet = (s) => `\x1b[38;2;232;91;226m${s}${R}`;
-
 // ── Formatters ───────────────────────────────────────────────────────
 const bold = (s) => `${B}${s}${R}`;
 const dim = (s) => `${D}${s}${R}`;
@@ -135,7 +135,7 @@ export {
   R, B, D,
   black, red, green, yellow, blue, magenta, cyan, white,
   brightBlack, brightRed, brightGreen,
-  orange, softGreen, violet,
+  orange, warmAmber, softGreen, violet,
   bold, dim, inverse,
   fg256, bg256,
   // Semantic

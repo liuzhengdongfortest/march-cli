@@ -1,25 +1,28 @@
-import { brightBlack } from "./ui-theme.mjs";
+import { brightBlack, warmAmber } from "./ui-theme.mjs";
 
-const RECALL_ICON = "◈";
+const RECALL_ICON = "✦";
 
 export function formatMemoryHintLines(hints = []) {
   if (!hints.length) return [];
-  if (hints.length === 1) {
-    const hint = hints[0];
-    return [`${RECALL_ICON} memory hint: ${formatHint(hint)}`];
-  }
+  const noun = hints.length === 1 ? "note" : "notes";
   return [
-    `${RECALL_ICON} memory hint: ${hints.length} memories`,
-    ...hints.map((hint) => `  ${formatHint(hint)}`),
+    `${RECALL_ICON} Memory Recall · ${hints.length} ${noun}`,
+    ...hints.flatMap(formatHintLines),
   ];
 }
 
 export function writeMemoryHint({ output, hints = [] }) {
-  for (const line of formatMemoryHintLines(hints)) {
-    output.writeln(brightBlack(line));
-  }
+  const lines = formatMemoryHintLines(hints);
+  lines.forEach((line, index) => {
+    if (index === 0) output.writeln(warmAmber(line));
+    else if (line.startsWith("    ")) output.writeln(brightBlack(line));
+    else output.writeln(line);
+  });
 }
 
-function formatHint(hint) {
-  return [hint.id, hint.name].filter(Boolean).join(" ");
+function formatHintLines(hint) {
+  const title = hint.name || hint.id || "Untitled memory";
+  const lines = [`  • ${title}`];
+  if (hint.description) lines.push(`    ${hint.description}`);
+  return lines;
 }
