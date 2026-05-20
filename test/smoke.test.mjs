@@ -101,6 +101,13 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function stripTerminalControls(text) {
+  return String(text)
+    .replace(/\x1b\][^\u0007]*\u0007/g, "")
+    .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "")
+    .replace(/\x1b[=>]/g, "");
+}
+
 // ── 1. CLI args parsing ──────────────────────────────────────────────
 
 {
@@ -225,6 +232,41 @@ await runStreamDeltaBufferSmoke();
   terminal.onResize?.();
   await delay(100);
   assert.ok(terminal.writes.join("").includes("\x1b[3J"));
+  await ui.close();
+  console.log("  PASS");
+}
+
+{
+  console.log("--- smoke: TUI input preserves output scroll until submit ---");
+  const { createTuiUI } = await import("../src/cli/ui.mjs");
+  const terminal = new FakeTerminal();
+  terminal.columns = 40;
+  terminal.rows = 12;
+  const ui = createTuiUI({
+    terminal,
+    keybindings: { outputScrollUp: "Ctrl+P", outputScrollDown: "Ctrl+N" },
+  });
+  for (let i = 1; i <= 20; i += 1) ui.writeln(`line${i}`);
+  const submitted = ui.readline();
+  await delay(50);
+
+  terminal.writes = [];
+  terminal.input("\x10");
+  await delay(50);
+  assert.ok(stripTerminalControls(terminal.writes.join("")).includes("line16"));
+
+  terminal.writes = [];
+  terminal.input("a");
+  await delay(50);
+  assert.ok(!stripTerminalControls(terminal.writes.join("")).includes("line17"));
+
+  terminal.writes = [];
+  terminal.input("\r");
+  assert.equal(await submitted, "a");
+  await delay(50);
+  const submittedRender = stripTerminalControls(terminal.writes.join(""));
+  assert.ok(submittedRender.includes("line17"));
+  assert.ok(!submittedRender.includes("line16"));
   await ui.close();
   console.log("  PASS");
 }

@@ -1,6 +1,6 @@
 import { resolveAttachmentTokens, uniqueAttachmentToken, withLeadingSpace } from "../input/attachment-tokens.mjs";
 
-export function createTuiInputController({ editor, requestRender, historyStore = null }) {
+export function createTuiInputController({ editor, requestRender, historyStore = null, onSubmit = null }) {
   let onSubmitResolve = null;
   const attachmentTokens = new Map();
 
@@ -17,6 +17,7 @@ export function createTuiInputController({ editor, requestRender, historyStore =
           }
           clearSubmitState();
           attachmentTokens.clear();
+          onSubmit?.();
           resolve(resolvedText);
         };
       });

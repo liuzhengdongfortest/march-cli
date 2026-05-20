@@ -104,12 +104,6 @@ export function createTuiUI({
         if (copyKeyResult) return copyKeyResult;
         const dispatched = keybindingDispatcher.dispatch(data);
         if (dispatched) return dispatched;
-        // When output is scrolled up, the next render has fewer lines.
-        // On new input, reset scroll to tail so the editor stays at bottom.
-        if (output.scrollOffset > 0) {
-          output.resetScroll();
-          requestRender();
-        }
         if (shellDrawer.isInputActive()) {
           shellDrawer.sendInput(data);
           requestRender();
@@ -150,7 +144,12 @@ export function createTuiUI({
     retryStatus.end({ success, attempt, finalError });
   }
 
-  const inputController = createTuiInputController({ editor, requestRender, historyStore });
+  const resetOutputScrollOnSubmit = () => {
+    if (output.scrollOffset <= 0) return;
+    output.resetScroll();
+    requestRender();
+  };
+  const inputController = createTuiInputController({ editor, requestRender, historyStore, onSubmit: resetOutputScrollOnSubmit });
 
   return {
     readline: (_prompt) => {
