@@ -10,7 +10,8 @@ export class MainPaneLayout {
   render(width) {
     const safeWidth = Math.max(1, Math.trunc(width));
     const statusTopLines = this.statusBar.renderTop?.(safeWidth) ?? this.statusBar.render(safeWidth);
-    const rawEditorLines = this.editor.render(safeWidth);
+    const editorWidth = this.statusBar.inputContentWidth?.(safeWidth) ?? safeWidth;
+    const rawEditorLines = this.editor.render(Math.max(1, editorWidth));
     const editorLines = this.statusBar.renderInputLines?.(rawEditorLines, safeWidth)
       ?? rawEditorLines.map((line) => this.statusBar.renderInputLine?.(line, safeWidth) ?? line);
     const statusBottomLines = this.statusBar.renderBottom?.(safeWidth) ?? [];

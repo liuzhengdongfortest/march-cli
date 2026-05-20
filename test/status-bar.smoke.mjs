@@ -41,10 +41,13 @@ export async function runStatusBarSmoke() {
   const workingBottomPlain = stripAnsi(statusBar.renderBottom(64).at(-1));
   assert.ok(workingBottomPlain.trimStart().startsWith("⠋ Working · Do"));
   assert.ok(workingBottomPlain.trimEnd().endsWith("deepseek • medium"));
+  assert.equal(statusBar.inputContentWidth(80), 76);
   const inputLine = statusBar.renderInputLine("hello", 80);
   assert.equal(visibleWidth(inputLine), 79);
   assert.ok(inputLine.includes("\x1b[48;2;32;34;38m"));
   assert.ok(stripAnsi(inputLine).startsWith("▌hello"));
+  const edgeInput = `${"x".repeat(statusBar.inputContentWidth(80) - 2)}YZ`;
+  assert.ok(stripAnsi(statusBar.renderInputLine(edgeInput, 80)).includes(edgeInput));
   const cjkInputLine = statusBar.renderInputLines(["你好，我能复制嘛？:c"], 80).at(1);
   assert.equal(visibleWidth(cjkInputLine), 79);
   assert.ok(stripAnsi(cjkInputLine).startsWith("▌你好，我能复制嘛？:c"));
@@ -62,16 +65,18 @@ export async function runStatusBarSmoke() {
   statusBar.setText("next");
   assert.ok(visibleWidth(statusBar.render(8)[0]) <= 8);
   assert.equal(visibleWidth(statusBar.renderBottom(8).at(-1)), 7);
-
   const { MainPaneLayout } = await import("../src/cli/tui/layout/main-pane-layout.mjs");
   const layoutStatusBar = new StatusBar("Do | gpt-5-codex·medium | lsp:ts✓ | 11.3K", { cwd: "D:\\work\\march-cli" });
+  let editorRenderWidth = 0;
   const layout = new MainPaneLayout({
     output: { setViewportHeight: () => {}, render: () => ["out"], invalidate: () => {} },
     statusBar: layoutStatusBar,
-    editor: { render: () => ["────────", "hello", "────────"], invalidate: () => {} },
+    editor: { render: (width) => { editorRenderWidth = width; return ["────────", "hello", "────────"]; }, invalidate: () => {} },
     terminal: { rows: 9 },
   });
   const layoutLines = layout.render(80);
+  assert.equal(editorRenderWidth, layoutStatusBar.inputContentWidth(80));
+
   assert.ok(stripAnsi(layoutLines.at(-7)).includes("march-cli • LSP [ts] • 11.3K"));
   assert.ok(stripAnsi(layoutLines.at(-7)).indexOf("11.3K") < 32);
   assert.equal(stripAnsi(layoutLines.at(-6)), "");

@@ -45,6 +45,10 @@ export class StatusBar {
     return [`${left}${line}${right}`, ""];
   }
 
+  inputContentWidth(width) {
+    return maxInputContentWidth(width);
+  }
+
   renderInputLines(lines, width) {
     if (width <= 0) return [""];
     const { left, innerWidth, right } = insetForWidth(width);
@@ -62,9 +66,7 @@ export class StatusBar {
     if (width <= 0) return "";
     const paintWidth = inputPaintWidth(width);
     const prompt = isFirst ? statusBar.prompt(INPUT_PROMPT) : "  ";
-    const promptWidth = visibleWidth(stripAnsi(INPUT_PROMPT));
-    const maxContentWidth = Math.max(0, paintWidth - promptWidth - 2);
-    const content = clipToWidth(line, maxContentWidth);
+    const content = clipToWidth(line, maxInputContentWidth(width));
     return applyInputBackground(padToWidth(`${prompt}${content}`, paintWidth));
   }
 
@@ -106,6 +108,12 @@ function renderInputPaddingLine(width) {
 function inputPaintWidth(width) {
   const safeWidth = Math.max(1, Math.trunc(width));
   return safeWidth > 1 ? safeWidth - 1 : safeWidth;
+}
+
+function maxInputContentWidth(width) {
+  const paintWidth = inputPaintWidth(width);
+  const promptWidth = visibleWidth(stripAnsi(INPUT_PROMPT));
+  return Math.max(0, paintWidth - promptWidth - 2);
 }
 
 function applyInputBackground(line) {
