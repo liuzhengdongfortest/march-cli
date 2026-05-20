@@ -56,6 +56,8 @@ export function formatStatusLine({
     `source:${sessionSource}`,
   ];
   if (engine.sessionName) parts.push(`name:${engine.sessionName}`);
+  const remoteMemories = engine.remoteMemorySources ?? [];
+  if (remoteMemories.length > 0) parts.push(`remote-memory:${remoteMemories.map((source) => source.name).join(",")}`);
   parts.push(
     `model:${engine.modelId}`,
     `provider:${engine.provider}`,

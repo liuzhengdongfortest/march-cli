@@ -1,6 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
-import { spawnSync } from "node:child_process";
 import {
   expandTags,
   formatMemoryMarkdown,
@@ -12,10 +11,10 @@ import {
   slugify,
   walkMarkdownFiles,
 } from "./markdown/markdown-format.mjs";
-import { formatRecallHints, scoreEntry, toHint } from "./markdown/markdown-recall.mjs";
+import { scoreEntry, toHint } from "./markdown/markdown-recall.mjs";
 import { clearMarkdownMemoryIndex, loadMarkdownMemoryIndex, openMarkdownMemoryIndex, queryMarkdownMemoryIndex, replaceMarkdownMemoryIndex } from "./markdown/sqlite-index.mjs";
-import { resolveRipgrepCommand } from "./markdown/ripgrep.mjs";
 import { softDeleteMemoryFile } from "./markdown/markdown-delete.mjs";
+import { openMarkdownRoot, searchMarkdownRoot } from "./search.mjs";
 
 export { formatRecallHints } from "./markdown/markdown-recall.mjs";
 export { normalizeTags } from "./markdown/markdown-format.mjs";
@@ -138,30 +137,28 @@ export class MarkdownMemoryStore {
     return hints;
   }
 
-  searchRipgrep(query, { limit = 20 } = {}) {
+  searchRipgrep(query, { limit = 20, context = 2, syntax = "regex", case: caseMode = "smart", caseMode: explicitCaseMode = null, glob = [] } = {}) {
     this.ensureFresh();
-    const trimmed = String(query ?? "").trim();
-    if (!trimmed) return [];
-    const max = Math.max(1, Number(limit) || 20);
-    const paths = this.#activeMemoryPaths();
-    if (paths.length === 0) return [];
-    const rg = spawnSync(resolveRipgrepCommand(), ["--line-number", "--context", "1", "--color", "never", trimmed, ...paths], {
-      encoding: "utf8",
-      timeout: 10000,
-      windowsHide: true,
+    return searchMarkdownRoot({
+      root: this.root,
+      paths: this.#activeMemoryPaths(),
+      query,
+      limit,
+      context,
+      syntax,
+      caseMode: explicitCaseMode ?? caseMode,
+      glob,
     });
-    if (rg.error || (rg.status !== 0 && !rg.stdout)) return this.#fallbackSearch(trimmed, max, paths);
-    return rg.stdout.split(/\r?\n/).filter(Boolean).slice(0, max).map((line) => ({ line }));
   }
 
-  open(identifier) {
+  open(identifier, options = {}) {
     this.ensureFresh();
     const raw = String(identifier ?? "").trim();
     if (!raw) throw new Error("memory id or path is required");
     const entry = this.entries.get(raw);
     const path = entry ? entry.path : this.#resolveMemoryPath(raw);
-    if (!existsSync(path)) throw new Error(`memory not found: ${raw}`);
-    return { path, content: readFileSync(path, "utf8"), entry: entry ?? null };
+    const opened = openMarkdownRoot({ root: this.root, path, ...options });
+    return { ...opened, entry: entry ?? null };
   }
 
   save({ id = null, name = null, description = null, body = null, tags = null } = {}) {
@@ -271,16 +268,5 @@ export class MarkdownMemoryStore {
       .map((entry) => entry.path);
   }
 
-  #fallbackSearch(query, limit, paths = this.#activeMemoryPaths()) {
-    const matches = [];
-    for (const path of paths) {
-      if (!existsSync(path)) continue;
-      const lines = readFileSync(path, "utf8").split(/\r?\n/);
-      for (let i = 0; i < lines.length; i++) {
-        if (lines[i].includes(query)) matches.push({ line: `${path}:${i + 1}:${lines[i]}` });
-        if (matches.length >= limit) return matches;
-      }
-    }
-    return matches;
-  }
+
 }

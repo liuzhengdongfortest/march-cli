@@ -82,3 +82,27 @@ export function upsertWebSearchProvider({ path = globalConfigJsonPath(), id, api
   writeConfigJson(path, config);
   return config;
 }
+
+
+export function upsertRemoteMemorySource({ path = globalConfigJsonPath(), name, url, token = null }) {
+  const config = readConfigJson(path);
+  const remoteMemories = Array.isArray(config.remoteMemories) ? [...config.remoteMemories] : [];
+  const next = { name, url };
+  if (token) next.token = token;
+  const index = remoteMemories.findIndex((source) => source?.name === name);
+  if (index >= 0) remoteMemories[index] = { ...remoteMemories[index], ...next };
+  else remoteMemories.push(next);
+  config.remoteMemories = remoteMemories;
+  writeConfigJson(path, config);
+  return config;
+}
+
+export function removeRemoteMemorySource({ path = globalConfigJsonPath(), name }) {
+  const config = readConfigJson(path);
+  const remoteMemories = Array.isArray(config.remoteMemories) ? config.remoteMemories : [];
+  const next = remoteMemories.filter((source) => source?.name !== name);
+  if (next.length === remoteMemories.length) return false;
+  config.remoteMemories = next;
+  writeConfigJson(path, config);
+  return true;
+}

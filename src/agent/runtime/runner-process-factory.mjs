@@ -5,6 +5,7 @@ import { createMarchAuthStorage } from "../../auth/storage.mjs";
 import { createCliShellRuntime } from "../../shell/cli-runtime.mjs";
 import { MarkdownMemoryStore } from "../../memory/markdown-store.mjs";
 import { createMarkdownMemoryTools } from "../../memory/markdown-tools.mjs";
+import { normalizeRemoteMemorySources } from "../../memory/remote/config.mjs";
 import { initializeMcp } from "../../mcp/index.mjs";
 import { createWebToolsFromConfig } from "../../web/tools.mjs";
 import { createPermissionController } from "../../cli/permissions.mjs";
@@ -38,7 +39,8 @@ export async function createIsolatedRunner(options = {}, deps = {}) {
 
   const ui = d.createRemoteRuntimeUiClient(d.peer);
   const memoryStore = new d.MarkdownMemoryStore({ root: options.memoryRoot });
-  const memoryTools = d.createMarkdownMemoryTools(memoryStore);
+  const remoteMemorySources = normalizeRemoteMemorySources({ remoteMemories: options.remoteMemorySources ?? options.config?.remoteMemories ?? [] });
+  const memoryTools = d.createMarkdownMemoryTools(memoryStore, { remoteSources: remoteMemorySources });
   const shellRuntime = options.shellRuntime ? d.createCliShellRuntime({ cwd: options.cwd }) : null;
   const mcpInit = await d.initializeMcp({ projectDir: options.cwd });
   const logDir = options.logDir ?? (options.stateRoot ? join(options.stateRoot, "logs") : undefined);
@@ -57,6 +59,7 @@ export async function createIsolatedRunner(options = {}, deps = {}) {
     profilePaths: options.profilePaths,
     memoryStore,
     memoryTools,
+    remoteMemorySources,
     shellRuntime,
     mcpTools: mcpInit.mcpTools,
     mcpInjections: mcpInit.mcpInjections,

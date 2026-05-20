@@ -7,10 +7,11 @@ import { buildProfileLayers } from "./profiles.mjs";
 import { formatRecallHints } from "../memory/markdown-store.mjs";
 
 export class ContextEngine {
-  constructor({ cwd, modelId, provider = "deepseek", thinkingLevel = "medium", namespace = "", memoryRoot = null, profilePaths = null, shellRuntime = null, lspService = null, injections = [], maxTurns, trimBatch }) {
+  constructor({ cwd, modelId, provider = "deepseek", thinkingLevel = "medium", namespace = "", memoryRoot = null, remoteMemorySources = [], profilePaths = null, shellRuntime = null, lspService = null, injections = [], maxTurns, trimBatch }) {
     this.cwd = cwd;
     this.memoryRoot = memoryRoot;
     this.profilePaths = profilePaths;
+    this.remoteMemorySources = remoteMemorySources;
     this.modelId = modelId;
     this.provider = provider;
     this.thinkingLevel = thinkingLevel;
@@ -154,7 +155,7 @@ export class ContextEngine {
   // ── Private layers ──────────────────────────────────────────────────
 
   #buildSessionIdentity() {
-    return buildSessionIdentity({ cwd: this.cwd, workspaceRoot: this.cwd, memoryRoot: this.memoryRoot });
+    return buildSessionIdentity({ cwd: this.cwd, workspaceRoot: this.cwd, memoryRoot: this.memoryRoot, remoteMemorySources: this.remoteMemorySources });
   }
 
   #buildRecentChat() {

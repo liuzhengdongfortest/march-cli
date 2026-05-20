@@ -9,7 +9,6 @@ export function parseCliArgs(argv) {
       resume: { type: "string" },
       json: { type: "boolean" },
       extension: { type: "string", short: "e", multiple: true },
-      extension: { type: "string", short: "e", multiple: true },
       config: { type: "boolean" },
       "include-key": { type: "boolean" },
       "profile-only": { type: "boolean" },
@@ -19,12 +18,17 @@ export function parseCliArgs(argv) {
       "shell-runtime": { type: "boolean" },
       "no-shell-runtime": { type: "boolean" },
       "permission-mode": { type: "string" },
+      host: { type: "string" },
+      port: { type: "string" },
+      name: { type: "string" },
+      token: { type: "string" },
+      foreground: { type: "boolean" },
       help: { type: "boolean", short: "h" },
     },
     allowPositionals: true,
   });
 
-  const commandName = ["login", "provider", "websearch"].includes(positionals[0]) ? positionals[0] : null;
+  const commandName = ["login", "provider", "websearch", "memory"].includes(positionals[0]) ? positionals[0] : null;
 
   return {
     command: commandName ? { name: commandName, args: positionals.slice(1) } : null,
@@ -41,6 +45,11 @@ export function parseCliArgs(argv) {
     piRuntimeHost: values["pi-runtime-host"] ?? false,
     shellRuntime: values["no-shell-runtime"] ? false : true,
     permissionMode: values["permission-mode"] ?? "bypassPermissions",
+    host: values.host ?? null,
+    port: values.port ?? null,
+    name: values.name ?? null,
+    token: values.token ?? null,
+    foreground: values.foreground ?? false,
     help: values.help ?? false,
     prompt: commandName ? "" : positionals.join(" "),
   };
@@ -56,7 +65,11 @@ Usage:
   march provider --config    Configure provider credentials
   march provider share [id]  Share a provider profile
   march provider accept <token>
-  march websearch --config  Configure web search credentials
+  march websearch --config   Configure web search credentials
+  march memory serve [folder]
+  march memory add <url>
+  march memory list
+  march memory remove <name>
 
 Options:
   -m, --model <id>     Initial model ID override
@@ -74,6 +87,10 @@ Options:
   --permission-mode <mode>  Permission mode: default, bypassPermissions, dontAsk (default: bypassPermissions)
   -e, --extension <path>
                        Load a pi extension path in the default runtime host (repeatable)
+  --host <host>        With memory serve, bind host (default: 127.0.0.1)
+  --port <port>        With memory serve, bind port (default: 4317)
+  --name <name>        With memory serve/add, remote memory source name
+  --foreground         With memory serve, run server in current process
   -h, --help           Show this help
 `);
 }

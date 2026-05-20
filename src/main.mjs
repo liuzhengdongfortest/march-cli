@@ -35,7 +35,8 @@ import { runWebSearchConfigCommand } from "./web/config-command.mjs";
 import { createDesktopTurnNotifier } from "./notification/desktop-notifier.mjs";
 import { registerSuperGrokOAuthProvider } from "./supergrok/oauth-provider.mjs";
 import { installNetworkEnvironment } from "./network/environment.mjs";
-
+import { runMemoryCommand } from "./memory/command.mjs";
+import { normalizeRemoteMemorySources } from "./memory/remote/config.mjs";
 export async function run(argv) {
   const cwd = process.cwd();
   loadDotEnv(cwd);
@@ -68,7 +69,10 @@ export async function run(argv) {
     process.stderr.write("Usage: march websearch --config\n");
     return 1;
   }
-
+  if (args.command?.name === "memory") {
+    args.memoryRoot = resolveMemoryRoot(config.memoryRoot, join(homedir(), ".march"));
+    return await runMemoryCommand(args, { homeDir: homedir() });
+  }
   const stateRoot = join(homedir(), ".march");
   if (!existsSync(stateRoot)) mkdirSync(stateRoot, { recursive: true });
   const logger = createLogger({ logDir: join(stateRoot, "logs") });
@@ -107,7 +111,8 @@ export async function run(argv) {
   const profilePaths = defaultProfilePaths();
   ensureProfileFiles(profilePaths);
   const memoryStore = new MarkdownMemoryStore({ root: memoryRoot });
-  const memoryTools = createMarkdownMemoryTools(memoryStore);
+  const remoteMemorySources = normalizeRemoteMemorySources(config);
+  const memoryTools = createMarkdownMemoryTools(memoryStore, { remoteSources: remoteMemorySources });
   const currentProject = basename(cwd);
   const shellRuntime = args.shellRuntime ? createCliShellRuntime({ cwd }) : null;
 
@@ -124,16 +129,9 @@ export async function run(argv) {
   }
 
   const webTools = createWebToolsFromConfig(config);
-  const turnNotifier = createDesktopTurnNotifier({
-    enabled: Boolean(config.notifications?.turnEnd),
-    config: config.notifications,
-  });
-
-  // Permission controller
+  const turnNotifier = createDesktopTurnNotifier({ enabled: Boolean(config.notifications?.turnEnd), config: config.notifications });
   const permissionMode = args.permissionMode ?? MODE.BYPASS;
   const permissionController = createPermissionController({ mode: permissionMode });
-
-  // Session persistence — always pi mode
   const usePiSessions = true;
   const usePiRuntimeHost = true;
   const sessionSource = "pi";
@@ -179,12 +177,9 @@ export async function run(argv) {
     shellRuntime: Boolean(shellRuntime),
     lifecycleHooks: lifecycleManifests.hooks,
     lifecycleDiagnostics: lifecycleManifests.diagnostics,
-    modelContextDumper: {
-      enabled: args.dumpContext,
-      rootDir: contextDumpRoot,
-    },
+    modelContextDumper: { enabled: args.dumpContext, rootDir: contextDumpRoot },
+    remoteMemorySources,
   };
-
   const runner = await createRuntimeRunner({
     useRuntimeProcess,
     runnerOptions,
@@ -228,7 +223,7 @@ export async function run(argv) {
     modeState,
   });
 
-  // Resume session
+
   const startupResume = await resumeStartupSession({
     resumeId: args.resume,
     runner,
@@ -238,7 +233,7 @@ export async function run(argv) {
   });
   refreshStatusBar();
 
-  // Single-shot mode
+
   if (args.prompt) {
     turnRunning = true;
     try {

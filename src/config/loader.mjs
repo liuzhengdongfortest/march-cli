@@ -59,6 +59,7 @@ function mergeLayers(layers) {
     trimBatch: null,
     memoryRoot: null,
     notifications: { turnEnd: true, desktop: true, bell: false, command: null, minDurationMs: 0, sound: true },
+    remoteMemories: [],
   };
   for (const layer of layers) {
     if (!layer) continue;
@@ -87,8 +88,8 @@ function mergeLayers(layers) {
       };
     }
     if (layer.memoryRoot) result.memoryRoot = layer.memoryRoot;
+    if (Array.isArray(layer.remoteMemories)) result.remoteMemories = mergeRemoteMemories(result.remoteMemories, layer.remoteMemories);
   }
-
   return result;
 }
 
@@ -138,6 +139,18 @@ function mergeProviders(current, next) {
         ...(profile.auth ?? {}),
       },
     };
+  }
+  return merged;
+}
+
+
+function mergeRemoteMemories(current, next) {
+  const merged = [...(current ?? [])];
+  for (const source of next) {
+    if (!source || typeof source !== "object" || Array.isArray(source) || !source.name) continue;
+    const index = merged.findIndex((item) => item?.name === source.name);
+    if (index >= 0) merged[index] = { ...merged[index], ...source };
+    else merged.push({ ...source });
   }
   return merged;
 }
