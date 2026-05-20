@@ -1,4 +1,4 @@
-import { brightBlack, warmAmber } from "./ui-theme.mjs";
+import { brightBlack } from "./ui-theme.mjs";
 
 const RECALL_ICON = "✦";
 
@@ -13,9 +13,8 @@ export function formatRecallLines(hints = []) {
 
 export function writeRecall({ output, hints = [] }) {
   const lines = formatRecallLines(hints);
-  lines.forEach((line, index) => {
-    if (index === 0) output.writeln(warmAmber(line));
-    else if (line.startsWith("    ")) output.writeln(brightBlack(line));
+  lines.forEach((line) => {
+    if (line.startsWith("    ")) output.writeln(brightBlack(line));
     else output.writeln(line);
   });
 }

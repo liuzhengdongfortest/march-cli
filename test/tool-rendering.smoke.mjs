@@ -3,6 +3,7 @@ import { strict as assert } from "node:assert";
 export async function runToolRenderingSmoke() {
   console.log("--- smoke: tool rendering ---");
   const { formatToolStartLine, formatToolSuccessSummary, writeToolEnd, writeToolStart } = await import("../src/cli/tui/tool-rendering.mjs");
+  const { renderToolCardBlock } = await import("../src/cli/tui/output/tool-card-renderer.mjs");
 
   const lines = [];
   const output = { writeln: (line) => lines.push(line) };
@@ -98,7 +99,7 @@ export async function runToolRenderingSmoke() {
   });
   assert.equal(memoryBlocks.length, 1);
   assert.equal(memoryBlocks[0].summary, "Project Overview");
-
+  assert.match(renderToolCardBlock(memoryBlocks[0], 80).join("\n"), /\x1b\[38;2;214;162;58m▸ ◆ memory_open/);
   const { OutputBuffer } = await import("../src/cli/tui/output-buffer.mjs");
   const buffer = new OutputBuffer();
   const block = writeToolStart({ output: buffer, name: "grep", args: { pattern: "needle", path: "src" } });

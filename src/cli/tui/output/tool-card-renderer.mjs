@@ -1,5 +1,5 @@
 import { visibleWidth } from "@earendil-works/pi-tui";
-import { R, brightBlack, dim, red } from "../ui-theme.mjs";
+import { R, brightBlack, dim, red, warmAmber } from "../ui-theme.mjs";
 
 export function renderToolCardBlock(block, width) {
   const lines = [];
@@ -7,13 +7,19 @@ export function renderToolCardBlock(block, width) {
   const marker = block.state === "running" ? "▶" : block.expanded ? "▾" : "▸";
   const summary = block.summary ? ` · ${block.summary}` : "";
   const head = `${marker} ${block.title}${summary}`;
-  appendCardWrapped(lines, border, (block.isError ? red : dim)(head), width);
+  appendCardWrapped(lines, border, colorToolHead(block)(head), width);
 
   if (block.expanded && block.bodyLines?.length) {
     lines.push(border);
     for (const line of block.bodyLines) appendCardWrapped(lines, border, dim(line), width, "  ");
   }
   return lines;
+}
+
+function colorToolHead(block) {
+  if (block.isError) return red;
+  if (block.name === "memory_open") return warmAmber;
+  return dim;
 }
 
 function appendCardWrapped(lines, border, text, width, indent = "") {

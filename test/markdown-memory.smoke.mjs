@@ -47,7 +47,7 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   ]);
   const renderedHints = [];
   writeRecall({ output: { writeln: (line) => renderedHints.push(line) }, hints: userHints });
-  assert.match(renderedHints[0], /^\x1b\[38;2;214;162;58m✦ Memory Recall/);
+  assert.equal(renderedHints[0], "✦ Memory Recall · 1 note");
   assert.match(renderedHints[2], /^\x1b\[90m    User recall/);
 
   const assistantHints = store.recallForAssistant("recall hint dedup again", { currentProject: "march-cli" });
