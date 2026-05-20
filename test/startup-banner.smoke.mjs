@@ -16,7 +16,7 @@ export async function runStartupBannerSmoke() {
   assert.ok(rawPlain.includes("\x1b[32mDiscuss\x1b[0m"));
   const plain = stripAnsi(rawPlain);
   assert.ok(plain.includes("╭"));
-  assert.ok(plain.includes("█▙  ▟█"));
+  assert.ok(plain.includes("▛▀▀▀▀▀▜"));
   assert.ok(plain.includes(`March v${packageVersion}`));
   assert.ok(plain.includes("Describe a task to get started."));
   assert.ok(plain.includes("Tip: Tab to Discuss · /help for commands"));

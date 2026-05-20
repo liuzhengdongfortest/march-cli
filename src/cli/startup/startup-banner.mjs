@@ -15,9 +15,9 @@ export function formatStartupBanner({ cwd, modelId = "model?", thinkingLevel = "
   return [
     "",
     ...renderStartupCard([
-      `${cyan("  █▙  ▟█")}   ${white("March")} ${brightBlack(`v${packageVersion}`)}`,
-      `${cyan("  █▜▙▟▛█")}   ${brightBlack("Describe a task to get started.")}`,
-      `${cyan("  ▀    ▀")}`,
+      `${cyan("  ▛▀▀▀▀▀▜")}   ${white("March")} ${brightBlack(`v${packageVersion}`)}`,
+      `${cyan("  ▌ █  █ ▐")}   ${brightBlack("Describe a task to get started.")}`,
+      `${cyan("  ▀▘  ▀  ▀▘")}`,
       "",
       tip,
       brightBlack("March uses AI. Check for mistakes."),
