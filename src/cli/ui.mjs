@@ -20,7 +20,7 @@ import { createMouseSelectionController } from "./tui/input/mouse-selection-cont
 import { ScreenSelection } from "./tui/selection-screen.mjs";
 import { writeEditDiff } from "./tui/tui-diff-rendering.mjs";
 import { createTuiInputController } from "./tui/tui-input-controller.mjs";
-import { writeMemoryHint } from "./tui/recall-rendering.mjs";
+import { writeRecall } from "./tui/recall-rendering.mjs";
 import { writeToolEnd, writeToolStart } from "./tui/tool-rendering.mjs";
 import { EDITOR_THEME, brightBlack } from "./tui/ui-theme.mjs";
 import { createRenderScheduler } from "./tui/render/render-scheduler.mjs";
@@ -205,8 +205,8 @@ export function createTuiUI({
     status: (text) => {
       ensureStarted(); flushStreamDeltas(); retryStatus.stop(); spinnerStatus.stop(); output.setOverlayStatus([brightBlack(`● ${text}`)]); requestRender();
     },
-    memoryHint: ({ hints }) => {
-      ensureStarted(); flushStreamDeltas(); retryStatus.stop(); spinnerStatus.stop(); output.ensureNewline(); writeMemoryHint({ output, hints }); requestRender();
+    recall: ({ hints }) => {
+      ensureStarted(); flushStreamDeltas(); retryStatus.stop(); spinnerStatus.stop(); output.ensureNewline(); writeRecall({ output, hints }); requestRender();
     },
 
     clearOutput: () => {

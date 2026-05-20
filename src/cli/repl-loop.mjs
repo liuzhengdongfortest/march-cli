@@ -27,8 +27,8 @@ export async function runSingleShotPrompt({
   const modePrompt = appendModeReminder(prompt, modeState?.get?.());
   const fullPrompt = appendPromptBlocks(modePrompt, recallBlock, carryoverRecallBlock, shellHints);
   ui.writeln(formatUserDisplayMessage(prompt));
-  ui.memoryHint?.({ source: "user", hints: userRecallHints });
-  if (carryoverRecallHints.length > 0 && !carryoverAlreadyRendered) ui.memoryHint?.({ source: "assistant", hints: carryoverRecallHints });
+  ui.recall?.({ source: "user", hints: userRecallHints });
+  if (carryoverRecallHints.length > 0 && !carryoverAlreadyRendered) ui.recall?.({ source: "assistant", hints: carryoverRecallHints });
   refreshStatusBar.startWorking?.();
   try {
     await runner.runTurn(fullPrompt, prompt, { userRecallHints, currentProject });
@@ -149,8 +149,8 @@ async function runReplTurn({ prompt, args, runner, memoryStore, currentProject, 
   const fullPrompt = appendPromptBlocks(modePrompt, recallBlock, carryoverRecallBlock, shellHints);
   try {
     ui.writeln(formatUserDisplayMessage(prompt));
-    ui.memoryHint?.({ source: "user", hints: userRecallHints });
-    if (carryoverRecallHints.length > 0 && !carryoverAlreadyRendered) ui.memoryHint?.({ source: "assistant", hints: carryoverRecallHints });
+    ui.recall?.({ source: "user", hints: userRecallHints });
+    if (carryoverRecallHints.length > 0 && !carryoverAlreadyRendered) ui.recall?.({ source: "assistant", hints: carryoverRecallHints });
     setTurnRunning(true);
     refreshStatusBar.startWorking?.();
     await runner.runTurn(fullPrompt, prompt, { userRecallHints, currentProject });
@@ -178,6 +178,6 @@ function renderPendingAssistantRecallPreview({ runner, ui }) {
   if (runner.engine.hasRenderedPendingAssistantRecallHints?.()) return;
   const hints = runner.engine.peekPendingAssistantRecallHints?.() ?? [];
   if (hints.length === 0) return;
-  ui.memoryHint?.({ source: "assistant", hints });
+  ui.recall?.({ source: "assistant", hints });
   runner.engine.markPendingAssistantRecallHintsRendered?.();
 }

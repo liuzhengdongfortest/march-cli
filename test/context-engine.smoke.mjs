@@ -150,9 +150,9 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   assert.ok(ctx2.includes("looked around\n→ read · src\\context\\engine.mjs\nfinal context answer"));
   assert.ok(!ctx2.includes("tested the engine"));
   assert.ok(!ctx2.includes("WorkSummary"));
-  assert.ok(ctx2.includes('[memory_hint source="user"]'));
+  assert.ok(ctx2.includes('[recall source="user"]'));
   assert.ok(ctx2.includes("mem_user | User hint | User recall hint"));
-  assert.ok(ctx2.includes('[memory_hint source="assistant"]'));
+  assert.ok(ctx2.includes('[recall source="assistant"]'));
 
   engine.setPendingAssistantRecallHints([
     { id: "mem_carry", name: "Carryover", description: "Queued for the next turn." },

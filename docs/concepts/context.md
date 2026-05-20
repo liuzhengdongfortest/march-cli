@@ -6,7 +6,7 @@ March treats context as reconstructed state, not a growing transcript.
 Stable instructions
   → Session identity
   → Recent chat summary
-  → Memory hints
+  → Recall hints
   → Tool-driven reads of current project facts
 ```
 

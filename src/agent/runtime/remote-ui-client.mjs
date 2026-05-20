@@ -13,7 +13,7 @@ export function createRemoteRuntimeUiClient(peer) {
     retryEnd: (event) => peer.notify("uiEvent", { type: "retry_end", ...event }),
     status: (text) => peer.notify("uiEvent", { type: "status", text }),
     debugLines: (lines) => peer.notify("uiEvent", { type: "debug_lines", lines }),
-    memoryHint: ({ source, hints }) => peer.notify("uiEvent", { type: "memory_hint", source, hints }),
+    recall: ({ source, hints }) => peer.notify("uiEvent", { type: "recall", source, hints }),
     editDiff: (path, diffLines) => peer.notify("uiEvent", { type: "edit_diff", path, diffLines }),
     requestPermission: (request) => peer.call("uiRequest", { type: "permission_request", ...request }),
   };

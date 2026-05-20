@@ -16,6 +16,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   const sessionNameCalls = [];
   const promptCalls = [];
   const providerPayloads = [];
+  const customSteerMessages = [];
   const session = {
     agent: {
       state: { messages: [{ role: "user", content: "stale context" }] },
@@ -68,12 +69,15 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
         emit({ type: "message_update", assistantMessageEvent: { type: "thinking_end" } });
         emit({ type: "tool_execution_start", toolName: "read", args: { path: "a.txt" } });
         assert.equal(recallCalls, 1);
+        assert.equal(customSteerMessages.length, 1);
+        assert.ok(customSteerMessages[0].includes("[recall source=\"assistant\"]"));
         emit({ type: "tool_execution_end", toolName: "read", isError: false, result: "file body" });
         providerPayloads.push(await this.agent.onPayload({
           messages: [
             { role: "system", content: "Pi system" },
             { role: "assistant", content: null, tool_calls: [{ id: "call_1", type: "function", function: { name: "read", arguments: '{"path":"a.txt"}' } }] },
             { role: "tool", content: "file body", tool_call_id: "call_1" },
+            ...customSteerMessages.map((content) => ({ role: "user", content })),
           ],
         }, this.model));
         emit({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "draft text" } });
@@ -113,6 +117,13 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
       tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
       cost: 0,
     }),
+    sendCustomMessage(message, options) {
+      assert.equal(message.customType, "march.recall");
+      assert.equal(message.display, false);
+      assert.equal(options.deliverAs, "steer");
+      customSteerMessages.push(message.content);
+      return Promise.resolve();
+    },
     dispose: () => {},
   };
   function emit(event) {
@@ -148,7 +159,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
     thinkingEnd: (tokens) => calls.push(["thinkingEnd", tokens]),
     toolStart: (name, args) => calls.push(["toolStart", name, args]),
     toolEnd: (name, isError, result) => calls.push(["toolEnd", name, isError, result]),
-    memoryHint: ({ source, hints }) => calls.push(["memoryHint", source, hints.map((hint) => hint.id)]),
+    recall: ({ source, hints }) => calls.push(["recall", source, hints.map((hint) => hint.id)]),
   };
   const runner = await createRunner({
     cwd: dir,
@@ -182,13 +193,11 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.ok(providerPayloads[0].messages.at(-1).content.includes("[recent_chat]"));
   assert.ok(providerPayloads[0].messages.at(-1).content.includes("[current_user]\nhello"));
   assert.equal(countUserMessagesContaining(providerPayloads[0].messages, "hello"), 1);
-  assert.equal(providerPayloads[1].messages.at(-1).role, "user");
-  assert.ok(providerPayloads[1].messages.at(-1).content.includes("[memory_hint source=\"assistant\"]"));
-  assert.ok(providerPayloads[1].messages.at(-1).content.includes("mem_thinking | Thinking memory | Matched from thinking text."));
+  assert.ok(customSteerMessages[0].includes("mem_thinking | Thinking memory | Matched from thinking text."));
   assert.equal(runner.engine.turns[0].assistantRecallHints.length, 2);
   assert.equal(runner.engine.turns[0].assistantRecallHints[0].id, "mem_thinking");
   assert.equal(runner.engine.turns[0].assistantRecallHints[1].id, "mem_draft");
-  assert.ok(calls.some((call) => call[0] === "memoryHint" && call[1] === "assistant" && call[2].includes("mem_thinking") && !call[2].includes("mem_draft")));
+  assert.ok(calls.some((call) => call[0] === "recall" && call[1] === "assistant" && call[2].includes("mem_thinking") && !call[2].includes("mem_draft")));
   assert.equal(runner.engine.turns[0].assistantMessage, "draft text");
   assert.equal(runner.engine.turns[0].assistantContext, "12345678\n→ read · a.txt\ndraft text");
   assert.equal(runner.engine.sessionName, "hello");

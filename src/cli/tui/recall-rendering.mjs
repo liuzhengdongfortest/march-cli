@@ -2,7 +2,7 @@ import { brightBlack, warmAmber } from "./ui-theme.mjs";
 
 const RECALL_ICON = "✦";
 
-export function formatMemoryHintLines(hints = []) {
+export function formatRecallLines(hints = []) {
   if (!hints.length) return [];
   const noun = hints.length === 1 ? "note" : "notes";
   return [
@@ -11,8 +11,8 @@ export function formatMemoryHintLines(hints = []) {
   ];
 }
 
-export function writeMemoryHint({ output, hints = [] }) {
-  const lines = formatMemoryHintLines(hints);
+export function writeRecall({ output, hints = [] }) {
+  const lines = formatRecallLines(hints);
   lines.forEach((line, index) => {
     if (index === 0) output.writeln(warmAmber(line));
     else if (line.startsWith("    ")) output.writeln(brightBlack(line));

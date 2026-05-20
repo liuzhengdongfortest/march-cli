@@ -37,9 +37,9 @@ export function createMarkdownMemoryTools(store, { remoteSources = [] } = {}) {
     defineTool({
       name: "memory_open",
       label: "Memory Open",
-      description: "Open a Markdown memory by id or by path. Use this after memory hint or memory_search when you need more context. Local memories may be edited with edit_file; remote memories are read-only.",
+      description: "Open a Markdown memory by id or by path. Use this after recall hint or memory_search when you need more context. Local memories may be edited with edit_file; remote memories are read-only.",
       parameters: Type.Object({
-        id: Type.Optional(Type.String({ description: "Local memory id from memory hint, e.g. mem_..." })),
+        id: Type.Optional(Type.String({ description: "Local memory id from recall hint, e.g. mem_..." })),
         source: Type.Optional(Type.String({ description: "Memory source: omitted/local or a remote memory name" })),
         path: Type.Optional(Type.String({ description: "Path returned by memory_search" })),
         line: Type.Optional(Type.Number({ description: "Open around this 1-based line number" })),
@@ -70,13 +70,13 @@ export function createMarkdownMemoryTools(store, { remoteSources = [] } = {}) {
       name: "memory_save",
       label: "Memory Save",
       description:
-        "Create a Markdown memory or update whole fields on an existing memory. For targeted edits to an existing memory body or frontmatter, use memory_open to get the path, then edit_file. Before creating a new memory, merge related updates into an existing memory when they share the same topic or decision thread. New memories require name, description, body, and at least one tag because memory hints only use tags. When updating by id, omitted fields keep their existing values; passing tags replaces the full tag list.",
+        "Create a Markdown memory or update whole fields on an existing memory. For targeted edits to an existing memory body or frontmatter, use memory_open to get the path, then edit_file. Before creating a new memory, merge related updates into an existing memory when they share the same topic or decision thread. New memories require name, description, body, and at least one tag because recall hints only use tags. When updating by id, omitted fields keep their existing values; passing tags replaces the full tag list.",
       parameters: Type.Object({
         id: Type.Optional(Type.String({ description: "Existing memory id to update. Omit to create a new memory." })),
         name: Type.Optional(Type.String({ description: "Memory name. Required when creating." })),
-        description: Type.Optional(Type.String({ description: "Short natural-language summary shown in memory hint. Required when creating." })),
+        description: Type.Optional(Type.String({ description: "Short natural-language summary shown in recall hint. Required when creating." })),
         body: Type.Optional(Type.String({ description: "Markdown memory body. Required when creating." })),
-        tags: Type.Optional(Type.Array(Type.String(), { description: "Tags used for memory hint. Required and non-empty when creating; replaces tags when updating. Prefer stable retrieval keys: project name, technology, feature/domain, user/person, and decision topic. Use lowercase kebab-case when possible. Examples: ['march-cli', 'tooling', 'permissions'], ['memory', 'sqlite-index']." })),
+        tags: Type.Optional(Type.Array(Type.String(), { description: "Tags used for recall hint. Required and non-empty when creating; replaces tags when updating. Prefer stable retrieval keys: project name, technology, feature/domain, user/person, and decision topic. Use lowercase kebab-case when possible. Examples: ['march-cli', 'tooling', 'permissions'], ['memory', 'sqlite-index']." })),
       }),
       execute: async (_toolCallId, params) => {
         try {

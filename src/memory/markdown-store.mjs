@@ -59,7 +59,7 @@ export class MarkdownMemoryStore {
           continue;
         }
         if (!parsed.frontmatter.description) {
-          diagnostics.push({ type: "warning", path, message: "Memory file is missing description; excluded from memory hint recall" });
+          diagnostics.push({ type: "warning", path, message: "Memory file is missing description; excluded from passive recall" });
         }
         const tags = normalizeTags(parsed.frontmatter.tags ?? []);
         const entry = {

@@ -65,4 +65,4 @@
 - **Layer（上下文层）**：组成最终 prompt 的独立上下文模块。每个 layer 以 `[name]` 格式的 header 开头，后接该层对应的结构化文本。当前 layers 包括 `system_core`、`injections`、`session_identity`、`project_context`、`recent_chat` 五个。Context assembly 按固定顺序将这些 layers 组装为 prompt。
 - **Diagnostic（诊断信息）**：编译器、类型检查器、linter 或语言服务器对当前工作区产生的错误、警告和提示，等价于 VS Code Problems 面板里的结构化问题列表。
 - **Model-specific system prompt（模型专属系统提示）**：`system_core` 中针对具体 `modelId` 选择的 prompt 文件；用于适配不同模型的行为差异，不按 provider 区分。provider 只负责请求路由、鉴权和 transport，不参与 prompt 选择。
-- **Carryover assistant recall（跨轮助手回忆）**：某个 turn 的最终助手输出触发的 memory recall，但该 turn 已经没有后续 model call 可注入；March 必须把它保存为下一 turn 的待注入 memory hint，在下一次 context assembly 前加入当前 prompt，而不是只记录到 `recent_chat` 里。
+- **Carryover assistant recall（跨轮助手回忆）**：某个 turn 的最终助手输出触发的 memory recall，但该 turn 已经没有后续 model call 可注入；March 必须把它保存为下一 turn 的待注入 recall hint，在下一次 context assembly 前加入当前 prompt，而不是只记录到 `recent_chat` 里。

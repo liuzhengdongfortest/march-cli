@@ -50,7 +50,7 @@ export function createRuntimeUiClient(eventBus) {
     retryEnd: (event) => eventBus.emit({ type: "retry_end", ...event }),
     status: (text) => eventBus.emit({ type: "status", text }),
     debugLines: (lines) => eventBus.emit({ type: "debug_lines", lines }),
-    memoryHint: ({ source, hints }) => eventBus.emit({ type: "memory_hint", source, hints }),
+    recall: ({ source, hints }) => eventBus.emit({ type: "recall", source, hints }),
     editDiff: (path, diffLines) => eventBus.emit({ type: "edit_diff", path, diffLines }),
     requestPermission: (request) => eventBus.request({ type: "permission_request", ...request }),
   };
@@ -71,7 +71,7 @@ export function dispatchRuntimeUiEvent(ui, event) {
     case "retry_end": return ui.retryEnd?.(pickRetryEnd(event));
     case "status": return ui.status?.(event.text);
     case "debug_lines": return writeDebugLines(ui, event.lines);
-    case "memory_hint": return ui.memoryHint?.({ source: event.source, hints: event.hints });
+    case "recall": return ui.recall?.({ source: event.source, hints: event.hints });
     case "edit_diff": return ui.editDiff?.(event.path, event.diffLines);
     case "permission_request": return ui.requestPermission?.({ toolName: event.toolName, params: event.params, category: event.category });
     default: return undefined;

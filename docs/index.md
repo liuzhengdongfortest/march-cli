@@ -22,7 +22,7 @@ outline: false
     <article>
       <p class="kicker">Context</p>
       <h2>Fresh context, not stale chat.</h2>
-      <p>Each turn is assembled from stable layers: system rules, project context, session facts, recent chat, and recalled memory hints.</p>
+      <p>Each turn is assembled from stable layers: system rules, project context, session facts, recent chat, and recall hints.</p>
       <ul>
         <li>Repository-aware by default</li>
         <li>Clear dialog entries and tool calls</li>

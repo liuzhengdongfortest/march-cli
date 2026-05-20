@@ -6,7 +6,7 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: markdown memory system ---");
   const { MarkdownMemoryStore, formatRecallHints } = await import("../src/memory/markdown-store.mjs");
   const { createMarkdownMemoryTools } = await import("../src/memory/markdown-tools.mjs");
-  const { formatMemoryHintLines, writeMemoryHint } = await import("../src/cli/tui/recall-rendering.mjs");
+  const { formatRecallLines, writeRecall } = await import("../src/cli/tui/recall-rendering.mjs");
   const dir = setupTmp();
 
   const store = new MarkdownMemoryStore({
@@ -18,46 +18,46 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   assert.throws(() => store.save({ name: "No tags", description: "Missing tags", body: "Body" }), /tags are required/);
 
   const entry = store.save({
-    name: "Memory hint dedup",
+    name: "Recall hint dedup",
     description: "User recall uses a rolling suppression window.",
-    body: "# Memory hint dedup\n\nThe body is only opened explicitly.",
-    tags: ["memory/memory-hint", "memory/dedup", "Project/March CLI"],
+    body: "# Recall hint dedup\n\nThe body is only opened explicitly.",
+    tags: ["memory/recall-hint", "memory/dedup", "Project/March CLI"],
   });
 
   assert.ok(entry.id.startsWith("mem_"));
-  assert.deepEqual(entry.tags, ["memory/memory-hint", "memory/dedup", "project/march-cli"]);
-  assert.match(relative(dir, entry.path), /^2026[\\/]05[\\/]week2[\\/]2026-05-14-memory-hint-dedup\.md$/);
+  assert.deepEqual(entry.tags, ["memory/recall-hint", "memory/dedup", "project/march-cli"]);
+  assert.match(relative(dir, entry.path), /^2026[\\/]05[\\/]week2[\\/]2026-05-14-recall-hint-dedup\.md$/);
   assert.ok(existsSync(store.indexPath));
 
   store.beginTurn();
-  const userHints = store.recallForUser("我们继续讨论 memory hint 的去重", { currentProject: "march-cli" });
+  const userHints = store.recallForUser("我们继续讨论 recall hint 的去重", { currentProject: "march-cli" });
   assert.equal(userHints.length, 1);
   assert.equal(userHints[0].id, entry.id);
-  assert.ok(formatRecallHints("user", userHints).includes("[memory_hint source=\"user\"]"));
-  assert.deepEqual(formatMemoryHintLines(userHints), [
+  assert.ok(formatRecallHints("user", userHints).includes("[recall source=\"user\"]"));
+  assert.deepEqual(formatRecallLines(userHints), [
     "✦ Memory Recall · 1 note",
-    "  • Memory hint dedup",
+    "  • Recall hint dedup",
     "    User recall uses a rolling suppression window.",
   ]);
-  assert.deepEqual(formatMemoryHintLines([userHints[0], { id: "mem_other", name: "Other memory" }]), [
+  assert.deepEqual(formatRecallLines([userHints[0], { id: "mem_other", name: "Other memory" }]), [
     "✦ Memory Recall · 2 notes",
-    "  • Memory hint dedup",
+    "  • Recall hint dedup",
     "    User recall uses a rolling suppression window.",
     "  • Other memory",
   ]);
   const renderedHints = [];
-  writeMemoryHint({ output: { writeln: (line) => renderedHints.push(line) }, hints: userHints });
+  writeRecall({ output: { writeln: (line) => renderedHints.push(line) }, hints: userHints });
   assert.match(renderedHints[0], /^\x1b\[38;2;214;162;58m✦ Memory Recall/);
   assert.match(renderedHints[2], /^\x1b\[90m    User recall/);
 
-  const assistantHints = store.recallForAssistant("memory hint dedup again", { currentProject: "march-cli" });
+  const assistantHints = store.recallForAssistant("recall hint dedup again", { currentProject: "march-cli" });
   assert.equal(assistantHints.length, 0);
   store.endTurn();
 
   store.beginTurn();
-  const suppressed = store.recallForUser("memory hint", { currentProject: "march-cli", excludedIds: [entry.id] });
+  const suppressed = store.recallForUser("recall hint", { currentProject: "march-cli", excludedIds: [entry.id] });
   assert.equal(suppressed.length, 0);
-  const recalledAfterTurn = store.recallForUser("memory hint", { currentProject: "march-cli" });
+  const recalledAfterTurn = store.recallForUser("recall hint", { currentProject: "march-cli" });
   assert.equal(recalledAfterTurn.length, 1);
   store.endTurn();
 
@@ -91,7 +91,7 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   const openResult = await open.execute("t2", { id: entry.id });
   assert.ok(openResult.content[0].text.includes(`path: ${entry.path}`));
   assert.ok(openResult.content[0].text.includes("Use edit_file with this path for targeted edits."));
-  assert.ok(openResult.content[0].text.includes("# Memory hint dedup"));
+  assert.ok(openResult.content[0].text.includes("# Recall hint dedup"));
 
   const saveResult = await save.execute("t3", { id: entry.id, tags: ["memory/memory-hint", "memory/window"] });
   assert.ok(saveResult.content[0].text.includes("memory/window"));
@@ -101,8 +101,8 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   assert.equal(deleteResult.details.memory.status, "deleted");
   assert.ok(existsSync(entry.path));
   assert.ok(readFileSync(entry.path, "utf8").includes("status: deleted"));
-  assert.equal(store.recallForAssistant("memory hint window", { currentProject: "march-cli" }).length, 0);
-  const deletedSearch = await search.execute("t6", { query: "Memory hint dedup", limit: 5 });
+  assert.equal(store.recallForAssistant("recall hint window", { currentProject: "march-cli" }).length, 0);
+  const deletedSearch = await search.execute("t6", { query: "Recall hint dedup", limit: 5 });
   assert.ok(deletedSearch.content[0].text.includes("No memory files matched"));
   const deletedOpen = await open.execute("t7", { id: entry.id });
   assert.ok(deletedOpen.content[0].text.includes("status: deleted"));
@@ -114,7 +114,7 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
 
   store.close();
   const cachedStore = new MarkdownMemoryStore({ root: dir });
-  assert.equal(cachedStore.entries.get(entry.id).name, "Memory hint dedup");
+  assert.equal(cachedStore.entries.get(entry.id).name, "Recall hint dedup");
   cachedStore.close();
 
   cleanup(dir);

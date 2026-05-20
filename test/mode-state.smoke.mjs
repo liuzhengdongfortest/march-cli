@@ -58,7 +58,7 @@ export async function runModeStateSmoke() {
     currentProject: "project",
     ui: {
       writeln: (line) => uiLines.push(line),
-      memoryHint: ({ source, hints }) => uiLines.push(`${source}:${hints.map((hint) => hint.id).join(",")}`),
+      recall: ({ source, hints }) => uiLines.push(`${source}:${hints.map((hint) => hint.id).join(",")}`),
     },
     sessionState: { sessionDir: "unused" },
     refreshStatusBar() {},
@@ -71,7 +71,7 @@ export async function runModeStateSmoke() {
   assert.ok(!prompts[0].includes("[system]"));
   assert.ok(prompts[0].includes("You are in discuss mode"));
   assert.ok(carryoverTaken);
-  assert.ok(prompts[0].includes('[memory_hint source="assistant"]'));
+  assert.ok(prompts[0].includes('[recall source="assistant"]'));
   assert.ok(prompts[0].includes("mem_carry | Carryover | Matched after the previous final answer."));
   assert.ok(prompts[0].includes("[shell_hints]"));
   assert.ok(prompts[0].includes("sh1 dev running command: npm run dev cwd: D:/repo lines: 42"));

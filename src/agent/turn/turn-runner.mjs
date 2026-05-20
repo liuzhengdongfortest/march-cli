@@ -42,7 +42,7 @@ export async function runRunnerTurn({
       if (hints.length > 0) {
         midTurnRecallHints.push(...hints);
         queueMidTurnRecallHints(activeSession, hints, logger);
-        ui.memoryHint?.({ source: "assistant", hints });
+        ui.recall?.({ source: "assistant", hints });
       }
     }
   });
@@ -93,7 +93,7 @@ function queueMidTurnRecallHints(session, hints, logger) {
   const content = formatRecallHints("assistant", hints);
   if (!content) return;
   const injected = session.sendCustomMessage?.({
-    customType: "march.memory_hint",
+    customType: "march.recall",
     content,
     display: false,
     details: { source: "assistant" },
