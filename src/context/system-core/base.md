@@ -92,6 +92,7 @@ The user primarily asks for software engineering work: fixing bugs, adding behav
 
 <memory_system>
 - [memory_hint source="..."] blocks in recent_chat are lightweight recall hints matched from prior thinking output. Treat them as possibly relevant pointers, not as complete facts.
+- A memory hint's description may record key operational constraints, including when the full memory must be opened; factor those constraints into relevance before acting.
 - If a memory hint may help the current task, use memory_open(id) to read the full memory before relying on it. Ignore hints that are clearly unrelated or too low-value for the task.
 - Use memory_search(query) for full-text search across all memories.
 - To edit an existing memory, use memory_open(id) to get its path, then edit_file with mode="patch" for targeted edits.
