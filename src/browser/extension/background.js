@@ -82,60 +82,73 @@ async function readTab(params) {
   const tabId = parseTabId(params.tabId);
   if (!tabId) throw new Error("read requires tabId");
   const include = params.include ?? { text: true, elements: true };
-  const [injection] = await executeInTab(tabId, collectPage, [include]);
+  const page = await firstInjectionResult(tabId, collectPage, [include]);
   const tab = await chrome.tabs.get(tabId);
-  return { tab: formatTab(tab), page: injection.result };
+  return { tab: formatTab(tab), page };
 }
 
 async function runScript(params) {
   const tabId = parseTabId(params.tabId);
   if (!tabId) throw new Error("script requires tabId");
-  const [injection] = await executeInTab(tabId, executeUserCode, [params.code, params.awaitPromise ?? true]);
-  return { tabId: String(tabId), result: injection.result };
+  const result = await firstInjectionResult(tabId, executeUserCode, [params.code, params.awaitPromise ?? true]);
+  return { tabId: String(tabId), result };
 }
 
-function executeInTab(tabId, func, args) {
-  return chrome.scripting.executeScript({ target: { tabId }, func, args });
-}
-
-async function executeUserCode(code, awaitPromise) {
-  const value = new Function(code)();
-  return awaitPromise && value && typeof value.then === "function" ? await value : value;
-}
-
-function collectPage(include) {
-  const result = { title: document.title, url: location.href };
-  if (include.text !== false) result.text = document.body?.innerText ?? "";
-  if (include.html) result.html = document.documentElement?.outerHTML ?? "";
-  if (include.elements !== false) result.elements = collectElements();
+async function firstInjectionResult(tabId, func, args) {
+  const [injection] = await chrome.scripting.executeScript({ target: { tabId }, func, args });
+  if (!injection) throw new Error(`No script injection result for tab ${tabId}`);
+  const result = injection.result;
+  if (result && result.__marchError) throw new Error(result.__marchError);
   return result;
 }
 
-function collectElements() {
-  const selector = "a,button,input,textarea,select,[role=button],[role=link],[contenteditable=true]";
-  return [...document.querySelectorAll(selector)].slice(0, 300).map((el, index) => ({
-    index,
-    tag: el.tagName.toLowerCase(),
-    type: el.getAttribute("type") || undefined,
-    role: el.getAttribute("role") || undefined,
-    text: (el.innerText || el.value || el.getAttribute("aria-label") || "").trim().slice(0, 200),
-    placeholder: el.getAttribute("placeholder") || undefined,
-    href: el.href || undefined,
-    selector: stableSelector(el),
-  }));
+function executeUserCode(code, awaitPromise) {
+  try {
+    const value = new Function(code)();
+    if (!awaitPromise || !value || typeof value.then !== "function") return value;
+    return value.catch((err) => ({ __marchError: err?.stack || err?.message || String(err) }));
+  } catch (err) {
+    return { __marchError: err?.stack || err?.message || String(err) };
+  }
 }
 
-function stableSelector(el) {
-  if (el.id) return `#${CSS.escape(el.id)}`;
-  const name = el.getAttribute("name");
-  if (name) return `${el.tagName.toLowerCase()}[name="${CSS.escape(name)}"]`;
-  const parts = [];
-  for (let node = el; node && node.nodeType === Node.ELEMENT_NODE && parts.length < 4; node = node.parentElement) {
-    const tag = node.tagName.toLowerCase();
-    const same = [...(node.parentElement?.children ?? [])].filter((child) => child.tagName === node.tagName);
-    parts.unshift(same.length > 1 ? `${tag}:nth-of-type(${same.indexOf(node) + 1})` : tag);
+function collectPage(include) {
+  try {
+    const result = { title: document.title, url: location.href };
+    if (include.text !== false) result.text = document.body?.innerText ?? "";
+    if (include.html) result.html = document.documentElement?.outerHTML ?? "";
+    if (include.elements !== false) result.elements = collectPageElements();
+    return result;
+  } catch (err) {
+    return { __marchError: err?.stack || err?.message || String(err) };
   }
-  return parts.join(" > ");
+
+  function collectPageElements() {
+    const selector = "a,button,input,textarea,select,[role=button],[role=link],[contenteditable=true]";
+    return [...document.querySelectorAll(selector)].slice(0, 300).map((el, index) => ({
+      index,
+      tag: el.tagName.toLowerCase(),
+      type: el.getAttribute("type") || undefined,
+      role: el.getAttribute("role") || undefined,
+      text: (el.innerText || el.value || el.getAttribute("aria-label") || "").trim().slice(0, 200),
+      placeholder: el.getAttribute("placeholder") || undefined,
+      href: el.href || undefined,
+      selector: stableSelector(el),
+    }));
+  }
+
+  function stableSelector(el) {
+    if (el.id) return `#${CSS.escape(el.id)}`;
+    const name = el.getAttribute("name");
+    if (name) return `${el.tagName.toLowerCase()}[name="${CSS.escape(name)}"]`;
+    const parts = [];
+    for (let node = el; node && node.nodeType === Node.ELEMENT_NODE && parts.length < 4; node = node.parentElement) {
+      const tag = node.tagName.toLowerCase();
+      const same = [...(node.parentElement?.children ?? [])].filter((child) => child.tagName === node.tagName);
+      parts.unshift(same.length > 1 ? `${tag}:nth-of-type(${same.indexOf(node) + 1})` : tag);
+    }
+    return parts.join(" > ");
+  }
 }
 
 function formatTab(tab) {
