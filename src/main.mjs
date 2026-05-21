@@ -37,6 +37,9 @@ import { registerSuperGrokOAuthProvider } from "./supergrok/oauth-provider.mjs";
 import { installNetworkEnvironment } from "./network/environment.mjs";
 import { runMemoryCommand } from "./memory/command.mjs";
 import { normalizeRemoteMemorySources } from "./memory/remote/config.mjs";
+import { resolveMemoryRoot } from "./memory/root.mjs";
+import { runBrowserCommand } from "./browser/cli/command.mjs";
+import { ensureBrowserDaemon } from "./browser/client/lifecycle.mjs";
 export async function run(argv) {
   const cwd = process.cwd();
   loadDotEnv(cwd);
@@ -49,6 +52,7 @@ export async function run(argv) {
   }
 
   const config = loadConfig(cwd);
+  const stateRoot = join(homedir(), ".march");
   const useRuntimeProcess = process.env.MARCH_RUNTIME_PROCESS !== "0";
   installNetworkEnvironment(config.network);
   if (args.command?.name === "login") {
@@ -70,11 +74,19 @@ export async function run(argv) {
     return 1;
   }
   if (args.command?.name === "memory") {
-    args.memoryRoot = resolveMemoryRoot(config.memoryRoot, join(homedir(), ".march"));
+    args.memoryRoot = resolveMemoryRoot(config.memoryRoot, stateRoot);
     return await runMemoryCommand(args, { homeDir: homedir() });
   }
-  const stateRoot = join(homedir(), ".march");
+  if (args.command?.name === "browser") {
+    try {
+      return await runBrowserCommand(args, { stateRoot });
+    } catch (err) {
+      process.stderr.write(`Error: ${err.message}\n`);
+      return 1;
+    }
+  }
   if (!existsSync(stateRoot)) mkdirSync(stateRoot, { recursive: true });
+  await ensureBrowserDaemon({ stateRoot }).catch(() => {});
   const logger = createLogger({ logDir: join(stateRoot, "logs") });
   installProcessLogHandlers(logger);
   logger.event("process.start", {
@@ -223,7 +235,6 @@ export async function run(argv) {
     modeState,
   });
 
-
   const startupResume = await resumeStartupSession({
     resumeId: args.resume,
     runner,
@@ -232,7 +243,6 @@ export async function run(argv) {
     ui,
   });
   refreshStatusBar();
-
 
   if (args.prompt) {
     turnRunning = true;
@@ -283,12 +293,6 @@ export async function run(argv) {
   }
   logger.event("process.exit", { code: 0 });
   return 0;
-}
-
-function resolveMemoryRoot(configured, stateRoot) {
-  if (configured) return resolve(String(configured));
-  if (process.env.MARCH_MEMORY_ROOT) return resolve(process.env.MARCH_MEMORY_ROOT);
-  return resolve(stateRoot, "March Memories");
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) process.exitCode = await run(process.argv.slice(2));

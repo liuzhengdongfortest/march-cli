@@ -48,6 +48,9 @@ function cleanup(dir) {
   assert.equal(memoryServe.port, "4321");
   assert.equal(memoryServe.name, "team");
 
+  const browserInstall = parseCliArgs(["browser", "install"]);
+  assert.deepEqual(browserInstall.command, { name: "browser", args: ["install"] });
+
   assert.ok(!readFileSync("bin/march.mjs", "utf8").includes("process.exit("));
   assert.ok(!readFileSync("src/main.mjs", "utf8").includes("process.exit("));
   console.log("  PASS");

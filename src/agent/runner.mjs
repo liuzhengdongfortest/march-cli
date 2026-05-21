@@ -81,7 +81,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     });
   } else {
     const sessionOptions = resolveRunnerSessionOptions({
-      cwd, provider, modelId, modelRegistry, engine, ui: runtimeUi,
+      cwd, stateRoot, provider, modelId, modelRegistry, engine, ui: runtimeUi,
       memoryTools, shellRuntime, lspService, mcpTools, webTools, permissionController,
       authStorage: resolvedAuth, projectMarchDir,
       getCurrentModel: () => sessionBinding.get()?.model ?? selectedModel,

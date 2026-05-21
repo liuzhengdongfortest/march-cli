@@ -48,6 +48,7 @@ export async function createRunnerRuntimeHost({
       registerCustomProviders(activeModelRegistry, providers);
       return resolveRunnerSessionOptions({
         cwd: sessionCwd,
+        stateRoot,
         provider,
         modelId,
         modelRegistry: activeModelRegistry,
