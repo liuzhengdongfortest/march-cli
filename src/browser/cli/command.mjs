@@ -24,7 +24,8 @@ async function installBrowser({ stateRoot }) {
   process.stdout.write(`1. Chrome extensions page opened: chrome://extensions\n`);
   process.stdout.write(`2. Enable Developer mode.\n`);
   process.stdout.write(`3. Click Load unpacked.\n`);
-  process.stdout.write(`4. Select this folder:\n   ${extensionPath}\n\n`);
+  process.stdout.write(`4. Select this folder:\n   ${extensionPath}\n`);
+  process.stdout.write(`5. If the extension is already loaded, click its Reload button.\n\n`);
   process.stdout.write(`Daemon: ${state.url}\n`);
   process.stdout.write(`Extension WebSocket: ${state.wsUrl}\n`);
   return await printStatus({ stateRoot });

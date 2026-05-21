@@ -3,7 +3,7 @@
   "name": "March Browser Bridge",
   "version": "0.1.0",
   "description": "Connects the user's browser tabs to March CLI.",
-  "permissions": ["tabs", "scripting", "webNavigation", "storage"],
+  "permissions": ["tabs", "scripting", "webNavigation", "storage", "alarms"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js",

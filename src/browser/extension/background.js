@@ -2,19 +2,29 @@ const DAEMON_WS = "ws://127.0.0.1:4328/extension";
 let socket = null;
 let reconnectTimer = null;
 
-connect();
-chrome.runtime.onStartup.addListener(connect);
-chrome.runtime.onInstalled.addListener(connect);
+startBridge();
+chrome.runtime.onStartup.addListener(startBridge);
+chrome.runtime.onInstalled.addListener(startBridge);
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === "march-browser-reconnect") connect();
+});
+
+function startBridge() {
+  connect();
+  chrome.alarms.create("march-browser-reconnect", { periodInMinutes: 0.5 });
+}
 
 function connect() {
   if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return;
   socket = new WebSocket(DAEMON_WS);
+  socket.onopen = () => setBadge("on");
   socket.onmessage = (event) => handleMessage(event.data);
   socket.onclose = scheduleReconnect;
   socket.onerror = () => socket?.close();
 }
 
 function scheduleReconnect() {
+  setBadge("off");
   if (reconnectTimer) return;
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
@@ -34,6 +44,11 @@ async function handleMessage(data) {
 
 function send(payload) {
   if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(payload));
+}
+
+function setBadge(state) {
+  chrome.action.setBadgeText({ text: state === "on" ? "ON" : "" });
+  chrome.action.setBadgeBackgroundColor({ color: "#16a34a" });
 }
 
 async function dispatch(method, params) {
