@@ -79,7 +79,7 @@ function createExtensionBridge() {
     if (!entry) return;
     clearTimeout(entry.timer);
     pending.delete(msg.id);
-    msg.ok === false ? entry.reject(new Error(msg.error ?? "Browser extension request failed")) : entry.resolve(msg.result);
+    msg.ok === false ? entry.reject(new Error(formatExtensionError(msg.error))) : entry.resolve(msg.result);
   }
 
   function close() {
@@ -130,4 +130,10 @@ function readJson(req) {
 function sendJson(res, status, payload) {
   res.writeHead(status, { "content-type": "application/json" });
   res.end(JSON.stringify(payload));
+}
+
+function formatExtensionError(error) {
+  if (!error) return "Browser extension request failed";
+  if (typeof error === "string") return error;
+  return error.stack || error.message || JSON.stringify(error);
 }

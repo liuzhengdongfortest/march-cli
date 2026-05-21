@@ -1,12 +1,14 @@
 const DAEMON_WS = "ws://127.0.0.1:4328/extension";
 let socket = null;
 let reconnectTimer = null;
+let connecting = false;
 
 startBridge();
 chrome.runtime.onStartup.addListener(startBridge);
 chrome.runtime.onInstalled.addListener(startBridge);
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "march-browser-reconnect") connect();
+  if (alarm.name === "march-browser-keepalive") keepAlive();
 });
 
 function startBridge() {
@@ -15,15 +17,40 @@ function startBridge() {
 }
 
 function connect() {
-  if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return;
-  socket = new WebSocket(DAEMON_WS);
-  socket.onopen = () => setBadge("on");
+  if (connecting || socket?.readyState === WebSocket.OPEN || socket?.readyState === WebSocket.CONNECTING) return;
+  connecting = true;
+  try {
+    socket = new WebSocket(DAEMON_WS);
+  } catch {
+    connecting = false;
+    scheduleReconnect();
+    return;
+  }
+  socket.onopen = () => {
+    connecting = false;
+    setBadge("on");
+    scheduleKeepAlive();
+  };
   socket.onmessage = (event) => handleMessage(event.data);
   socket.onclose = scheduleReconnect;
   socket.onerror = () => socket?.close();
 }
 
+function keepAlive() {
+  if (socket?.readyState === WebSocket.OPEN) {
+    send({ type: "ping" });
+    scheduleKeepAlive();
+  } else {
+    scheduleReconnect();
+  }
+}
+
+function scheduleKeepAlive() {
+  chrome.alarms.create("march-browser-keepalive", { delayInMinutes: 0.4 });
+}
+
 function scheduleReconnect() {
+  connecting = false;
   setBadge("off");
   if (reconnectTimer) return;
   reconnectTimer = setTimeout(() => {
@@ -34,11 +61,12 @@ function scheduleReconnect() {
 
 async function handleMessage(data) {
   const request = JSON.parse(data);
+  if (!request.id) return;
   try {
     const result = await dispatch(request.method, request.params ?? {});
     send({ id: request.id, ok: true, result });
   } catch (err) {
-    send({ id: request.id, ok: false, error: err.message });
+    send({ id: request.id, ok: false, error: serializeError(err) });
   }
 }
 
@@ -62,104 +90,185 @@ async function dispatch(method, params) {
 async function openTab(params) {
   const action = params.action;
   const tabId = parseTabId(params.tabId);
-  if (action === "new") return { tab: formatTab(await chrome.tabs.create({ url: params.url, active: params.active ?? true })) };
+  if (action === "new") return { tab: formatTab(await chrome.tabs.create({ url: requiredUrl(params.url), active: params.active ?? true })) };
   if (!tabId) throw new Error(`${action} requires tabId`);
   if (action === "navigate") return { tab: formatTab(await chrome.tabs.update(tabId, { url: requiredUrl(params.url), active: params.active })) };
-  if (action === "focus") return { tab: formatTab(await chrome.tabs.update(tabId, { active: true })) };
+  if (action === "focus") return await focusTab(tabId);
   if (action === "close") { await chrome.tabs.remove(tabId); return { closed: String(tabId) }; }
   if (action === "reload") { await chrome.tabs.reload(tabId); return { reloaded: String(tabId) }; }
   if (action === "back" || action === "forward") return await navHistory(tabId, action);
   throw new Error(`Unknown open action: ${action}`);
 }
 
+async function focusTab(tabId) {
+  const tab = await chrome.tabs.update(tabId, { active: true });
+  if (tab.windowId) await chrome.windows.update(tab.windowId, { focused: true });
+  return { tab: formatTab(tab) };
+}
+
 async function navHistory(tabId, action) {
-  const code = action === "back" ? "history.back(); return true;" : "history.forward(); return true;";
-  await executeInTab(tabId, executeUserCode, [code, false]);
+  await executePageCode(tabId, action === "back" ? "history.back(); true" : "history.forward(); true");
   return { tabId: String(tabId), action };
 }
 
 async function readTab(params) {
-  const tabId = parseTabId(params.tabId);
-  if (!tabId) throw new Error("read requires tabId");
+  const tabId = requireTabId(params.tabId, "read");
   const include = params.include ?? { text: true, elements: true };
-  const page = await firstInjectionResult(tabId, collectPage, [include]);
+  const page = await executePageCode(tabId, buildReadCode(include));
   const tab = await chrome.tabs.get(tabId);
   return { tab: formatTab(tab), page };
 }
 
 async function runScript(params) {
-  const tabId = parseTabId(params.tabId);
-  if (!tabId) throw new Error("script requires tabId");
-  const result = await firstInjectionResult(tabId, executeUserCode, [params.code, params.awaitPromise ?? true]);
+  const tabId = requireTabId(params.tabId, "script");
+  const result = await executePageCode(tabId, String(params.code ?? ""));
   return { tabId: String(tabId), result };
 }
 
-async function firstInjectionResult(tabId, func, args) {
-  const [injection] = await chrome.scripting.executeScript({ target: { tabId }, func, args });
-  if (!injection) throw new Error(`No script injection result for tab ${tabId}`);
-  const result = injection.result;
-  if (result && result.__marchError) throw new Error(result.__marchError);
-  return result;
+async function executePageCode(tabId, code) {
+  const wrapped = buildExecCode(code);
+  const injected = await executeViaScripting(tabId, wrapped).catch((err) => ({ ok: false, csp: true, error: serializeError(err) }));
+  if (injected?.ok) return injected.data;
+  if (!injected?.csp) throwErrorResult(injected);
+  const cdp = await executeViaCdp(tabId, wrapped).catch((err) => ({ ok: false, error: serializeError(err) }));
+  if (cdp?.ok) return cdp.data;
+  throwErrorResult(cdp);
 }
 
-function executeUserCode(code, awaitPromise) {
-  try {
-    const value = new Function(code)();
-    if (!awaitPromise || !value || typeof value.then !== "function") return value;
-    return value.catch((err) => ({ __marchError: err?.stack || err?.message || String(err) }));
-  } catch (err) {
-    return { __marchError: err?.stack || err?.message || String(err) };
-  }
+async function executeViaScripting(tabId, source) {
+  const [injection] = await chrome.scripting.executeScript({
+    target: { tabId },
+    world: "MAIN",
+    func: (script) => eval(script),
+    args: [source],
+  });
+  if (!injection) return { ok: false, error: { message: `No script injection result for tab ${tabId}` } };
+  if (injection.result == null) return { ok: false, csp: true, error: { message: "Script returned no value" } };
+  return injection.result;
 }
 
-function collectPage(include) {
+async function executeViaCdp(tabId, expression) {
+  const target = { tabId };
+  let attached = false;
   try {
-    const result = { title: document.title, url: location.href };
-    if (include.text !== false) result.text = document.body?.innerText ?? "";
-    if (include.html) result.html = document.documentElement?.outerHTML ?? "";
-    if (include.elements !== false) result.elements = collectPageElements();
-    return result;
-  } catch (err) {
-    return { __marchError: err?.stack || err?.message || String(err) };
-  }
-
-  function collectPageElements() {
-    const selector = "a,button,input,textarea,select,[role=button],[role=link],[contenteditable=true]";
-    return [...document.querySelectorAll(selector)].slice(0, 300).map((el, index) => ({
-      index,
-      tag: el.tagName.toLowerCase(),
-      type: el.getAttribute("type") || undefined,
-      role: el.getAttribute("role") || undefined,
-      text: (el.innerText || el.value || el.getAttribute("aria-label") || "").trim().slice(0, 200),
-      placeholder: el.getAttribute("placeholder") || undefined,
-      href: el.href || undefined,
-      selector: stableSelector(el),
-    }));
-  }
-
-  function stableSelector(el) {
-    if (el.id) return `#${CSS.escape(el.id)}`;
-    const name = el.getAttribute("name");
-    if (name) return `${el.tagName.toLowerCase()}[name="${CSS.escape(name)}"]`;
-    const parts = [];
-    for (let node = el; node && node.nodeType === Node.ELEMENT_NODE && parts.length < 4; node = node.parentElement) {
-      const tag = node.tagName.toLowerCase();
-      const same = [...(node.parentElement?.children ?? [])].filter((child) => child.tagName === node.tagName);
-      parts.unshift(same.length > 1 ? `${tag}:nth-of-type(${same.indexOf(node) + 1})` : tag);
+    await chrome.debugger.attach(target, "1.3");
+    attached = true;
+    const response = await chrome.debugger.sendCommand(target, "Runtime.evaluate", {
+      expression,
+      awaitPromise: true,
+      returnByValue: true,
+    });
+    if (response.exceptionDetails) {
+      return { ok: false, error: { message: response.exceptionDetails.exception?.description || "CDP Runtime.evaluate failed" } };
     }
-    return parts.join(" > ");
+    return response.result?.value ?? { ok: true, data: undefined };
+  } finally {
+    if (attached) await chrome.debugger.detach(target).catch(() => {});
   }
+}
+
+function buildExecCode(code) {
+  return `(async () => {
+    function smartResult(value) {
+      if (value == null || typeof value !== "object") return value;
+      try { if (value.window === value && value.document) return "[Window: " + (value.location?.href || "about:blank") + "]"; } catch {}
+      if (typeof Node !== "undefined" && value.nodeType === Node.ELEMENT_NODE) return value.outerHTML;
+      if (typeof NodeList !== "undefined" && (value instanceof NodeList || value instanceof HTMLCollection)) {
+        return Array.from(value).slice(0, 300).map((item) => item?.nodeType === Node.ELEMENT_NODE ? item.outerHTML : String(item));
+      }
+      try {
+        return JSON.parse(JSON.stringify(value, (_key, item) => {
+          if (item && typeof item === "object") {
+            if (typeof Node !== "undefined" && item.nodeType === Node.ELEMENT_NODE) return item.outerHTML;
+            try { if (item.window === item && item.document) return "[Window]"; } catch {}
+          }
+          return item;
+        }));
+      } catch (err) {
+        return "[Unserializable: " + (err?.message || String(err)) + "]";
+      }
+    }
+    function executable(source) {
+      const lines = source.split(/\\r?\\n/);
+      let index = lines.length - 1;
+      while (index >= 0 && !lines[index].trim()) index--;
+      if (index < 0) return source;
+      const last = lines[index].trim();
+      if (/^(return\\b|let\\b|const\\b|var\\b|if\\b|for\\b|while\\b|switch\\b|try\\b|throw\\b|class\\b|function\\b|async\\b|import\\b|export\\b|\/\/|})/.test(last)) return source;
+      lines[index] = lines[index].match(/^(\\s*)/)[1] + "return " + last;
+      return lines.join("\\n");
+    }
+    try {
+      const source = ${JSON.stringify(code)}.trim();
+      const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+      let value;
+      if (/^return\\b/.test(source) || /\\n\\s*return\\b/.test(source)) {
+        value = await (new AsyncFunction(source))();
+      } else {
+        try {
+          value = eval(source);
+          if (value && typeof value.then === "function") value = await value;
+        } catch (err) {
+          if (err instanceof SyntaxError) value = await (new AsyncFunction(executable(source)))();
+          else throw err;
+        }
+      }
+      return { ok: true, data: smartResult(value) };
+    } catch (err) {
+      const message = err?.message || String(err);
+      return { ok: false, csp: /unsafe-eval|Content Security Policy|Refused to evaluate/i.test(message), error: { name: err?.name || "Error", message, stack: err?.stack || "" } };
+    }
+  })()`;
+}
+
+function buildReadCode(include) {
+  return `return (() => {
+    const include = ${JSON.stringify(include)};
+    const page = { title: document.title, url: location.href };
+    if (include.text !== false) page.text = document.body?.innerText || "";
+    if (include.html) page.html = document.documentElement?.outerHTML || "";
+    if (include.elements !== false) page.elements = Array.from(document.querySelectorAll("a,button,input,textarea,select,[role=button],[role=link],[contenteditable=true]")).slice(0, 300).map((el, index) => {
+      const tag = el.tagName.toLowerCase();
+      const text = (el.innerText || el.value || el.getAttribute("aria-label") || "").trim().slice(0, 200);
+      return { index, tag, type: el.getAttribute("type") || undefined, role: el.getAttribute("role") || undefined, text, placeholder: el.getAttribute("placeholder") || undefined, href: el.href || undefined, selector: selectorFor(el) };
+    });
+    return page;
+    function selectorFor(el) {
+      if (el.id) return "#" + CSS.escape(el.id);
+      const name = el.getAttribute("name");
+      if (name) return tagName(el) + "[name=\\\"" + CSS.escape(name) + "\\\"]";
+      const parts = [];
+      for (let node = el; node && node.nodeType === Node.ELEMENT_NODE && parts.length < 4; node = node.parentElement) {
+        const tag = tagName(node);
+        const siblings = Array.from(node.parentElement?.children || []).filter((child) => child.tagName === node.tagName);
+        parts.unshift(siblings.length > 1 ? tag + ":nth-of-type(" + (siblings.indexOf(node) + 1) + ")" : tag);
+      }
+      return parts.join(" > ");
+    }
+    function tagName(el) { return el.tagName.toLowerCase(); }
+  })()`;
+}
+
+function throwErrorResult(result) {
+  const error = result?.error;
+  if (typeof error === "string") throw new Error(error);
+  throw new Error(error?.stack || error?.message || "Browser script failed");
+}
+
+function serializeError(err) {
+  if (!err) return { message: "Unknown error" };
+  if (typeof err === "string") return { message: err };
+  return { name: err.name || "Error", message: err.message || String(err), stack: err.stack || "" };
 }
 
 function formatTab(tab) {
-  return {
-    id: String(tab.id),
-    windowId: tab.windowId,
-    active: tab.active,
-    title: tab.title,
-    url: tab.url,
-    status: tab.status,
-  };
+  return { id: String(tab.id), windowId: tab.windowId, active: tab.active, title: tab.title, url: tab.url, status: tab.status };
+}
+
+function requireTabId(value, action) {
+  const tabId = parseTabId(value);
+  if (!tabId) throw new Error(`${action} requires tabId`);
+  return tabId;
 }
 
 function parseTabId(value) {
