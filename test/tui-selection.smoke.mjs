@@ -60,6 +60,22 @@ export async function runTuiSelectionSmoke() {
   const codeStart = codeSelectable.lines.findIndex((line) => line.includes("╭"));
   const codeEnd = codeSelectable.lines.findIndex((line, index) => index > codeStart && line.includes("╰"));
   assert.equal(codeSelectable.copyText({ start: { row: codeStart, col: 0 }, end: { row: codeEnd, col: 80 } }), "const x = 1;");
+  assert.equal(codeSelectable.copyText({ start: { row: codeStart + 1, col: 0 }, end: { row: codeEnd - 1, col: 80 } }), "");
+
+  const wrappedCodeOutput = new OutputBuffer();
+  const wrappedCode = "const veryLongName = \"abcdefghijklmnopqrstuvwxyz\";";
+  wrappedCodeOutput.writeMarkdown(`\`\`\`js\n${wrappedCode}\n\`\`\``);
+  wrappedCodeOutput.sealCurrentText();
+  const wrappedCodeSelectable = wrappedCodeOutput.renderSelectable(24);
+  assert.equal(wrappedCodeSelectable.copyText({ start: { row: 0, col: 0 }, end: { row: wrappedCodeSelectable.lines.length - 1, col: 24 } }), wrappedCode);
+
+  const scrolledOutput = new OutputBuffer();
+  scrolledOutput.writeMarkdown("# Top\n\nline1\nline2\nline3\nline4\nline5");
+  scrolledOutput.sealCurrentText();
+  scrolledOutput.setViewportHeight(3);
+  scrolledOutput.scroll(1, { step: 2 });
+  const scrolledSelectable = scrolledOutput.renderSelectable(40);
+  assert.equal(scrolledSelectable.copyText({ start: { row: 0, col: 0 }, end: { row: scrolledSelectable.lines.length - 1, col: 40 } }), "");
   const coloredSelection = new ScreenSelection();
   const colored = "\x1b[31malpha\x1b[0m";
   coloredSelection.setLines([colored]);

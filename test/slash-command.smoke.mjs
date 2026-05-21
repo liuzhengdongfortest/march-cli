@@ -245,7 +245,8 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(output.join("\n").includes("Copied last assistant response"));
   assert.equal(existsSync(join(sessionState.sessionDir, "session.json")), false);
   assert.equal((await handleSlashCommand("/compact", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
-  assert.equal((await handleSlashCommand("/mouse", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
+  assert.equal((await handleSlashCommand("/mouse", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, true);
+  assert.equal(output.at(-1), "Mouse selection is always enabled.");
   assert.equal((await handleSlashCommand("/sessions", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
   assert.equal((await handleSlashCommand("/resume pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
   assert.equal((await handleSlashCommand("/fork-pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);

@@ -139,6 +139,11 @@ export async function handleSlashCommand(trimmed, {
     return { handled: true };
   }
 
+  if (trimmed === "/mouse") {
+    ui.writeln("Mouse selection is always enabled.");
+    return { handled: true };
+  }
+
   const sessionSourceCommand = await handleSessionSourceCommand(trimmed, {
     ui,
     runner,
