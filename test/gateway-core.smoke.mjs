@@ -14,6 +14,7 @@ export async function runGatewayCoreSmoke({ setupTmp, cleanup }) {
     const { GatewayPlatformRegistry, createDefaultGatewayPlatformRegistry } = await import("../src/gateway/platform-registry.mjs");
     const { createTelegramPlatformAdapter, normalizeTelegramUpdate, splitTelegramLines } = await import("../src/gateway/platforms/telegram.mjs");
     const { createGatewayRunnerBridge } = await import("../src/gateway/runner-bridge.mjs");
+    const { createGatewayMessageQueue } = await import("../src/gateway/runtime/queue.mjs");
     const { runGatewaySetupCommand, upsertEnvFile } = await import("../src/gateway/setup/command.mjs");
     const gatewayConfig = normalizeGatewayConfig({
       gateway: {
@@ -116,14 +117,40 @@ export async function runGatewayCoreSmoke({ setupTmp, cleanup }) {
     assert.equal(fetchCalls.at(-1).body.reply_to_message_id, 11);
     assert.equal(fetchCalls.at(-1).body.text, "reply");
 
+    const queueGate = deferred();
+    const queueHandled = [];
+    const queueSent = [];
+    const queue = createGatewayMessageQueue({
+      handleMessage: async (queuedMessage) => {
+        queueHandled.push(queuedMessage.text);
+        if (queuedMessage.text === "first") await queueGate.promise;
+        return { lines: [`done:${queuedMessage.text}`] };
+      },
+      send: async (queuedMessage, result) => {
+        queueSent.push({ text: queuedMessage.text, lines: result.lines });
+      },
+    });
+    assert.deepEqual(queue.enqueue({ chatId: "1001", messageId: "21", text: "first" }).lines, []);
+    await flushMicrotasks();
+    assert.deepEqual(queue.enqueue({ chatId: "1001", messageId: "22", text: "second" }).lines, ["Queued: 1 message ahead."]);
+    queueGate.resolve();
+    await flushMicrotasks();
+    assert.deepEqual(queueHandled, ["first", "second"]);
+    assert.deepEqual(queueSent, [
+      { text: "first", lines: ["done:first"] },
+      { text: "second", lines: ["done:second"] },
+    ]);
+
     const defaultRegistry = createDefaultGatewayPlatformRegistry({ fetchImpl: async () => jsonResponse({ ok: true, result: [] }) });
     assert.equal(defaultRegistry.has("telegram"), true);
 
     const platformRegistry = new GatewayPlatformRegistry();
     platformRegistry.register("telegram", () => ({
       async start({ handleMessage }) {
-        await handleMessage({ platform: "telegram", chatId: "1001", userId: "42", text: "/mode" });
+        await handleMessage({ platform: "telegram", chatId: "1001", userId: "42", messageId: "31", text: "/mode" });
+        await flushMicrotasks();
       },
+      async send() {},
     }));
     const stdout = createWritableCapture();
     const stderr = createWritableCapture();
@@ -194,6 +221,22 @@ function jsonResponse(data, { status = 200 } = {}) {
     statusText: status === 200 ? "OK" : "Error",
     async json() { return data; },
   };
+}
+
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+  return { promise, resolve, reject };
+}
+
+async function flushMicrotasks() {
+  await Promise.resolve();
+  await Promise.resolve();
+  await new Promise((resolve) => setImmediate(resolve));
 }
 
 function createFakeSwitchingRunner() {
