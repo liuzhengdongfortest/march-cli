@@ -83,8 +83,13 @@ if (!verboseSmoke) {
     originalLog("\nSmoke log before failure:");
     for (const line of smokeLog) originalLog(line);
   };
-  process.once("uncaughtException", dumpSmokeLog);
-  process.once("unhandledRejection", dumpSmokeLog);
+  const markAsyncFailure = (err) => {
+    process.exitCode = 1;
+    dumpSmokeLog();
+    if (err) originalLog(err?.stack ?? String(err));
+  };
+  process.once("uncaughtException", markAsyncFailure);
+  process.once("unhandledRejection", markAsyncFailure);
 }
 
 function setupTmp() {

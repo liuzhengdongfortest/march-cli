@@ -1,44 +1,44 @@
 import { strict as assert } from "node:assert";
-import { join } from "node:path";
 
 export async function runMemorySystemSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: memory system ---");
   const dir = setupTmp();
-  const dbPath = join(dir, "memory.db");
 
-  const { openDatabase, addGlossaryKeyword } = await import("../src/memory/database.mjs");
-  const db = openDatabase(dbPath);
-  assert.ok(db);
+  try {
+    const { MarkdownMemoryStore } = await import("../src/memory/markdown-store.mjs");
+    const store = new MarkdownMemoryStore({
+      root: dir,
+      now: () => new Date("2026-05-21T10:00:00.000Z"),
+    });
 
-  const { GraphService } = await import("../src/memory/graph.mjs");
-  const { ChangesetStore } = await import("../src/memory/snapshot.mjs");
-  const { SearchIndexer } = await import("../src/memory/search.mjs");
+    try {
+      const entry = store.save({
+        name: "Memory smoke",
+        description: "Current memory system smoke coverage.",
+        body: "# Memory smoke\n\nThe current memory system stores markdown files and indexes recall terms.",
+        tags: ["memory-system", "smoke"],
+      });
+      assert.ok(entry.id.startsWith("mem_"));
 
-  const changesetStore = new ChangesetStore(db);
-  const searchIndexer = new SearchIndexer(db);
-  const graph = new GraphService(db, { changesetStore, searchIndexer });
+      const searchResults = store.searchRipgrep("markdown files", { limit: 5 });
+      assert.ok(searchResults.some((item) => item.path.endsWith("memory-smoke.md")));
 
-  const result = graph.createMemory("", "test content", 0, { domain: "boot" });
-  assert.ok(result);
-  assert.ok(result.node_uuid);
-  assert.ok(result.id);
+      const opened = store.open(entry.id);
+      assert.equal(opened.entry.id, entry.id);
+      assert.ok(opened.content.includes("# Memory smoke"));
 
-  const nodeUuid = result.node_uuid;
-  addGlossaryKeyword(db, "hello", nodeUuid);
-  assert.ok(true);
-
-  searchIndexer.index(nodeUuid, "test content with unique keywords", "boot");
-  const results = searchIndexer.search("unique");
-  assert.ok(results.length > 0);
-
-  const history = changesetStore.getHistory(nodeUuid);
-  assert.ok(history.length > 0);
-
-  const diag = graph.getDiagnostics();
-  assert.ok(typeof diag === "object");
-
-  db.close();
-  cleanup(dir);
+      store.beginTurn();
+      const hints = store.recallForUser("memory system smoke", { currentProject: "march-cli" });
+      assert.equal(hints.length, 1);
+      assert.equal(hints[0].id, entry.id);
+      assert.equal(store.recallForAssistant("memory system smoke", { currentProject: "march-cli" }).length, 0);
+      store.endTurn();
+    } finally {
+      store.close();
+    }
+  } finally {
+    cleanup(dir);
+  }
   console.log("  PASS");
 }
 
