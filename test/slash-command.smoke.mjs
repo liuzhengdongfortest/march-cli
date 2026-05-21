@@ -6,6 +6,7 @@ import { savePiSessionSidecar } from "../src/session/sidecar.mjs";
 export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: slash command handling ---");
   const { handleSlashCommand } = await import("../src/cli/slash-commands.mjs");
+  const { createModeState } = await import("../src/cli/input/mode-state.mjs");
   const output = [];
   let clearOutputCount = 0;
   const ui = { writeln: (text) => output.push(text), clearOutput: () => { clearOutputCount++; output.length = 0; } };
@@ -134,6 +135,20 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(!output.join("\n").includes("/sessions"));
   assert.ok(!output.join("\n").includes("/resume"));
   assert.ok(!output.join("\n").includes("/fork-pi"));
+  assert.ok(output.join("\n").includes("/do"));
+  assert.ok(output.join("\n").includes("/discuss"));
+  const modeState = createModeState();
+  const discuss = await handleSlashCommand("/discuss", { ui, runner, sessionState, sessionsRoot, projectMarchDir, modeState });
+  assert.equal(discuss.handled, true);
+  assert.equal(modeState.get(), "discuss");
+  assert.ok(output.join("\n").includes("Mode: Discuss"));
+  const mode = await handleSlashCommand("/mode", { ui, runner, sessionState, sessionsRoot, projectMarchDir, modeState });
+  assert.equal(mode.handled, true);
+  assert.ok(output.join("\n").includes("Mode: Discuss"));
+  const doMode = await handleSlashCommand("/do", { ui, runner, sessionState, sessionsRoot, projectMarchDir, modeState });
+  assert.equal(doMode.handled, true);
+  assert.equal(modeState.get(), "do");
+  assert.ok(output.join("\n").includes("Mode: Do"));
   const hotkeys = await handleSlashCommand("/hotkeys", {
     ui,
     runner,

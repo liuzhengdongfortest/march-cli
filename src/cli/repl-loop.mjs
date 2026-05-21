@@ -87,6 +87,7 @@ export async function runInteractiveRepl({
       keybindingDiagnostics: keybindingConfig.diagnostics,
       promptTemplates: promptTemplateConfig.templates,
       promptTemplateDiagnostics: promptTemplateConfig.diagnostics,
+      modeState,
       renderStartupBanner,
       configHomeDir,
     });

@@ -23,6 +23,7 @@ export async function runConfigLoadingSmoke({ setupTmp, cleanup }) {
     xai: { webSearch: "auto", xSearch: "auto" },
   });
   assert.deepEqual(empty.notifications, { turnEnd: true, desktop: true, bell: false, command: null, minDurationMs: 0, sound: true });
+  assert.deepEqual(empty.gateway, { enabled: false, defaultWorkspace: null, workspaces: {}, platforms: {} });
 
   writeFileSync(join(dir, ".marchrc"), JSON.stringify({
     model: "test-model",
@@ -31,6 +32,12 @@ export async function runConfigLoadingSmoke({ setupTmp, cleanup }) {
     network: { proxy: "direct" },
     notifications: { turnEnd: false, bell: true, minDurationMs: 250 },
     hostedTools: { openai: { webSearch: false } },
+    gateway: {
+      enabled: true,
+      defaultWorkspace: "march-cli",
+      workspaces: { "march-cli": "./repo", hermes: { root: "../hermes-agent" } },
+      platforms: { telegram: { enabled: true, bot_token_env: "TELEGRAM_BOT_TOKEN" } },
+    },
     webSearch: { provider: "tavily", providers: { tavily: { apiKey: "tvly" } } },
   }));
   const withRc = loadConfig(dir, { homeDir: dir });
@@ -46,18 +53,33 @@ export async function runConfigLoadingSmoke({ setupTmp, cleanup }) {
   assert.equal(withRc.hostedTools.anthropic.webSearch, "auto");
   assert.equal(withRc.hostedTools.google.webSearch, "auto");
   assert.equal(withRc.hostedTools.xai.xSearch, "auto");
+  assert.equal(withRc.gateway.enabled, true);
+  assert.equal(withRc.gateway.defaultWorkspace, "march-cli");
+  assert.equal(withRc.gateway.workspaces["march-cli"], "./repo");
+  assert.equal(withRc.gateway.platforms.telegram.enabled, true);
   assert.equal(Object.hasOwn(withRc, "skills"), false);
 
   const marchDir = join(dir, ".march");
   mkdirSync(marchDir, { recursive: true });
   writeFileSync(join(marchDir, "config"), JSON.stringify({ model: "override-model" }));
-  writeFileSync(join(marchDir, "config.json"), JSON.stringify({ providers: { deepseek: { type: "deepseek", auth: { method: "apiKey", apiKey: "sk" } } }, webSearch: { provider: "brave", providers: { brave: { apiKey: "brave" } } } }));
+  writeFileSync(join(marchDir, "config.json"), JSON.stringify({ providers: { deepseek: { type: "deepseek", auth: { method: "apiKey", apiKey: "sk" } } }, gateway: { default_workspace: "hermes", workspaces: { other: "./other" }, platforms: { telegram: { allowed_users: ["123"] } } }, webSearch: { provider: "brave", providers: { brave: { apiKey: "brave" } } } }));
   const withBoth = loadConfig(dir, { homeDir: dir });
   assert.equal(withBoth.model, "override-model");
   assert.equal(withBoth.providers.deepseek.type, "deepseek");
   assert.equal(withBoth.webSearch.provider, "brave");
   assert.equal(withBoth.webSearch.providers.tavily.apiKey, "tvly");
   assert.equal(withBoth.webSearch.providers.brave.apiKey, "brave");
+  assert.equal(withBoth.gateway.defaultWorkspace, "hermes");
+  assert.equal(withBoth.gateway.workspaces["march-cli"], "./repo");
+  assert.equal(withBoth.gateway.workspaces.other, "./other");
+  assert.equal(withBoth.gateway.platforms.telegram.enabled, true);
+  assert.deepEqual(withBoth.gateway.platforms.telegram.allowed_users, ["123"]);
+
+  const { normalizeGatewayConfig, resolveGatewayWorkspace } = await import("../src/gateway/config.mjs");
+  const gatewayConfig = normalizeGatewayConfig(withBoth, { cwd: dir });
+  assert.equal(gatewayConfig.defaultWorkspace, "hermes");
+  assert.equal(resolveGatewayWorkspace(gatewayConfig).root, join(dir, "..", "hermes-agent"));
+  assert.equal(resolveGatewayWorkspace(gatewayConfig, "other").root, join(dir, "other"));
 
   const { loadDotEnv } = await import("../src/config/dotenv.mjs");
   const envDir = setupTmp();

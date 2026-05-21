@@ -11,6 +11,7 @@ import { handleSettingsCommand, parseSettingsCommand } from "../config/settings-
 import { handleSessionNameCommand, parseSessionNameCommand } from "./session/session-name-command.mjs";
 import { handleShellCommand, parseShellCommand } from "./shell/shell-command.mjs";
 import { handleProviderCommand, parseProviderCommand } from "./commands/provider-command.mjs";
+import { handleModeCommand, parseModeCommand } from "./commands/mode-command.mjs";
 import { formatHelpLines } from "./commands/help-command.mjs";
 
 export async function handleSlashCommand(trimmed, {
@@ -25,6 +26,7 @@ export async function handleSlashCommand(trimmed, {
   keybindingDiagnostics = [],
   promptTemplates = [],
   promptTemplateDiagnostics = [],
+  modeState = null,
   renderStartupBanner = null,
   settingsHomeDir,
   configHomeDir = settingsHomeDir,
@@ -63,6 +65,12 @@ export async function handleSlashCommand(trimmed, {
 
   if (trimmed === "/help") {
     for (const line of formatHelpLines()) ui.writeln(line);
+    return { handled: true };
+  }
+
+  const modeCommand = parseModeCommand(trimmed);
+  if (modeCommand.type !== "none") {
+    for (const line of handleModeCommand(modeCommand, { modeState })) ui.writeln(line);
     return { handled: true };
   }
 

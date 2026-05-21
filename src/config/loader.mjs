@@ -59,6 +59,7 @@ function mergeLayers(layers) {
     trimBatch: null,
     memoryRoot: null,
     notifications: { turnEnd: true, desktop: true, bell: false, command: null, minDurationMs: 0, sound: true },
+    gateway: { enabled: false, defaultWorkspace: null, workspaces: {}, platforms: {} },
     remoteMemories: [],
   };
   for (const layer of layers) {
@@ -88,6 +89,9 @@ function mergeLayers(layers) {
       };
     }
     if (layer.memoryRoot) result.memoryRoot = layer.memoryRoot;
+    if (layer.gateway && typeof layer.gateway === "object" && !Array.isArray(layer.gateway)) {
+      result.gateway = mergeGateway(result.gateway, layer.gateway);
+    }
     if (Array.isArray(layer.remoteMemories)) result.remoteMemories = mergeRemoteMemories(result.remoteMemories, layer.remoteMemories);
   }
   return result;
@@ -123,6 +127,33 @@ function mergeHostedTools(current, next) {
     if (next[provider] && typeof next[provider] === "object" && !Array.isArray(next[provider])) {
       merged[provider] = { ...merged[provider], ...next[provider] };
     }
+  }
+  return merged;
+}
+
+function mergeGateway(current, next) {
+  const merged = {
+    ...current,
+    workspaces: { ...(current.workspaces ?? {}) },
+    platforms: { ...(current.platforms ?? {}) },
+  };
+  if (typeof next.enabled === "boolean") merged.enabled = next.enabled;
+  if (next.defaultWorkspace != null) merged.defaultWorkspace = next.defaultWorkspace;
+  if (next.default_workspace != null) merged.defaultWorkspace = next.default_workspace;
+  if (next.workspaces && typeof next.workspaces === "object" && !Array.isArray(next.workspaces)) {
+    merged.workspaces = { ...merged.workspaces, ...next.workspaces };
+  }
+  if (next.platforms && typeof next.platforms === "object" && !Array.isArray(next.platforms)) {
+    merged.platforms = mergeGatewayPlatforms(merged.platforms, next.platforms);
+  }
+  return merged;
+}
+
+function mergeGatewayPlatforms(current, next) {
+  const merged = { ...current };
+  for (const [id, profile] of Object.entries(next)) {
+    if (!profile || typeof profile !== "object" || Array.isArray(profile)) continue;
+    merged[id] = { ...(merged[id] ?? {}), ...profile };
   }
   return merged;
 }
