@@ -8,7 +8,6 @@ import {
   normalizeText,
   parseMemoryMarkdown,
   quoteFtsTerm,
-  slugify,
   walkMarkdownFiles,
 } from "./markdown/markdown-format.mjs";
 import { scoreEntry, toHint } from "./markdown/markdown-recall.mjs";
@@ -176,7 +175,7 @@ export class MarkdownMemoryStore {
     if (!nextDescription) throw new Error("description is required");
     if (!existing && body == null) throw new Error("body is required");
     const nextBody = body ?? (existing ? parseMemoryMarkdown(readFileSync(existing.path, "utf8")).body : "");
-    const nextPath = existing?.path ?? this.#newMemoryPath(now, nextName);
+    const nextPath = existing?.path ?? this.#newMemoryPath(now, nextId);
     mkdirSync(dirname(nextPath), { recursive: true });
     const content = formatMemoryMarkdown({
       frontmatter: {
@@ -248,11 +247,11 @@ export class MarkdownMemoryStore {
     }
   }
 
-  #newMemoryPath(isoDate, name) {
+  #newMemoryPath(isoDate, id) {
     const date = isoDate.slice(0, 10);
     const [year, month, day] = date.split("-");
     const week = `week${Math.ceil(Number(day) / 7)}`;
-    return join(this.root, year, month, week, `${date}-${slugify(name)}.md`);
+    return join(this.root, year, month, week, `${date}-${id}.md`);
   }
 
   #resolveMemoryPath(raw) {

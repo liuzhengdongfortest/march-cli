@@ -55,15 +55,6 @@ export function generateMemoryId() {
   return `mem_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
 }
 
-export function slugify(value) {
-  return String(value ?? "memory")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9\u4e00-\u9fff]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80) || "memory";
-}
-
 export function walkMarkdownFiles(root) {
   const out = [];
   if (!existsSync(root)) return out;

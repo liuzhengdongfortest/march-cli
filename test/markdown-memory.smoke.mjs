@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { relative } from "node:path";
+import { join, relative } from "node:path";
 
 export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: markdown memory system ---");
@@ -26,8 +26,13 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
 
   assert.ok(entry.id.startsWith("mem_"));
   assert.deepEqual(entry.tags, ["memory/recall-hint", "memory/dedup", "project/march-cli"]);
-  assert.match(relative(dir, entry.path), /^2026[\\/]05[\\/]week2[\\/]2026-05-14-recall-hint-dedup\.md$/);
+  assert.match(relative(dir, entry.path), new RegExp(`^2026[\\\\/]05[\\\\/]week2[\\\\/]2026-05-14-${entry.id}\\.md$`));
   assert.ok(existsSync(store.indexPath));
+
+  const legacyPath = join(dir, "2026-05-14-legacy-title.md");
+  writeFileSync(legacyPath, `---\nid: mem_legacytitle\nname: Legacy title\ndescription: Legacy slug filenames remain readable.\nstatus: active\ncreated_at: 2026-05-14T10:30:00.000Z\nupdated_at: 2026-05-14T10:30:00.000Z\ntags:\n  - memory/legacy\n---\n\n# Legacy title\n\nOld slug-based memory files still scan.\n`, "utf8");
+  store.scan({ force: true });
+  assert.equal(store.open("mem_legacytitle").path, legacyPath);
 
   store.beginTurn();
   const userHints = store.recallForUser("我们继续讨论 recall hint 的去重", { currentProject: "march-cli" });

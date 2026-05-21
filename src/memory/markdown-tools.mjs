@@ -70,7 +70,7 @@ export function createMarkdownMemoryTools(store, { remoteSources = [] } = {}) {
       name: "memory_save",
       label: "Memory Save",
       description:
-        "Create a Markdown memory or update whole fields on an existing memory. For targeted edits to an existing memory body or frontmatter, use memory_open to get the path, then edit_file. Before creating a new memory, merge related updates into an existing memory when they share the same topic or decision thread. New memories require name, description, body, and at least one tag because recall hints only use tags. When updating by id, omitted fields keep their existing values; passing tags replaces the full tag list.",
+        "Create a Markdown memory or update whole fields on an existing memory. Local memory filenames are id-based storage paths; frontmatter name is the user-visible title. For targeted edits to an existing memory body or frontmatter, use memory_open to get the path, then edit_file. Before creating a new memory, merge related updates into an existing memory when they share the same topic or decision thread. New memories require name, description, body, and at least one tag because recall hints only use tags. When updating by id, omitted fields keep their existing values; passing tags replaces the full tag list.",
       parameters: Type.Object({
         id: Type.Optional(Type.String({ description: "Existing memory id to update. Omit to create a new memory." })),
         name: Type.Optional(Type.String({ description: "Memory name. Required when creating." })),

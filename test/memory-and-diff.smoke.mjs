@@ -21,7 +21,7 @@ export async function runMemorySystemSmoke({ setupTmp, cleanup }) {
       assert.ok(entry.id.startsWith("mem_"));
 
       const searchResults = store.searchRipgrep("markdown files", { limit: 5 });
-      assert.ok(searchResults.some((item) => item.path.endsWith("memory-smoke.md")));
+      assert.ok(searchResults.some((item) => item.path.endsWith(`${entry.id}.md`)));
 
       const opened = store.open(entry.id);
       assert.equal(opened.entry.id, entry.id);
