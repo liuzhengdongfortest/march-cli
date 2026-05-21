@@ -132,8 +132,15 @@ function sendJson(res, status, payload) {
   res.end(JSON.stringify(payload));
 }
 
-function formatExtensionError(error) {
+export function formatExtensionError(error) {
   if (!error) return "Browser extension request failed";
   if (typeof error === "string") return error;
-  return error.stack || error.message || JSON.stringify(error);
+  if (typeof error.stack === "string" && error.stack) return error.stack;
+  if (typeof error.message === "string" && error.message) return error.message;
+  if (error.message && typeof error.message === "object") return safeStringify(error.message);
+  return safeStringify(error);
+}
+
+function safeStringify(value) {
+  try { return JSON.stringify(value); } catch { return String(value); }
 }
