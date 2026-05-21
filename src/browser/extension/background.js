@@ -1,3 +1,5 @@
+import { serializeError } from "./errors.js";
+
 const DAEMON_WS = "ws://127.0.0.1:4328/extension";
 let socket = null;
 let reconnectTimer = null;
@@ -253,12 +255,6 @@ function throwErrorResult(result) {
   const error = result?.error;
   if (typeof error === "string") throw new Error(error);
   throw new Error(error?.stack || error?.message || "Browser script failed");
-}
-
-function serializeError(err) {
-  if (!err) return { message: "Unknown error" };
-  if (typeof err === "string") return { message: err };
-  return { name: err.name || "Error", message: err.message || String(err), stack: err.stack || "" };
 }
 
 function formatTab(tab) {
