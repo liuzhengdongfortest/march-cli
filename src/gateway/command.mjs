@@ -1,9 +1,12 @@
 import { normalizeGatewayConfig } from "./config.mjs";
 import { runGatewayDaemon } from "./daemon.mjs";
 import { createDefaultGatewayPlatformRegistry } from "./platform-registry.mjs";
+import { runGatewaySetupCommand } from "./setup/command.mjs";
+
 export async function runGatewayCommand(args, {
   config,
   cwd = process.cwd(),
+  input = process.stdin,
   stdout = process.stdout,
   stderr = process.stderr,
   platformRegistry = createDefaultGatewayPlatformRegistry(),
@@ -13,6 +16,9 @@ export async function runGatewayCommand(args, {
   const [subcommand = "status", ...rest] = args.command?.args ?? [];
   const gatewayConfig = normalizeGatewayConfig(config, { cwd });
 
+  if (subcommand === "setup") {
+    return await runGatewaySetupCommand({ cwd, input, output: stdout });
+  }
   if (subcommand === "status") {
     writeLines(stdout, formatGatewayStatus(gatewayConfig, platformRegistry));
     return 0;
@@ -48,7 +54,7 @@ export async function runGatewayCommand(args, {
   }
 
 
-  stderr.write("Usage: march gateway [status|workspaces|platforms|run [platform]]\n");
+  stderr.write("Usage: march gateway [setup|status|workspaces|platforms|run [platform]]\n");
   return 1;
 }
 

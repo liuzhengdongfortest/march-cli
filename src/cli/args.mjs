@@ -73,7 +73,8 @@ Usage:
   march browser install    Install the developer browser extension
   march browser status     Show browser daemon/extension status
   march browser restart    Restart the browser daemon
-  march gateway status    Show gateway configuration status
+  march gateway setup      Configure gateway interactively
+  march gateway status     Show gateway configuration status
 
 Options:
   -m, --model <id>     Initial model ID override

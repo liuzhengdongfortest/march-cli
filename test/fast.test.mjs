@@ -54,9 +54,11 @@ function cleanup(dir) {
   const browserInstall = parseCliArgs(["browser", "install"]);
   assert.deepEqual(browserInstall.command, { name: "browser", args: ["install"] });
 
+  const gatewaySetup = parseCliArgs(["gateway", "setup"]);
+  assert.deepEqual(gatewaySetup.command, { name: "gateway", args: ["setup"] });
+
   const gatewayStatus = parseCliArgs(["gateway", "status"]);
   assert.deepEqual(gatewayStatus.command, { name: "gateway", args: ["status"] });
-
   assert.ok(!readFileSync("bin/march.mjs", "utf8").includes("process.exit("));
   assert.ok(!readFileSync("src/main.mjs", "utf8").includes("process.exit("));
   console.log("  PASS");

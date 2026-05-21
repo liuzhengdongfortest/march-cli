@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-
 export async function runGatewayCoreSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: gateway core ---");
   const cwd = setupTmp();
@@ -14,7 +14,7 @@ export async function runGatewayCoreSmoke({ setupTmp, cleanup }) {
     const { GatewayPlatformRegistry, createDefaultGatewayPlatformRegistry } = await import("../src/gateway/platform-registry.mjs");
     const { createTelegramPlatformAdapter, normalizeTelegramUpdate, splitTelegramLines } = await import("../src/gateway/platforms/telegram.mjs");
     const { createGatewayRunnerBridge } = await import("../src/gateway/runner-bridge.mjs");
-
+    const { runGatewaySetupCommand, upsertEnvFile } = await import("../src/gateway/setup/command.mjs");
     const gatewayConfig = normalizeGatewayConfig({
       gateway: {
         defaultWorkspace: "main",
@@ -151,6 +151,26 @@ export async function runGatewayCoreSmoke({ setupTmp, cleanup }) {
     assert.deepEqual(fakeRunner.switches, ["session-1.jsonl"]);
     await runnerA.startNewSession();
     assert.equal(sessionA.piSessionFile, "session-3.jsonl");
+
+    const setupOutput = createWritableCapture();
+    const setupCode = await runGatewaySetupCommand({
+      cwd,
+      output: setupOutput,
+      select: async ({ items }) => items[0].value,
+      readSecret: async () => "123:token",
+      readText: async ({ prompt }) => prompt.includes("user") ? "42" : "current",
+    });
+    assert.equal(setupCode, 0);
+    assert.ok(setupOutput.text.includes("march gateway run"));
+    const setupConfig = JSON.parse(readFileSync(join(cwd, ".march", "config.json"), "utf8"));
+    assert.equal(setupConfig.gateway.enabled, true);
+    assert.equal(setupConfig.gateway.defaultWorkspace, "current");
+    assert.equal(setupConfig.gateway.platforms.telegram.botTokenEnv, "TELEGRAM_BOT_TOKEN");
+    assert.deepEqual(setupConfig.gateway.platforms.telegram.allowedUsers, ["42"]);
+    assert.match(readFileSync(join(cwd, ".env"), "utf8"), /TELEGRAM_BOT_TOKEN=123:token/);
+    upsertEnvFile({ path: join(cwd, ".env"), key: "TELEGRAM_BOT_TOKEN", value: "456:next" });
+    assert.match(readFileSync(join(cwd, ".env"), "utf8"), /TELEGRAM_BOT_TOKEN=456:next/);
+    assert.ok(existsSync(join(cwd, ".march", "config.json")));
 
     const runCode = await runGatewayCommand({ command: { name: "gateway", args: ["run", "telegram"] } }, {
       config: { gateway: { defaultWorkspace: "main", workspaces: { main: "." }, platforms: { telegram: { enabled: true } } } },
