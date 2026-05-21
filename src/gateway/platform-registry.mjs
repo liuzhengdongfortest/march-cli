@@ -1,3 +1,5 @@
+import { createTelegramPlatformAdapter } from "./platforms/telegram.mjs";
+
 export class GatewayPlatformRegistry {
   #factories = new Map();
 
@@ -23,8 +25,10 @@ export class GatewayPlatformRegistry {
   }
 }
 
-export function createDefaultGatewayPlatformRegistry() {
-  return new GatewayPlatformRegistry();
+export function createDefaultGatewayPlatformRegistry(options = {}) {
+  const registry = new GatewayPlatformRegistry();
+  registry.register("telegram", (platformOptions = {}) => createTelegramPlatformAdapter({ ...options, ...platformOptions }));
+  return registry;
 }
 
 function normalizePlatformId(id) {

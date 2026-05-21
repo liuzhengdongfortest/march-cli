@@ -1,12 +1,14 @@
 import { normalizeGatewayConfig } from "./config.mjs";
+import { runGatewayDaemon } from "./daemon.mjs";
 import { createDefaultGatewayPlatformRegistry } from "./platform-registry.mjs";
-
 export async function runGatewayCommand(args, {
   config,
   cwd = process.cwd(),
   stdout = process.stdout,
   stderr = process.stderr,
   platformRegistry = createDefaultGatewayPlatformRegistry(),
+  getRunner,
+  currentProject = "",
 } = {}) {
   const [subcommand = "status", ...rest] = args.command?.args ?? [];
   const gatewayConfig = normalizeGatewayConfig(config, { cwd });
@@ -33,9 +35,14 @@ export async function runGatewayCommand(args, {
       stderr.write(`Error: gateway platform '${platform}' is not implemented in this build.\n`);
       return 1;
     }
-    stderr.write("Error: gateway daemon runtime is not wired yet.\n");
-    return 1;
+    if (typeof getRunner !== "function") {
+      stderr.write("Error: gateway runner bridge is not wired for this command path yet.\n");
+      return 1;
+    }
+    await runGatewayDaemon({ platform, platformRegistry, gatewayConfig, getRunner, currentProject });
+    return 0;
   }
+
 
   stderr.write("Usage: march gateway [status|workspaces|platforms|run [platform]]\n");
   return 1;
