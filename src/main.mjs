@@ -38,7 +38,7 @@ import { installNetworkEnvironment } from "./network/environment.mjs";
 import { runMemoryCommand } from "./memory/command.mjs";
 import { normalizeRemoteMemorySources } from "./memory/remote/config.mjs";
 import { resolveMemoryRoot } from "./memory/root.mjs";
-import { runBrowserCommand } from "./browser/cli/command.mjs";
+import { runConfiguredCliCommand } from "./cli/startup/configured-command.mjs";
 import { ensureBrowserDaemon } from "./browser/client/lifecycle.mjs";
 export async function run(argv) {
   const cwd = process.cwd();
@@ -77,14 +77,8 @@ export async function run(argv) {
     args.memoryRoot = resolveMemoryRoot(config.memoryRoot, stateRoot);
     return await runMemoryCommand(args, { homeDir: homedir() });
   }
-  if (args.command?.name === "browser") {
-    try {
-      return await runBrowserCommand(args, { stateRoot });
-    } catch (err) {
-      process.stderr.write(`Error: ${err.message}\n`);
-      return 1;
-    }
-  }
+  const configuredCommand = await runConfiguredCliCommand(args, { config, cwd, stateRoot });
+  if (configuredCommand.handled) return configuredCommand.code;
   if (!existsSync(stateRoot)) mkdirSync(stateRoot, { recursive: true });
   await ensureBrowserDaemon({ stateRoot }).catch(() => {});
   const logger = createLogger({ logDir: join(stateRoot, "logs") });

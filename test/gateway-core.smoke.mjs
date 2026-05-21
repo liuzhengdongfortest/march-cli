@@ -10,6 +10,8 @@ export async function runGatewayCoreSmoke({ setupTmp, cleanup }) {
     const { GatewaySessionStore } = await import("../src/gateway/session-store.mjs");
     const { handleGatewaySlashCommand } = await import("../src/gateway/command-router.mjs");
     const { createGatewayMessageHandler } = await import("../src/gateway/handler.mjs");
+    const { runGatewayCommand } = await import("../src/gateway/command.mjs");
+    const { GatewayPlatformRegistry } = await import("../src/gateway/platform-registry.mjs");
 
     const gatewayConfig = normalizeGatewayConfig({
       gateway: {
@@ -67,8 +69,31 @@ export async function runGatewayCoreSmoke({ setupTmp, cleanup }) {
     assert.equal(calls[0].userMessage, "build a plan");
     assert.equal(calls[0].options.currentProject, "project");
     assert.match(calls[0].prompt, /<mode>\nYou are in do mode/);
+
+    const platformRegistry = new GatewayPlatformRegistry();
+    platformRegistry.register("telegram", () => ({}));
+    const stdout = createWritableCapture();
+    const stderr = createWritableCapture();
+    const statusCode = await runGatewayCommand({ command: { name: "gateway", args: ["status"] } }, {
+      config: { gateway: { enabled: true, defaultWorkspace: "main", workspaces: { main: "." }, platforms: { telegram: { enabled: true } } } },
+      cwd,
+      stdout,
+      stderr,
+      platformRegistry,
+    });
+    assert.equal(statusCode, 0);
+    assert.match(stdout.text, /Gateway: enabled/);
+    assert.match(stdout.text, /Implemented platforms: telegram/);
+    assert.equal(stderr.text, "");
   } finally {
     cleanup(cwd);
   }
   console.log("  PASS");
+}
+
+function createWritableCapture() {
+  return {
+    text: "",
+    write(chunk) { this.text += String(chunk); },
+  };
 }
