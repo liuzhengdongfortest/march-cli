@@ -8,10 +8,12 @@ export function appendSelectableEntries(entries, block, lines, width) {
     return;
   }
   const source = { kind: "markdown", text: block.text, startRow: entries.length, endRow: entries.length + lines.length - 1 };
-  const codeRanges = renderedCodeRanges(block.text, width, entries.length);
+  const fragmentRanges = renderedFragmentRanges(block.text, width, entries.length);
   for (const line of lines) {
     const baseRow = entries.length;
-    entries.push({ line, source, codeSource: codeRanges.find((range) => baseRow >= range.startRow && baseRow <= range.endRow) ?? null, baseRow });
+    const fragmentSource = fragmentRanges.find((range) => baseRow >= range.startRow && baseRow <= range.endRow) ?? null;
+    const codeSource = fragmentSource?.kind === "code" ? fragmentSource : null;
+    entries.push({ line, source, codeSource, fragmentSource, baseRow });
   }
 }
 
@@ -28,6 +30,8 @@ export function copySourceTextForRange(entries, range) {
   const selected = trimEmptyBoundaryEntries(entries.slice(range.start.row, range.end.row + 1));
   const codeText = copyCompleteCodeSource(selected, entries, range);
   if (codeText) return codeText;
+  const fragmentText = copyCompleteFragmentSource(selected, entries, range);
+  if (fragmentText) return fragmentText;
   if (!selected.length || selected.some((entry) => !entry.source)) return "";
   const sources = uniqueSources(selected, "source");
   if (!sources.length || !sources.every((source) => sourceIsFullySelected(source, entries, range, "source"))) return "";
@@ -59,6 +63,13 @@ function copyCompleteCodeSource(selected, entries, range) {
   return sources[0].text;
 }
 
+function copyCompleteFragmentSource(selected, entries, range) {
+  if (!selected.length || selected.some((entry) => !entry.fragmentSource)) return "";
+  const sources = uniqueSources(selected, "fragmentSource");
+  if (sources.length !== 1 || !sourceIsFullySelected(sources[0], entries, range, "fragmentSource")) return "";
+  return sources[0].text;
+}
+
 function sourceIsFullySelected(source, entries, range, key) {
   const startIndex = entries.findIndex((entry) => entry[key] === source && entry.baseRow === source.startRow);
   const endIndex = entries.findLastIndex((entry) => entry[key] === source && entry.baseRow === source.endRow);
@@ -70,7 +81,7 @@ function sourceIsFullySelected(source, entries, range, key) {
   return coversStart && coversEnd;
 }
 
-function renderedCodeRanges(markdown, width, baseRow) {
+function renderedFragmentRanges(markdown, width, baseRow) {
   let tokens = [];
   try { tokens = marked.lexer(String(markdown ?? "")); } catch { return []; }
   let row = baseRow;
@@ -78,10 +89,17 @@ function renderedCodeRanges(markdown, width, baseRow) {
   for (const token of tokens) {
     const raw = token.raw ?? token.text ?? "";
     const lineCount = renderMarkdown(raw, width).length;
-    if (token.type === "code") ranges.push({ kind: "code", text: String(token.text ?? ""), startRow: row, endRow: row + lineCount - 1 });
+    const range = sourceRangeForToken(token, raw, row, lineCount);
+    if (range) ranges.push(range);
     row += lineCount;
   }
   return ranges;
+}
+
+function sourceRangeForToken(token, raw, row, lineCount) {
+  if (token.type === "code") return { kind: "code", text: String(token.text ?? ""), startRow: row, endRow: row + lineCount - 1 };
+  if (token.type === "table") return { kind: "table", text: String(raw).trimEnd(), startRow: row, endRow: row + lineCount - 1 };
+  return null;
 }
 
 function stripAnsi(text) {

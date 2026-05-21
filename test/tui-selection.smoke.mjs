@@ -62,13 +62,22 @@ export async function runTuiSelectionSmoke() {
   assert.equal(codeSelectable.copyText({ start: { row: codeStart, col: 0 }, end: { row: codeEnd, col: 80 } }), "const x = 1;");
   assert.equal(codeSelectable.copyText({ start: { row: codeStart + 1, col: 0 }, end: { row: codeEnd - 1, col: 80 } }), "");
 
+  const tableOutput = new OutputBuffer();
+  const tableMarkdown = "Before\n\n| 功能 | 状态 | 备注 |\n| --- | --- | --- |\n| 复制 Markdown | ✅ 通过 | 包含标题、正文和表格 |\n| 表格对齐 | ✅ 通过 | 第二列右对齐 |\n\nAfter";
+  tableOutput.writeMarkdown(tableMarkdown);
+  tableOutput.sealCurrentText();
+  const tableSelectable = tableOutput.renderSelectable(80);
+  const tableStart = tableSelectable.lines.findIndex((line) => line.includes("┌"));
+  const tableEnd = tableSelectable.lines.findIndex((line) => line.includes("└"));
+  assert.equal(tableSelectable.copyText({ start: { row: tableStart, col: 0 }, end: { row: tableEnd, col: 80 } }), "| 功能 | 状态 | 备注 |\n| --- | --- | --- |\n| 复制 Markdown | ✅ 通过 | 包含标题、正文和表格 |\n| 表格对齐 | ✅ 通过 | 第二列右对齐 |");
+  assert.equal(tableSelectable.copyText({ start: { row: tableStart + 1, col: 0 }, end: { row: tableEnd - 1, col: 80 } }), "");
+
   const wrappedCodeOutput = new OutputBuffer();
   const wrappedCode = "const veryLongName = \"abcdefghijklmnopqrstuvwxyz\";";
   wrappedCodeOutput.writeMarkdown(`\`\`\`js\n${wrappedCode}\n\`\`\``);
   wrappedCodeOutput.sealCurrentText();
   const wrappedCodeSelectable = wrappedCodeOutput.renderSelectable(24);
   assert.equal(wrappedCodeSelectable.copyText({ start: { row: 0, col: 0 }, end: { row: wrappedCodeSelectable.lines.length - 1, col: 24 } }), wrappedCode);
-
   const scrolledOutput = new OutputBuffer();
   scrolledOutput.writeMarkdown("# Top\n\nline1\nline2\nline3\nline4\nline5");
   scrolledOutput.sealCurrentText();
