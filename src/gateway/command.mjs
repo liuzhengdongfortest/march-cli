@@ -31,6 +31,10 @@ export async function runGatewayCommand(args, {
       stderr.write("Error: no gateway platform configured.\n");
       return 1;
     }
+    if (gatewayConfig.platforms[platform]?.enabled !== true) {
+      stderr.write(`Error: gateway platform '${platform}' is not enabled in config.\n`);
+      return 1;
+    }
     if (!platformRegistry.has(platform)) {
       stderr.write(`Error: gateway platform '${platform}' is not implemented in this build.\n`);
       return 1;

@@ -13,6 +13,7 @@ export async function runGatewayCoreSmoke({ setupTmp, cleanup }) {
     const { runGatewayCommand } = await import("../src/gateway/command.mjs");
     const { GatewayPlatformRegistry, createDefaultGatewayPlatformRegistry } = await import("../src/gateway/platform-registry.mjs");
     const { createTelegramPlatformAdapter, normalizeTelegramUpdate, splitTelegramLines } = await import("../src/gateway/platforms/telegram.mjs");
+    const { createGatewayRunnerBridge } = await import("../src/gateway/runner-bridge.mjs");
 
     const gatewayConfig = normalizeGatewayConfig({
       gateway: {
@@ -138,6 +139,19 @@ export async function runGatewayCoreSmoke({ setupTmp, cleanup }) {
     assert.match(stdout.text, /Implemented platforms: telegram/);
     assert.equal(stderr.text, "");
 
+    const fakeRunner = createFakeSwitchingRunner();
+    const bridge = createGatewayRunnerBridge({ runner: fakeRunner, cwd });
+    const sessionA = { key: "telegram:chat:1", workspaceAlias: "main", workspaceRoot: cwd };
+    const sessionB = { key: "telegram:chat:2", workspaceAlias: "main", workspaceRoot: cwd };
+    const runnerA = await bridge.getRunner(sessionA);
+    assert.equal(sessionA.piSessionFile, "session-1.jsonl");
+    await bridge.getRunner(sessionB);
+    assert.equal(sessionB.piSessionFile, "session-2.jsonl");
+    await bridge.getRunner(sessionA);
+    assert.deepEqual(fakeRunner.switches, ["session-1.jsonl"]);
+    await runnerA.startNewSession();
+    assert.equal(sessionA.piSessionFile, "session-3.jsonl");
+
     const runCode = await runGatewayCommand({ command: { name: "gateway", args: ["run", "telegram"] } }, {
       config: { gateway: { defaultWorkspace: "main", workspaces: { main: "." }, platforms: { telegram: { enabled: true } } } },
       cwd,
@@ -159,6 +173,25 @@ function jsonResponse(data, { status = 200 } = {}) {
     status,
     statusText: status === 200 ? "OK" : "Error",
     async json() { return data; },
+  };
+}
+
+function createFakeSwitchingRunner() {
+  let current = { sessionId: "session-1", sessionFile: "session-1.jsonl" };
+  let next = 2;
+  return {
+    switches: [],
+    getSessionStats() { return current; },
+    async startNewSession() {
+      current = { sessionId: `session-${next}`, sessionFile: `session-${next}.jsonl` };
+      next += 1;
+      return current;
+    },
+    async switchPiSession(sessionFile) {
+      this.switches.push(sessionFile);
+      current = { sessionId: sessionFile.replace(/\.jsonl$/, ""), sessionFile };
+      return current;
+    },
   };
 }
 

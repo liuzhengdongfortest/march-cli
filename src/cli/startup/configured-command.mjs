@@ -10,7 +10,7 @@ export async function runConfiguredCliCommand(args, { config, cwd, stateRoot }) 
       return { handled: true, code: 1 };
     }
   }
-  if (args.command?.name === "gateway") {
+  if (args.command?.name === "gateway" && args.command.args?.[0] !== "run") {
     return { handled: true, code: await runGatewayCommand(args, { config, cwd }) };
   }
   return { handled: false, code: null };

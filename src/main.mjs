@@ -39,6 +39,7 @@ import { runMemoryCommand } from "./memory/command.mjs";
 import { normalizeRemoteMemorySources } from "./memory/remote/config.mjs";
 import { resolveMemoryRoot } from "./memory/root.mjs";
 import { runConfiguredCliCommand } from "./cli/startup/configured-command.mjs";
+import { maybeRunGatewayDaemonCommand } from "./cli/startup/gateway-daemon-command.mjs";
 import { ensureBrowserDaemon } from "./browser/client/lifecycle.mjs";
 export async function run(argv) {
   const cwd = process.cwd();
@@ -237,6 +238,8 @@ export async function run(argv) {
     ui,
   });
   refreshStatusBar();
+  const gatewayDaemonCommand = await maybeRunGatewayDaemonCommand(args, { config, cwd, runner, currentProject, memoryStore, ui, logger });
+  if (gatewayDaemonCommand.handled) return gatewayDaemonCommand.code;
 
   if (args.prompt) {
     turnRunning = true;
