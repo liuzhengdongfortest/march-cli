@@ -113,9 +113,9 @@ function renderTable(token, lines, width) {
   shrinkColumns(widths, Math.max(1, width - borderWidth - paddingWidth));
 
   lines.push(formatTableBorder(widths, "┌", "┬", "┐"));
-  lines.push(formatTableRow(cells[0], widths, true));
+  lines.push(...formatTableRow(cells[0], widths, true));
   lines.push(formatTableBorder(widths, "├", "┼", "┤"));
-  for (const row of cells.slice(1)) lines.push(formatTableRow(row, widths, false));
+  for (const row of cells.slice(1)) lines.push(...formatTableRow(row, widths, false));
   lines.push(formatTableBorder(widths, "└", "┴", "┘"));
 }
 
@@ -200,12 +200,18 @@ function plainInline(tokens) {
 }
 
 function formatTableRow(row, widths, header) {
-  const cells = widths.map((width, i) => {
-    const text = truncateCell(row[i] ?? "", width);
-    const padded = text + " ".repeat(Math.max(0, width - visibleWidth(text)));
-    return ` ${header ? bold(padded) : padded} `;
-  });
-  return `${brightBlack("│")}${cells.join(brightBlack("│"))}${brightBlack("│")}`;
+  const wrappedCells = widths.map((width, i) => wrapTableCell(row[i] ?? "", width));
+  const height = Math.max(...wrappedCells.map((cell) => cell.length));
+  const visualRows = [];
+  for (let lineIndex = 0; lineIndex < height; lineIndex += 1) {
+    const cells = widths.map((width, i) => {
+      const text = wrappedCells[i][lineIndex] ?? "";
+      const padded = text + " ".repeat(Math.max(0, width - visibleWidth(text)));
+      return ` ${header ? bold(padded) : padded} `;
+    });
+    visualRows.push(`${brightBlack("│")}${cells.join(brightBlack("│"))}${brightBlack("│")}`);
+  }
+  return visualRows;
 }
 
 function formatTableBorder(widths, left, join, right) {
@@ -218,22 +224,30 @@ function shrinkColumns(widths, maxTotal) {
     widths[index] -= 1;
   }
 }
-
-function truncateCell(text, width) {
-  const chars = [];
-  const sourceChars = Array.from(text);
-  let used = 0;
-  for (const ch of sourceChars) {
-    const w = visibleWidth(ch);
-    if (used + w > width) break;
-    chars.push(ch);
-    used += w;
+function wrapTableCell(text, width) {
+  const lines = [];
+  let current = "";
+  let currentWidth = 0;
+  for (const ch of String(text ?? "")) {
+    if (ch === "\n") {
+      lines.push(current);
+      current = "";
+      currentWidth = 0;
+      continue;
+    }
+    const charWidth = visibleWidth(ch);
+    if (currentWidth + charWidth > width && currentWidth > 0) {
+      lines.push(current.trimEnd());
+      current = "";
+      currentWidth = 0;
+      if (/\s/.test(ch)) continue;
+    }
+    if (!current && /\s/.test(ch)) continue;
+    current += ch;
+    currentWidth += charWidth;
   }
-  if (chars.length < sourceChars.length && width > 1) {
-    while (chars.length && used + 1 > width) used -= visibleWidth(chars.pop());
-    return `${chars.join("")}…`;
-  }
-  return chars.join("");
+  lines.push(current);
+  return lines;
 }
 
 function renderPlainMarkdownFallback(markdown, width) {
