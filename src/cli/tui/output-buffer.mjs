@@ -4,12 +4,9 @@ import { renderMarkdown, renderStreamingMarkdown } from "./markdown-renderer.mjs
 import { renderEditDiffBlock } from "./tui-diff-rendering.mjs";
 import { OutputScrollState } from "./output/scroll-state.mjs";
 import { appendTextLines, wrapLine } from "./output/text-line-renderer.mjs";
-import { sliceLinesWithTail } from "./output/visible-lines.mjs";
+import { appendSelectableEntries, copySourceTextForRange, sliceEntriesWithTail } from "./output/selectable-copy.mjs";
 
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-
-
-
 function currentTextToBlocks(textLines, sealed, cache = null) {
   const blocks = [];
   for (let i = 0; i < textLines.length;) {
@@ -72,13 +69,11 @@ export class OutputBuffer {
     this._activeThinking = null;
     this.overlayStatus = null;
     this.scrollState = new OutputScrollState();
-    this._segmentLinesCache = new Map();
     this._baseLinesCache = new Map();
+    this._baseEntriesCache = new Map();
   }
 
-  get scrollOffset() {
-    return this.scrollState.offset;
-  }
+  get scrollOffset() { return this.scrollState.offset; }
 
   clear() {
     this.segments = [];
@@ -90,27 +85,19 @@ export class OutputBuffer {
     this._activeThinking = null;
     this.overlayStatus = null;
     this.scrollState.clear();
-    this._segmentLinesCache = new Map();
     this._baseLinesCache = new Map();
+    this._baseEntriesCache = new Map();
   }
 
-  write(text) {
-    this._writeText(text, false);
-  }
-
-  writeMarkdown(text) {
-    this._writeText(text, true);
-  }
+  write(text) { this._writeText(text, false); }
+  writeMarkdown(text) { this._writeText(text, true); }
 
   _writeText(text, markdown) {
     this.overlayStatus = null;
     this._invalidateBaseLines();
     const current = this.currentText.at(-1);
-    if (current.markdown !== markdown && current.text !== "") {
-      this.currentText.push({ text: "", markdown });
-    } else {
-      current.markdown = markdown;
-    }
+    if (current.markdown !== markdown && current.text !== "") this.currentText.push({ text: "", markdown });
+    else current.markdown = markdown;
     const parts = text.split("\n");
     this.currentText[this.currentText.length - 1].text += parts[0];
     for (let i = 1; i < parts.length; i++) this.currentText.push({ text: parts[i], markdown });
@@ -134,10 +121,9 @@ export class OutputBuffer {
   startThinking() {
     this.overlayStatus = null;
     this._flushText();
-    const seg = { type: "thinking", tokens: 0, content: [] };
-    this.segments.push(seg);
-    this._invalidateSegmentLines();
-    this._activeThinking = seg;
+    this._activeThinking = { type: "thinking", tokens: 0, content: [] };
+    this.segments.push(this._activeThinking);
+    this._invalidateBaseLines();
   }
 
   appendThinking(text) {
@@ -151,25 +137,24 @@ export class OutputBuffer {
   }
 
   endThinking(tokens) {
-    if (this._activeThinking) {
-      this._activeThinking.tokens = tokens;
-      this._activeThinking = null;
-      this._invalidateSegmentLines();
-    }
+    if (!this._activeThinking) return;
+    this._activeThinking.tokens = tokens;
+    this._activeThinking = null;
+    this._invalidateBaseLines();
   }
 
   addThinkingBlock(tokens, content) {
     this.overlayStatus = null;
     this._flushText();
     this.segments.push({ type: "thinking", tokens, content: content.split("\n") });
-    this._invalidateSegmentLines();
+    this._invalidateBaseLines();
   }
 
   addBlock(block) {
     this.overlayStatus = null;
     this._flushText();
     this.segments.push(block);
-    this._invalidateSegmentLines();
+    this._invalidateBaseLines();
   }
 
   setOverlayStatus(lines) {
@@ -182,14 +167,12 @@ export class OutputBuffer {
     this._invalidateBaseLines();
   }
 
-  sealCurrentText() {
-    return this._flushText();
-  }
+  sealCurrentText() { return this._flushText(); }
 
   _flushText() {
     if (this.currentText.length <= 1 && this.currentText[0].text === "") return false;
     this.segments.push(...currentTextToBlocks(this.currentText, true));
-    this._invalidateSegmentLines();
+    this._invalidateBaseLines();
     this.currentText = [{ text: "", markdown: false }];
     this.currentTextCache = new Map();
     return true;
@@ -200,60 +183,44 @@ export class OutputBuffer {
     if (text !== undefined) this.spinnerText = text;
   }
 
-  tick() {
-    this.spinnerIdx = (this.spinnerIdx + 1) % SPINNER_FRAMES.length;
-  }
-
-  scroll(delta, options) {
-    return this.scrollState.scroll(delta, options);
-  }
-
-  getScrollStep() {
-    return this.scrollState.getStep();
-  }
-
-  getMaxScrollOffset() {
-    return this.scrollState.getMaxOffset();
-  }
-
-  setViewportHeight(height) {
-    this.scrollState.setViewportHeight(height);
-  }
-
-  resetScroll() {
-    this.scrollState.reset();
-  }
+  tick() { this.spinnerIdx = (this.spinnerIdx + 1) % SPINNER_FRAMES.length; }
+  scroll(delta, options) { return this.scrollState.scroll(delta, options); }
+  getScrollStep() { return this.scrollState.getStep(); }
+  getMaxScrollOffset() { return this.scrollState.getMaxOffset(); }
+  setViewportHeight(height) { this.scrollState.setViewportHeight(height); }
+  resetScroll() { this.scrollState.reset(); }
 
   setToolCardsExpanded(expanded) {
     let changed = false;
     for (const seg of this.segments) {
-      if (seg.type !== "tool-card") continue;
-      if (seg.expanded === expanded) continue;
+      if (seg.type !== "tool-card" || seg.expanded === expanded) continue;
       seg.expanded = expanded;
       changed = true;
     }
-    if (changed) this._invalidateSegmentLines();
+    if (changed) this._invalidateBaseLines();
     return changed;
   }
 
-  invalidate() {
-    this._invalidateSegmentLines();
-  }
-
-  _invalidateSegmentLines() {
-    this._segmentLinesCache.clear();
-    this._invalidateBaseLines();
-  }
+  invalidate() { this._invalidateBaseLines(); }
 
   _invalidateBaseLines() {
     this._baseLinesCache.clear();
+    this._baseEntriesCache.clear();
   }
 
   render(width) {
-    const baseLines = this._renderBaseLines(width);
+    return this.renderSelectable(width).lines;
+  }
+
+  renderSelectable(width) {
+    const baseEntries = this._renderBaseEntries(width);
     const tailLine = this.spinning ? this._spinnerLine() : null;
-    this.scrollState.setTotalLines(baseLines.length + (tailLine == null ? 0 : 1));
-    return sliceLinesWithTail(baseLines, tailLine, this.scrollState.sliceRange());
+    this.scrollState.setTotalLines(baseEntries.length + (tailLine == null ? 0 : 1));
+    const entries = sliceEntriesWithTail(baseEntries, tailLine, this.scrollState.sliceRange());
+    return {
+      lines: entries.map((entry) => entry.line),
+      copyText: (range) => copySourceTextForRange(entries, range),
+    };
   }
 
   _spinnerLine() {
@@ -263,31 +230,28 @@ export class OutputBuffer {
   _renderBaseLines(width) {
     const cached = this._baseLinesCache.get(width);
     if (cached) return cached;
-    const lines = [...this._renderCachedSegmentLines(width)];
-    const dynamicStart = this._cachedSegmentPrefixCount();
-    for (const seg of this.segments.slice(dynamicStart)) for (const line of renderBlock(seg, width)) lines.push(line);
-    for (const block of currentTextToBlocks(this.currentText, false, this.currentTextCache)) for (const line of renderBlock(block, width)) lines.push(line);
-    if (this.overlayStatus) for (const line of renderBlock(this.overlayStatus, width)) lines.push(line);
+    const lines = this._renderBaseEntries(width).map((entry) => entry.line);
     this._baseLinesCache.set(width, lines);
     return lines;
   }
 
-  _renderCachedSegmentLines(width) {
-    const prefixCount = this._cachedSegmentPrefixCount();
-    const cached = this._segmentLinesCache.get(width);
-    if (cached?.prefixCount === prefixCount) return cached.lines;
-
-    const lines = [];
-    for (let i = 0; i < prefixCount; i += 1) {
-      for (const line of renderBlock(this.segments[i], width)) lines.push(line);
-    }
-    this._segmentLinesCache.set(width, { prefixCount, lines });
-    return lines;
+  _renderBaseEntries(width) {
+    const cached = this._baseEntriesCache.get(width);
+    if (cached) return cached;
+    const entries = [];
+    for (const block of this._blocksForRender()) appendBlockEntries(entries, block, width);
+    this._baseEntriesCache.set(width, entries);
+    return entries;
   }
 
-  _cachedSegmentPrefixCount() {
-    if (!this._activeThinking) return this.segments.length;
-    const index = this.segments.indexOf(this._activeThinking);
-    return index < 0 ? this.segments.length : index;
+  _blocksForRender() {
+    const blocks = [...this.segments];
+    blocks.push(...currentTextToBlocks(this.currentText, false, this.currentTextCache));
+    if (this.overlayStatus) blocks.push(this.overlayStatus);
+    return blocks;
   }
+}
+
+function appendBlockEntries(entries, block, width) {
+  appendSelectableEntries(entries, block, renderBlock(block, width), width);
 }

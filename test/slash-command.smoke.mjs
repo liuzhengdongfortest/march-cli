@@ -8,7 +8,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   const { handleSlashCommand } = await import("../src/cli/slash-commands.mjs");
   const output = [];
   let clearOutputCount = 0;
-  const ui = { writeln: (text) => output.push(text), clearOutput: () => { clearOutputCount++; output.length = 0; }, toggleMouse: () => false };
+  const ui = { writeln: (text) => output.push(text), clearOutput: () => { clearOutputCount++; output.length = 0; } };
   const dir = setupTmp();
   const projectMarchDir = join(dir, ".march");
   const piSessionDir = join(projectMarchDir, "pi-sessions");
@@ -130,6 +130,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(output.join("\n").includes("/copy"));
   assert.ok(output.join("\n").includes("/name"));
   assert.ok(output.join("\n").includes("Sessions:"));
+  assert.ok(!output.join("\n").includes("/mouse"));
   assert.ok(!output.join("\n").includes("/sessions"));
   assert.ok(!output.join("\n").includes("/resume"));
   assert.ok(!output.join("\n").includes("/fork-pi"));
@@ -244,6 +245,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(output.join("\n").includes("Copied last assistant response"));
   assert.equal(existsSync(join(sessionState.sessionDir, "session.json")), false);
   assert.equal((await handleSlashCommand("/compact", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
+  assert.equal((await handleSlashCommand("/mouse", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
   assert.equal((await handleSlashCommand("/sessions", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
   assert.equal((await handleSlashCommand("/resume pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
   assert.equal((await handleSlashCommand("/fork-pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);

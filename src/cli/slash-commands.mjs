@@ -105,12 +105,6 @@ export async function handleSlashCommand(trimmed, {
     return { handled: true };
   }
 
-  if (trimmed === "/mouse") {
-    const on = ui.toggleMouse();
-    ui.writeln(on ? "Mouse tracking: ON (wheel scroll and TUI selection copy enabled)" : "Mouse tracking: OFF (native terminal selection enabled)");
-    return { handled: true };
-  }
-
   if (trimmed === "/status") {
     for (const line of statusCommand({
       runner,

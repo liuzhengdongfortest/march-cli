@@ -44,8 +44,7 @@ export function createMouseSelectionController({
   }
 
   return {
-    handleMouseInput(data, mouseOn) {
-      if (!mouseOn) return undefined;
+    handleMouseInput(data) {
       const mouse = parseMouseEvent(data);
       if (mouse?.type === "scroll") {
         if (shellDrawer.isVisible?.() && mouse.col > Math.floor((terminal.columns || 80) * 0.64)) {
@@ -76,7 +75,7 @@ export function createMouseSelectionController({
 
     handleCopyKey(data) {
       if (data !== "\x03") return undefined;
-      const text = selection.text();
+      const text = selection.copyText?.() ?? selection.text();
       if (!text) return undefined;
       selection.clear();
       copySelectionText(text);

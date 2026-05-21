@@ -18,11 +18,12 @@ export class MainPaneLayout {
     const fixedHeight = statusTopLines.length + editorLines.length + statusBottomLines.length;
     const viewportHeight = Math.max(1, (this.terminal?.rows || 30) - fixedHeight);
     this.output.setViewportHeight(viewportHeight);
-    const outputLines = this.output.render(safeWidth);
+    const outputView = this.output.renderSelectable?.(safeWidth) ?? { lines: this.output.render(safeWidth), copyText: null };
+    const outputLines = outputView.lines;
     const outputTop = Math.max(0, viewportHeight - outputLines.length);
     const editorTop = viewportHeight + statusTopLines.length;
     this.selection?.setRegions?.([
-      { id: "output", topRow: outputTop, leftCol: 0, width: safeWidth, lines: outputLines },
+      { id: "output", topRow: outputTop, leftCol: 0, width: safeWidth, lines: outputLines, copyText: outputView.copyText },
       { id: "editor", topRow: editorTop, leftCol: 0, width: safeWidth, lines: editorLines },
     ]);
     const selectedOutputLines = this.selection?.applyRegion?.("output", outputLines) ?? outputLines;

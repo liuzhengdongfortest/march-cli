@@ -18,8 +18,8 @@ export async function runTuiSelectionSmoke() {
   selection.start({ row: 1, col: 2 });
   selection.update({ row: 2, col: 3 });
   assert.equal(selection.text(), "lpha\nbe");
+  assert.equal(selection.copyText(), "lpha\nbe");
   assert.ok(selection.apply(["alpha", "beta"]).join("\n").includes("\x1b[7m"));
-
   selection.setViewport({ topRow: 2, width: 10, lines: ["alpha", "beta"] });
   selection.start({ row: 3, col: 2 });
   selection.update({ row: 4, col: 3 });
@@ -35,6 +35,31 @@ export async function runTuiSelectionSmoke() {
   assert.equal(regionalSelection.text(), "hello copy");
   assert.ok(regionalSelection.applyRegion("editor", ["hello copy"])[0].includes("\x1b[7m"));
 
+
+  const sourceSelection = new ScreenSelection();
+  sourceSelection.setRegions([
+    { id: "output", topRow: 0, width: 20, lines: ["rendered"], copyText: () => "**rendered**" },
+  ]);
+  sourceSelection.start({ row: 1, col: 1 });
+  sourceSelection.update({ row: 1, col: 9 });
+  assert.equal(sourceSelection.copyText(), "**rendered**");
+
+  const { OutputBuffer } = await import("../src/cli/tui/output-buffer.mjs");
+  const markdownOutput = new OutputBuffer();
+  const markdownSource = "# Title\n\n- **bold** item";
+  markdownOutput.writeMarkdown(markdownSource);
+  markdownOutput.sealCurrentText();
+  const selectable = markdownOutput.renderSelectable(80);
+  assert.equal(selectable.copyText({ start: { row: 0, col: 0 }, end: { row: selectable.lines.length - 1, col: 80 } }), markdownSource);
+  assert.equal(selectable.copyText({ start: { row: 0, col: 1 }, end: { row: selectable.lines.length - 1, col: 80 } }), "");
+
+  const codeOutput = new OutputBuffer();
+  codeOutput.writeMarkdown("Before\n\n```js\nconst x = 1;\n```\n\nAfter");
+  codeOutput.sealCurrentText();
+  const codeSelectable = codeOutput.renderSelectable(80);
+  const codeStart = codeSelectable.lines.findIndex((line) => line.includes("╭"));
+  const codeEnd = codeSelectable.lines.findIndex((line, index) => index > codeStart && line.includes("╰"));
+  assert.equal(codeSelectable.copyText({ start: { row: codeStart, col: 0 }, end: { row: codeEnd, col: 80 } }), "const x = 1;");
   const coloredSelection = new ScreenSelection();
   const colored = "\x1b[31malpha\x1b[0m";
   coloredSelection.setLines([colored]);
@@ -92,7 +117,7 @@ export async function runTuiSelectionSmoke() {
     output: { setOverlayStatus: (lines) => statusLines.push(lines) },
     shellDrawer: { isVisible: () => false },
     shellDrawerControls: { scroll: () => {} },
-    selection: { text: () => "abc", clear: () => true },
+    selection: { copyText: () => "abc", text: () => "fallback", clear: () => true },
     writeClipboard: () => ({ ok: false, message: "ExternalException\n  + FullyQualifiedErrorId : System.Runtime.InteropServices.ExternalException" }),
     requestRender: () => {},
   });
@@ -108,7 +133,7 @@ export async function runTuiSelectionSmoke() {
     output: { setOverlayStatus: (lines) => statusLines.push(lines) },
     shellDrawer: { isVisible: () => false },
     shellDrawerControls: { scroll: () => {} },
-    selection: { text: () => "async", clear: () => true },
+    selection: { copyText: () => "async", text: () => "fallback", clear: () => true },
     writeClipboard: () => new Promise((resolve) => setTimeout(() => {
       asyncResolved = true;
       resolve({ ok: true });

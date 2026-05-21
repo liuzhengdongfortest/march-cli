@@ -58,7 +58,6 @@ export function createTuiUI({
   tui.setFocus(editor);
 
   let started = false;
-  let mouseOn = true;
   let toolsExpanded = false;
   const activeToolBlocks = [];
   const renderScheduler = createRenderScheduler({ requestRender: () => tui.requestRender() });
@@ -98,7 +97,7 @@ export function createTuiUI({
   function ensureStarted() {
     if (!started) {
       tui.addInputListener((data) => {
-        const mouseResult = mouseSelectionController.handleMouseInput(data, mouseOn);
+        const mouseResult = mouseSelectionController.handleMouseInput(data);
         if (mouseResult) return mouseResult;
         const copyKeyResult = mouseSelectionController.handleCopyKey(data);
         if (copyKeyResult) return copyKeyResult;
@@ -118,7 +117,7 @@ export function createTuiUI({
   }
 
   function openExternalEditor() {
-    runTuiExternalEditor({ terminal, tui, editor, output, requestRender, mouseOn: () => mouseOn });
+    runTuiExternalEditor({ terminal, tui, editor, output, requestRender, mouseOn: () => true });
   }
 
   function toggleToolOutput() {
@@ -240,18 +239,6 @@ export function createTuiUI({
       requestRender();
     },
 
-    toggleMouse: () => {
-      if (mouseOn) {
-        terminal.write("\x1b[?1002l\x1b[?1006l");
-        mouseOn = false;
-        return false;
-      } else {
-        terminal.write("\x1b[?1002h\x1b[?1006h");
-        mouseOn = true;
-        return true;
-      }
-    },
-
     requestPermission: async ({ toolName, params, category }) => {
       ensureStarted();
       spinnerStatus.stop();
@@ -281,7 +268,7 @@ export function createTuiUI({
       retryStatus.stop();
       if (started) {
         await terminal.drainInput?.();
-        if (mouseOn) terminal.write("\x1b[?1002l\x1b[?1006l");
+        terminal.write("\x1b[?1002l\x1b[?1006l");
         tui.stop();
         terminal.write("\x1b[?1049l");
       }

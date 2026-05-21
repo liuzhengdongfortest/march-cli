@@ -73,6 +73,19 @@ export class ScreenSelection {
     return hadSelection;
   }
 
+  copyText() {
+    const sourceText = this.sourceText();
+    return sourceText || this.text();
+  }
+
+  sourceText() {
+    const range = this.range();
+    if (!range) return "";
+    const region = this._singleRegionForRange(range);
+    if (!region?.copyText) return "";
+    return region.copyText(localRange(range, region)) || "";
+  }
+
   text() {
     const range = this.range();
     if (!range) return "";
@@ -110,6 +123,15 @@ export class ScreenSelection {
     return this._plainLines.get(row);
   }
 
+  _singleRegionForRange(range) {
+    const matches = this.regions.filter((region) => {
+      const start = region.docStart;
+      const end = region.docStart + region.lines.length - 1;
+      return range.start.row >= start && range.end.row <= end;
+    });
+    return matches.length === 1 ? matches[0] : null;
+  }
+
   range() {
     if (!this.anchor || !this.focus) return null;
     const [start, end] = comparePoints(this.anchor, this.focus) <= 0
@@ -133,6 +155,14 @@ function normalizeRegion(region, index) {
     topRow: Math.max(0, Math.trunc(region.topRow ?? 0)),
     leftCol: Math.max(0, Math.trunc(region.leftCol ?? 0)),
     width,
+    copyText: typeof region.copyText === "function" ? region.copyText : null,
+  };
+}
+
+function localRange(range, region) {
+  return {
+    start: { row: range.start.row - region.docStart, col: range.start.col },
+    end: { row: range.end.row - region.docStart, col: range.end.col },
   };
 }
 

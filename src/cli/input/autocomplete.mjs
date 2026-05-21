@@ -14,7 +14,6 @@ const MARCH_COMMANDS = [
   { name: "copy", description: "Copy last assistant response to clipboard" },
   { name: "thinking", description: "Open thinking selector" },
   { name: "thinking list", description: "List available thinking levels" },
-  { name: "mouse", description: "Toggle mouse wheel and TUI selection copy" },
   { name: "hotkeys", description: "Show keyboard shortcuts and input prefixes" },
   { name: "templates", description: "List project prompt templates" },
   { name: "export jsonl", description: "Export current session turns as JSONL" },
