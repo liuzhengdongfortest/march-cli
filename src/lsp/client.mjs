@@ -47,6 +47,7 @@ const LANGUAGE_IDS = {
   ".sass": "sass",
   ".scss": "scss",
   ".sh": "shellscript",
+  ".sql": "sql",
   ".svelte": "svelte",
   ".tf": "terraform",
   ".tfvars": "terraform-vars",

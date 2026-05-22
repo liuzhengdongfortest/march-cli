@@ -89,6 +89,14 @@ export function createLspServerDefinitions({ resolveTypeScriptProjectRoot, resol
       args: ["--stdio"],
     },
     {
+      id: "sql",
+      extensions: [".sql"],
+      rootMarkers: [".sqllsrc.json", ".sqllsrc", "package.json", ".git"],
+      command: ["sql-language-server"],
+      managedCommand: "sql-language-server",
+      args: ["up", "--method", "stdio"],
+    },
+    {
       id: "html",
       extensions: [".html", ".htm"],
       rootMarkers: NODE_ROOT_MARKERS,

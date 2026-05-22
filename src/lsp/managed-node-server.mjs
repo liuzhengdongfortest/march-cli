@@ -12,6 +12,7 @@ const MANAGED_PACKAGES = {
   "vscode-json-language-server": ["vscode-langservers-extracted"],
   "vscode-html-language-server": ["vscode-langservers-extracted"],
   "vscode-css-language-server": ["vscode-langservers-extracted"],
+  "sql-language-server": ["sql-language-server"],
   "docker-langserver": ["dockerfile-language-server-nodejs"],
 };
 

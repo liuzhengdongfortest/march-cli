@@ -52,6 +52,7 @@ export async function runLspSmoke({ setupTmp, cleanup }) {
       writeNodeBin(managedDir, "vscode-json-language-server");
       writeNodeBin(managedDir, "vscode-html-language-server");
       writeNodeBin(managedDir, "vscode-css-language-server");
+      writeNodeBin(managedDir, "sql-language-server");
       writeNodeBin(managedDir, "docker-langserver");
       writeTypeScriptSdk(managedDir);
       const managedTs = await resolveLspServerStatus({ filePath: join(noLocalDir, "managed.ts"), workspaceRoot: noLocalDir });
@@ -64,6 +65,7 @@ export async function runLspSmoke({ setupTmp, cleanup }) {
         ["package.json", "json", "vscode-json-language-server"],
         ["index.html", "html", "vscode-html-language-server"],
         ["style.css", "css", "vscode-css-language-server"],
+        ["query.sql", "sql", "sql-language-server"],
         ["Dockerfile", "dockerfile", "docker-langserver"],
       ];
       for (const [file, id, command] of managedServers) {
@@ -108,6 +110,7 @@ export async function runLspSmoke({ setupTmp, cleanup }) {
     assert.equal(languageIdForPath(join(dir, "main.go")), "go");
     assert.equal(languageIdForPath(join(dir, "lib.rs")), "rust");
     assert.equal(languageIdForPath(join(dir, "component.svelte")), "svelte");
+    assert.equal(languageIdForPath(join(dir, "query.sql")), "sql");
     assert.equal(languageIdForPath(join(dir, "Dockerfile")), "dockerfile");
     assert.equal(languageIdForPath(join(dir, "unknown.txt")), "plaintext");
 
