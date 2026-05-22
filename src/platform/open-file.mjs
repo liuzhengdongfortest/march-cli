@@ -14,7 +14,10 @@ export function openFileWithDefaultApp(filePath, { spawnFn = spawn } = {}) {
 
 export function openCommand(filePath, { platform = process.platform } = {}) {
   if (platform === "win32") {
-    return { command: "cmd.exe", args: ["/c", "start", "", filePath] };
+    return {
+      command: "powershell.exe",
+      args: ["-NoProfile", "-Command", "& { param($path) Start-Process -FilePath $path }", filePath],
+    };
   }
 
   if (platform === "darwin") {
