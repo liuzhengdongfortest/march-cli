@@ -1,9 +1,9 @@
 import { spawn } from "node:child_process";
 
-export function openFileWithDefaultApp(filePath) {
+export function openFileWithDefaultApp(filePath, { spawnFn = spawn } = {}) {
   return new Promise((resolve, reject) => {
-    const { command, args } = openCommand(filePath);
-    const child = spawn(command, args, { detached: true, stdio: "ignore" });
+    const { command, args, options } = openCommand(filePath);
+    const child = spawnFn(command, args, { ...options, detached: true, stdio: "ignore" });
     child.once("error", reject);
     child.once("spawn", () => {
       child.unref();
@@ -12,15 +12,12 @@ export function openFileWithDefaultApp(filePath) {
   });
 }
 
-function openCommand(filePath) {
-  if (process.platform === "win32") {
-    return {
-      command: "powershell.exe",
-      args: ["-NoProfile", "-Command", "Start-Process -LiteralPath $args[0]", filePath],
-    };
+export function openCommand(filePath, { platform = process.platform } = {}) {
+  if (platform === "win32") {
+    return { command: "cmd.exe", args: ["/c", "start", "", filePath] };
   }
 
-  if (process.platform === "darwin") {
+  if (platform === "darwin") {
     return { command: "open", args: [filePath] };
   }
 
