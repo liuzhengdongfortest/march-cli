@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 const TELEGRAM_API_BASE = "https://api.telegram.org";
 const MAX_TELEGRAM_TEXT = 3900;
 
@@ -79,9 +81,31 @@ export class TelegramPlatformAdapter {
         chat_id: chatId,
         text,
         disable_web_page_preview: true,
-        ...(replyToMessageId ? { reply_to_message_id: Number(replyToMessageId), allow_sending_without_reply: true } : {}),
+        ...replyOptions(replyToMessageId),
       });
     }
+  }
+
+  async sendBinary({ chatId, binary, replyToMessageId = null }) {
+    const method = telegramBinaryMethod(binary?.type);
+    const field = telegramBinaryField(binary?.type);
+    const payload = {
+      chat_id: chatId,
+      ...replyOptions(replyToMessageId),
+      ...(binary.caption ? { caption: binary.caption } : {}),
+    };
+    if (binary.url) {
+      await this.#api(method, { ...payload, [field]: binary.url });
+      return { target: "telegram", method, source: "url" };
+    }
+    if (!binary.path) throw new Error("Telegram binary send requires path or url");
+    const form = new FormData();
+    for (const [key, value] of Object.entries(payload)) form.append(key, String(value));
+    const data = readFileSync(binary.path);
+    const blob = new Blob([data], { type: binary.mimeType || "application/octet-stream" });
+    form.append(field, blob, binary.filename || binary.path.split(/[\\/]/).at(-1) || "media.bin");
+    await this.#apiForm(method, form);
+    return { target: "telegram", method, source: "path" };
   }
 
   #assertReady() {
@@ -90,10 +114,20 @@ export class TelegramPlatformAdapter {
   }
 
   async #api(method, payload) {
-    const response = await this.#fetch(`${this.#apiBase()}/bot${this.#token()}/${method}`, {
-      method: "POST",
+    return this.#apiRequest(method, {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload ?? {}),
+    });
+  }
+
+  async #apiForm(method, form) {
+    return this.#apiRequest(method, { body: form });
+  }
+
+  async #apiRequest(method, init) {
+    const response = await this.#fetch(`${this.#apiBase()}/bot${this.#token()}/${method}`, {
+      method: "POST",
+      ...init,
     });
     const data = await response.json().catch(() => null);
     if (!response.ok || data?.ok !== true) {
@@ -157,6 +191,22 @@ export function isAllowedTelegramUser(userId, allowedUsers) {
   return allowedUsers.has("*") || allowedUsers.has(String(userId));
 }
 
+export function telegramBinaryMethod(type) {
+  if (type === "image") return "sendPhoto";
+  if (type === "video") return "sendVideo";
+  if (type === "audio") return "sendAudio";
+  if (type === "file") return "sendDocument";
+  throw new Error(`Unsupported Telegram binary type: ${type}`);
+}
+
+export function telegramBinaryField(type) {
+  if (type === "image") return "photo";
+  if (type === "video") return "video";
+  if (type === "audio") return "audio";
+  if (type === "file") return "document";
+  throw new Error(`Unsupported Telegram binary type: ${type}`);
+}
+
 export function splitTelegramLines(lines) {
   const text = (Array.isArray(lines) ? lines : [lines])
     .map((line) => String(line ?? "").trimEnd())
@@ -169,6 +219,10 @@ export function splitTelegramLines(lines) {
     chunks.push(text.slice(index, index + MAX_TELEGRAM_TEXT));
   }
   return chunks;
+}
+
+function replyOptions(replyToMessageId) {
+  return replyToMessageId ? { reply_to_message_id: Number(replyToMessageId), allow_sending_without_reply: true } : {};
 }
 
 function cleanString(value) {

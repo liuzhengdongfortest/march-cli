@@ -16,6 +16,7 @@ export async function runGatewayCoreSmoke({ setupTmp, cleanup }) {
     const { createGatewayRunnerBridge } = await import("../src/gateway/runner-bridge.mjs");
     const { createGatewayMessageQueue } = await import("../src/gateway/runtime/queue.mjs");
     const { runGatewaySetupCommand, upsertEnvFile } = await import("../src/gateway/setup/command.mjs");
+    const { sendBinaryOutput } = await import("../src/agent/output/binary-output-sink.mjs");
     const gatewayConfig = normalizeGatewayConfig({
       gateway: {
         defaultWorkspace: "main",
@@ -56,12 +57,20 @@ export async function runGatewayCoreSmoke({ setupTmp, cleanup }) {
     assert.deepEqual(modeResult.lines, ["Mode: Do"]);
 
     const calls = [];
+    const binarySends = [];
     const handler = createGatewayMessageHandler({
       sessionStore: store,
       currentProject: "project",
+      outputSinkForMessage: (message) => ({
+        sendBinary: async (binary) => {
+          binarySends.push({ chatId: message.chatId, binary });
+          return { target: "gateway-test" };
+        },
+      }),
       getRunner: async () => ({
         async runTurn(prompt, userMessage, options) {
           calls.push({ prompt, userMessage, options });
+          await sendBinaryOutput({ type: "image", url: "https://example.com/image.png" });
           return { draft: "ok" };
         },
       }),
@@ -71,6 +80,7 @@ export async function runGatewayCoreSmoke({ setupTmp, cleanup }) {
     assert.deepEqual(turnResult.lines, ["ok"]);
     assert.equal(calls[0].userMessage, "build a plan");
     assert.equal(calls[0].options.currentProject, "project");
+    assert.deepEqual(binarySends, [{ chatId: "1001", binary: { type: "image", url: "https://example.com/image.png" } }]);
     assert.match(calls[0].prompt, /<mode>\nYou are in do mode/);
 
     assert.deepEqual(normalizeTelegramUpdate({
@@ -116,6 +126,15 @@ export async function runGatewayCoreSmoke({ setupTmp, cleanup }) {
     assert.equal(telegramMessages[0].text, "hello");
     assert.equal(fetchCalls.at(-1).body.reply_to_message_id, 11);
     assert.equal(fetchCalls.at(-1).body.text, "reply");
+    const sendPhotoResult = await telegram.sendBinary({
+      chatId: "1001",
+      replyToMessageId: "11",
+      binary: { type: "image", url: "https://example.com/image.png", caption: "caption" },
+    });
+    assert.deepEqual(sendPhotoResult, { target: "telegram", method: "sendPhoto", source: "url" });
+    assert.ok(fetchCalls.at(-1).url.endsWith("/sendPhoto"));
+    assert.equal(fetchCalls.at(-1).body.photo, "https://example.com/image.png");
+    assert.equal(fetchCalls.at(-1).body.caption, "caption");
 
     const queueGate = deferred();
     const queueHandled = [];
@@ -151,6 +170,7 @@ export async function runGatewayCoreSmoke({ setupTmp, cleanup }) {
         await flushMicrotasks();
       },
       async send() {},
+      async sendBinary() {},
     }));
     const stdout = createWritableCapture();
     const stderr = createWritableCapture();

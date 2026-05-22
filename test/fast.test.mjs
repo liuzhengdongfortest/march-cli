@@ -16,6 +16,7 @@ import { runProviderConfigCommandSmoke } from "./provider-config-command.smoke.m
 import { runReadFileToolSmoke } from "./read-file-tool.smoke.mjs";
 import { runReadImageToolSmoke } from "./read-image-tool.smoke.mjs";
 import { runScreenToolsSmoke } from "./screen-tools.smoke.mjs";
+import { runSendBinaryToolSmoke } from "./send-binary-tool.smoke.mjs";
 import { runSourceDirectoryLimitSmoke } from "./source-directory-limit.smoke.mjs";
 import { runSourceLineLimitSmoke } from "./source-line-limit.smoke.mjs";
 import { runStartupBannerSmoke } from "./startup-banner.smoke.mjs";
@@ -76,6 +77,7 @@ await runCommandExecToolSmoke();
 await runReadFileToolSmoke({ setupTmp, cleanup });
 await runReadImageToolSmoke({ setupTmp, cleanup });
 await runScreenToolsSmoke();
+await runSendBinaryToolSmoke({ setupTmp, cleanup });
 await runEditFileToolSmoke({ setupTmp, cleanup });
 await runFileSearchIndexSmoke();
 await runProviderConfigCommandSmoke({ setupTmp, cleanup });

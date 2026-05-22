@@ -18,8 +18,16 @@ export async function runGatewayDaemon({
   const platformConfig = gatewayConfig?.platforms?.[platform] ?? {};
   const adapter = platformRegistry.create(platform, { config: platformConfig });
   if (typeof adapter.send !== "function") throw new Error(`Gateway platform '${platform}' requires a send function`);
+  if (typeof adapter.sendBinary !== "function") throw new Error(`Gateway platform '${platform}' requires a sendBinary function`);
   const sessionStore = new GatewaySessionStore({ gatewayConfig });
-  const handleMessage = createGatewayMessageHandler({ sessionStore, getRunner, currentProject });
+  const handleMessage = createGatewayMessageHandler({
+    sessionStore,
+    getRunner,
+    currentProject,
+    outputSinkForMessage: (message) => ({
+      sendBinary: (binary) => adapter.sendBinary({ chatId: message.chatId, binary, replyToMessageId: message.messageId }),
+    }),
+  });
   const queue = createGatewayMessageQueue({
     handleMessage,
     logger,

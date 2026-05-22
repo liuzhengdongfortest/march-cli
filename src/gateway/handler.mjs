@@ -1,8 +1,9 @@
 import { appendModeReminder } from "../cli/input/mode-state.mjs";
+import { withBinaryOutputSink } from "../agent/output/binary-output-sink.mjs";
 import { normalizeGatewayMessage } from "./message.mjs";
 import { handleGatewaySlashCommand } from "./command-router.mjs";
 
-export function createGatewayMessageHandler({ sessionStore, getRunner, currentProject = "" }) {
+export function createGatewayMessageHandler({ sessionStore, getRunner, currentProject = "", outputSinkForMessage = null }) {
   return async function handleGatewayMessage(input) {
     const message = normalizeGatewayMessage(input);
     const session = sessionStore.getOrCreate(message);
@@ -20,7 +21,9 @@ export function createGatewayMessageHandler({ sessionStore, getRunner, currentPr
     }
 
     const prompt = appendModeReminder(message.text, session.modeState.get());
-    const result = await runner.runTurn(prompt, message.text, { currentProject });
+    const sink = outputSinkForMessage?.(message, session);
+    const runTurn = () => runner.runTurn(prompt, message.text, { currentProject });
+    const result = sink ? await withBinaryOutputSink(sink, runTurn) : await runTurn();
     return { type: "turn", session, result, lines: result?.draft ? [result.draft] : [] };
   };
 }

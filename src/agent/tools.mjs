@@ -3,6 +3,7 @@ import { createContextStatsTool } from "./context-stats-tool.mjs";
 import { createEditFileTool } from "./file-edit-tool.mjs";
 import { createReadFileTool } from "./file-tools/read-file-tool.mjs";
 import { createReadImageTool } from "./file-tools/read-image-tool.mjs";
+import { createSendBinaryTool } from "./output/send-binary-tool.mjs";
 import { createScreenTool } from "./screen-tools/screen-tool.mjs";
 import { createListWindowsTool } from "./screen-tools/list-windows-tool.mjs";
 import { toolText } from "./tool-result.mjs";
@@ -17,12 +18,14 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], shel
   const editFileTool = createEditFileTool({ engine, ui, lspService });
   const readFileTool = createReadFileTool({ engine });
   const readImageTool = createReadImageTool({ engine, getCurrentModel });
+  const sendBinaryTool = createSendBinaryTool({ engine });
   const screenTool = createScreenTool({ getCurrentModel });
   const listWindowsTool = createListWindowsTool();
 
   const tools = [
     readFileTool,
     readImageTool,
+    sendBinaryTool,
     screenTool,
     listWindowsTool,
     contextStatsTool,
