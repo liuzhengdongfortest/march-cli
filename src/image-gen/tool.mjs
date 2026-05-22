@@ -1,14 +1,15 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
+import { basename } from "node:path";
+import { sendBinaryOutput } from "../agent/output/binary-output-sink.mjs";
 import { toolText } from "../agent/tool-result.mjs";
-import { openFileWithDefaultApp } from "../platform/open-file.mjs";
 import { generateImage } from "./provider.mjs";
 
 export function createImageGenTool({
   authStorage,
   projectMarchDir,
   generateImageImpl = generateImage,
-  openFileImpl = openFileWithDefaultApp,
+  sendBinary = sendBinaryOutput,
 }) {
   return defineTool({
     name: "image_generate",
@@ -48,7 +49,7 @@ export function createImageGenTool({
       try {
         const { prompt, quality = "medium", aspectRatio = "1:1", auto_open: autoOpen = true } = params;
         const image = await generateImageImpl({ prompt, quality, aspectRatio, authStorage, projectMarchDir });
-        const openResult = autoOpen ? await openGeneratedImage(image.filePath, openFileImpl) : { opened: false };
+        const outputResult = autoOpen ? await deliverGeneratedImage(image, sendBinary) : { opened: false, delivered: false };
         return toolJson({
           success: true,
           image: image.marker,
@@ -57,8 +58,8 @@ export function createImageGenTool({
           prompt,
           aspectRatio,
           quality,
-          ...openResult,
-        }, { ...image, ...openResult });
+          ...outputResult,
+        }, { ...image, ...outputResult });
       } catch (err) {
         return toolJson({
           success: false,
@@ -70,12 +71,18 @@ export function createImageGenTool({
   });
 }
 
-async function openGeneratedImage(filePath, openFileImpl) {
+async function deliverGeneratedImage(image, sendBinary) {
+  const binary = {
+    type: "image",
+    path: image.filePath,
+    filename: basename(image.filePath),
+    mimeType: image.mimeType,
+  };
   try {
-    await openFileImpl(filePath);
-    return { opened: true };
+    const sink = await sendBinary(binary);
+    return { opened: sink?.opened === true, delivered: true, sink };
   } catch (err) {
-    return { opened: false, openError: err.message };
+    return { opened: false, delivered: false, openError: err.message };
   }
 }
 

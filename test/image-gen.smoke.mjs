@@ -66,8 +66,11 @@ export async function runImageGenSmoke({ setupTmp, cleanup }) {
       authStorage,
       projectMarchDir,
       generateImageImpl: async () => ({ filePath: result.filePath, marker: result.marker, mimeType: "image/png" }),
-      openFileImpl: async (filePath) => {
-        openedPath = filePath;
+      sendBinary: async (binary) => {
+        openedPath = binary.path;
+        assert.equal(binary.type, "image");
+        assert.equal(binary.mimeType, "image/png");
+        return { target: "local", opened: true };
       },
     });
     const toolResult = await tool.execute("call_1", { prompt: "draw a cat", aspectRatio: "1:1" });
@@ -76,12 +79,33 @@ export async function runImageGenSmoke({ setupTmp, cleanup }) {
     assert.equal(payload.image, result.marker);
     assert.equal(payload.path, result.filePath);
     assert.equal(payload.opened, true);
+    assert.equal(payload.delivered, true);
+    assert.equal(payload.sink.target, "local");
     assert.equal(openedPath, result.filePath);
+
+    let sinkBinary = null;
+    const { withBinaryOutputSink } = await import("../src/agent/output/binary-output-sink.mjs");
+    const sinkTool = createImageGenTool({
+      authStorage,
+      projectMarchDir,
+      generateImageImpl: async () => ({ filePath: result.filePath, marker: result.marker, mimeType: "image/png" }),
+    });
+    const sinkResult = await withBinaryOutputSink({
+      sendBinary: async (binary) => {
+        sinkBinary = binary;
+        return { target: "context", opened: true };
+      },
+    }, () => sinkTool.execute("call_sink", { prompt: "draw a cat" }));
+    const sinkPayload = JSON.parse(sinkResult.content[0].text);
+    assert.equal(sinkPayload.success, true);
+    assert.equal(sinkPayload.sink.target, "context");
+    assert.equal(sinkBinary.path, result.filePath);
 
     const noOpenResult = await tool.execute("call_2", { prompt: "draw a cat", auto_open: false });
     const noOpenPayload = JSON.parse(noOpenResult.content[0].text);
     assert.equal(noOpenPayload.success, true);
     assert.equal(noOpenPayload.opened, false);
+    assert.equal(noOpenPayload.delivered, false);
   } finally {
     cleanup(dir);
   }
