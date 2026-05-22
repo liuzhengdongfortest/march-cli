@@ -14,10 +14,9 @@ export function openFileWithDefaultApp(filePath, { spawnFn = spawn } = {}) {
 
 export function openCommand(filePath, { platform = process.platform } = {}) {
   if (platform === "win32") {
-    return {
-      command: "powershell.exe",
-      args: ["-NoProfile", "-Command", "& { param($path) Start-Process -FilePath $path }", filePath],
-    };
+    // cmd.exe start delegates to the user's shell association more reliably than
+    // PowerShell Start-Process for media files on Windows.
+    return { command: "cmd.exe", args: ["/c", "start", "", filePath] };
   }
 
   if (platform === "darwin") {

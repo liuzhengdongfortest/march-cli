@@ -6,8 +6,8 @@ export async function runPlatformOpenFileSmoke() {
   console.log("--- smoke: platform open file ---");
 
   assert.deepEqual(openCommand("C:\\tmp\\image file.png", { platform: "win32" }), {
-    command: "powershell.exe",
-    args: ["-NoProfile", "-Command", "& { param($path) Start-Process -FilePath $path }", "C:\\tmp\\image file.png"],
+    command: "cmd.exe",
+    args: ["/c", "start", "", "C:\\tmp\\image file.png"],
   });
   assert.deepEqual(openCommand("/tmp/image.png", { platform: "darwin" }), {
     command: "open",
