@@ -51,6 +51,8 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(css, /border-right: 1px solid var\(--color-border-subtle\)/);
   assert.match(css, /--trees-selected-bg-override: var\(--color-accent-soft\)/);
   assert.match(css, /\.timeline-aux/);
+  assert.match(css, /\.message-body[\s\S]*font-weight: var\(--font-weight-ui-normal\)/);
+  assert.match(css, /\.composer textarea[\s\S]*font-weight: var\(--font-weight-ui-normal\)/);
   assert.match(css, /\.terminal-block pre/);
   assert.match(css, /max-width: 920px/);
   assert.match(css, /data-left-open="true"/);
@@ -60,6 +62,9 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(tokens, /--shell-left-width:/);
   assert.doesNotMatch(tokens, /--bg:|--line:|--accent:/);
   assert.match(tokens, /--font-sans:/);
+  assert.match(tokens, /--font-weight-ui-normal: 450/);
+  assert.match(tokens, /--font-weight-ui-medium: 550/);
+  assert.match(tokens, /font-weight: var\(--font-weight-ui-normal\)/);
   assert.match(tokens, /"Segoe UI Variable Text"/);
   assert.match(tokens, /DengXian/);
   assert.match(tokens, /"等线"/);

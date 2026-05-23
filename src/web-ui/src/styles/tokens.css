@@ -26,6 +26,9 @@
       "Liberation Mono",
       Menlo,
       monospace;
+    --font-weight-ui-normal: 450;
+    --font-weight-ui-medium: 550;
+    --font-weight-ui-strong: 650;
     --palette-white: #ffffff;
     --palette-slate-50: #f8fafc;
     --palette-slate-100: #f1f5f9;
@@ -103,6 +106,7 @@
     background: var(--color-bg-page);
     color: var(--color-text-primary);
     font-family: var(--font-sans);
+    font-weight: var(--font-weight-ui-normal);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
