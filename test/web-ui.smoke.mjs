@@ -62,8 +62,9 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(tokens, /--shell-left-width:/);
   assert.doesNotMatch(tokens, /--bg:|--line:|--accent:/);
   assert.match(tokens, /--font-sans:/);
-  assert.match(tokens, /--font-weight-ui-normal: 450/);
-  assert.match(tokens, /--font-weight-ui-medium: 550/);
+  assert.match(tokens, /--font-weight-ui-normal: 500/);
+  assert.match(tokens, /--font-weight-ui-medium: 600/);
+  assert.match(tokens, /--font-weight-ui-strong: 700/);
   assert.match(tokens, /font-weight: var\(--font-weight-ui-normal\)/);
   assert.match(tokens, /"Segoe UI Variable Text"/);
   assert.match(tokens, /DengXian/);
