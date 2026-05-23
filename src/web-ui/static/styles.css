@@ -47,13 +47,22 @@ button { cursor: pointer; }
 .panel {
   min-height: 0;
   overflow: auto;
-  padding: 12px;
+  padding: 10px;
   background: var(--surface-soft);
 }
 .left-panel { grid-column: 1; grid-row: 2 / 4; border-right: 1px solid var(--line); }
 .right-panel { grid-column: 3; grid-row: 2 / 4; border-left: 1px solid var(--line); }
-.panel-section + .panel-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.panel-section + .panel-section, .compact-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
 .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; color: var(--muted); font-size: 11px; font-weight: 750; text-transform: uppercase; letter-spacing: 0.07em; }
+
+.explorer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 4px 10px;
+}
+.explorer-header h2 { margin: 0; font-size: 13px; font-weight: 750; letter-spacing: -0.01em; }
 
 .pill, .mini-button {
   border: 1px solid var(--line-strong);
@@ -69,7 +78,41 @@ button { cursor: pointer; }
 .pill.ok { color: var(--ok); background: rgba(22, 163, 74, 0.08); }
 .mini-button { color: var(--muted); }
 
-.tree-item, .context-row, .session-card, .todo {
+.file-tree { display: flex; flex-direction: column; gap: 1px; }
+.file-row {
+  --level: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 28px;
+  border: 0;
+  border-radius: 7px;
+  padding: 4px 7px 4px calc(7px + var(--level) * 14px);
+  background: transparent;
+  color: var(--muted);
+  text-align: left;
+}
+.file-row:hover, .context-row:hover, .session-card:hover, .todo:hover { background: rgba(15, 23, 42, 0.035); }
+.file-row.active, .file-row.selected, .session-card.active { color: var(--text); background: var(--accent-soft); }
+.file-main { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.file-main > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chevron { width: 12px; color: #9ca3af; font-size: 15px; line-height: 1; transform: translateY(-1px); }
+.chevron.open { color: var(--text); transform: rotate(90deg) translateX(-1px); }
+.chevron.blank { opacity: 0; }
+.file-icon {
+  min-width: 22px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+.folder .file-icon, .root .file-icon { font-family: var(--font-sans); font-size: 11px; font-weight: 750; text-transform: none; }
+.file-meta, .git-dot { flex: 0 0 auto; color: var(--muted); font-size: 11px; }
+.git-dot { color: #b45309; font-weight: 800; }
+
+.context-row, .session-card, .todo {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -79,8 +122,6 @@ button { cursor: pointer; }
   padding: 7px 8px;
   color: var(--muted);
 }
-.tree-item:hover, .context-row:hover, .session-card:hover, .todo:hover { background: rgba(15, 23, 42, 0.035); }
-.tree-item.active, .session-card.active { color: var(--text); background: var(--accent-soft); }
 .context-row span, .session-card span, .hint, .diagnostics p { color: var(--muted); font-size: 13px; }
 .todo { justify-content: flex-start; }
 
@@ -132,12 +173,13 @@ button { cursor: pointer; }
 .ghost-button:hover, .icon-button:hover { background: #f8fafc; }
 .send-button { border-color: transparent; background: var(--accent); color: white; font-weight: 800; }
 .icon-button { width: 38px; height: 38px; padding: 0; }
+.icon-button.compact { width: 28px; height: 28px; border-radius: 8px; }
 .mobile-only, .overlay { display: none; }
 
 @media (prefers-color-scheme: dark) {
   :root { --bg: #0f172a; --surface: #020617; --surface-soft: #0f172a; --text: #f8fafc; --muted: #94a3b8; --line: rgba(148, 163, 184, 0.12); --line-strong: rgba(148, 163, 184, 0.2); --accent: #60a5fa; --accent-soft: rgba(96, 165, 250, 0.14); --shadow: none; }
   body { background: linear-gradient(135deg, #0f172a, #020617); }
-  .tree-item:hover, .context-row:hover, .session-card:hover, .todo:hover, .ghost-button:hover, .icon-button:hover { background: rgba(148, 163, 184, 0.08); }
+  .file-row:hover, .context-row:hover, .session-card:hover, .todo:hover, .ghost-button:hover, .icon-button:hover { background: rgba(148, 163, 184, 0.08); }
   .tool-card, .diff-card { background: #0f172a; }
 }
 

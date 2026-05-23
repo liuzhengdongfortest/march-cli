@@ -12,12 +12,18 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
 
   assert.match(html, /class="app-shell"/);
   assert.match(html, /class="panel left-panel"/);
+  assert.match(html, /aria-label="File explorer"/);
+  assert.match(html, /class="file-tree"/);
+  assert.match(html, /index\.html/);
+  assert.match(html, /styles\.css/);
   assert.match(html, /class="timeline"/);
   assert.match(html, /class="panel right-panel"/);
   assert.match(html, /class="composer"/);
   assert.match(html, /tool-card/);
   assert.match(css, /grid-template-columns: 260px minmax\(0, 1fr\) 280px/);
   assert.match(css, /border-right: 1px solid var\(--line\)/);
+  assert.match(css, /\.file-row/);
+  assert.match(css, /calc\(7px \+ var\(--level\) \* 14px\)/);
   assert.match(css, /box-shadow: none/);
   assert.match(css, /--font-sans:/);
   assert.doesNotMatch(css, /Microsoft YaHei|微软雅黑/i);

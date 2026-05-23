@@ -19,23 +19,31 @@
 
       <div class="overlay" data-close-panels></div>
 
-      <aside class="panel left-panel" aria-label="Context panel">
-        <section class="panel-section">
-          <div class="section-heading"><span>Workspace</span><span class="pill">standalone</span></div>
-          <div class="tree-item active">march-cli-standalone</div>
-          <div class="tree-item">src / session</div>
-          <div class="tree-item">src / memory</div>
-          <div class="tree-item">test / fast smoke</div>
+      <aside class="panel left-panel" aria-label="File explorer">
+        <section class="explorer-header">
+          <div>
+            <p class="eyebrow">Explorer</p>
+            <h2>march-cli-standalone</h2>
+          </div>
+          <button class="icon-button compact" aria-label="New file">＋</button>
         </section>
-        <section class="panel-section">
-          <div class="section-heading"><span>Context layers</span><span class="pill muted">5</span></div>
-          <div class="context-row"><strong>system_core</strong><span>stable</span></div>
-          <div class="context-row"><strong>project_context</strong><span>AGENTS.md</span></div>
-          <div class="context-row"><strong>recent_chat</strong><span>current turn</span></div>
-        </section>
-        <section class="panel-section diagnostics">
-          <div class="section-heading"><span>Diagnostics</span><span class="pill ok">clean</span></div>
-          <p>No blocking diagnostics in prototype data.</p>
+
+        <nav class="file-tree" aria-label="Workspace files">
+          <button class="file-row root active" type="button"><span class="file-main"><span class="chevron open">›</span><span class="file-icon">▣</span><span>march-cli-standalone</span></span><span class="file-meta">git</span></button>
+          <button class="file-row folder" type="button" style="--level: 1"><span class="file-main"><span class="chevron open">›</span><span class="file-icon">src</span><span>src</span></span></button>
+          <button class="file-row folder" type="button" style="--level: 2"><span class="file-main"><span class="chevron open">›</span><span class="file-icon">web</span><span>web-ui</span></span></button>
+          <button class="file-row file selected" type="button" style="--level: 3"><span class="file-main"><span class="chevron blank"></span><span class="file-icon">html</span><span>index.html</span></span><span class="file-meta">open</span></button>
+          <button class="file-row file" type="button" style="--level: 3"><span class="file-main"><span class="chevron blank"></span><span class="file-icon">css</span><span>styles.css</span></span></button>
+          <button class="file-row file" type="button" style="--level: 3"><span class="file-main"><span class="chevron blank"></span><span class="file-icon">js</span><span>app.js</span></span></button>
+          <button class="file-row folder" type="button" style="--level: 1"><span class="file-main"><span class="chevron">›</span><span class="file-icon">test</span><span>test</span></span><span class="file-meta">12</span></button>
+          <button class="file-row file modified" type="button" style="--level: 1"><span class="file-main"><span class="chevron blank"></span><span class="file-icon">md</span><span>AGENTS.md</span></span><span class="git-dot">M</span></button>
+          <button class="file-row file" type="button" style="--level: 1"><span class="file-main"><span class="chevron blank"></span><span class="file-icon">json</span><span>package.json</span></span></button>
+        </nav>
+
+        <section class="panel-section compact-section">
+          <div class="section-heading"><span>Context</span><span class="pill muted">5 layers</span></div>
+          <div class="context-row"><strong>diagnostics</strong><span>clean</span></div>
+          <div class="context-row"><strong>memory hints</strong><span>ready</span></div>
         </section>
       </aside>
 
