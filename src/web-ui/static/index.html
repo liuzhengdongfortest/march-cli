@@ -19,26 +19,50 @@
 
       <div class="overlay" data-close-panels></div>
 
-      <aside class="panel left-panel" aria-label="File explorer">
-        <section class="explorer-header">
-          <div>
-            <p class="eyebrow">Explorer</p>
-            <h2>march-cli-standalone</h2>
-          </div>
-          <button class="icon-button compact" aria-label="New file">＋</button>
-        </section>
+      <aside class="panel left-panel" aria-label="Projects">
+        <div class="projects-header">
+          <h3>Projects</h3>
+          <button class="menu-button" type="button" aria-label="Open project menu">
+            <span></span><span></span><span></span>
+          </button>
+        </div>
 
-        <nav class="file-tree" aria-label="Workspace files">
-          <button class="file-row root active" type="button"><span class="file-main"><span class="chevron open">›</span><span class="file-icon">▣</span><span>march-cli-standalone</span></span><span class="file-meta">git</span></button>
-          <button class="file-row folder" type="button" style="--level: 1"><span class="file-main"><span class="chevron open">›</span><span class="file-icon">src</span><span>src</span></span></button>
-          <button class="file-row folder" type="button" style="--level: 2"><span class="file-main"><span class="chevron open">›</span><span class="file-icon">web</span><span>web-ui</span></span></button>
-          <button class="file-row file selected" type="button" style="--level: 3"><span class="file-main"><span class="chevron blank"></span><span class="file-icon">html</span><span>index.html</span></span><span class="file-meta">open</span></button>
-          <button class="file-row file" type="button" style="--level: 3"><span class="file-main"><span class="chevron blank"></span><span class="file-icon">css</span><span>styles.css</span></span></button>
-          <button class="file-row file" type="button" style="--level: 3"><span class="file-main"><span class="chevron blank"></span><span class="file-icon">js</span><span>app.js</span></span></button>
-          <button class="file-row folder" type="button" style="--level: 1"><span class="file-main"><span class="chevron">›</span><span class="file-icon">test</span><span>test</span></span><span class="file-meta">12</span></button>
-          <button class="file-row file modified" type="button" style="--level: 1"><span class="file-main"><span class="chevron blank"></span><span class="file-icon">md</span><span>AGENTS.md</span></span><span class="git-dot">M</span></button>
-          <button class="file-row file" type="button" style="--level: 1"><span class="file-main"><span class="chevron blank"></span><span class="file-icon">json</span><span>package.json</span></span></button>
-        </nav>
+        <div class="projects-body">
+          <ul class="project-tree" aria-label="Project files">
+            <li>
+              <button class="tree-row selected root-node" type="button" style="--depth: 0">
+                <span class="tree-icon chevron open" aria-hidden="true"></span>
+                <span class="root-badge">march-cli-standalone</span>
+                <span class="bound-dot" aria-label="Bound session"></span>
+              </button>
+              <ul>
+                <li>
+                  <button class="tree-row" type="button" style="--depth: 1">
+                    <span class="tree-icon chevron open" aria-hidden="true"></span>
+                    <span>src</span>
+                  </button>
+                  <ul>
+                    <li>
+                      <button class="tree-row" type="button" style="--depth: 2">
+                        <span class="tree-icon chevron open" aria-hidden="true"></span>
+                        <span>web-ui</span>
+                      </button>
+                      <ul>
+                        <li><button class="tree-row" type="button" style="--depth: 3"><span class="tree-icon file code" aria-hidden="true"></span><span>server.mjs</span></button></li>
+                        <li><button class="tree-row active-file" type="button" style="--depth: 3"><span class="tree-icon file markup" aria-hidden="true"></span><span>index.html</span><span class="session-link">◆</span></button></li>
+                        <li><button class="tree-row" type="button" style="--depth: 3"><span class="tree-icon file" aria-hidden="true"></span><span>styles.css</span></button></li>
+                        <li><button class="tree-row" type="button" style="--depth: 3"><span class="tree-icon file code" aria-hidden="true"></span><span>app.js</span></button></li>
+                      </ul>
+                    </li>
+                  </ul>
+                </li>
+                <li><button class="tree-row" type="button" style="--depth: 1"><span class="tree-icon chevron" aria-hidden="true"></span><span>test</span></button></li>
+                <li><button class="tree-row" type="button" style="--depth: 1"><span class="tree-icon file markup" aria-hidden="true"></span><span>AGENTS.md</span></button></li>
+                <li><button class="tree-row" type="button" style="--depth: 1"><span class="tree-icon file" aria-hidden="true"></span><span>package.json</span></button></li>
+              </ul>
+            </li>
+          </ul>
+        </div>
       </aside>
 
       <main class="timeline" aria-label="Agent timeline">
