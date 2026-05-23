@@ -26,6 +26,7 @@ import { appendFastVariants, createFastModelEntry, fromFastEntryModel, isFastPro
 import { registerSuperGrokProvider } from "../supergrok/provider.mjs";
 import { registerCustomProviders } from "../provider/custom-provider.mjs";
 import { injectHostedTools } from "../provider/hosted-tools.mjs";
+import { createRunnerLifecycle } from "./lifecycle/runner-lifecycle.mjs";
 export { MARCH_BASE_TOOL_NAMES, installModelPayloadDumper };
 export { createDefaultSessionManager, resolveRunnerSessionManager } from "./runner/runner-init.mjs";
 export { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
@@ -58,6 +59,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   const resolvedSessionManager = resolveRunnerSessionManager(cwd, sessionManager);
   const sessionBinding = createSessionBinding(null);
   let currentModelCallKind = "model", currentTurnId = null, currentPromptForContext = "";
+  const lifecycle = createRunnerLifecycle();
   let currentTurnContextMode = "rebuild";
   let nextTurnContextMode = "rebuild";
   let lastNotificationResult = null, runtimeHost = null, lifecycleAdapter = null;
@@ -70,7 +72,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       sessionManager: resolvedSessionManager, sessionBinding, engine, ui: runtimeUi,
       projectMarchDir,
       memoryTools, memoryStore, shellRuntime, lspService, mcpTools, webTools,
-      permissionController, extensionPaths, hostedTools,
+      lifecycle, permissionController, extensionPaths, hostedTools,
       onRebind: (session) => {
         installModelPayloadDumper(session, modelContextDumper, () => currentModelCallKind, onLoggedModelPayload, injectMarchSystemContext);
         syncEngineSessionState(engine, session);
@@ -82,7 +84,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   } else {
     const sessionOptions = resolveRunnerSessionOptions({
       cwd, stateRoot, provider, modelId, modelRegistry, engine, ui: runtimeUi,
-      memoryTools, shellRuntime, lspService, mcpTools, webTools, permissionController,
+      memoryTools, shellRuntime, lspService, mcpTools, webTools, lifecycle, permissionController,
       authStorage: resolvedAuth, projectMarchDir,
       getCurrentModel: () => sessionBinding.get()?.model ?? selectedModel,
     });
@@ -115,6 +117,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       const contextMode = nextTurnContextMode;
       currentTurnContextMode = contextMode;
       nextTurnContextMode = "rebuild";
+      lifecycle.clearPendingAction();
       const turnStartedAt = Date.now();
       const codexTransportStatsBefore = getCodexTransportDebugSnapshot(sessionBinding.get());
       const turnLog = beginLoggedTurn({ logger, engine, modelId, provider, contextMode, userMessage, userRecallHints, startedAt: turnStartedAt }); currentTurnId = turnLog.turnId;
@@ -135,6 +138,8 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
           draft: result?.draft ?? "",
           durationMs: Date.now() - turnStartedAt,
         }, (notificationResult) => { lastNotificationResult = notificationResult; });
+        const lifecycleAction = lifecycle.takePendingAction();
+        if (lifecycleAction) result.lifecycleAction = lifecycleAction;
         turnLog.endSuccess(result);
         return result;
       } catch (err) {
@@ -186,21 +191,11 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       return model;
     },
     getScopedModels() { return appendFastVariants(sessionBinding.get().scopedModels); },
-    getConfiguredProviders() {
-      const configured = Object.values(providers ?? {}).map((profile) => profile?.type).filter(Boolean);
-      const available = (modelRegistry.getAvailable?.() ?? []).map((model) => model.provider);
-      return [...new Set([...configured, ...available])];
-    },
+    getConfiguredProviders() { return [...new Set([...Object.values(providers ?? {}).map((profile) => profile?.type).filter(Boolean), ...(modelRegistry.getAvailable?.() ?? []).map((model) => model.provider)])]; },
     getSessionStats() { return getRunnerSessionStats(sessionBinding.get(), runtimeHost); },
     getLastNotificationResult() { return lastNotificationResult; },
     async notifyTest({ title = "March", message = "If you see this, March runtime notifications work." } = {}) {
-      lastNotificationResult = await notifyTurnEndBestEffort(turnNotifier, {
-        status: "success",
-        sessionName: engine.sessionName,
-        title,
-        message,
-        durationMs: 0,
-      });
+      lastNotificationResult = await notifyTurnEndBestEffort(turnNotifier, { status: "success", sessionName: engine.sessionName, title, message, durationMs: 0 });
       return lastNotificationResult;
     },
     estimateContextTokens(userMessage = "") {

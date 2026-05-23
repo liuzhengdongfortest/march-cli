@@ -142,7 +142,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   const reload = await handleSlashCommand("/reload", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(reload.handled, true);
   assert.equal(reload.refreshContextTokens, true);
-  assert.ok(output.join("\n").includes("Runtime reloaded."));
+  assert.ok(output.join("\n").includes("March runtime 已重启"));
   const modeState = createModeState();
   const discuss = await handleSlashCommand("/discuss", { ui, runner, sessionState, sessionsRoot, projectMarchDir, modeState });
   assert.equal(discuss.handled, true);

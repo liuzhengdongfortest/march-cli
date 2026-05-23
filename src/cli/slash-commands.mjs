@@ -75,7 +75,7 @@ export async function handleSlashCommand(trimmed, {
     }
     try {
       await runner.restartRuntime();
-      ui.writeln("Runtime reloaded. The next turn will use the latest runner/tool code from disk.");
+      ui.writeln("● March runtime 已重启，下一轮将使用磁盘上的最新代码");
       return { handled: true, refreshContextTokens: true };
     } catch (err) {
       ui.writeln(`Error: ${err.message}`);

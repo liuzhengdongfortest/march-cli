@@ -11,8 +11,9 @@ import { createShellTools } from "../shell/tools.mjs";
 import { initImageGen } from "../image-gen/index.mjs";
 import { createSuperGrokTool } from "../supergrok/tool.mjs";
 import { createBrowserTools } from "../browser/tools/index.mjs";
+import { createRuntimeRestartTool } from "./lifecycle/runtime-restart-tool.mjs";
 
-export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], shellRuntime = null, lspService = null, mcpTools = [], webTools = [], permissionController = null, authStorage = null, projectMarchDir = null, stateRoot = null, getCurrentModel = null }) {
+export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], shellRuntime = null, lspService = null, mcpTools = [], webTools = [], lifecycle = null, permissionController = null, authStorage = null, projectMarchDir = null, stateRoot = null, getCurrentModel = null }) {
   const commandExecTool = createCommandExecTool({ cwd });
   const contextStatsTool = createContextStatsTool({ engine });
   const editFileTool = createEditFileTool({ engine, ui, lspService });
@@ -35,6 +36,7 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], shel
     ...memoryTools,
     ...mcpTools,
     ...webTools,
+    ...(lifecycle ? [createRuntimeRestartTool({ lifecycle })] : []),
     ...createBrowserTools({ stateRoot }),
     ...(authStorage ? [createSuperGrokTool({ authStorage, projectMarchDir })] : []),
     ...(authStorage ? initImageGen({ authStorage, projectMarchDir }) : []),

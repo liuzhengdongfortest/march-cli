@@ -31,8 +31,9 @@ export async function runSingleShotPrompt({
   if (carryoverRecallHints.length > 0 && !carryoverAlreadyRendered) ui.recall?.({ source: "assistant", hints: carryoverRecallHints });
   refreshStatusBar.startWorking?.();
   try {
-    await runner.runTurn(fullPrompt, prompt, { userRecallHints, currentProject });
+    const result = await runner.runTurn(fullPrompt, prompt, { userRecallHints, currentProject });
     renderPendingAssistantRecallPreview({ runner, ui });
+    await handleTurnLifecycleAction(result?.lifecycleAction, { runner, ui });
   } finally {
     refreshStatusBar.stopWorking?.();
     memoryStore.endTurn();
@@ -154,8 +155,9 @@ async function runReplTurn({ prompt, args, runner, memoryStore, currentProject, 
     if (carryoverRecallHints.length > 0 && !carryoverAlreadyRendered) ui.recall?.({ source: "assistant", hints: carryoverRecallHints });
     setTurnRunning(true);
     refreshStatusBar.startWorking?.();
-    await runner.runTurn(fullPrompt, prompt, { userRecallHints, currentProject });
+    const result = await runner.runTurn(fullPrompt, prompt, { userRecallHints, currentProject });
     renderPendingAssistantRecallPreview({ runner, ui });
+    await handleTurnLifecycleAction(result?.lifecycleAction, { runner, ui });
     ui.writeln("");
   } catch (err) {
     ui.writeln(`Error: ${err.message}`);
@@ -173,6 +175,16 @@ export function formatUserDisplayMessage(prompt) {
 
 function appendPromptBlocks(prompt, ...blocks) {
   return [prompt, ...blocks.filter(Boolean)].join("\n\n");
+}
+
+async function handleTurnLifecycleAction(action, { runner, ui }) {
+  if (action?.type !== "restart_runtime") return;
+  if (typeof runner.restartRuntime !== "function") {
+    ui.writeln("March runtime restart requested, but runtime reload is unavailable in in-process mode. Restart March to load code changes.");
+    return;
+  }
+  await runner.restartRuntime();
+  ui.writeln("● March runtime 已重启，下一轮将使用磁盘上的最新代码");
 }
 
 function renderPendingAssistantRecallPreview({ runner, ui }) {

@@ -22,6 +22,7 @@ import { runSourceDirectoryLimitSmoke } from "./source-directory-limit.smoke.mjs
 import { runSourceLineLimitSmoke } from "./source-line-limit.smoke.mjs";
 import { runStartupBannerSmoke } from "./startup-banner.smoke.mjs";
 import { runRemoteMemorySmoke } from "./remote-memory.smoke.mjs";
+import { runRuntimeRestartLifecycleSmoke } from "./runtime-restart-lifecycle.smoke.mjs";
 function setupTmp() {
   const dir = resolve(tmpdir(), `march-fast-smoke-${randomUUID().slice(0, 8)}`);
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
@@ -85,4 +86,5 @@ await runPlatformOpenFileSmoke();
 await runProviderConfigCommandSmoke({ setupTmp, cleanup });
 await runCustomProviderSmoke();
 await runRemoteMemorySmoke({ setupTmp, cleanup });
+await runRuntimeRestartLifecycleSmoke({ setupTmp, cleanup });
 console.log("All fast smoke tests passed.");
