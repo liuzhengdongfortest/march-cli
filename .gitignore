@@ -6,6 +6,7 @@
 node_modules
 docs/.vitepress/dist
 docs/.vitepress/cache
+src/web-ui/dist
 pnpm-lock.yaml
 .gitignore
 pnpm-workspace.yaml

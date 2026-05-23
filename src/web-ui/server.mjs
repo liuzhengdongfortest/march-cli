@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import { extname, join, normalize, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-const STATIC_ROOT = fileURLToPath(new URL("./static/", import.meta.url));
+const STATIC_ROOT = fileURLToPath(new URL("./dist/", import.meta.url));
 const DEFAULT_PORT = 4174;
 
 const rootPrefix = (root) => `${normalize(root).replace(/[\\/]$/, "")}${sep}`;
@@ -46,6 +46,6 @@ export function resolveStaticPath(root, requestUrl) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const port = Number.parseInt(process.env.MARCH_WEB_PORT ?? "", 10) || DEFAULT_PORT;
   createWebUiServer().listen(port, "127.0.0.1", () => {
-    console.log(`March Web prototype running at http://127.0.0.1:${port}`);
+    console.log(`March Web preview running at http://127.0.0.1:${port}`);
   });
 }

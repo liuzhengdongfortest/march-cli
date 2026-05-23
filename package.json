@@ -22,7 +22,9 @@
     "docs:dev": "vitepress dev docs --host 127.0.0.1",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs --host 127.0.0.1",
-    "web:dev": "node src/web-ui/server.mjs",
+    "web:dev": "vite --config src/web-ui/vite.config.mjs",
+    "web:build": "tsc -p src/web-ui/tsconfig.json && vite build --config src/web-ui/vite.config.mjs",
+    "web:preview": "npm run web:build && node src/web-ui/server.mjs",
     "context": "cd .. && node march-cli/bin/march.mjs --dump-context",
     "notify:experiment": "node scripts/notify-experiment.mjs",
     "publish:env": "node scripts/npm-publish-from-env.mjs"
@@ -36,6 +38,8 @@
     "marked": "^18.0.3",
     "node-notifier": "^10.0.1",
     "node-pty": "^1.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "typebox": "^1.0.58",
     "undici": "^7.25.0",
     "web-tree-sitter": "^0.26.8",
@@ -45,6 +49,11 @@
     "@vscode/ripgrep": "^1.18.0"
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.2",
+    "@types/react": "^18.3.29",
+    "@types/react-dom": "^18.3.7",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.14",
     "vitepress": "^1.6.4"
   }
 }
