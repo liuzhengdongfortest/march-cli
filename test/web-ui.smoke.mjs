@@ -16,7 +16,9 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(html, /class="panel right-panel"/);
   assert.match(html, /class="composer"/);
   assert.match(html, /tool-card/);
-  assert.match(css, /grid-template-columns: 280px minmax\(0, 1fr\) 300px/);
+  assert.match(css, /grid-template-columns: 260px minmax\(0, 1fr\) 280px/);
+  assert.match(css, /border-right: 1px solid var\(--line\)/);
+  assert.match(css, /box-shadow: none/);
   assert.match(css, /max-width: 920px/);
   assert.match(css, /data-left-open="true"/);
   assert.match(js, /data-toggle-left/);
