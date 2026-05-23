@@ -62,7 +62,7 @@ button { cursor: pointer; }
   gap: 3px;
 }
 .menu-button span { width: 3.6px; height: 3.6px; border-radius: 999px; background: currentColor; }
-.menu-button:hover, .header-button:hover, .session-row:hover, .todo-row:hover { background: rgba(0, 0, 0, 0.05); }
+.menu-button:hover, .header-button:hover, .session-row:hover, .activity-row:hover { background: rgba(0, 0, 0, 0.05); }
 .projects-body { height: calc(100% - 36px); overflow: auto; padding: 8px; }
 .project-tree, .project-tree ul { list-style: none; margin: 0; padding: 0; }
 .tree-row {
@@ -127,7 +127,7 @@ button { cursor: pointer; }
 .diff-line.keep { color: var(--muted); }
 
 .right-body { flex: 1; min-height: 0; overflow: auto; padding: 12px; }
-.session-row, .todo-row {
+.session-row, .activity-row {
   width: 100%;
   min-height: 34px;
   border: 0;
@@ -143,9 +143,9 @@ button { cursor: pointer; }
   font-size: 13px;
 }
 .session-row.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-.session-row time { color: var(--muted); font-size: 12px; }
+.session-row time, .activity-row time { color: var(--muted); font-size: 12px; }
 .right-divider { margin: 12px 0 4px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; }
-.todo-row { justify-content: flex-start; color: var(--muted); }
+.activity-row { color: var(--muted); }
 
 .composer {
   grid-area: footer;
@@ -190,7 +190,7 @@ button { cursor: pointer; }
 
 @media (prefers-color-scheme: dark) {
   :root { --bg: #0f172a; --surface: #020617; --sidebar: #0f172a; --text: #f8fafc; --muted: #94a3b8; --line: rgba(148, 163, 184, 0.12); --line-strong: rgba(148, 163, 184, 0.2); --accent: #60a5fa; --accent-soft: rgba(96, 165, 250, 0.14); }
-  .tree-row:hover, .menu-button:hover, .header-button:hover, .session-row:hover, .todo-row:hover, .icon-action:hover, .chip-button:hover, .mobile-toggle:hover { background: rgba(148, 163, 184, 0.08); }
+  .tree-row:hover, .menu-button:hover, .header-button:hover, .session-row:hover, .activity-row:hover, .icon-action:hover, .chip-button:hover, .mobile-toggle:hover { background: rgba(148, 163, 184, 0.08); }
   .tool-row { background: #0f172a; }
 }
 

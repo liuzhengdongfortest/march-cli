@@ -23,13 +23,16 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(html, /class="right-header">会话/);
   assert.match(html, /class="composer-box"/);
   assert.match(html, /class="tool-row"/);
+  assert.match(html, />Activity</);
   assert.doesNotMatch(html, /class="top-bar"/);
   assert.doesNotMatch(html, /tool-card/);
+  assert.doesNotMatch(html, /todo|Todos/i);
   assert.match(css, /grid-template-areas: "sidebar main right" "sidebar footer right"/);
   assert.match(css, /height: 36px/);
   assert.match(css, /border-right: 1px solid var\(--line\)/);
   assert.match(css, /--font-sans:/);
   assert.doesNotMatch(css, /Microsoft YaHei|微软雅黑/i);
+  assert.doesNotMatch(css, /todo/i);
   assert.match(css, /max-width: 920px/);
   assert.match(css, /data-left-open="true"/);
   assert.match(js, /data-toggle-left/);
