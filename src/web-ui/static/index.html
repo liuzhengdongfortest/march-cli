@@ -8,15 +8,6 @@
   </head>
   <body>
     <div class="app-shell" data-left-open="false" data-right-open="false">
-      <header class="top-bar">
-        <button class="icon-button mobile-only" data-toggle-left aria-label="Open context panel">☰</button>
-        <div>
-          <p class="eyebrow">March</p>
-          <h1>march-cli-standalone</h1>
-        </div>
-        <button class="icon-button mobile-only" data-toggle-right aria-label="Open activity panel">◧</button>
-      </header>
-
       <div class="overlay" data-close-panels></div>
 
       <aside class="panel left-panel" aria-label="Projects">
@@ -66,52 +57,63 @@
       </aside>
 
       <main class="timeline" aria-label="Agent timeline">
-        <div class="timeline-header">
-          <div>
-            <p class="eyebrow">Session</p>
-            <h2>Web shell</h2>
-          </div>
-          <button class="ghost-button">Share</button>
+        <div class="main-header">
+          <span>Session</span>
+          <button class="header-button" type="button">Share</button>
         </div>
-
-        <article class="turn user-turn">
-          <div class="avatar">U</div>
-          <div class="bubble">参考 MindFS，做 Web UI。</div>
-        </article>
-
-        <article class="turn assistant-turn">
-          <div class="avatar march">M</div>
-          <div class="bubble stack">
-            <div class="tool-card">
-              <div class="tool-card-header"><span>read</span><strong>workspace</strong><em>done</em></div>
-            </div>
-            <div class="diff-card">
-              <div class="diff-line add">+ src/web-ui</div>
-              <div class="diff-line keep">  runtime unchanged</div>
-            </div>
+        <div class="timeline-scroll">
+          <div class="session-title">
+            <h1>Web shell</h1>
+            <span>gpt-4.1 · fast</span>
           </div>
-        </article>
+
+          <article class="message-row user-turn">
+            <div class="agent-dot">U</div>
+            <div class="message-body">参考 MindFS，做 Web UI。</div>
+          </article>
+
+          <article class="message-row assistant-turn">
+            <div class="agent-dot march">M</div>
+            <div class="message-body">
+              <p>按 MindFS 结构复刻。</p>
+              <div class="tool-row">
+                <span class="tool-kind">read</span>
+                <strong>workspace</strong>
+                <em>done</em>
+              </div>
+              <div class="diff-inline">
+                <div class="diff-line add">+ src/web-ui</div>
+                <div class="diff-line keep">  runtime unchanged</div>
+              </div>
+            </div>
+          </article>
+        </div>
       </main>
 
-      <aside class="panel right-panel" aria-label="Activity panel">
-        <section class="panel-section">
-          <div class="section-heading"><span>Sessions</span><button class="mini-button">New</button></div>
-          <div class="session-card active"><strong>Web shell</strong><span>now</span></div>
-          <div class="session-card"><strong>Memory</strong><span>1d</span></div>
-        </section>
-        <section class="panel-section">
-          <div class="section-heading"><span>Todos</span><span class="pill muted">3</span></div>
-          <label class="todo"><input type="checkbox" checked /> Layout</label>
-          <label class="todo"><input type="checkbox" checked /> Drawers</label>
-          <label class="todo"><input type="checkbox" /> Runtime</label>
-        </section>
+      <aside class="panel right-panel" aria-label="Sessions">
+        <div class="right-header">会话</div>
+        <div class="right-body">
+          <button class="session-row active" type="button"><span>Web shell</span><time>now</time></button>
+          <button class="session-row" type="button"><span>Memory</span><time>1d</time></button>
+          <div class="right-divider">Todos</div>
+          <label class="todo-row"><input type="checkbox" checked /> Layout</label>
+          <label class="todo-row"><input type="checkbox" checked /> Drawers</label>
+          <label class="todo-row"><input type="checkbox" /> Runtime</label>
+        </div>
       </aside>
 
       <form class="composer" aria-label="Message composer">
-        <button type="button" class="ghost-button">/</button>
-        <textarea rows="1" placeholder="Message March…"></textarea>
-        <button type="button" class="ghost-button">Attach</button>
-        <button type="submit" class="send-button">Send</button>
+        <button type="button" class="mobile-toggle" data-toggle-left aria-label="Open files">▦</button>
+        <div class="composer-box">
+          <textarea rows="1" placeholder="Message March…"></textarea>
+          <div class="composer-actions">
+            <button type="button" class="session-ring" aria-label="Session"></button>
+            <button type="button" class="chip-button">Chat</button>
+            <button type="button" class="icon-action" aria-label="Attach">+</button>
+            <button type="submit" class="send-icon" aria-label="Send">↑</button>
+          </div>
+        </div>
+        <button type="button" class="mobile-toggle" data-toggle-right aria-label="Open sessions">☰</button>
       </form>
     </div>
     <script type="module" src="./app.js"></script>
