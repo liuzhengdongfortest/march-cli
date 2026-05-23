@@ -72,6 +72,11 @@ function cleanup(dir) {
   assert.equal(web.host, "127.0.0.1");
   assert.equal(web.port, "4174");
 
+  const webDev = parseCliArgs(["web", "--dev", "--api-port", "5175"]);
+  assert.deepEqual(webDev.command, { name: "web", args: [] });
+  assert.equal(webDev.dev, true);
+  assert.equal(webDev.apiPort, "5175");
+
   const webWithWorkspaceOption = parseCliArgs(["web", "--workspace", tmpWorkspace]);
   assert.deepEqual(webWithWorkspaceOption.command, { name: "web", args: [] });
   assert.equal(webWithWorkspaceOption.workspace, tmpWorkspace);

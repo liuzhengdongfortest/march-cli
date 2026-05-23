@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { createWebUiServer } from "./server.mjs";
 import { createWebSessionManager, resolveWorkspace } from "./session-manager.mjs";
 
@@ -9,15 +10,17 @@ export async function runWebUiCommand(args, { config, cwd, stateRoot, useRuntime
   const host = args.host ?? DEFAULT_HOST;
   assertLoopbackHost(host);
   const port = Number.parseInt(args.port ?? "", 10) || DEFAULT_PORT;
-  assertWebBuildReady();
   const runtime = createWebSessionManager({ args, config, launchCwd: cwd, stateRoot, useRuntimeProcess });
   const initialWorkspace = resolveInitialWorkspace(args, cwd);
   if (initialWorkspace) await runtime.createSession(initialWorkspace);
+
+  if (args.dev) return runWebUiDevCommand({ args, host, port, runtime, initialWorkspace });
+  assertWebBuildReady();
   const server = createWebUiServer({ runtime });
   await listen(server, port, host);
   process.stdout.write(`March Web running at http://${host}:${port}\n`);
   if (initialWorkspace) process.stdout.write(`Workspace: ${initialWorkspace}\n`);
-  await waitForShutdown({ server, runtime });
+  await waitForShutdown({ servers: [server], runtime });
   return 0;
 }
 
@@ -36,7 +39,47 @@ function assertLoopbackHost(host) {
 
 function assertWebBuildReady() {
   if (existsSync(new URL("./dist/index.html", import.meta.url))) return;
-  throw new Error("Web UI build not found. Run: npm run web:build");
+  throw new Error("Web UI build not found. Run: npm run web:build or use march web --dev");
+}
+
+async function runWebUiDevCommand({ args, host, port, runtime, initialWorkspace }) {
+  const apiPort = Number.parseInt(args.apiPort ?? "", 10) || port + 1;
+  const apiServer = createWebUiServer({ runtime });
+  let apiStarted = false;
+  try {
+    await listen(apiServer, apiPort, host);
+    apiStarted = true;
+    const vite = await createViteDevServer({ host, port, apiPort });
+    process.stdout.write(`March Web dev running at http://${host}:${port}\n`);
+    process.stdout.write(`March Web API running at http://${host}:${apiPort}\n`);
+    if (initialWorkspace) process.stdout.write(`Workspace: ${initialWorkspace}\n`);
+    await waitForShutdown({ servers: [apiServer], runtime, vite });
+    return 0;
+  } catch (err) {
+    if (apiStarted) await closeServer(apiServer);
+    await runtime.dispose?.();
+    throw err;
+  }
+}
+
+async function createViteDevServer({ host, port, apiPort }) {
+  let createServer;
+  try {
+    ({ createServer } = await import("vite"));
+  } catch {
+    throw new Error("Vite is required for march web --dev. Run npm install in the March repo.");
+  }
+  const vite = await createServer({
+    configFile: fileURLToPath(new URL("./vite.config.mjs", import.meta.url)),
+    server: {
+      host,
+      port,
+      strictPort: true,
+      proxy: { "/api": `http://${host}:${apiPort}` },
+    },
+  });
+  await vite.listen();
+  return vite;
 }
 
 function listen(server, port, host) {
@@ -49,12 +92,17 @@ function listen(server, port, host) {
   });
 }
 
-function waitForShutdown({ server, runtime }) {
+function closeServer(server) {
+  return new Promise((resolve) => server.close(resolve));
+}
+
+function waitForShutdown({ servers, runtime, vite = null }) {
   return new Promise((resolve) => {
     const shutdown = async () => {
       process.off("SIGINT", shutdown);
       process.off("SIGTERM", shutdown);
-      await new Promise((done) => server.close(done));
+      if (vite) await vite.close();
+      await Promise.all(servers.map(closeServer));
       await runtime.dispose?.();
       resolve();
     };

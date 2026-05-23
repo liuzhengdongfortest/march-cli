@@ -30,11 +30,13 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   const runtimeHost = readFileSync(join(root, "runtime-host.mjs"), "utf8");
   const sessionManager = readFileSync(join(root, "session-manager.mjs"), "utf8");
 
-  assert.match(pkg, /"web:dev": "vite --config src\/web-ui\/vite\.config\.mjs"/);
+  assert.match(pkg, /"web:dev": "node bin\/march\.mjs web --dev"/);
   assert.match(pkg, /"web:build": "tsc -p src\/web-ui\/tsconfig\.json/);
   assert.match(pkg, /"@pierre\/trees":/);
   assert.match(args, /"web"/);
   assert.match(args, /workspace: \{ type: "string" \}/);
+  assert.match(args, /dev: \{ type: "boolean" \}/);
+  assert.match(args, /"api-port": \{ type: "string" \}/);
   assert.match(configuredCommand, /runWebUiCommand/);
   assert.match(webCommand, /createWebSessionManager/);
   assert.match(webCommand, /resolveInitialWorkspace/);
@@ -42,6 +44,10 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(webCommand, /only exposes local filesystem APIs/);
   assert.doesNotMatch(webCommand, /Choose a workspace/);
   assert.match(webCommand, /Web UI build not found/);
+  assert.match(webCommand, /runWebUiDevCommand/);
+  assert.match(webCommand, /createViteDevServer/);
+  assert.match(webCommand, /proxy: \{ "\/api":/);
+  assert.match(webCommand, /apiPort/);
   assert.match(sessionManager, /createWebRuntimeHost/);
   assert.match(sessionManager, /listFsRoots/);
   assert.match(sessionManager, /fsList/);

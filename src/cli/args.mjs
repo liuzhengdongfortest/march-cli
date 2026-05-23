@@ -20,10 +20,12 @@ export function parseCliArgs(argv) {
       "permission-mode": { type: "string" },
       host: { type: "string" },
       port: { type: "string" },
+      "api-port": { type: "string" },
       name: { type: "string" },
       token: { type: "string" },
       foreground: { type: "boolean" },
       workspace: { type: "string" },
+      dev: { type: "boolean" },
       help: { type: "boolean", short: "h" },
     },
     allowPositionals: true,
@@ -48,10 +50,12 @@ export function parseCliArgs(argv) {
     permissionMode: values["permission-mode"] ?? "bypassPermissions",
     host: values.host ?? null,
     port: values.port ?? null,
+    apiPort: values["api-port"] ?? null,
     name: values.name ?? null,
     token: values.token ?? null,
     foreground: values.foreground ?? false,
     workspace: values.workspace ?? null,
+    dev: values.dev ?? false,
     help: values.help ?? false,
     prompt: commandName ? "" : positionals.join(" "),
   };
@@ -68,6 +72,7 @@ Usage:
   march provider share [id]  Share a provider profile
   march provider accept <token>
   march web [path]       Start the local Web UI session manager
+  march web --dev        Start Web UI with Vite hot reload
   march websearch --config   Configure web search credentials
   march memory serve [folder]
   march memory add <url>
@@ -97,7 +102,9 @@ Options:
                        Load a pi extension path in the default runtime host (repeatable)
   --host <host>        With memory serve/web, bind host (default: 127.0.0.1)
   --port <port>        With memory serve/web, bind port
+  --api-port <port>    With web --dev, bind API backend port
   --workspace <path>   With web, open an initial workspace session
+  --dev                With web, use Vite dev server and proxy /api
   --name <name>        With memory serve/add, remote memory source name
   --foreground         With memory serve, run server in current process
   -h, --help           Show this help
