@@ -34,10 +34,15 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.doesNotMatch(right, /todo|Todos/i);
   assert.match(composer, /className="composer-box"/);
   assert.match(css, /grid-template-areas: "sidebar main right" "sidebar footer right"/);
-  assert.match(css, /height: 36px/);
-  assert.match(css, /border-right: 1px solid var\(--line\)/);
+  assert.match(css, /height: var\(--header-height\)/);
+  assert.match(css, /border-right: 1px solid var\(--color-border-subtle\)/);
   assert.match(css, /max-width: 920px/);
   assert.match(css, /data-left-open="true"/);
+  assert.match(tokens, /@layer theme\.palette, theme\.semantic, theme\.component, base/);
+  assert.match(tokens, /--palette-blue-600:/);
+  assert.match(tokens, /--color-bg-surface:/);
+  assert.match(tokens, /--shell-left-width:/);
+  assert.doesNotMatch(tokens, /--bg:|--line:|--accent:/);
   assert.match(tokens, /--font-sans:/);
   assert.doesNotMatch(tokens, /Microsoft YaHei|微软雅黑/i);
   assert.doesNotMatch(css, /todo/i);
