@@ -18,7 +18,6 @@ const VISIBLE_COMMANDS = [
   { name: "extensions", description: "List extension paths" },
   { name: "providers", description: "List configured providers" },
   { name: "model", description: "Open model selector" },
-  { name: "models", description: "List available models" },
   { name: "session", description: "Open previous session selector" },
   { name: "status", description: "Show runtime status" },
   { name: "shell", description: "List shells or inspect shell output" },

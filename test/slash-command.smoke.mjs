@@ -129,6 +129,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(helpText.includes("Sessions:"));
   assert.ok(!helpText.includes("/mouse"));
   assert.ok(!helpText.includes("/notify"));
+  assert.ok(!helpText.includes("/models"));
   assert.ok(!helpText.includes("/providers <name>"));
   assert.ok(!helpText.includes("/sessions"));
   assert.ok(!helpText.includes("/resume"));
@@ -266,6 +267,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.equal((await handleSlashCommand("/resume pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
   assert.equal((await handleSlashCommand("/fork-pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
   assert.equal((await handleSlashCommand("/clone-pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
+  assert.equal((await handleSlashCommand("/models", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
   const unknown = await handleSlashCommand("/unknown", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(unknown.handled, false);
   cleanup(dir);

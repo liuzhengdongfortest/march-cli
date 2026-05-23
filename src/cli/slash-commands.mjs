@@ -1,6 +1,6 @@
 import { listExtensionPathsCommand } from "./commands/extensions-command.mjs";
 import { handleExportCommand, parseExportCommand } from "./commands/export-command.mjs";
-import { handleModelCommand, listModels, parseModelCommand } from "./commands/model-command.mjs";
+import { handleModelCommand, parseModelCommand } from "./commands/model-command.mjs";
 import { formatHotkeysPanel } from "./repl-commands.mjs";
 import { copyLastAssistantMessage } from "./commands/copy-command.mjs";
 import { handleSessionSourceCommand } from "./session/session-source-command.mjs";
@@ -194,11 +194,6 @@ export async function handleSlashCommand(trimmed, {
     } catch (err) {
       ui.writeln(`Error: ${err.message}`);
     }
-    return { handled: true };
-  }
-
-  if (trimmed === "/models") {
-    for (const line of listModels({ runner })) ui.writeln(line);
     return { handled: true };
   }
 
