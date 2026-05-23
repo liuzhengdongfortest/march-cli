@@ -28,10 +28,14 @@ export function createWebUiServer({ root = STATIC_ROOT, runtime = null } = {}) {
 export async function handleApiRequest(req, res, runtime) {
   const { pathname } = new URL(req.url ?? "/", "http://localhost");
   try {
-    if (req.method === "GET" && pathname === "/api/snapshot") return sendJson(res, runtime.snapshot());
-    if (req.method === "GET" && pathname === "/api/events") return streamRuntimeEvents(res, runtime);
+    if (req.method === "GET" && pathname === "/api/snapshot") return sendJson(res, runtime.snapshot(getSessionId(req)));
+    if (req.method === "GET" && pathname === "/api/events") return streamRuntimeEvents(req, res, runtime);
+    if (req.method === "GET" && pathname === "/api/sessions") return sendJson(res, { sessions: runtime.listSessions() });
+    if (req.method === "POST" && pathname === "/api/sessions") return sendJson(res, await createRuntimeSession(req, runtime));
+    if (req.method === "GET" && pathname === "/api/fs/roots") return sendJson(res, { roots: runtime.fsRoots() });
+    if (req.method === "GET" && pathname === "/api/fs/list") return sendJson(res, { entries: runtime.fsList(getPathParam(req)) });
     if (req.method === "POST" && pathname === "/api/turn") return sendJson(res, await runRuntimeTurn(req, runtime));
-    if (req.method === "POST" && pathname === "/api/abort") return sendJson(res, { ok: true, result: runtime.abort?.() });
+    if (req.method === "POST" && pathname === "/api/abort") return sendJson(res, { ok: true, result: runtime.abort(getSessionId(req)) });
     sendJson(res, { error: "Not found" }, 404);
   } catch (err) {
     sendJson(res, { error: err?.message ?? String(err) }, 500);
@@ -65,23 +69,41 @@ function serveStaticRequest(req, res, root) {
   createReadStream(filePath).pipe(res);
 }
 
+async function createRuntimeSession(req, runtime) {
+  const body = await readJsonBody(req);
+  const session = await runtime.createSession(body.workspacePath);
+  return { ok: true, session, snapshot: runtime.snapshot(session.id) };
+}
+
 async function runRuntimeTurn(req, runtime) {
   const body = await readJsonBody(req);
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
   if (!prompt) throw new Error("Missing prompt");
-  const result = await runtime.runTurn(prompt);
+  const result = await runtime.runTurn(body.sessionId, prompt);
   return { ok: true, draft: result?.draft ?? "" };
 }
 
-function streamRuntimeEvents(res, runtime) {
+function streamRuntimeEvents(req, res, runtime) {
   res.writeHead(200, {
     "content-type": "text/event-stream; charset=utf-8",
     "cache-control": "no-cache, no-transform",
     connection: "keep-alive",
   });
   writeSse(res, "ready", { ok: true });
-  const unsubscribe = runtime.subscribe((event) => writeSse(res, "runtime", event));
+  const unsubscribe = runtime.subscribe(getSessionId(req), (event) => writeSse(res, "runtime", event));
   res.on("close", unsubscribe);
+}
+
+function getSessionId(req) {
+  const url = new URL(req.url ?? "/", "http://localhost");
+  return url.searchParams.get("sessionId");
+}
+
+function getPathParam(req) {
+  const url = new URL(req.url ?? "/", "http://localhost");
+  const path = url.searchParams.get("path");
+  if (!path) throw new Error("Missing path");
+  return path;
 }
 
 function writeSse(res, event, data) {

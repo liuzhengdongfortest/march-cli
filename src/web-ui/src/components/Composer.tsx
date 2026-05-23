@@ -5,14 +5,15 @@ import type { ComposerState } from "../model";
 export type ComposerProps = {
   composer: ComposerState;
   running: boolean;
+  disabled?: boolean;
   onSubmit: (prompt: string) => Promise<void>;
   onOpenLeft: () => void;
   onOpenRight: () => void;
 };
 
-export function Composer({ composer, running, onSubmit, onOpenLeft, onOpenRight }: ComposerProps) {
+export function Composer({ composer, running, disabled = false, onSubmit, onOpenLeft, onOpenRight }: ComposerProps) {
   const [prompt, setPrompt] = useState("");
-  const canSubmit = prompt.trim().length > 0 && !running;
+  const canSubmit = prompt.trim().length > 0 && !running && !disabled;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -31,6 +32,7 @@ export function Composer({ composer, running, onSubmit, onOpenLeft, onOpenRight 
           value={prompt}
           onChange={(event) => setPrompt(event.target.value)}
           placeholder={composer.placeholder}
+          disabled={disabled}
         />
         <div className="composer-actions">
           <button type="button" className="session-ring" aria-label="Session" />

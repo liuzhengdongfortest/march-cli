@@ -99,9 +99,20 @@
   .permission-block.approved strong { color: var(--color-success); }
 
   .right-body { flex: 1; min-height: 0; overflow: auto; padding: 12px; }
+  .workspace-picker { display: grid; gap: 7px; padding-bottom: 10px; }
+  .workspace-picker label { color: var(--color-text-muted); font-size: 11px; font-weight: var(--font-weight-ui-medium); text-transform: uppercase; }
+  .workspace-input-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px; }
+  .workspace-input-row input { min-width: 0; border: 1px solid var(--color-border-subtle); border-radius: var(--radius-control); padding: 7px 8px; background: var(--color-bg-surface); color: var(--color-text-primary); }
+  .workspace-input-row button, .fs-entry-row button, .fs-row { border: 0; border-radius: var(--radius-control); background: transparent; color: var(--color-text-muted); }
+  .workspace-input-row button { padding: 0 8px; background: var(--color-accent-soft); color: var(--color-accent); }
+  .workspace-input-row button:disabled { opacity: 0.45; }
+  .workspace-path { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-muted); font-size: 12px; }
+  .fs-entry-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px; }
+  .fs-entry-row button, .fs-row { min-height: 28px; padding: 0 7px; text-align: left; }
+  .fs-entry-row button:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-primary); }
   .session-row, .activity-row { width: 100%; min-height: 34px; border: 0; border-radius: var(--radius-control); padding: 7px 8px; background: transparent; color: var(--color-text-primary); display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; font-size: 13px; }
   .session-row.active { background: var(--color-accent-soft); color: var(--color-accent); font-weight: var(--font-weight-ui-medium); }
-  .session-row time, .activity-row time { color: var(--color-text-muted); font-size: 12px; }
+  .session-row time, .activity-row time { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-muted); font-size: 12px; }
   .right-divider { margin: 12px 0 4px; padding-top: 12px; border-top: 1px solid var(--color-border-subtle); color: var(--color-text-muted); font-size: 11px; font-weight: var(--font-weight-ui-medium); text-transform: uppercase; }
   .activity-row { color: var(--color-text-muted); }
 

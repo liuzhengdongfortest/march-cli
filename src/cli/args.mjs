@@ -67,7 +67,7 @@ Usage:
   march provider --config    Configure provider credentials
   march provider share [id]  Share a provider profile
   march provider accept <token>
-  march web <path>       Start the Web UI runtime host for a workspace
+  march web [path]       Start the local Web UI session manager
   march websearch --config   Configure web search credentials
   march memory serve [folder]
   march memory add <url>
@@ -97,7 +97,7 @@ Options:
                        Load a pi extension path in the default runtime host (repeatable)
   --host <host>        With memory serve/web, bind host (default: 127.0.0.1)
   --port <port>        With memory serve/web, bind port
-  --workspace <path>   With web, workspace to open
+  --workspace <path>   With web, open an initial workspace session
   --name <name>        With memory serve/add, remote memory source name
   --foreground         With memory serve, run server in current process
   -h, --help           Show this help

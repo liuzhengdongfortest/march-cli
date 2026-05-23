@@ -75,13 +75,13 @@ function cleanup(dir) {
   const webWithWorkspaceOption = parseCliArgs(["web", "--workspace", tmpWorkspace]);
   assert.deepEqual(webWithWorkspaceOption.command, { name: "web", args: [] });
   assert.equal(webWithWorkspaceOption.workspace, tmpWorkspace);
-  const { resolveWebWorkspace } = await import("../src/web-ui/command.mjs");
+  const { resolveInitialWorkspace } = await import("../src/web-ui/command.mjs");
   try {
-    assert.equal(resolveWebWorkspace(web, "C:/launcher"), resolve(tmpWorkspace));
-    assert.equal(resolveWebWorkspace(parseCliArgs(["web", "project"]), tmpWorkspace), childWorkspace);
-    assert.throws(() => resolveWebWorkspace(parseCliArgs(["web"]), tmpWorkspace), /Choose a workspace/);
-    assert.throws(() => resolveWebWorkspace(parseCliArgs(["web", tmpWorkspace, "extra"]), tmpWorkspace), /Usage: march web/);
-    assert.throws(() => resolveWebWorkspace(parseCliArgs(["web", tmpWorkspace, "--workspace", tmpWorkspace]), tmpWorkspace), /Use either/);
+    assert.equal(resolveInitialWorkspace(web, "C:/launcher"), resolve(tmpWorkspace));
+    assert.equal(resolveInitialWorkspace(parseCliArgs(["web", "project"]), tmpWorkspace), childWorkspace);
+    assert.equal(resolveInitialWorkspace(parseCliArgs(["web"]), tmpWorkspace), null);
+    assert.throws(() => resolveInitialWorkspace(parseCliArgs(["web", tmpWorkspace, "extra"]), tmpWorkspace), /Usage: march web/);
+    assert.throws(() => resolveInitialWorkspace(parseCliArgs(["web", tmpWorkspace, "--workspace", tmpWorkspace]), tmpWorkspace), /Use either/);
   } finally {
     cleanup(tmpWorkspace);
   }

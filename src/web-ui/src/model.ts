@@ -32,6 +32,7 @@ export type TimelineItem =
 export type SessionSummary = {
   id: string;
   title: string;
+  workspacePath?: string;
   time: string;
   active?: boolean;
 };
@@ -48,6 +49,7 @@ export type ComposerState = {
 };
 
 export type WebUiModel = {
+  activeSessionId?: string | null;
   workspace: FileNode;
   timeline: {
     title: string;

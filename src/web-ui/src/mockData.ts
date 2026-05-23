@@ -1,6 +1,7 @@
 import type { WebUiModel } from "./model";
 
 export const mockWebUiModel: WebUiModel = {
+  activeSessionId: "web-shell",
   workspace: {
     id: "root",
     name: "march-cli-standalone",

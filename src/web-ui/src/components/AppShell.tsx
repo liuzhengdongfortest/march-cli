@@ -23,10 +23,21 @@ export function AppShell({ runtime }: AppShellProps) {
       <div className="overlay" onClick={closePanels} />
       <FileExplorer root={model.workspace} />
       <SessionTimeline timeline={model.timeline} connected={runtime.connected} error={runtime.error} />
-      <RightSidebar sessions={model.sessions} activity={model.activity} />
+      <RightSidebar
+        sessions={model.sessions}
+        activity={model.activity}
+        fsEntries={runtime.fsEntries}
+        fsPath={runtime.fsPath}
+        running={runtime.running}
+        onOpenSession={runtime.openSession}
+        onCreateSession={runtime.createSession}
+        onBrowseRoots={runtime.browseRoots}
+        onBrowsePath={runtime.browsePath}
+      />
       <Composer
         composer={model.composer}
         running={runtime.running}
+        disabled={!model.activeSessionId}
         onSubmit={runtime.submitPrompt}
         onOpenLeft={() => setLeftOpen(true)}
         onOpenRight={() => setRightOpen(true)}
