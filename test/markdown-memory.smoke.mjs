@@ -96,8 +96,14 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   const openResult = await open.execute("t2", { id: entry.id });
   assert.ok(openResult.content[0].text.includes(`path: ${entry.path}`));
   assert.ok(openResult.content[0].text.includes("Use edit_file with this path for targeted edits."));
+  assert.ok(openResult.content[0].text.includes("content:\n---\n"));
+  assert.ok(!openResult.content[0].text.includes("\n---\n---\n"));
   assert.ok(openResult.content[0].text.includes("# Recall hint dedup"));
 
+  const typoId = `${entry.id.slice(0, -1)}${entry.id.endsWith("a") ? "b" : "a"}`;
+  const typoOpenResult = await open.execute("t2b", { id: typoId });
+  assert.ok(typoOpenResult.content[0].text.includes(`matched id: ${entry.id} (requested: ${typoId})`));
+  assert.ok(typoOpenResult.content[0].text.includes("# Recall hint dedup"));
   const saveResult = await save.execute("t3", { id: entry.id, tags: ["memory/memory-hint", "memory/window"] });
   assert.ok(saveResult.content[0].text.includes("memory/window"));
 

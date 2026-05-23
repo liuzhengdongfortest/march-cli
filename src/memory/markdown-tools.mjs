@@ -146,12 +146,13 @@ function formatMemorySearchResults(results, requestedSource) {
 
 function formatLocalOpen(opened) {
   const range = opened.startLine && opened.endLine ? `lines: ${opened.startLine}-${opened.endLine}\n` : "";
-  return `path: ${opened.path}\n${range}Use edit_file with this path for targeted edits.\n\n---\n${opened.content}`;
+  const correction = opened.requestedId && opened.entry?.id ? `matched id: ${opened.entry.id} (requested: ${opened.requestedId})\n` : "";
+  return `path: ${opened.path}\n${correction}${range}Use edit_file with this path for targeted edits.\n\ncontent:\n${opened.content}`;
 }
 
 function formatRemoteOpen(opened) {
   const range = opened.startLine && opened.endLine ? `lines: ${opened.startLine}-${opened.endLine}\n` : "";
-  return `source: ${opened.source}\npath: ${opened.path}\n${range}Remote memory is read-only.\n\n---\n${opened.content}`;
+  return `source: ${opened.source}\npath: ${opened.path}\n${range}Remote memory is read-only.\n\ncontent:\n${opened.content}`;
 }
 
 function formatMemorySearchMiss(query, source) {

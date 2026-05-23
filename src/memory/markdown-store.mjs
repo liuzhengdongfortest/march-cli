@@ -13,6 +13,7 @@ import {
 import { scoreEntry, toHint } from "./markdown/markdown-recall.mjs";
 import { clearMarkdownMemoryIndex, loadMarkdownMemoryIndex, openMarkdownMemoryIndex, queryMarkdownMemoryIndex, replaceMarkdownMemoryIndex } from "./markdown/sqlite-index.mjs";
 import { softDeleteMemoryFile } from "./markdown/markdown-delete.mjs";
+import { isMemoryIdLike, isSingleEditAway } from "./markdown/memory-id.mjs";
 import { openMarkdownRoot, searchMarkdownRoot } from "./search.mjs";
 
 export { formatRecallHints } from "./markdown/markdown-recall.mjs";
@@ -154,10 +155,9 @@ export class MarkdownMemoryStore {
     this.ensureFresh();
     const raw = String(identifier ?? "").trim();
     if (!raw) throw new Error("memory id or path is required");
-    const entry = this.entries.get(raw);
-    const path = entry ? entry.path : this.#resolveMemoryPath(raw);
-    const opened = openMarkdownRoot({ root: this.root, path, ...options });
-    return { ...opened, entry: entry ?? null };
+    const resolved = this.#resolveOpenTarget(raw);
+    const opened = openMarkdownRoot({ root: this.root, path: resolved.path, ...options });
+    return { ...opened, entry: resolved.entry, requestedId: resolved.requestedId };
   }
 
   save({ id = null, name = null, description = null, body = null, tags = null } = {}) {
@@ -261,11 +261,22 @@ export class MarkdownMemoryStore {
     return path;
   }
 
+  #resolveOpenTarget(raw) {
+    const exact = this.entries.get(raw);
+    if (exact) return { path: exact.path, entry: exact, requestedId: null };
+    if (!isMemoryIdLike(raw)) return { path: this.#resolveMemoryPath(raw), entry: null, requestedId: null };
+
+    const candidates = [...this.entries.values()].filter((entry) => isSingleEditAway(raw, entry.id));
+    if (candidates.length === 1) return { path: candidates[0].path, entry: candidates[0], requestedId: raw };
+    if (candidates.length > 1) {
+      throw new Error(`memory id is ambiguous: ${raw}; candidates: ${candidates.map((entry) => entry.id).join(", ")}`);
+    }
+    throw new Error(`memory not found: ${raw}`);
+  }
+
   #activeMemoryPaths() {
     return [...this.entries.values()]
       .filter((entry) => entry.status === "active")
       .map((entry) => entry.path);
   }
-
-
 }
