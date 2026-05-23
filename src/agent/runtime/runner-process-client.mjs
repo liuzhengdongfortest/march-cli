@@ -51,7 +51,7 @@ export async function createRunnerProcessClient({
     });
     const remoteRunner = createRemoteRunnerClient(peer);
     try {
-      await remoteRunner.init(runnerOptions);
+      await waitForRuntimeInit({ child, initPromise: remoteRunner.init(runnerOptions) });
     } catch (error) {
       peer.dispose();
       child.kill?.();
@@ -95,4 +95,30 @@ export async function createRunnerProcessClient({
 async function refreshRunnerState(runner) {
   if (typeof runner.refreshState === "function") return await runner.refreshState();
   return runner.runtimeState ?? null;
+}
+
+function waitForRuntimeInit({ child, initPromise }) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const cleanup = () => {
+      child.off?.("exit", onExit);
+      child.off?.("error", onError);
+    };
+    const finish = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      fn(value);
+    };
+    const onExit = (code, signal) => {
+      const codeText = code == null ? "" : ` with code ${code}`;
+      const signalText = signal ? ` (${signal})` : "";
+      finish(reject, new Error(`Runtime process exited during startup${codeText}${signalText}`));
+    };
+    const onError = (error) => finish(reject, error);
+
+    child.once?.("exit", onExit);
+    child.once?.("error", onError);
+    initPromise.then((value) => finish(resolve, value), (error) => finish(reject, error));
+  });
 }

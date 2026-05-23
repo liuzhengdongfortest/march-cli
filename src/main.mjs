@@ -187,26 +187,21 @@ export async function run(argv) {
     modelContextDumper: { enabled: args.dumpContext, rootDir: contextDumpRoot },
     remoteMemorySources,
   };
-  const runner = await createRuntimeRunner({
-    useRuntimeProcess,
-    runnerOptions,
-    ui,
-    memoryStore,
-    memoryTools,
-    shellRuntime,
-    mcpTools,
-    mcpInjections,
-    mcpClientManager,
-    webTools,
-    usePiSessions,
-    usePiRuntimeHost,
-    authStorage: authConfig.authStorage,
-    permissionController,
-    modelContextDumper,
-    turnNotifier,
-    logger,
-    refreshStatusBar: (...args) => refreshStatusBar?.(...args),
-  });
+  let runner;
+  try {
+    runner = await createRuntimeRunner({
+      useRuntimeProcess, runnerOptions, ui, memoryStore, memoryTools, shellRuntime,
+      mcpTools, mcpInjections, mcpClientManager, webTools,
+      usePiSessions, usePiRuntimeHost, authStorage: authConfig.authStorage,
+      permissionController, modelContextDumper, turnNotifier, logger,
+      refreshStatusBar: (...args) => refreshStatusBar?.(...args),
+    });
+  } catch (err) {
+    process.stderr.write(`Error: ${err.message}\n`);
+    logger.error("runtime.start_failed", { error: err });
+    memoryStore.close?.();
+    return 1;
+  }
 
   refreshStatusBar = createStatusLineUpdater({
     ui,
