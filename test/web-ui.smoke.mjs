@@ -19,6 +19,8 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(css, /grid-template-columns: 260px minmax\(0, 1fr\) 280px/);
   assert.match(css, /border-right: 1px solid var\(--line\)/);
   assert.match(css, /box-shadow: none/);
+  assert.match(css, /--font-sans:/);
+  assert.doesNotMatch(css, /Microsoft YaHei|微软雅黑/i);
   assert.match(css, /max-width: 920px/);
   assert.match(css, /data-left-open="true"/);
   assert.match(js, /data-toggle-left/);

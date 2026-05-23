@@ -11,12 +11,13 @@
   --accent-soft: rgba(37, 99, 235, 0.08);
   --ok: #16a34a;
   --shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", "Helvetica Neue", Arial, "Noto Sans", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Code", "JetBrains Mono", "Fira Code", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; overflow: hidden; }
-body { background: linear-gradient(135deg, var(--bg), #e5e7eb); color: var(--text); }
+body { background: linear-gradient(135deg, var(--bg), #e5e7eb); color: var(--text); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 button, textarea { font: inherit; }
 button { cursor: pointer; }
 
@@ -109,7 +110,7 @@ button { cursor: pointer; }
 }
 .tool-card-header { display: flex; align-items: center; gap: 8px; }
 .tool-card-header span, .tool-card-header em { color: var(--muted); font-size: 12px; font-style: normal; }
-.diff-card { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 13px; }
+.diff-card { font-family: var(--font-mono); font-size: 13px; }
 .diff-line { padding: 3px 0; }
 .diff-line.add { color: #15803d; }
 .diff-line.keep { color: var(--muted); }
