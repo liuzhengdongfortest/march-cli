@@ -11,8 +11,8 @@
       <header class="top-bar">
         <button class="icon-button mobile-only" data-toggle-left aria-label="Open context panel">☰</button>
         <div>
-          <p class="eyebrow">March Web</p>
-          <h1>Agent coding workspace</h1>
+          <p class="eyebrow">March</p>
+          <h1>march-cli-standalone</h1>
         </div>
         <button class="icon-button mobile-only" data-toggle-right aria-label="Open activity panel">◧</button>
       </header>
@@ -39,40 +39,31 @@
           <button class="file-row file modified" type="button" style="--level: 1"><span class="file-main"><span class="chevron blank"></span><span class="file-icon">md</span><span>AGENTS.md</span></span><span class="git-dot">M</span></button>
           <button class="file-row file" type="button" style="--level: 1"><span class="file-main"><span class="chevron blank"></span><span class="file-icon">json</span><span>package.json</span></span></button>
         </nav>
-
-        <section class="panel-section compact-section">
-          <div class="section-heading"><span>Context</span><span class="pill muted">5 layers</span></div>
-          <div class="context-row"><strong>diagnostics</strong><span>clean</span></div>
-          <div class="context-row"><strong>memory hints</strong><span>ready</span></div>
-        </section>
       </aside>
 
       <main class="timeline" aria-label="Agent timeline">
         <div class="timeline-header">
           <div>
             <p class="eyebrow">Session</p>
-            <h2>Design March Web shell</h2>
+            <h2>Web shell</h2>
           </div>
-          <button class="ghost-button">Export</button>
+          <button class="ghost-button">Share</button>
         </div>
 
         <article class="turn user-turn">
           <div class="avatar">U</div>
-          <div class="bubble">参考 MindFS 的布局，先做网页版 March 的 UI 骨架。</div>
+          <div class="bubble">参考 MindFS，做 Web UI。</div>
         </article>
 
         <article class="turn assistant-turn">
           <div class="avatar march">M</div>
           <div class="bubble stack">
-            <p>March Web keeps the runtime stable and moves workspace state into panels around the agent timeline.</p>
             <div class="tool-card">
-              <div class="tool-card-header"><span>tool</span><strong>read workspace</strong><em>done</em></div>
-              <p>Loaded files, diagnostics, context layers, and fast smoke status.</p>
+              <div class="tool-card-header"><span>read</span><strong>workspace</strong><em>done</em></div>
             </div>
             <div class="diff-card">
-              <div class="diff-line add">+ AppShell: left context, center timeline, right activity</div>
-              <div class="diff-line add">+ Composer: slash commands, attachments, model controls</div>
-              <div class="diff-line keep">  Runtime/provider/tool boundaries unchanged</div>
+              <div class="diff-line add">+ src/web-ui</div>
+              <div class="diff-line keep">  runtime unchanged</div>
             </div>
           </div>
         </article>
@@ -81,24 +72,20 @@
       <aside class="panel right-panel" aria-label="Activity panel">
         <section class="panel-section">
           <div class="section-heading"><span>Sessions</span><button class="mini-button">New</button></div>
-          <div class="session-card active"><strong>Web shell prototype</strong><span>now</span></div>
-          <div class="session-card"><strong>Memory recall design</strong><span>yesterday</span></div>
+          <div class="session-card active"><strong>Web shell</strong><span>now</span></div>
+          <div class="session-card"><strong>Memory</strong><span>1d</span></div>
         </section>
         <section class="panel-section">
-          <div class="section-heading"><span>Todos</span><span class="pill muted">mock</span></div>
-          <label class="todo"><input type="checkbox" checked /> Shell layout</label>
-          <label class="todo"><input type="checkbox" checked /> Mobile drawers</label>
-          <label class="todo"><input type="checkbox" /> Runtime bridge</label>
-        </section>
-        <section class="panel-section">
-          <div class="section-heading"><span>Memory hints</span><span class="pill">2</span></div>
-          <p class="hint">Project conventions and UI reference memories appear here before each turn.</p>
+          <div class="section-heading"><span>Todos</span><span class="pill muted">3</span></div>
+          <label class="todo"><input type="checkbox" checked /> Layout</label>
+          <label class="todo"><input type="checkbox" checked /> Drawers</label>
+          <label class="todo"><input type="checkbox" /> Runtime</label>
         </section>
       </aside>
 
       <form class="composer" aria-label="Message composer">
         <button type="button" class="ghost-button">/</button>
-        <textarea rows="1" placeholder="Ask March to inspect, edit, test, or explain…"></textarea>
+        <textarea rows="1" placeholder="Message March…"></textarea>
         <button type="button" class="ghost-button">Attach</button>
         <button type="submit" class="send-button">Send</button>
       </form>
