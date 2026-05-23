@@ -14,34 +14,85 @@ export async function createRunnerProcessClient({
   forkImpl = fork,
   timeoutMs = 0,
 } = {}) {
-  const child = forkImpl(entry, [], {
-    stdio: ["ignore", "inherit", "inherit", "ipc"],
-  });
-  const peer = createProcessRuntimeIpcPeer({
-    processLike: child,
-    target: {
-      ...createRuntimeUiEventTarget(ui),
-      modelPayload: (event) => onModelPayload?.(event),
+  let active = await startRuntime();
+  let disposed = false;
+  const localProps = new Map();
+
+  const runner = new Proxy({}, {
+    get(_target, prop) {
+      if (prop === "restartRuntime") return restartRuntime;
+      if (prop === "dispose") return dispose;
+      if (localProps.has(prop)) return localProps.get(prop);
+      const value = active.runner[prop];
+      return typeof value === "function" ? value.bind(active.runner) : value;
     },
-    timeoutMs,
+    set(_target, prop, value) {
+      localProps.set(prop, value);
+      return true;
+    },
+    has(_target, prop) {
+      return prop === "restartRuntime" || prop === "dispose" || localProps.has(prop) || prop in active.runner;
+    },
   });
-  const runner = createRemoteRunnerClient(peer);
-  try {
-    await runner.init(runnerOptions);
-  } catch (error) {
-    peer.dispose();
-    child.kill?.();
-    throw error;
+
+  return { runner, get child() { return active.child; }, dispose };
+
+  async function startRuntime() {
+    const child = forkImpl(entry, [], {
+      stdio: ["ignore", "inherit", "inherit", "ipc"],
+    });
+    const peer = createProcessRuntimeIpcPeer({
+      processLike: child,
+      target: {
+        ...createRuntimeUiEventTarget(ui),
+        modelPayload: (event) => onModelPayload?.(event),
+      },
+      timeoutMs,
+    });
+    const remoteRunner = createRemoteRunnerClient(peer);
+    try {
+      await remoteRunner.init(runnerOptions);
+    } catch (error) {
+      peer.dispose();
+      child.kill?.();
+      throw error;
+    }
+    return {
+      runner: remoteRunner,
+      child,
+      async dispose() {
+        try {
+          await remoteRunner.dispose();
+        } finally {
+          child.kill?.();
+        }
+      },
+    };
   }
 
-  const remoteDispose = runner.dispose;
-  const dispose = async () => {
-    try {
-      await remoteDispose.call(runner);
-    } finally {
-      child.kill?.();
+  async function restartRuntime({ restoreSession = true } = {}) {
+    if (disposed) throw new Error("runtime runner is already disposed");
+    const previousState = await refreshRunnerState(active.runner);
+    const previousSessionFile = previousState?.sessionStats?.sessionFile ?? previousState?.sessionStats?.sessionPath ?? null;
+    const previousActive = active;
+    await previousActive.dispose();
+    active = await startRuntime();
+
+    // Rebind the same persisted pi session after the fresh child imports updated source.
+    if (restoreSession && previousSessionFile && active.runner.canSwitchPiSession?.()) {
+      await active.runner.switchPiSession(previousSessionFile, previousState?.engine ?? null);
     }
-  };
-  runner.dispose = dispose;
-  return { runner, child, dispose };
+    return await refreshRunnerState(active.runner);
+  }
+
+  async function dispose() {
+    if (disposed) return;
+    disposed = true;
+    await active.dispose();
+  }
+}
+
+async function refreshRunnerState(runner) {
+  if (typeof runner.refreshState === "function") return await runner.refreshState();
+  return runner.runtimeState ?? null;
 }

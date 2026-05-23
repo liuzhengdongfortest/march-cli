@@ -57,6 +57,9 @@ export async function runRuntimeRunnerIpcSmoke() {
   await new Promise((resolve) => setImmediate(resolve));
   assert.deepEqual(payloadEvents, [{ estimatedTokens: 1234 }]);
   assert.deepEqual(uiStatusCalls, []);
+  const reloadedState = await runner.restartRuntime();
+  assert.equal(reloadedState.engine.modelId, "model-a");
+  assert.deepEqual(await runner.runTurn("prompt", "after-reload"), { draft: "ok:after-reload" });
   await dispose();
   processHost.dispose();
   assert.equal(processLink.parent.killed, true);

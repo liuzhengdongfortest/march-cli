@@ -68,6 +68,21 @@ export async function handleSlashCommand(trimmed, {
     return { handled: true };
   }
 
+  if (trimmed === "/reload" || trimmed === "/reload-runtime") {
+    if (typeof runner.restartRuntime !== "function") {
+      ui.writeln("Runtime reload is unavailable in in-process mode. Restart March to load code changes.");
+      return { handled: true };
+    }
+    try {
+      await runner.restartRuntime();
+      ui.writeln("Runtime reloaded. The next turn will use the latest runner/tool code from disk.");
+      return { handled: true, refreshContextTokens: true };
+    } catch (err) {
+      ui.writeln(`Error: ${err.message}`);
+      return { handled: true };
+    }
+  }
+
   const modeCommand = parseModeCommand(trimmed);
   if (modeCommand.type !== "none") {
     for (const line of handleModeCommand(modeCommand, { modeState })) ui.writeln(line);

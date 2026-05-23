@@ -51,6 +51,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
     setModel: async (model) => model,
     canSwitchPiSession: () => true,
     startNewSession: async () => ({ sessionId: "new-session" }),
+    restartRuntime: async () => ({ engine: { modelId: "test-model" } }),
     switchPiSession: async (_path, restoreState) => {
       runner.engine.restoreSession(restoreState, null, { replace: true });
       return { cancelled: false };
@@ -120,6 +121,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(output.join("\n").includes("tokens:1in/2out"));
   const help = await handleSlashCommand("/help", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(help.handled, true);
+  assert.ok(output.join("\n").includes("/reload"));
   assert.ok(output.join("\n").includes("/extensions"));
   assert.ok(output.join("\n").includes("/templates"));
   assert.ok(output.join("\n").includes("/export jsonl"));
@@ -137,6 +139,10 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(!output.join("\n").includes("/fork-pi"));
   assert.ok(output.join("\n").includes("/do"));
   assert.ok(output.join("\n").includes("/discuss"));
+  const reload = await handleSlashCommand("/reload", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
+  assert.equal(reload.handled, true);
+  assert.equal(reload.refreshContextTokens, true);
+  assert.ok(output.join("\n").includes("Runtime reloaded."));
   const modeState = createModeState();
   const discuss = await handleSlashCommand("/discuss", { ui, runner, sessionState, sessionsRoot, projectMarchDir, modeState });
   assert.equal(discuss.handled, true);
