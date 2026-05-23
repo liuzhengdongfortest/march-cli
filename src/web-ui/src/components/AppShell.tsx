@@ -1,17 +1,18 @@
 import { useState } from "react";
-import type { WebUiModel } from "../model";
+import type { WebRuntimeState } from "../runtime/useWebRuntime";
 import { Composer } from "./Composer";
 import { FileExplorer } from "./FileExplorer";
 import { RightSidebar } from "./RightSidebar";
 import { SessionTimeline } from "./SessionTimeline";
 
-type AppShellProps = {
-  model: WebUiModel;
+export type AppShellProps = {
+  runtime: WebRuntimeState;
 };
 
-export function AppShell({ model }: AppShellProps) {
+export function AppShell({ runtime }: AppShellProps) {
   const [leftOpen, setLeftOpen] = useState(false);
   const [rightOpen, setRightOpen] = useState(false);
+  const { model } = runtime;
   const closePanels = () => {
     setLeftOpen(false);
     setRightOpen(false);
@@ -21,10 +22,12 @@ export function AppShell({ model }: AppShellProps) {
     <div className="app-shell" data-left-open={leftOpen} data-right-open={rightOpen}>
       <div className="overlay" onClick={closePanels} />
       <FileExplorer root={model.workspace} />
-      <SessionTimeline timeline={model.timeline} />
+      <SessionTimeline timeline={model.timeline} connected={runtime.connected} error={runtime.error} />
       <RightSidebar sessions={model.sessions} activity={model.activity} />
       <Composer
         composer={model.composer}
+        running={runtime.running}
+        onSubmit={runtime.submitPrompt}
         onOpenLeft={() => setLeftOpen(true)}
         onOpenRight={() => setRightOpen(true)}
       />

@@ -28,7 +28,7 @@ export function parseCliArgs(argv) {
     allowPositionals: true,
   });
 
-  const commandName = ["login", "provider", "websearch", "memory", "browser", "gateway"].includes(positionals[0]) ? positionals[0] : null;
+  const commandName = ["login", "provider", "web", "websearch", "memory", "browser", "gateway"].includes(positionals[0]) ? positionals[0] : null;
 
   return {
     command: commandName ? { name: commandName, args: positionals.slice(1) } : null,
@@ -65,6 +65,7 @@ Usage:
   march provider --config    Configure provider credentials
   march provider share [id]  Share a provider profile
   march provider accept <token>
+  march web              Start the Web UI runtime host
   march websearch --config   Configure web search credentials
   march memory serve [folder]
   march memory add <url>
@@ -92,8 +93,8 @@ Options:
   --permission-mode <mode>  Permission mode: default, bypassPermissions, dontAsk (default: bypassPermissions)
   -e, --extension <path>
                        Load a pi extension path in the default runtime host (repeatable)
-  --host <host>        With memory serve, bind host (default: 127.0.0.1)
-  --port <port>        With memory serve, bind port (default: 4317)
+  --host <host>        With memory serve/web, bind host (default: 127.0.0.1)
+  --port <port>        With memory serve/web, bind port
   --name <name>        With memory serve/add, remote memory source name
   --foreground         With memory serve, run server in current process
   -h, --help           Show this help

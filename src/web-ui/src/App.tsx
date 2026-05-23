@@ -1,6 +1,7 @@
 import { AppShell } from "./components/AppShell";
-import { mockWebUiModel } from "./mockData";
+import { useWebRuntime } from "./runtime/useWebRuntime";
 
 export function App() {
-  return <AppShell model={mockWebUiModel} />;
+  const runtime = useWebRuntime();
+  return <AppShell runtime={runtime} />;
 }

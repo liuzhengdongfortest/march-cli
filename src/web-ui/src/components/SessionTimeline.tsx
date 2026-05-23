@@ -4,21 +4,25 @@ import { TimelineList } from "./timeline/TimelineList";
 
 export type SessionTimelineProps = {
   timeline: WebUiModel["timeline"];
+  connected: boolean;
+  error: string | null;
 };
 
-export function SessionTimeline({ timeline }: SessionTimelineProps) {
+export function SessionTimeline({ timeline, connected, error }: SessionTimelineProps) {
   const items = normalizeTimelineEvents(timeline.events);
 
   return (
     <main className="timeline" aria-label="Agent timeline">
       <div className="main-header">
         <span>Session</span>
-        <button className="header-button" type="button">Share</button>
+        <span className={connected ? "runtime-pill connected" : "runtime-pill"}>
+          {connected ? "runner" : "mock"}
+        </span>
       </div>
       <div className="timeline-scroll">
         <div className="session-title">
           <h1>{timeline.title}</h1>
-          <span>{timeline.meta}</span>
+          <span>{error ?? timeline.meta}</span>
         </div>
         <TimelineList items={items} />
       </div>

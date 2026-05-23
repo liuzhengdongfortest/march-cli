@@ -63,6 +63,11 @@ function cleanup(dir) {
 
   const gatewayStatus = parseCliArgs(["gateway", "status"]);
   assert.deepEqual(gatewayStatus.command, { name: "gateway", args: ["status"] });
+
+  const web = parseCliArgs(["web", "--host", "127.0.0.1", "--port", "4174"]);
+  assert.deepEqual(web.command, { name: "web", args: [] });
+  assert.equal(web.host, "127.0.0.1");
+  assert.equal(web.port, "4174");
   assert.ok(!readFileSync("bin/march.mjs", "utf8").includes("process.exit("));
   assert.ok(!readFileSync("src/main.mjs", "utf8").includes("process.exit("));
   console.log("  PASS");
