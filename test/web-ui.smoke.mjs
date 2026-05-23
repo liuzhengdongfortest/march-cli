@@ -51,8 +51,8 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(css, /border-right: 1px solid var\(--color-border-subtle\)/);
   assert.match(css, /--trees-selected-bg-override: var\(--color-accent-soft\)/);
   assert.match(css, /\.timeline-aux/);
-  assert.match(css, /\.message-body[\s\S]*font-weight: var\(--font-weight-ui-normal\)/);
-  assert.match(css, /\.composer textarea[\s\S]*font-weight: var\(--font-weight-ui-normal\)/);
+  assert.match(css, /\.message-body[\s\S]*font-weight: var\(--font-weight-content-normal\)/);
+  assert.match(css, /\.composer textarea[\s\S]*font-weight: var\(--font-weight-content-normal\)/);
   assert.match(css, /\.terminal-block pre/);
   assert.match(css, /max-width: 920px/);
   assert.match(css, /data-left-open="true"/);
@@ -63,6 +63,7 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.doesNotMatch(tokens, /--bg:|--line:|--accent:/);
   assert.match(tokens, /--font-sans:/);
   assert.match(tokens, /--font-weight-ui-normal: 500/);
+  assert.match(tokens, /--font-weight-content-normal: 600/);
   assert.match(tokens, /--font-weight-ui-medium: 600/);
   assert.match(tokens, /--font-weight-ui-strong: 700/);
   assert.match(tokens, /font-weight: var\(--font-weight-ui-normal\)/);

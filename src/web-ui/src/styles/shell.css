@@ -78,7 +78,7 @@
   .message-row + .message-row { border-top: 1px solid var(--color-border-subtle); }
   .agent-dot { display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--radius-control); background: var(--palette-slate-700); color: var(--color-text-inverse); font-size: 12px; font-weight: 800; }
   .agent-dot.march { background: var(--color-accent); }
-  .message-body { min-width: 0; padding-top: 3px; color: var(--color-text-primary); font-size: 14px; font-weight: var(--font-weight-ui-normal); line-height: 1.55; }
+  .message-body { min-width: 0; padding-top: 3px; color: var(--color-text-primary); font-size: 14px; font-weight: var(--font-weight-content-normal); line-height: 1.55; }
   .message-body p { margin: 0; }
   .message-body time { display: block; margin-top: 4px; color: var(--color-text-muted); font-size: 11px; }
   .timeline-aux { border: 1px solid var(--color-border-subtle); border-radius: var(--radius-control); padding: 7px 9px; background: var(--color-bg-subtle); }
@@ -107,7 +107,7 @@
   .composer { grid-area: footer; min-width: 0; padding: 0 16px 12px; display: grid; grid-template-columns: 1fr; align-items: end; background: var(--color-bg-surface); }
   .composer-box { width: 100%; min-height: var(--composer-min-height); border: 1px solid var(--color-border-strong); border-radius: var(--radius-composer); background: var(--color-bg-sidebar); display: flex; align-items: center; position: relative; overflow: visible; }
   .composer-box:focus-within { border-color: var(--color-accent); box-shadow: 0 0 0 1px var(--color-accent-soft); }
-  .composer textarea { width: 100%; max-height: 160px; resize: none; border: 0; outline: 0; background: transparent; color: var(--color-text-primary); font-weight: var(--font-weight-ui-normal); padding: 12px 124px 12px 12px; }
+  .composer textarea { width: 100%; max-height: 160px; resize: none; border: 0; outline: 0; background: transparent; color: var(--color-text-primary); font-weight: var(--font-weight-content-normal); padding: 12px 124px 12px 12px; }
   .composer-actions { position: absolute; right: 8px; bottom: 8px; display: flex; align-items: center; gap: 2px; }
   .session-ring, .chip-button, .icon-action, .send-icon, .mobile-toggle { width: 28px; height: 28px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--color-text-muted); display: inline-flex; align-items: center; justify-content: center; }
   .session-ring::before { content: ""; width: 14px; height: 14px; border: 2px solid var(--color-accent); border-radius: 999px; }

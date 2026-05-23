@@ -27,6 +27,7 @@
       Menlo,
       monospace;
     --font-weight-ui-normal: 500;
+    --font-weight-content-normal: 600;
     --font-weight-ui-medium: 600;
     --font-weight-ui-strong: 700;
     --palette-white: #ffffff;
