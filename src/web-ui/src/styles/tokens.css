@@ -17,6 +17,8 @@
     --palette-blue-400: #60a5fa;
     --palette-blue-600: #2563eb;
     --palette-green-700: #15803d;
+    --palette-amber-600: #d97706;
+    --palette-red-600: #dc2626;
   }
 }
 
@@ -34,6 +36,8 @@
     --color-accent: var(--palette-blue-600);
     --color-accent-soft: rgba(37, 99, 235, 0.08);
     --color-success: var(--palette-green-700);
+    --color-warning: var(--palette-amber-600);
+    --color-danger: var(--palette-red-600);
     --color-hover: rgba(0, 0, 0, 0.05);
     --color-shadow-drawer: rgba(0, 0, 0, 0.15);
     --color-scrim: rgba(0, 0, 0, 0.3);

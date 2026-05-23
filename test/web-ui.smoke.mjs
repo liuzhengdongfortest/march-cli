@@ -10,6 +10,9 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   const explorer = readFileSync(join(root, "src", "components", "FileExplorer.tsx"), "utf8");
   const treeAdapter = readFileSync(join(root, "src", "fileTreeAdapter.ts"), "utf8");
   const timeline = readFileSync(join(root, "src", "components", "SessionTimeline.tsx"), "utf8");
+  const timelineList = readFileSync(join(root, "src", "components", "timeline", "TimelineList.tsx"), "utf8");
+  const timelineBlocks = readFileSync(join(root, "src", "components", "timeline", "TimelineBlocks.tsx"), "utf8");
+  const timelineAdapter = readFileSync(join(root, "src", "timelineAdapter.ts"), "utf8");
   const right = readFileSync(join(root, "src", "components", "RightSidebar.tsx"), "utf8");
   const composer = readFileSync(join(root, "src", "components", "Composer.tsx"), "utf8");
   const model = readFileSync(join(root, "src", "model.ts"), "utf8");
@@ -24,7 +27,8 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(shell, /<SessionTimeline timeline=\{model\.timeline\}/);
   assert.match(shell, /<RightSidebar sessions=\{model\.sessions\} activity=\{model\.activity\}/);
   assert.match(model, /export type WebUiModel/);
-  assert.match(model, /TimelineEvent/);
+  assert.match(model, /MarchTimelineEvent/);
+  assert.match(model, /TimelineItem/);
   assert.match(model, /ActivityEvent/);
   assert.match(explorer, /@pierre\/trees\/react/);
   assert.match(explorer, /aria-label="Projects"/);
@@ -32,8 +36,12 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(explorer, /className="project-tree-host"/);
   assert.match(treeAdapter, /createProjectFileTreeInput/);
   assert.match(treeAdapter, /GitStatusEntry/);
-  assert.match(timeline, /className="timeline"/);
-  assert.match(timeline, /className="tool-row"/);
+  assert.match(timeline, /normalizeTimelineEvents/);
+  assert.match(timeline, /<TimelineList items=\{items\}/);
+  assert.match(timelineList, /aria-label="Session events"/);
+  assert.match(timelineBlocks, /className="timeline-aux tool-block"/);
+  assert.match(timelineBlocks, /permission-block/);
+  assert.match(timelineAdapter, /tool_result/);
   assert.match(right, /className="right-header">会话/);
   assert.match(right, /right-divider">Activity/);
   assert.doesNotMatch(right, /todo|Todos/i);
@@ -42,6 +50,8 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(css, /height: var\(--header-height\)/);
   assert.match(css, /border-right: 1px solid var\(--color-border-subtle\)/);
   assert.match(css, /--trees-selected-bg-override: var\(--color-accent-soft\)/);
+  assert.match(css, /\.timeline-aux/);
+  assert.match(css, /\.terminal-block pre/);
   assert.match(css, /max-width: 920px/);
   assert.match(css, /data-left-open="true"/);
   assert.match(tokens, /@layer theme\.palette, theme\.semantic, theme\.component, base/);
