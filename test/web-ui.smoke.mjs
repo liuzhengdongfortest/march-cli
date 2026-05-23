@@ -60,8 +60,10 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(tokens, /--shell-left-width:/);
   assert.doesNotMatch(tokens, /--bg:|--line:|--accent:/);
   assert.match(tokens, /--font-sans:/);
-  assert.match(tokens, /"Segoe UI Variable"/);
-  assert.match(tokens, /"Microsoft YaHei UI"/);
+  assert.match(tokens, /"Segoe UI Variable Text"/);
+  assert.match(tokens, /DengXian/);
+  assert.match(tokens, /"等线"/);
+  assert.match(tokens, /DengXian[\s\S]*"Microsoft YaHei UI"/);
   assert.doesNotMatch(tokens, /PingFang SC|Noto Sans CJK|Source Han Sans|微软雅黑/i);
   assert.doesNotMatch(css, /todo/i);
   assert.equal(resolveStaticPath(root, "/..%2fpackage.json"), null);

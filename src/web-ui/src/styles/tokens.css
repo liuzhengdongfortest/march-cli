@@ -4,6 +4,7 @@
   :root {
     color-scheme: light dark;
     --font-sans:
+      "Segoe UI Variable Text",
       "Segoe UI Variable",
       "Segoe UI",
       -apple-system,
@@ -11,6 +12,8 @@
       Roboto,
       "Helvetica Neue",
       Arial,
+      DengXian,
+      "等线",
       "Microsoft YaHei UI",
       sans-serif;
     --font-mono:
