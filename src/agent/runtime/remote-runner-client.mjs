@@ -1,8 +1,14 @@
+import { createRunnerEngineStateFacade } from "./state/runner-state.mjs";
+
 export function createRemoteRunnerClient(peer, { initialState = null } = {}) {
   let state = initialState;
+  const engineFacade = createRunnerEngineStateFacade({
+    getState: () => state,
+    setState: (nextState) => { state = nextState; },
+  });
 
   const client = {
-    get engine() { return createEngineFacade(); },
+    get engine() { return engineFacade; },
     get runtimeState() { return state; },
     async init(options = {}) {
       state = await peer.call("init", options);
@@ -56,18 +62,4 @@ export function createRemoteRunnerClient(peer, { initialState = null } = {}) {
     return response;
   }
 
-  function createEngineFacade() {
-    const engine = state?.engine ?? {};
-    return {
-      ...engine,
-      hasRenderedPendingAssistantRecallHints: () => true,
-      takePendingAssistantRecallHints: () => [],
-      peekPendingAssistantRecallHints: () => [],
-      markPendingAssistantRecallHintsRendered: () => {},
-      getRecentRecallMemoryIds: () => [],
-      restoreSession: () => {
-        throw new Error("remote runner session restore is not available");
-      },
-    };
-  }
 }
