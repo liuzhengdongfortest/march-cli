@@ -1,4 +1,5 @@
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
+import { resolve } from "node:path";
 import { createWebUiServer } from "./server.mjs";
 import { createWebRuntimeHost } from "./runtime-host.mjs";
 
@@ -9,12 +10,29 @@ export async function runWebUiCommand(args, { config, cwd, stateRoot, useRuntime
   const host = args.host ?? DEFAULT_HOST;
   const port = Number.parseInt(args.port ?? "", 10) || DEFAULT_PORT;
   assertWebBuildReady();
-  const runtime = await createWebRuntimeHost({ args, config, cwd, stateRoot, useRuntimeProcess });
+  const workspace = resolveWebWorkspace(args, cwd);
+  const runtime = await createWebRuntimeHost({ args, config, cwd: workspace, stateRoot, useRuntimeProcess });
   const server = createWebUiServer({ runtime });
   await listen(server, port, host);
   process.stdout.write(`March Web running at http://${host}:${port}\n`);
+  process.stdout.write(`Workspace: ${workspace}\n`);
   await waitForShutdown({ server, runtime });
   return 0;
+}
+
+export function resolveWebWorkspace(args, launchCwd) {
+  const positional = args.command?.args ?? [];
+  if (positional.length > 1) throw new Error("Usage: march web <workspace> [--host <host>] [--port <port>]");
+  if (args.workspace && positional.length > 0) throw new Error("Use either march web <workspace> or --workspace <path>, not both");
+  const requested = args.workspace ?? positional[0];
+  if (!requested) throw new Error("Choose a workspace: march web <path> or march web --workspace <path>");
+  const workspace = resolve(launchCwd, requested);
+  if (!isDirectory(workspace)) throw new Error(`Workspace does not exist or is not a directory: ${workspace}`);
+  return workspace;
+}
+
+function isDirectory(path) {
+  try { return statSync(path).isDirectory(); } catch { return false; }
 }
 
 function assertWebBuildReady() {

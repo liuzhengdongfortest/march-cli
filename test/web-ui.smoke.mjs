@@ -33,8 +33,12 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(pkg, /"web:build": "tsc -p src\/web-ui\/tsconfig\.json/);
   assert.match(pkg, /"@pierre\/trees":/);
   assert.match(args, /"web"/);
+  assert.match(args, /workspace: \{ type: "string" \}/);
   assert.match(configuredCommand, /runWebUiCommand/);
   assert.match(webCommand, /createWebRuntimeHost/);
+  assert.match(webCommand, /resolveWebWorkspace/);
+  assert.match(webCommand, /Choose a workspace/);
+  assert.match(webCommand, /Workspace: /);
   assert.match(webCommand, /Web UI build not found/);
   assert.match(runtimeHost, /createRuntimeRunner/);
   assert.match(runtimeHost, /prepareTurnInput/);

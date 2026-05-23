@@ -64,10 +64,28 @@ function cleanup(dir) {
   const gatewayStatus = parseCliArgs(["gateway", "status"]);
   assert.deepEqual(gatewayStatus.command, { name: "gateway", args: ["status"] });
 
-  const web = parseCliArgs(["web", "--host", "127.0.0.1", "--port", "4174"]);
-  assert.deepEqual(web.command, { name: "web", args: [] });
+  const tmpWorkspace = setupTmp();
+  const childWorkspace = resolve(tmpWorkspace, "project");
+  mkdirSync(childWorkspace, { recursive: true });
+  const web = parseCliArgs(["web", tmpWorkspace, "--host", "127.0.0.1", "--port", "4174"]);
+  assert.deepEqual(web.command, { name: "web", args: [tmpWorkspace] });
   assert.equal(web.host, "127.0.0.1");
   assert.equal(web.port, "4174");
+
+  const webWithWorkspaceOption = parseCliArgs(["web", "--workspace", tmpWorkspace]);
+  assert.deepEqual(webWithWorkspaceOption.command, { name: "web", args: [] });
+  assert.equal(webWithWorkspaceOption.workspace, tmpWorkspace);
+  const { resolveWebWorkspace } = await import("../src/web-ui/command.mjs");
+  try {
+    assert.equal(resolveWebWorkspace(web, "C:/launcher"), resolve(tmpWorkspace));
+    assert.equal(resolveWebWorkspace(parseCliArgs(["web", "project"]), tmpWorkspace), childWorkspace);
+    assert.throws(() => resolveWebWorkspace(parseCliArgs(["web"]), tmpWorkspace), /Choose a workspace/);
+    assert.throws(() => resolveWebWorkspace(parseCliArgs(["web", tmpWorkspace, "extra"]), tmpWorkspace), /Usage: march web/);
+    assert.throws(() => resolveWebWorkspace(parseCliArgs(["web", tmpWorkspace, "--workspace", tmpWorkspace]), tmpWorkspace), /Use either/);
+  } finally {
+    cleanup(tmpWorkspace);
+  }
+
   assert.ok(!readFileSync("bin/march.mjs", "utf8").includes("process.exit("));
   assert.ok(!readFileSync("src/main.mjs", "utf8").includes("process.exit("));
   console.log("  PASS");

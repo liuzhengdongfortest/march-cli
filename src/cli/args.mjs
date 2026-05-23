@@ -23,6 +23,7 @@ export function parseCliArgs(argv) {
       name: { type: "string" },
       token: { type: "string" },
       foreground: { type: "boolean" },
+      workspace: { type: "string" },
       help: { type: "boolean", short: "h" },
     },
     allowPositionals: true,
@@ -50,6 +51,7 @@ export function parseCliArgs(argv) {
     name: values.name ?? null,
     token: values.token ?? null,
     foreground: values.foreground ?? false,
+    workspace: values.workspace ?? null,
     help: values.help ?? false,
     prompt: commandName ? "" : positionals.join(" "),
   };
@@ -65,7 +67,7 @@ Usage:
   march provider --config    Configure provider credentials
   march provider share [id]  Share a provider profile
   march provider accept <token>
-  march web              Start the Web UI runtime host
+  march web <path>       Start the Web UI runtime host for a workspace
   march websearch --config   Configure web search credentials
   march memory serve [folder]
   march memory add <url>
@@ -95,6 +97,7 @@ Options:
                        Load a pi extension path in the default runtime host (repeatable)
   --host <host>        With memory serve/web, bind host (default: 127.0.0.1)
   --port <port>        With memory serve/web, bind port
+  --workspace <path>   With web, workspace to open
   --name <name>        With memory serve/add, remote memory source name
   --foreground         With memory serve, run server in current process
   -h, --help           Show this help
