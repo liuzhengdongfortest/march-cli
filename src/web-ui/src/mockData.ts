@@ -18,7 +18,7 @@ export const mockWebUiModel: WebUiModel = {
             name: "web-ui",
             kind: "folder",
             children: [
-              { id: "app", name: "App.tsx", kind: "file", active: true, bound: true },
+              { id: "app", name: "App.tsx", kind: "file", active: true, bound: true, gitStatus: "modified" },
               { id: "model", name: "model.ts", kind: "file" },
               { id: "styles", name: "styles.css", kind: "file" },
             ],
@@ -27,7 +27,7 @@ export const mockWebUiModel: WebUiModel = {
       },
       { id: "test", name: "test", kind: "folder" },
       { id: "agents", name: "AGENTS.md", kind: "file" },
-      { id: "package", name: "package.json", kind: "file" },
+      { id: "package", name: "package.json", kind: "file", gitStatus: "modified" },
     ],
   },
   timeline: {

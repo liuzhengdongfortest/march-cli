@@ -5,6 +5,7 @@ export type FileNode = {
   selected?: boolean;
   active?: boolean;
   bound?: boolean;
+  gitStatus?: "added" | "deleted" | "ignored" | "modified" | "renamed" | "untracked";
   children?: FileNode[];
 };
 

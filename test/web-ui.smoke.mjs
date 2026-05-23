@@ -8,6 +8,7 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   const root = join(cwd, "src", "web-ui");
   const shell = readFileSync(join(root, "src", "components", "AppShell.tsx"), "utf8");
   const explorer = readFileSync(join(root, "src", "components", "FileExplorer.tsx"), "utf8");
+  const treeAdapter = readFileSync(join(root, "src", "fileTreeAdapter.ts"), "utf8");
   const timeline = readFileSync(join(root, "src", "components", "SessionTimeline.tsx"), "utf8");
   const right = readFileSync(join(root, "src", "components", "RightSidebar.tsx"), "utf8");
   const composer = readFileSync(join(root, "src", "components", "Composer.tsx"), "utf8");
@@ -18,15 +19,19 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
 
   assert.match(pkg, /"web:dev": "vite --config src\/web-ui\/vite\.config\.mjs"/);
   assert.match(pkg, /"web:build": "tsc -p src\/web-ui\/tsconfig\.json/);
+  assert.match(pkg, /"@pierre\/trees":/);
   assert.match(shell, /<FileExplorer root=\{model\.workspace\}/);
   assert.match(shell, /<SessionTimeline timeline=\{model\.timeline\}/);
   assert.match(shell, /<RightSidebar sessions=\{model\.sessions\} activity=\{model\.activity\}/);
   assert.match(model, /export type WebUiModel/);
   assert.match(model, /TimelineEvent/);
   assert.match(model, /ActivityEvent/);
+  assert.match(explorer, /@pierre\/trees\/react/);
   assert.match(explorer, /aria-label="Projects"/);
   assert.match(explorer, /className="projects-header"/);
-  assert.match(explorer, /className="project-tree"/);
+  assert.match(explorer, /className="project-tree-host"/);
+  assert.match(treeAdapter, /createProjectFileTreeInput/);
+  assert.match(treeAdapter, /GitStatusEntry/);
   assert.match(timeline, /className="timeline"/);
   assert.match(timeline, /className="tool-row"/);
   assert.match(right, /className="right-header">会话/);
@@ -36,6 +41,7 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(css, /grid-template-areas: "sidebar main right" "sidebar footer right"/);
   assert.match(css, /height: var\(--header-height\)/);
   assert.match(css, /border-right: 1px solid var\(--color-border-subtle\)/);
+  assert.match(css, /--trees-selected-bg-override: var\(--color-accent-soft\)/);
   assert.match(css, /max-width: 920px/);
   assert.match(css, /data-left-open="true"/);
   assert.match(tokens, /@layer theme\.palette, theme\.semantic, theme\.component, base/);

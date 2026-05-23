@@ -1,4 +1,7 @@
-import type { CSSProperties } from "react";
+import { FileTree as PierreFileTree, useFileTree } from "@pierre/trees/react";
+import type { FileTreeRowDecorationContext } from "@pierre/trees";
+import { useMemo } from "react";
+import { createProjectFileTreeInput } from "../fileTreeAdapter";
 import type { FileNode } from "../model";
 
 type FileExplorerProps = {
@@ -6,6 +9,25 @@ type FileExplorerProps = {
 };
 
 export function FileExplorer({ root }: FileExplorerProps) {
+  const treeInput = useMemo(() => createProjectFileTreeInput(root), [root]);
+  const { model } = useFileTree({
+    density: "compact",
+    flattenEmptyDirectories: false,
+    gitStatus: treeInput.gitStatus,
+    icons: { set: "minimal", colored: false },
+    id: "march-project-tree",
+    initialExpandedPaths: treeInput.expandedPaths,
+    initialSelectedPaths: treeInput.selectedPaths,
+    paths: treeInput.paths,
+    renderRowDecoration: (context: FileTreeRowDecorationContext) => {
+      if (!treeInput.boundPaths.has(context.item.path)) {
+        return null;
+      }
+      return { text: "◆", title: "Bound to session" };
+    },
+    search: true,
+  });
+
   return (
     <aside className="panel left-panel" aria-label="Projects">
       <div className="projects-header">
@@ -17,41 +39,8 @@ export function FileExplorer({ root }: FileExplorerProps) {
         </button>
       </div>
       <div className="projects-body">
-        <ul className="project-tree" aria-label="Project files">
-          <TreeNode node={root} depth={0} root />
-        </ul>
+        <PierreFileTree className="project-tree-host" model={model} aria-label="Project files" />
       </div>
     </aside>
-  );
-}
-
-type TreeNodeProps = {
-  node: FileNode;
-  depth: number;
-  root?: boolean;
-};
-
-function TreeNode({ node, depth, root = false }: TreeNodeProps) {
-  const hasChildren = Boolean(node.children?.length);
-  const rowClass = [
-    "tree-row",
-    root ? "root-node" : "",
-    node.selected ? "selected" : "",
-    node.active ? "active-file" : "",
-  ].filter(Boolean).join(" ");
-
-  return (
-    <li>
-      <button className={rowClass} type="button" style={{ "--depth": depth } as CSSProperties}>
-        <span className={hasChildren ? "tree-icon chevron open" : "tree-icon file"} aria-hidden="true" />
-        {root ? <span className="root-badge">{node.name}</span> : <span>{node.name}</span>}
-        {node.bound ? <span className={root ? "bound-dot" : "session-link"}>◆</span> : null}
-      </button>
-      {hasChildren ? (
-        <ul>
-          {node.children!.map((child) => <TreeNode key={child.id} node={child} depth={depth + 1} />)}
-        </ul>
-      ) : null}
-    </li>
   );
 }
