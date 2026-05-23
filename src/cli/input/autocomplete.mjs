@@ -1,29 +1,6 @@
 import { CombinedAutocompleteProvider } from "@earendil-works/pi-tui";
+import { getAutocompleteCommands } from "../commands/catalog/visible-commands.mjs";
 import { FileSearchIndex } from "./file-search/index.mjs";
-
-const MARCH_COMMANDS = [
-  { name: "new", description: "Start a new pi session" },
-  { name: "exit", description: "Exit March" },
-  { name: "quit", description: "Exit March" },
-  { name: "help", description: "Show available commands" },
-  { name: "model", description: "Open model selector" },
-  { name: "models", description: "List available models" },
-  { name: "session", description: "Open previous session selector" },
-  { name: "save", description: "Show auto-save status" },
-  { name: "name", description: "Show or set session name" },
-  { name: "copy", description: "Copy last assistant response to clipboard" },
-  { name: "thinking", description: "Open thinking selector" },
-  { name: "thinking list", description: "List available thinking levels" },
-  { name: "hotkeys", description: "Show keyboard shortcuts and input prefixes" },
-  { name: "templates", description: "List project prompt templates" },
-  { name: "export jsonl", description: "Export current session turns as JSONL" },
-  { name: "export html", description: "Export current session turns as HTML" },
-  { name: "export gist html", description: "Share current session HTML as a private GitHub Gist" },
-  { name: "export gist jsonl", description: "Share current session JSONL as a private GitHub Gist" },
-  { name: "settings", description: "Show or edit global/project settings" },
-  { name: "shell", description: "List shells or inspect shell output" },
-  { name: "shell spawn", description: "Start a default PTY shell" },
-];
 
 export function buildMarchCommands(promptTemplates = []) {
   const templateCommands = promptTemplates
@@ -32,7 +9,7 @@ export function buildMarchCommands(promptTemplates = []) {
       description: "Expand prompt template",
     }))
     .filter((command) => command.name && !command.name.startsWith("/"));
-  return [...MARCH_COMMANDS, ...templateCommands];
+  return [...getAutocompleteCommands(), ...templateCommands];
 }
 
 export class MarchAutocompleteProvider {

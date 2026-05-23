@@ -297,23 +297,27 @@ await runRunnerCoreSmoke();
 {
   console.log("--- smoke: autocomplete provider ---");
   const { buildMarchCommands, MarchAutocompleteProvider } = await import("../src/cli/input/autocomplete.mjs");
+  const { getVisibleCommandEntries } = await import("../src/cli/commands/catalog/visible-commands.mjs");
   const dir = setupTmp();
   writeFileSync(join(dir, "sample-file.txt"), "data");
 
   const commands = buildMarchCommands([{ name: "fix" }]);
-  assert.ok(commands.some((command) => command.name === "hotkeys"));
-  assert.ok(commands.some((command) => command.name === "templates"));
+  const commandNames = commands.map((command) => command.name);
+  for (const entry of getVisibleCommandEntries()) {
+    assert.ok(commandNames.includes(entry.name), `missing autocomplete command: ${entry.name}`);
+    for (const alias of entry.aliases ?? []) assert.ok(commandNames.includes(alias), `missing autocomplete alias: ${alias}`);
+  }
+  assert.ok(commands.some((command) => command.name === "do"));
+  assert.ok(commands.some((command) => command.name === "discuss"));
   assert.ok(commands.some((command) => command.name === "fix"));
-  assert.ok(commands.some((command) => command.name === "models"));
-  assert.ok(commands.some((command) => command.name === "session"));
   assert.ok(commands.some((command) => command.name === "thinking list"));
-  assert.ok(commands.some((command) => command.name === "shell"));
   assert.ok(commands.some((command) => command.name === "shell spawn"));
   assert.equal(commands.find((command) => command.name === "session").description, "Open previous session selector");
+  assert.equal(commands.find((command) => command.name === "save").description, "Show auto-save status");
   assert.ok(!commands.some((command) => command.name === "sessions"));
   assert.ok(!commands.some((command) => command.name === "resume"));
-  assert.equal(commands.find((command) => command.name === "save").description, "Show auto-save status");
-
+  assert.ok(!commands.some((command) => command.name === "notify"));
+  assert.ok(!commands.some((command) => command.name === "mouse"));
   const provider = new MarchAutocompleteProvider(commands, dir);
   const fileSuggestions = await provider.getSuggestions(["@sam"], 0, 4, {
     signal: new AbortController().signal,
