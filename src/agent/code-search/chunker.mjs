@@ -1,13 +1,10 @@
+import { chunkRuleFor, extractNodeSymbols } from "./chunk-rules.mjs";
 import { getParser } from "./parser-pool.mjs";
 import { uniqueTokens } from "./tokenize.mjs";
 
 const MAX_CHUNK_LINES = 80;
 const FALLBACK_WINDOW = 60;
-const CHUNK_NODE_TYPES = new Set([
-  "function_declaration", "method_definition", "class_declaration", "lexical_declaration", "interface_declaration",
-  "type_alias_declaration", "export_statement", "function_definition", "class_definition", "method_declaration",
-  "function_item", "impl_item", "struct_item", "enum_item", "function_declaration", "method_declaration",
-]);
+
 
 export async function chunkFile(file) {
   const lines = file.content.split("\n");
@@ -26,13 +23,14 @@ export async function chunkFile(file) {
 function collectAstChunks(file, lines, rootNode) {
   const chunks = [];
   walk(rootNode, (node) => {
-    if (!isChunkNode(node)) return;
+    const rule = chunkRuleFor(file.language, node);
+    if (!rule) return;
     const start = node.startPosition.row + 1;
     const end = Math.min(node.endPosition.row + 1, start + MAX_CHUNK_LINES - 1);
     if (end < start) return;
     const content = lines.slice(start - 1, end).join("\n");
     if (!content.trim()) return;
-    chunks.push(toChunk(file, content, start, end, classifyKind(node), extractSymbols(node)));
+    chunks.push(toChunk(file, content, start, end, rule.kind, extractNodeSymbols(file.language, node)));
   });
   return dedupeContainedChunks(chunks);
 }
@@ -42,40 +40,15 @@ function walk(node, visit) {
   for (const child of node.namedChildren ?? node.children ?? []) walk(child, visit);
 }
 
-function isChunkNode(node) {
-  if (!node?.isNamed) return false;
-  if (CHUNK_NODE_TYPES.has(node.type)) return true;
-  return /function|method|class|interface|struct|enum|type_alias/.test(node.type);
-}
-
-function classifyKind(node) {
-  const type = node.type;
-  if (/class|interface|struct|enum|type_alias/.test(type)) return "class";
-  if (/function|method/.test(type)) return "function";
-  return "block";
-}
-
-function extractSymbols(node) {
-  const symbols = [];
-  for (const child of node.namedChildren ?? []) {
-    const field = childFieldName(node, child);
-    if (field === "name" && child.text) symbols.push(child.text);
-  }
-  return symbols.slice(0, 5);
-}
-
-function childFieldName(parent, child) {
-  const children = parent.children ?? [];
-  for (let index = 0; index < children.length; index += 1) {
-    if (children[index].equals?.(child)) return parent.fieldNameForChild(index) ?? "";
-  }
-  return "";
-}
 
 function dedupeContainedChunks(chunks) {
   const sorted = chunks.sort((a, b) => a.start_line - b.start_line || a.end_line - b.end_line);
   return sorted.filter((chunk, index) => !sorted.some((other, otherIndex) => (
-    otherIndex !== index && other.file_path === chunk.file_path && other.start_line <= chunk.start_line && other.end_line >= chunk.end_line && span(other) < span(chunk) + 10
+    otherIndex !== index
+      && other.file_path === chunk.file_path
+      && other.start_line <= chunk.start_line
+      && other.end_line >= chunk.end_line
+      && span(other) < span(chunk) + 10
   )));
 }
 

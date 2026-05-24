@@ -18,12 +18,17 @@ export async function runCodeSearchSmoke({ setupTmp, cleanup }) {
       "  return JSON.stringify(payload);",
       "}",
     ].join("\n"));
+    writeFileSync(join(root, "src", "token_issuer.py"), [
+      "class TokenIssuer:",
+      "    def issue_token(self, user):",
+      "        return sign_jwt({\"subject\": user.id})",
+    ].join("\n"));
     writeFileSync(join(root, "test", "auth-service.test.mjs"), "assert.equal(issueSessionToken(user).token, expectedToken);\n");
 
     const { searchCode } = await import("../src/agent/code-search/engine.mjs");
     const { CodeSearchIndexCache } = await import("../src/agent/code-search/cache.mjs");
     const cache = new CodeSearchIndexCache();
-    const result = await searchCode({ root, query: "issue session token", top_k: 3, cache });
+    const result = await searchCode({ root, query: "issueSessionToken", top_k: 3, cache });
     assert.ok(result.stats.files >= 1);
     assert.ok(result.stats.chunks >= 1);
     assert.equal(result.results[0].file_path, "src/auth-service.mjs");
@@ -34,6 +39,11 @@ export async function runCodeSearchSmoke({ setupTmp, cleanup }) {
     const semantic = await searchCode({ root, query: "jwt payload serialization", top_k: 1, mode: "semantic", cache });
     assert.equal(semantic.stats.mode, "semantic");
     assert.equal(semantic.results[0].file_path, "src/auth-service.mjs");
+
+    const python = await searchCode({ root, query: "token issuer class", top_k: 1, mode: "symbol", cache });
+    assert.equal(python.results[0].file_path, "src/token_issuer.py");
+    assert.equal(python.results[0].kind, "class");
+    assert.deepEqual(python.results[0].symbols, ["TokenIssuer"]);
 
     assert.ok(result.stats.indexed_files >= 1);
     assert.equal(result.stats.reused_index, false);
@@ -59,6 +69,8 @@ export async function runCodeSearchSmoke({ setupTmp, cleanup }) {
 
     const related = await searchCode({
       root,
+      path: "src/auth-service.mjs",
+      query: "signJwt payload",
       related_to: { file_path: "src/auth-service.mjs", line: 1 },
       top_k: 1,
       cache,
