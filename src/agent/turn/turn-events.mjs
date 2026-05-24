@@ -1,5 +1,7 @@
 import { formatToolStartLine, formatToolSuccessSummary } from "../tool-summary.mjs";
 
+const TOOL_ERROR_EXCERPT_LIMIT = 4000;
+
 export function createTurnEventState() {
   return {
     draft: "",
@@ -9,6 +11,7 @@ export function createTurnEventState() {
     assistantReplyOpen: false,
     assistantContextParts: [],
     activeToolContextPart: null,
+    toolCalls: [],
   };
 }
 
@@ -19,10 +22,12 @@ export function handleRunnerSessionEvent(event, { ui, engine, state }) {
   if (event.type === "tool_execution_start") {
     closeAssistantReply({ ui, state });
     appendToolStartContext(state, event.toolName, event.args);
+    recordToolStart(state, event.toolName, event.args);
     ui.toolStart(event.toolName, event.args);
   }
   if (event.type === "tool_execution_end") {
     updateToolEndContext(state, event.toolName, event.isError, event.result);
+    recordToolEnd(state, event.toolName, event.isError, event.result);
     ui.toolEnd(event.toolName, event.isError, event.result);
   }
   if (event.type === "auto_retry_start") {
@@ -108,4 +113,40 @@ function updateToolEndContext(state, name, isError, result) {
   const summary = isError ? "failed" : formatToolSuccessSummary(name, result, "");
   if (summary && summary !== "done") part.text = `${part.text.trimEnd()} (${summary})\n`;
   state.activeToolContextPart = null;
+}
+
+function recordToolStart(state, name, args) {
+  state.toolCalls.push({ name, args: cloneJson(args), status: "running" });
+}
+
+function recordToolEnd(state, name, isError, result) {
+  const call = [...state.toolCalls].reverse().find((item) => item.name === name && item.status === "running");
+  if (!call) return;
+  call.status = isError ? "failed" : "success";
+  if (!isError) return;
+  const output = extractToolOutput(result);
+  call.error = {
+    message: output.split(/\r?\n/).find(Boolean) ?? "Tool call failed",
+    details: cloneJson(result?.details ?? null),
+    excerpt: truncate(output, TOOL_ERROR_EXCERPT_LIMIT),
+  };
+}
+
+function extractToolOutput(result) {
+  const content = result?.content;
+  if (!Array.isArray(content)) return typeof result === "string" ? result : "";
+  return content.filter((item) => item?.type === "text").map((item) => item.text ?? "").join("\n");
+}
+
+function cloneJson(value) {
+  try {
+    return JSON.parse(JSON.stringify(value ?? null));
+  } catch {
+    return null;
+  }
+}
+
+function truncate(text, limit) {
+  const value = String(text ?? "");
+  return value.length > limit ? `${value.slice(0, limit)}\n[truncated]` : value;
 }

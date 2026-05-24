@@ -71,18 +71,20 @@ export class ContextEngine {
   }
 
   recordTurn({ userMessage, assistantMessage, assistantContext = "", userRecallHints = [], assistantRecallHints = [] }) {
-    this.turns.push({
+    const turn = {
       index: this.turns.length + 1,
       userMessage,
       assistantMessage: assistantMessage ?? "",
       assistantContext: assistantContext ?? "",
       userRecallHints,
       assistantRecallHints,
-    });
+    };
+    this.turns.push(turn);
     if (this.turns.length > this.maxTurns) {
       const keep = Math.max(1, this.maxTurns - this.trimBatch);
       this.turns = this.turns.slice(-keep);
     }
+    return turn;
   }
 
   getRecentRecallMemoryIds() {

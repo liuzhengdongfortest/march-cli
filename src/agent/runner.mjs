@@ -28,6 +28,7 @@ import { registerCustomProviders } from "../provider/custom-provider.mjs";
 import { injectHostedTools } from "../provider/hosted-tools.mjs";
 import { createRunnerLifecycle } from "./lifecycle/runner-lifecycle.mjs";
 import { createRunnerProviderQuotaRuntime } from "./runner/provider-quota-runtime.mjs";
+import { appendRunnerTurnHistory, createRunnerHistoryStore } from "../history/runner.mjs";
 export { MARCH_BASE_TOOL_NAMES, installModelPayloadDumper };
 export { createDefaultSessionManager, resolveRunnerSessionManager } from "./runner/runner-init.mjs";
 export { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
@@ -35,12 +36,8 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   installCodexLargeContextGuard();
   installCodexTransportCompression();
   installCodexWebSocketEventDebug();
-  if (!useRuntimeHost && extensionPaths.length > 0) {
-    throw new Error("--extension requires the default pi runtime host path");
-  }
-  const authConfig = authStorage
-    ? { authStorage, hasAuth: true }
-    : createMarchAuthStorage({ provider: provider ?? "deepseek", providers, cwd });
+  if (!useRuntimeHost && extensionPaths.length > 0) throw new Error("--extension requires the default pi runtime host path");
+  const authConfig = authStorage ? { authStorage, hasAuth: true } : createMarchAuthStorage({ provider: provider ?? "deepseek", providers, cwd });
   if (!authConfig.hasAuth) throw new Error("No providers configured. Run: march provider --config");
   const resolvedAuth = authConfig.authStorage;
   const modelRegistry = ModelRegistry.create(resolvedAuth);
@@ -57,6 +54,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   const { ui: runtimeUi, eventBus: runtimeUiEvents, detach: detachRuntimeUi } = createRuntimeUiBridge(ui);
   const lspService = new LspService({ cwd, onEvent: (event) => runtimeUi.status?.(formatLspServiceEvent(event)), onStatusChange: (event) => onLspStatusChange?.(event) });
   const engine = new ContextEngine({ cwd, modelId, provider, namespace, memoryRoot, profilePaths, remoteMemorySources, shellRuntime, lspService, injections: mcpInjections, maxTurns, trimBatch });
+  const historyStore = createRunnerHistoryStore({ stateRoot, cwd });
   const resolvedSessionManager = resolveRunnerSessionManager(cwd, sessionManager);
   const sessionBinding = createSessionBinding(null);
   let currentModelCallKind = "model", currentTurnId = null, currentPromptForContext = "";
@@ -72,7 +70,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       providers,
       sessionManager: resolvedSessionManager, sessionBinding, engine, ui: runtimeUi,
       projectMarchDir,
-      memoryTools, memoryStore, shellRuntime, lspService, mcpTools, webTools,
+      memoryTools, memoryStore, historyStore, shellRuntime, lspService, mcpTools, webTools,
       lifecycle, permissionController, extensionPaths, hostedTools,
       onRebind: (session) => {
         installModelPayloadDumper(session, modelContextDumper, () => currentModelCallKind, onLoggedModelPayload, injectMarchSystemContext);
@@ -85,7 +83,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   } else {
     const sessionOptions = resolveRunnerSessionOptions({
       cwd, stateRoot, provider, modelId, modelRegistry, engine, ui: runtimeUi,
-      memoryTools, shellRuntime, lspService, mcpTools, webTools, lifecycle, permissionController,
+      memoryTools, historyStore, shellRuntime, lspService, mcpTools, webTools, lifecycle, permissionController,
       authStorage: resolvedAuth, projectMarchDir,
       getCurrentModel: () => sessionBinding.get()?.model ?? selectedModel,
     });
@@ -134,6 +132,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
           syncCurrentPiSidecar,
           autoNameSession,
           contextMode,
+          recordHistory: (turn) => appendRunnerTurnHistory({ store: historyStore, turn, sessionStats: getRunnerSessionStats(sessionBinding.get(), runtimeHost), modelId: engine.modelId, provider: engine.provider }),
         });
         notifyTurnEndDetached(turnNotifier, {
           status: "success",

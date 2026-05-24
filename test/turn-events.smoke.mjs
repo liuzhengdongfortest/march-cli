@@ -24,13 +24,19 @@ export async function runTurnEventsSmoke() {
   handleRunnerSessionEvent({ type: "message_update", assistantMessageEvent: { type: "thinking_end" } }, { ui, engine, state });
   handleRunnerSessionEvent({ type: "tool_execution_start", toolName: "read", args: { path: "a" } }, { ui, engine, state });
   handleRunnerSessionEvent({ type: "tool_execution_end", toolName: "read", isError: false, result: "ok" }, { ui, engine, state });
+  handleRunnerSessionEvent({ type: "tool_execution_start", toolName: "command_exec", args: { command: "bad" } }, { ui, engine, state });
+  handleRunnerSessionEvent({ type: "tool_execution_end", toolName: "command_exec", isError: true, result: { content: [{ type: "text", text: "Error: failed\nfull details" }], details: { status: 1 } } }, { ui, engine, state });
   handleRunnerSessionEvent({ type: "auto_retry_start", attempt: 1, maxAttempts: 3, delayMs: 2000, errorMessage: "rate" }, { ui, engine, state });
   handleRunnerSessionEvent({ type: "auto_retry_end", success: true, attempt: 1, finalError: null }, { ui, engine, state });
 
   assert.equal(state.draft, "hello");
   assert.equal(state.thinkingText, "");
   assert.equal(state.thinkingAccumulator, "12345678");
-  assert.equal(compactAssistantContext(state), "hello\n12345678\n→ read · a");
+  assert.equal(compactAssistantContext(state), "hello\n12345678\n→ read · a\n◆ command_exec · bad (failed)");
+  assert.deepEqual(state.toolCalls, [
+    { name: "read", args: { path: "a" }, status: "success" },
+    { name: "command_exec", args: { command: "bad" }, status: "failed", error: { message: "Error: failed", details: { status: 1 }, excerpt: "Error: failed\nfull details" } },
+  ]);
   assert.deepEqual(calls, [
     ["text", "hello"],
     ["thinkingStart"],
@@ -38,6 +44,8 @@ export async function runTurnEventsSmoke() {
     ["thinkingEnd", 2],
     ["toolStart", "read", { path: "a" }],
     ["toolEnd", "read", false, "ok"],
+    ["toolStart", "command_exec", { command: "bad" }],
+    ["toolEnd", "command_exec", true, { content: [{ type: "text", text: "Error: failed\nfull details" }], details: { status: 1 } }],
     ["retryStart", 1, 3, 2000, "rate"],
     ["retryEnd", true, 1, null],
   ]);

@@ -17,6 +17,7 @@ export async function runRunnerTurn({
   syncCurrentPiSidecar,
   autoNameSession,
   contextMode = "rebuild",
+  recordHistory = null,
 }) {
   const {
     userRecallHints = [],
@@ -80,6 +81,7 @@ export async function runRunnerTurn({
       midTurnRecallHints,
       syncCurrentPiSidecar,
       autoNameSession,
+      recordHistory,
     });
     return { draft: turnState.draft };
   } finally {
@@ -127,19 +129,20 @@ function logSessionEvent(logger, event) {
   });
 }
 
-function finalizeTurn({ prompt, userMessage, userRecallHints, currentProject, memoryStore, engine, ui, turnState, midTurnRecallHints, syncCurrentPiSidecar, autoNameSession }) {
+function finalizeTurn({ prompt, userMessage, userRecallHints, currentProject, memoryStore, engine, ui, turnState, midTurnRecallHints, syncCurrentPiSidecar, autoNameSession, recordHistory }) {
   closeAssistantReply({ ui, state: turnState });
   const assistantRecallHints = flushAssistantRecall({ memoryStore, engine, turnState, currentProject });
   engine.setPendingAssistantRecallHints?.(assistantRecallHints);
   const recordedAssistantRecallHints = uniqueHints([...midTurnRecallHints, ...assistantRecallHints]);
 
-  engine.recordTurn({
+  const turn = engine.recordTurn({
     userMessage: userMessage ?? prompt.slice(0, 300),
     assistantMessage: turnState.draft,
     assistantContext: compactAssistantContext(turnState),
     userRecallHints,
     assistantRecallHints: recordedAssistantRecallHints,
   });
+  recordHistory?.({ ...turn, thinking: assistantThinkingText(turnState), toolCalls: turnState.toolCalls });
 
   autoNameSession?.();
   syncCurrentPiSidecar();

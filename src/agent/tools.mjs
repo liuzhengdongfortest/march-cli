@@ -13,11 +13,13 @@ import { initImageGen } from "../image-gen/index.mjs";
 import { createSuperGrokTool } from "../supergrok/tool.mjs";
 import { createBrowserTools } from "../browser/tools/index.mjs";
 import { createRuntimeRestartTool } from "./lifecycle/runtime-restart-tool.mjs";
+import { createHistorySearchTool } from "../history/tool.mjs";
 
-export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], shellRuntime = null, lspService = null, mcpTools = [], webTools = [], lifecycle = null, permissionController = null, authStorage = null, projectMarchDir = null, stateRoot = null, getCurrentModel = null }) {
+export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], historyStore = null, shellRuntime = null, lspService = null, mcpTools = [], webTools = [], lifecycle = null, permissionController = null, authStorage = null, projectMarchDir = null, stateRoot = null, getCurrentModel = null }) {
   const commandExecTool = createCommandExecTool({ cwd });
   const codeSearchTool = createCodeSearchTool({ engine, stateRoot });
   const contextStatsTool = createContextStatsTool({ engine });
+  const historySearchTool = createHistorySearchTool({ store: historyStore });
   const editFileTool = createEditFileTool({ engine, ui, lspService });
   const readFileTool = createReadFileTool({ engine });
   const readImageTool = createReadImageTool({ engine, getCurrentModel });
@@ -36,6 +38,7 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], shel
     commandExecTool,
     editFileTool,
     ...createShellTools(shellRuntime),
+    ...(historySearchTool ? [historySearchTool] : []),
     ...memoryTools,
     ...mcpTools,
     ...webTools,

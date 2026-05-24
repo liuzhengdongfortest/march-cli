@@ -10,6 +10,7 @@ export function resolveRunnerSessionOptions({
   engine,
   ui,
   memoryTools = [],
+  historyStore = null,
   shellRuntime = null,
   lspService = null,
   mcpTools = [],
@@ -31,7 +32,7 @@ export function resolveRunnerSessionOptions({
     ?? (provider && modelId ? getModel(provider, modelId) : null);
   if (!model) throw new Error(`Model not found: ${provider}/${modelId}`);
 
-  const customTools = createMarchCustomTools({ cwd, engine, ui, memoryTools, shellRuntime, lspService, mcpTools, webTools, lifecycle, permissionController, authStorage, projectMarchDir, stateRoot, getCurrentModel: () => getCurrentModel?.() ?? model });
+  const customTools = createMarchCustomTools({ cwd, engine, ui, memoryTools, historyStore, shellRuntime, lspService, mcpTools, webTools, lifecycle, permissionController, authStorage, projectMarchDir, stateRoot, getCurrentModel: () => getCurrentModel?.() ?? model });
   const customToolNames = customTools.map((tool) => tool.name);
   const tools = [
     ...customToolNames.filter((name) => name === "read"),
