@@ -6,11 +6,11 @@ import { createWebSessionManager, resolveWorkspace } from "./session-manager.mjs
 const DEFAULT_HOST = "127.0.0.1";
 const DEFAULT_PORT = 4174;
 
-export async function runWebUiCommand(args, { config, cwd, stateRoot, useRuntimeProcess = true } = {}) {
+export async function runWebUiCommand(args, { config, cwd, stateRoot } = {}) {
   const host = args.host ?? DEFAULT_HOST;
   assertLoopbackHost(host);
   const port = Number.parseInt(args.port ?? "", 10) || DEFAULT_PORT;
-  const runtime = createWebSessionManager({ args, config, launchCwd: cwd, stateRoot, useRuntimeProcess });
+  const runtime = createWebSessionManager({ args, config, launchCwd: cwd, stateRoot });
   const initialWorkspace = resolveInitialWorkspace(args, cwd);
   if (initialWorkspace) await runtime.createSession(initialWorkspace);
 

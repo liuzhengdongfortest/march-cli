@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { basename, resolve } from "node:path";
 import { createWebRuntimeHost } from "./runtime-host.mjs";
 
-export function createWebSessionManager({ args, config, launchCwd, stateRoot, useRuntimeProcess = true } = {}) {
+export function createWebSessionManager({ args, config, launchCwd, stateRoot } = {}) {
   const sessions = new Map();
   const activities = [];
   let activeSessionId = null;
@@ -12,7 +12,7 @@ export function createWebSessionManager({ args, config, launchCwd, stateRoot, us
   async function createSession(workspacePath) {
     const workspace = resolveWorkspace(workspacePath, launchCwd);
     const id = `session-${Date.now().toString(36)}-${nextSessionNumber++}`;
-    const runtime = await createWebRuntimeHost({ args, config, cwd: workspace, stateRoot, useRuntimeProcess });
+    const runtime = await createWebRuntimeHost({ args, config, cwd: workspace, stateRoot });
     const session = { id, workspace, title: basename(workspace) || workspace, runtime, createdAt: Date.now() };
     sessions.set(id, session);
     activeSessionId = id;

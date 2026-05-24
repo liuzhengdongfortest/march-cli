@@ -3,17 +3,12 @@ import { basename, join, resolve } from "node:path";
 import { existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { createMarchAuthStorage } from "../auth/storage.mjs";
 import { createRuntimeRunner } from "../cli/startup/create-runtime-runner.mjs";
-import { createPermissionController, MODE } from "../cli/permissions.mjs";
 import { createCliShellRuntime } from "../shell/cli-runtime.mjs";
 import { MarkdownMemoryStore } from "../memory/markdown-store.mjs";
-import { createMarkdownMemoryTools } from "../memory/markdown-tools.mjs";
 import { resolveMemoryRoot } from "../memory/root.mjs";
 import { defaultProfilePaths, ensureProfileFiles } from "../context/profiles.mjs";
 import { loadOrCreateProjectId } from "../cli/startup/startup-session.mjs";
-import { createWebToolsFromConfig } from "../web/tools.mjs";
 import { createLogger, installProcessLogHandlers } from "../debug/logger.mjs";
-import { createModelContextDumper } from "../debug/model-context-dumper.mjs";
-import { createDesktopTurnNotifier } from "../notification/desktop-notifier.mjs";
 import { discoverProjectExtensionPaths } from "../extensions/discovery.mjs";
 import { loadProjectLifecycleHookManifests } from "../extensions/lifecycle-manifest.mjs";
 import { normalizeRemoteMemorySources } from "../memory/remote/config.mjs";
@@ -22,7 +17,7 @@ import { prepareTurnInput } from "../cli/turn/turn-input-preparer.mjs";
 const MAX_WORKSPACE_DEPTH = 3;
 const MAX_WORKSPACE_ENTRIES = 200;
 
-export async function createWebRuntimeHost({ args, config, cwd, stateRoot, useRuntimeProcess = true } = {}) {
+export async function createWebRuntimeHost({ args, config, cwd, stateRoot } = {}) {
   stateRoot ??= join(homedir(), ".march");
   if (!existsSync(stateRoot)) mkdirSync(stateRoot, { recursive: true });
   const logger = createLogger({ logDir: join(stateRoot, "logs") });
@@ -40,14 +35,10 @@ export async function createWebRuntimeHost({ args, config, cwd, stateRoot, useRu
 
   const memoryStore = new MarkdownMemoryStore({ root: memoryRoot });
   const remoteMemorySources = normalizeRemoteMemorySources(config);
-  const memoryTools = createMarkdownMemoryTools(memoryStore, { remoteSources: remoteMemorySources });
   const shellRuntime = args.shellRuntime ? createCliShellRuntime({ cwd }) : null;
   const extensionPaths = discoverProjectExtensionPaths(cwd);
   const lifecycleManifests = loadProjectLifecycleHookManifests(cwd);
   const contextDumpRoot = resolve(projectMarchDir, "context-dumps", Date.now().toString(36));
-  const modelContextDumper = createModelContextDumper({ enabled: args.dumpContext, rootDir: contextDumpRoot });
-  const permissionController = createPermissionController({ mode: args.permissionMode ?? MODE.BYPASS });
-  const turnNotifier = createDesktopTurnNotifier({ enabled: Boolean(config.notifications?.turnEnd), config: config.notifications });
   const ui = createHeadlessWebUi();
   const currentProject = basename(cwd);
   const namespace = loadOrCreateProjectId(projectMarchDir);
@@ -72,20 +63,9 @@ export async function createWebRuntimeHost({ args, config, cwd, stateRoot, useRu
     remoteMemorySources,
   };
   const runner = await createRuntimeRunner({
-    useRuntimeProcess,
     runnerOptions,
     ui,
-    memoryStore,
-    memoryTools,
     shellRuntime,
-    webTools: createWebToolsFromConfig(config),
-    usePiSessions: true,
-    usePiRuntimeHost: true,
-    authStorage: authConfig.authStorage,
-    permissionController,
-    modelContextDumper,
-    turnNotifier,
-    logger,
   });
   let turnRunning = false;
 

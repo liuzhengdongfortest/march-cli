@@ -1,7 +1,6 @@
 import { basename, join, resolve } from "node:path";
 import { existsSync, mkdirSync } from "node:fs";
 import { createUI } from "../ui.mjs";
-import { createPermissionController, MODE } from "../permissions.mjs";
 import { loadKeybindings } from "../input/keybindings.mjs";
 import { createInputHistoryStore } from "../input/history-store.mjs";
 import { createModeState } from "../input/mode-state.mjs";
@@ -12,21 +11,16 @@ import { createMarchAuthStorage } from "../../auth/storage.mjs";
 import { createRuntimeRunner } from "./create-runtime-runner.mjs";
 import { createCliShellRuntime } from "../../shell/cli-runtime.mjs";
 import { MarkdownMemoryStore } from "../../memory/markdown-store.mjs";
-import { createMarkdownMemoryTools } from "../../memory/markdown-tools.mjs";
 import { discoverProjectExtensionPaths } from "../../extensions/discovery.mjs";
 import { loadProjectLifecycleHookManifests } from "../../extensions/lifecycle-manifest.mjs";
 import { loadOrCreateProjectId, resumeStartupSession } from "./startup-session.mjs";
-import { initializeMcp } from "../../mcp/index.mjs";
-import { createWebToolsFromConfig } from "../../web/tools.mjs";
-import { createModelContextDumper } from "../../debug/model-context-dumper.mjs";
 import { createLogger, installProcessLogHandlers } from "../../debug/logger.mjs";
 import { defaultProfilePaths, ensureProfileFiles } from "../../context/profiles.mjs";
-import { createDesktopTurnNotifier } from "../../notification/desktop-notifier.mjs";
 import { normalizeRemoteMemorySources } from "../../memory/remote/config.mjs";
 import { resolveMemoryRoot } from "../../memory/root.mjs";
 import { ensureBrowserDaemon } from "../../browser/client/lifecycle.mjs";
 
-export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot, useRuntimeProcess } = {}) {
+export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot } = {}) {
   if (!existsSync(stateRoot)) mkdirSync(stateRoot, { recursive: true });
   await ensureBrowserDaemon({ stateRoot }).catch(() => {});
 
@@ -67,23 +61,10 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot, 
   ensureProfileFiles(profilePaths);
   const memoryStore = new MarkdownMemoryStore({ root: memoryRoot });
   const remoteMemorySources = normalizeRemoteMemorySources(config);
-  const memoryTools = createMarkdownMemoryTools(memoryStore, { remoteSources: remoteMemorySources });
   const currentProject = basename(cwd);
   const shellRuntime = args.shellRuntime ? createCliShellRuntime({ cwd }) : null;
 
-  const mcpInit = useRuntimeProcess
-    ? { clientManager: null, mcpTools: [], mcpInjections: [], errors: [] }
-    : await initializeMcp({ projectDir: cwd });
-  for (const { server, error } of mcpInit.errors) {
-    if (!args.json) process.stderr.write(`[mcp] ${server}: ${error}\n`);
-  }
-
-  const webTools = createWebToolsFromConfig(config);
-  const turnNotifier = createDesktopTurnNotifier({ enabled: Boolean(config.notifications?.turnEnd), config: config.notifications });
-  const permissionMode = args.permissionMode ?? MODE.BYPASS;
-  const permissionController = createPermissionController({ mode: permissionMode });
-  const usePiSessions = true;
-  const usePiRuntimeHost = true;
+  const permissionMode = args.permissionMode;
   const sessionSource = "pi";
   const sessionsRoot = join(projectMarchDir, "sessions");
   const sessionState = {
@@ -92,10 +73,6 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot, 
   };
   sessionState.sessionDir = join(sessionsRoot, sessionState.sessionId);
   const contextDumpRoot = resolve(projectMarchDir, "context-dumps", sessionState.sessionId);
-  const modelContextDumper = createModelContextDumper({
-    enabled: args.dumpContext,
-    rootDir: contextDumpRoot,
-  });
 
   const ui = createUI({
     json: args.json,
@@ -132,10 +109,9 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot, 
   let runner;
   try {
     runner = await createRuntimeRunner({
-      useRuntimeProcess, runnerOptions, ui, memoryStore, memoryTools, shellRuntime,
-      mcpTools: mcpInit.mcpTools, mcpInjections: mcpInit.mcpInjections, mcpClientManager: mcpInit.clientManager, webTools,
-      usePiSessions, usePiRuntimeHost, authStorage: authConfig.authStorage,
-      permissionController, modelContextDumper, turnNotifier, logger,
+      runnerOptions,
+      ui,
+      shellRuntime,
       refreshStatusBar: (...args) => refreshStatusBar?.(...args),
     });
   } catch (err) {

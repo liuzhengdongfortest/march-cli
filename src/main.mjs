@@ -26,13 +26,12 @@ export async function run(argv) {
 
   const config = loadConfig(cwd);
   const stateRoot = join(homedir(), ".march");
-  const useRuntimeProcess = process.env.MARCH_RUNTIME_PROCESS !== "0";
   installNetworkEnvironment(config.network);
 
   const earlyCommand = await runEarlyCliCommand(args, { config, cwd, stateRoot });
   if (earlyCommand.handled) return earlyCommand.code;
 
-  const app = await createCliAppRuntime({ args, config, cwd, argv, stateRoot, useRuntimeProcess });
+  const app = await createCliAppRuntime({ args, config, cwd, argv, stateRoot });
   if (!app.ok) return app.code;
 
   const gatewayDaemonCommand = await maybeRunGatewayDaemonCommand(args, {
