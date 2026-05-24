@@ -4,6 +4,7 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: status command ---");
   const {
     formatExtensionDiagnosticSummary,
+    formatCompactProviderQuota,
     formatCompactTokenCount,
     formatProviderQuotaSegment,
     formatStatusBarLine,
@@ -34,7 +35,9 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
   assert.equal(formatCompactTokenCount(980), "980");
   assert.equal(formatCompactTokenCount(11300), "11.3K");
   assert.equal(formatCompactTokenCount(1200000), "1.2M");
-  assert.equal(formatProviderQuotaSegment({ limits: [{ windows: [{ label: "5h", usedPercent: 42 }] }] }), "quota:5h:42%");
+  const providerQuota = { limits: [{ windows: [{ label: "5h", usedPercent: 42 }, { label: "weekly", usedPercent: 84 }] }] };
+  assert.equal(formatProviderQuotaSegment(providerQuota), "quota:5h:42%,weekly:84%");
+  assert.equal(formatCompactProviderQuota(providerQuota), "quota 5h 42%");
   const line = formatStatusLine({
     engine,
     sessionState: { sessionId: "legacy1" },
@@ -91,6 +94,12 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
   assert.equal(stripAnsi(formatStatusBarLine({
     engine,
     mode: "do",
+    providerQuota,
+    contextTokens: 11300,
+  })), "Do | deepseek-chat·high | quota 5h 42% | 11.3K");
+  assert.equal(stripAnsi(formatStatusBarLine({
+    engine,
+    mode: "do",
     contextTokens: 6000,
     activity: { frame: "⠋", label: "Working" },
   })), "Do | deepseek-chat·high | ⠋ Working | 6K");
@@ -126,12 +135,13 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
       getSessionStats: () => sessionStats,
       getExtensionDiagnostics: () => [],
       getExtensionLifecycleState: () => null,
+      getCachedProviderQuotaSnapshot: () => providerQuota,
     },
     sessionState: { sessionId: "legacy1" },
     sessionSource: "pi",
     gitBranch: null,
   }), [
-    "git:none  session:pi1  source:pi  name:Sprint  model:deepseek-chat  provider:deepseek  thinking:high  tokens:10in/20out  ext:ok",
+    "git:none  session:pi1  source:pi  name:Sprint  model:deepseek-chat  provider:deepseek  thinking:high  tokens:10in/20out  ext:ok  quota:5h:42%,weekly:84%",
   ]);
   cleanup(dir);
   console.log("  PASS");

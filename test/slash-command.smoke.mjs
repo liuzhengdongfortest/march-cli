@@ -31,6 +31,8 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
     },
   });
   let restored = null;
+  let providerQuotaRefreshCount = 0;
+  const providerQuota = { limits: [{ windows: [{ label: "5h", usedPercent: 42 }] }] };
   const runner = {
     engine: {
       cwd: dir,
@@ -57,6 +59,11 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
       return { cancelled: false };
     },
     getExtensionDiagnostics: () => [{ type: "warning", message: "extension skipped" }],
+    getProviderQuotaSnapshot: async () => {
+      providerQuotaRefreshCount++;
+      return providerQuota;
+    },
+    getCachedProviderQuotaSnapshot: () => providerQuota,
     getExtensionLifecycleState: () => ({
       status: "read-only",
       registeredHookCount: 0,
@@ -116,9 +123,11 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
 
   const status = await handleSlashCommand("/status", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(status.handled, true);
+  assert.equal(providerQuotaRefreshCount, 1);
   assert.ok(output.join("\n").includes("session:s1"));
   assert.ok(output.join("\n").includes("model:test-model"));
   assert.ok(output.join("\n").includes("tokens:1in/2out"));
+  assert.ok(output.join("\n").includes("quota:5h:42%"));
   const help = await handleSlashCommand("/help", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(help.handled, true);
   const helpText = output.join("\n");

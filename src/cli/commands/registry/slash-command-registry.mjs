@@ -99,7 +99,7 @@ export const SLASH_COMMANDS = [
     description: "Show runtime status",
     run: async ({ ui, runner, sessionState, sessionSource }) => {
       await runner.getProviderQuotaSnapshot?.({ emit: true }).catch(() => null);
-      writeLines(ui, statusCommand({
+      return writeLines(ui, statusCommand({
         runner,
         sessionState,
         sessionSource,

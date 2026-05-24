@@ -35,6 +35,7 @@ export function statusBarLine({
     contextTokens,
     activity,
     lspStatus,
+    providerQuota: runner.getCachedProviderQuotaSnapshot?.() ?? null,
   });
 }
 
@@ -85,6 +86,7 @@ export function formatStatusBarLine({
   contextTokens = null,
   activity = null,
   lspStatus = null,
+  providerQuota = null,
 }) {
   const model = engine.modelId || "model?";
   const thinking = engine.thinkingLevel || "thinking?";
@@ -98,6 +100,8 @@ export function formatStatusBarLine({
   if (lspText) segments.push(`${C.fg250}${lspText}`);
   const activityText = formatActivitySegment(activity);
   if (activityText) segments.push(`${C.fg250}${activityText}`);
+  const compactQuota = formatCompactProviderQuota(providerQuota);
+  if (compactQuota) segments.push(`${C.fg250}${compactQuota}`);
   const compactTokens = formatCompactTokenCount(contextTokens);
   if (compactTokens) segments.push(`${C.fg250}${compactTokens}`);
 
@@ -150,6 +154,13 @@ function formatActivitySegment(activity) {
   const label = String(activity.label ?? "").trim();
   const frame = String(activity.frame ?? "").trim();
   return [frame, label].filter(Boolean).join(" ");
+}
+
+export function formatCompactProviderQuota(providerQuota) {
+  const windows = providerQuota?.limits?.flatMap((limit) => limit.windows ?? []) ?? [];
+  const firstWindow = windows[0];
+  if (!firstWindow) return "";
+  return `quota ${firstWindow.label} ${Math.round(firstWindow.usedPercent)}%`;
 }
 
 function shortLspId(id) {
