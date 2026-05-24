@@ -10,16 +10,20 @@ export function statusCommand({
   lifecycleState = null,
   gitBranch = getGitBranch(runner.engine.cwd),
 }) {
-  return [formatStatusLine({
-    engine: runner.engine,
-    sessionState,
-    sessionStats: runner.getSessionStats?.() ?? null,
-    sessionSource,
-    extensionDiagnostics,
-    lifecycleState,
-    gitBranch,
-    providerQuota: runner.getCachedProviderQuotaSnapshot?.() ?? null,
-  })];
+  const providerQuota = runner.getCachedProviderQuotaSnapshot?.() ?? null;
+  return [
+    formatStatusLine({
+      engine: runner.engine,
+      sessionState,
+      sessionStats: runner.getSessionStats?.() ?? null,
+      sessionSource,
+      extensionDiagnostics,
+      lifecycleState,
+      gitBranch,
+      providerQuota,
+    }),
+    ...formatProviderQuotaLines(providerQuota),
+  ];
 }
 
 export function statusBarLine({
@@ -76,8 +80,32 @@ export function formatStatusLine({
 export function formatProviderQuotaSegment(providerQuota) {
   const windows = providerQuota?.limits?.flatMap((limit) => limit.windows ?? []) ?? [];
   if (windows.length === 0) return "";
-  const visible = windows.slice(0, 2).map((window) => `${window.label}:${Math.round(window.usedPercent)}%`);
+  const visible = windows.slice(0, 2).map((window) => `${window.label}:${formatPercent(window.remainingPercent)}%left`);
   return `quota:${visible.join(",")}`;
+}
+
+export function formatProviderQuotaLines(providerQuota, { width = 20 } = {}) {
+  const windows = providerQuota?.limits?.flatMap((limit) => limit.windows ?? []) ?? [];
+  return windows.slice(0, 2).map((window) => formatProviderQuotaLine(window, { width }));
+}
+
+export function formatProviderQuotaLine(window, { width = 20 } = {}) {
+  const label = window.label === "weekly" ? "Weekly limit:" : `${window.label} limit:`;
+  const left = formatPercent(window.remainingPercent);
+  return `${label.padEnd(28)} ${formatQuotaBar(window.remainingPercent, width)} ${left}% left (${formatQuotaReset(window.resetsAt)})`;
+}
+
+export function formatQuotaBar(percent, width = 20) {
+  const value = Math.max(0, Math.min(100, Number(percent) || 0));
+  const filled = Math.round((value / 100) * width);
+  return `[${"█".repeat(filled)}${"░".repeat(width - filled)}]`;
+}
+
+export function formatQuotaReset(resetsAt) {
+  if (!resetsAt) return "reset unknown";
+  const date = new Date(resetsAt);
+  if (Number.isNaN(date.getTime())) return "reset unknown";
+  return `resets ${date.toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}`;
 }
 
 export function formatStatusBarLine({
@@ -160,7 +188,7 @@ export function formatCompactProviderQuota(providerQuota) {
   const windows = providerQuota?.limits?.flatMap((limit) => limit.windows ?? []) ?? [];
   const firstWindow = windows[0];
   if (!firstWindow) return "";
-  return `quota ${firstWindow.label} ${Math.round(firstWindow.usedPercent)}%`;
+  return `quota ${firstWindow.label} ${formatPercent(firstWindow.remainingPercent)}% left`;
 }
 
 function shortLspId(id) {
@@ -215,4 +243,8 @@ function runGit(cwd, args) {
 function formatOneDecimal(value) {
   const rounded = Math.round(value * 10) / 10;
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+}
+
+function formatPercent(value) {
+  return Math.round(Math.max(0, Math.min(100, Number(value) || 0)));
 }

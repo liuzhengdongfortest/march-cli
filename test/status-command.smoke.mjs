@@ -6,7 +6,9 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
     formatExtensionDiagnosticSummary,
     formatCompactProviderQuota,
     formatCompactTokenCount,
+    formatProviderQuotaLines,
     formatProviderQuotaSegment,
+    formatQuotaBar,
     formatStatusBarLine,
     formatStatusLine,
     getGitBranch,
@@ -35,9 +37,17 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
   assert.equal(formatCompactTokenCount(980), "980");
   assert.equal(formatCompactTokenCount(11300), "11.3K");
   assert.equal(formatCompactTokenCount(1200000), "1.2M");
-  const providerQuota = { limits: [{ windows: [{ label: "5h", usedPercent: 42 }, { label: "weekly", usedPercent: 84 }] }] };
-  assert.equal(formatProviderQuotaSegment(providerQuota), "quota:5h:42%,weekly:84%");
-  assert.equal(formatCompactProviderQuota(providerQuota), "quota 5h 42%");
+  const providerQuota = { limits: [{ windows: [
+    { label: "5h", usedPercent: 18, remainingPercent: 82, resetsAt: null },
+    { label: "weekly", usedPercent: 3, remainingPercent: 97, resetsAt: null },
+  ] }] };
+  assert.equal(formatQuotaBar(82, 20), "[████████████████░░░░]");
+  assert.equal(formatProviderQuotaSegment(providerQuota), "quota:5h:82%left,weekly:97%left");
+  assert.equal(formatCompactProviderQuota(providerQuota), "quota 5h 82% left");
+  assert.deepEqual(formatProviderQuotaLines(providerQuota), [
+    "5h limit:                    [████████████████░░░░] 82% left (reset unknown)",
+    "Weekly limit:                [███████████████████░] 97% left (reset unknown)",
+  ]);
   const line = formatStatusLine({
     engine,
     sessionState: { sessionId: "legacy1" },
@@ -96,7 +106,7 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
     mode: "do",
     providerQuota,
     contextTokens: 11300,
-  })), "Do | deepseek-chat·high | quota 5h 42% | 11.3K");
+  })), "Do | deepseek-chat·high | quota 5h 82% left | 11.3K");
   assert.equal(stripAnsi(formatStatusBarLine({
     engine,
     mode: "do",
@@ -141,7 +151,9 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
     sessionSource: "pi",
     gitBranch: null,
   }), [
-    "git:none  session:pi1  source:pi  name:Sprint  model:deepseek-chat  provider:deepseek  thinking:high  tokens:10in/20out  ext:ok  quota:5h:42%,weekly:84%",
+    "git:none  session:pi1  source:pi  name:Sprint  model:deepseek-chat  provider:deepseek  thinking:high  tokens:10in/20out  ext:ok  quota:5h:82%left,weekly:97%left",
+    "5h limit:                    [████████████████░░░░] 82% left (reset unknown)",
+    "Weekly limit:                [███████████████████░] 97% left (reset unknown)",
   ]);
   cleanup(dir);
   console.log("  PASS");

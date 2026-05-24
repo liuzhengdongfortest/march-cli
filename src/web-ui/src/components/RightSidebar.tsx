@@ -81,15 +81,27 @@ function ProviderQuotaCard({ quota }: { quota: ProviderQuotaSnapshot }) {
         <span>{quota.label}</span>
         <time>{quota.providerId}</time>
       </div>
-      {quota.limits.flatMap((limit) => limit.windows.map((window) => (
-        <div key={`${limit.id}:${window.id}`} className="quota-row">
-          <span>{window.label}</span>
-          <strong>{Math.round(window.usedPercent)}% used</strong>
-          <em>{formatReset(window.resetsAt)}</em>
-        </div>
-      )))}
+      {quota.limits.flatMap((limit) => limit.windows.map((window) => {
+        const left = Math.round(window.remainingPercent);
+        return (
+          <div key={`${limit.id}:${window.id}`} className="quota-row">
+            <div className="quota-row-main">
+              <span>{formatQuotaLabel(window.label)}</span>
+              <strong>{left}% left</strong>
+            </div>
+            <div className="quota-bar" aria-label={`${left}% quota left`}>
+              <span style={{ width: `${Math.max(0, Math.min(100, left))}%` }} />
+            </div>
+            <em>{formatReset(window.resetsAt)}</em>
+          </div>
+        );
+      }))}
     </div>
   );
+}
+
+function formatQuotaLabel(label: string) {
+  return label === "weekly" ? "Weekly limit:" : `${label} limit:`;
 }
 
 function formatReset(resetsAt?: string | null) {
