@@ -4,10 +4,8 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: status command ---");
   const {
     formatExtensionDiagnosticSummary,
-    formatCompactProviderQuota,
     formatCompactTokenCount,
     formatProviderQuotaLines,
-    formatProviderQuotaSegment,
     formatQuotaBar,
     formatStatusBarLine,
     formatStatusLine,
@@ -42,8 +40,6 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
     { label: "weekly", usedPercent: 3, remainingPercent: 97, resetsAt: null },
   ] }] };
   assert.equal(formatQuotaBar(82, 20), "[████████████████░░░░]");
-  assert.equal(formatProviderQuotaSegment(providerQuota), "quota:5h:82%left,weekly:97%left");
-  assert.equal(formatCompactProviderQuota(providerQuota), "quota 5h 82% left");
   assert.deepEqual(formatProviderQuotaLines(providerQuota), [
     "5h limit:                    [████████████████░░░░] 82% left (reset unknown)",
     "Weekly limit:                [███████████████████░] 97% left (reset unknown)",
@@ -57,15 +53,12 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
     lifecycleState: { diagnostics: [] },
     gitBranch: "main",
   });
-  assert.ok(line.includes("git:main"));
-  assert.ok(line.includes("session:pi1"));
+  assert.ok(line.includes("Workspace: git:main"));
+  assert.ok(line.includes("Session:   id:pi1"));
   assert.ok(line.includes("source:pi"));
   assert.ok(line.includes("name:Sprint"));
-  assert.ok(line.includes("model:deepseek-chat"));
-  assert.ok(line.includes("provider:deepseek"));
-  assert.ok(line.includes("thinking:high"));
-  assert.ok(line.includes("tokens:10in/20out"));
-  assert.ok(line.includes("ext:1warning"));
+  assert.ok(line.includes("Model:     model:deepseek-chat  provider:deepseek  thinking:high"));
+  assert.ok(line.includes("Usage:     tokens:10in/20out  ext:1warning"));
   assert.equal(shortSessionId("019e0ff8-8f03-74d3-a8cb-39635eae5ca1"), "019e0ff8");
   const rawDoStatusBar = formatStatusBarLine({
     engine,
@@ -106,7 +99,7 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
     mode: "do",
     providerQuota,
     contextTokens: 11300,
-  })), "Do | deepseek-chat·high | quota 5h 82% left | 11.3K");
+  })), "Do | deepseek-chat·high | 11.3K");
   assert.equal(stripAnsi(formatStatusBarLine({
     engine,
     mode: "do",
@@ -151,7 +144,10 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
     sessionSource: "pi",
     gitBranch: null,
   }), [
-    "git:none  session:pi1  source:pi  name:Sprint  model:deepseek-chat  provider:deepseek  thinking:high  tokens:10in/20out  ext:ok  quota:5h:82%left,weekly:97%left",
+    "Workspace: git:none",
+    "Session:   id:pi1  source:pi  name:Sprint",
+    "Model:     model:deepseek-chat  provider:deepseek  thinking:high",
+    "Usage:     tokens:10in/20out  ext:ok",
     "5h limit:                    [████████████████░░░░] 82% left (reset unknown)",
     "Weekly limit:                [███████████████████░] 97% left (reset unknown)",
   ]);

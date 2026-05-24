@@ -12,7 +12,7 @@ export function statusCommand({
 }) {
   const providerQuota = runner.getCachedProviderQuotaSnapshot?.() ?? null;
   return [
-    formatStatusLine({
+    ...formatStatusLines({
       engine: runner.engine,
       sessionState,
       sessionStats: runner.getSessionStats?.() ?? null,
@@ -20,7 +20,6 @@ export function statusCommand({
       extensionDiagnostics,
       lifecycleState,
       gitBranch,
-      providerQuota,
     }),
     ...formatProviderQuotaLines(providerQuota),
   ];
@@ -39,11 +38,14 @@ export function statusBarLine({
     contextTokens,
     activity,
     lspStatus,
-    providerQuota: runner.getCachedProviderQuotaSnapshot?.() ?? null,
   });
 }
 
-export function formatStatusLine({
+export function formatStatusLine(options) {
+  return formatStatusLines(options).join("  ");
+}
+
+export function formatStatusLines({
   engine,
   sessionState,
   sessionStats = null,
@@ -51,37 +53,21 @@ export function formatStatusLine({
   extensionDiagnostics = [],
   lifecycleState = null,
   gitBranch = null,
-  providerQuota = null,
 }) {
   const statsSessionId = sessionStats?.sessionId ?? sessionState?.sessionId ?? "unknown";
   const tokens = sessionStats?.tokens
     ? `${sessionStats.tokens.input ?? 0}in/${sessionStats.tokens.output ?? 0}out`
     : "n/a";
-  const parts = [
-    `git:${gitBranch || "none"}`,
-    `session:${statsSessionId}`,
-    `source:${sessionSource}`,
-  ];
-  if (engine.sessionName) parts.push(`name:${engine.sessionName}`);
+  const sessionParts = [`id:${statsSessionId}`, `source:${sessionSource}`];
+  if (engine.sessionName) sessionParts.push(`name:${engine.sessionName}`);
   const remoteMemories = engine.remoteMemorySources ?? [];
-  if (remoteMemories.length > 0) parts.push(`remote-memory:${remoteMemories.map((source) => source.name).join(",")}`);
-  parts.push(
-    `model:${engine.modelId}`,
-    `provider:${engine.provider}`,
-    `thinking:${engine.thinkingLevel ?? "unknown"}`,
-    `tokens:${tokens}`,
-    `ext:${formatExtensionDiagnosticSummary(extensionDiagnostics, lifecycleState)}`,
-  );
-  const quota = formatProviderQuotaSegment(providerQuota);
-  if (quota) parts.push(quota);
-  return parts.join("  ");
-}
-
-export function formatProviderQuotaSegment(providerQuota) {
-  const windows = providerQuota?.limits?.flatMap((limit) => limit.windows ?? []) ?? [];
-  if (windows.length === 0) return "";
-  const visible = windows.slice(0, 2).map((window) => `${window.label}:${formatPercent(window.remainingPercent)}%left`);
-  return `quota:${visible.join(",")}`;
+  if (remoteMemories.length > 0) sessionParts.push(`remote-memory:${remoteMemories.map((source) => source.name).join(",")}`);
+  return [
+    `Workspace: git:${gitBranch || "none"}`,
+    `Session:   ${sessionParts.join("  ")}`,
+    `Model:     model:${engine.modelId}  provider:${engine.provider}  thinking:${engine.thinkingLevel ?? "unknown"}`,
+    `Usage:     tokens:${tokens}  ext:${formatExtensionDiagnosticSummary(extensionDiagnostics, lifecycleState)}`,
+  ];
 }
 
 export function formatProviderQuotaLines(providerQuota, { width = 20 } = {}) {
@@ -114,7 +100,6 @@ export function formatStatusBarLine({
   contextTokens = null,
   activity = null,
   lspStatus = null,
-  providerQuota = null,
 }) {
   const model = engine.modelId || "model?";
   const thinking = engine.thinkingLevel || "thinking?";
@@ -128,8 +113,6 @@ export function formatStatusBarLine({
   if (lspText) segments.push(`${C.fg250}${lspText}`);
   const activityText = formatActivitySegment(activity);
   if (activityText) segments.push(`${C.fg250}${activityText}`);
-  const compactQuota = formatCompactProviderQuota(providerQuota);
-  if (compactQuota) segments.push(`${C.fg250}${compactQuota}`);
   const compactTokens = formatCompactTokenCount(contextTokens);
   if (compactTokens) segments.push(`${C.fg250}${compactTokens}`);
 
@@ -182,13 +165,6 @@ function formatActivitySegment(activity) {
   const label = String(activity.label ?? "").trim();
   const frame = String(activity.frame ?? "").trim();
   return [frame, label].filter(Boolean).join(" ");
-}
-
-export function formatCompactProviderQuota(providerQuota) {
-  const windows = providerQuota?.limits?.flatMap((limit) => limit.windows ?? []) ?? [];
-  const firstWindow = windows[0];
-  if (!firstWindow) return "";
-  return `quota ${firstWindow.label} ${formatPercent(firstWindow.remainingPercent)}% left`;
 }
 
 function shortLspId(id) {
