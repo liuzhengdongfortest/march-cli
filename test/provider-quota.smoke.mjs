@@ -2,7 +2,12 @@ import { strict as assert } from "node:assert";
 
 export async function runProviderQuotaSmoke() {
   console.log("--- smoke: provider quota capability ---");
-  const { normalizeCodexQuotaPayload, parseOpenAICodexQuotaEvent, parseOpenAICodexQuotaHeaders } = await import("../src/provider/quota/codex.mjs");
+  const {
+    fetchOpenAICodexQuota,
+    normalizeCodexQuotaPayload,
+    parseOpenAICodexQuotaEvent,
+    parseOpenAICodexQuotaHeaders,
+  } = await import("../src/provider/quota/codex.mjs");
   const { getProviderQuotaSnapshot, observeProviderQuotaEvent, observeProviderQuotaHeaders, supportsProviderQuota } = await import("../src/provider/quota/index.mjs");
 
   assert.equal(supportsProviderQuota("openai-codex"), true);
@@ -51,6 +56,29 @@ export async function runProviderQuotaSmoke() {
   }), { model: { id: "gpt-5", provider: "openai-codex" }, capturedAt: "2026-05-24T00:00:00.000Z" });
   assert.equal(eventSnapshot.planType, "pro");
   assert.equal(eventSnapshot.limits[0].windows[0].usedPercent, 91);
+
+  const tokenPayload = Buffer.from(JSON.stringify({
+    "https://api.openai.com/auth": { chatgpt_account_id: "acct-test" },
+  })).toString("base64url");
+  let observedRequest = null;
+  const fetchedSnapshot = await fetchOpenAICodexQuota({
+    authStorage: { getApiKey: () => `header.${tokenPayload}.sig` },
+    model: { id: "gpt-5", provider: "openai-codex" },
+    now: new Date("2026-05-24T00:00:00.000Z"),
+    fetchImpl: async (url, init) => {
+      observedRequest = { url, headers: init.headers };
+      const body = {
+        plan_type: "plus",
+        rate_limit: {
+          primary_window: { used_percent: 1, limit_window_seconds: 18_000, reset_at: 1_800_000_000 },
+        },
+      };
+      return new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+    },
+  });
+  assert.equal(observedRequest.url, "https://chatgpt.com/backend-api/wham/usage");
+  assert.equal(observedRequest.headers["chatgpt-account-id"], "acct-test");
+  assert.equal(fetchedSnapshot.limits[0].windows[0].label, "5h");
 
   assert.equal(observeProviderQuotaHeaders({ providerId: "deepseek", headers: {} }), null);
   assert.equal(observeProviderQuotaEvent({ providerId: "deepseek", payload: {} }), null);

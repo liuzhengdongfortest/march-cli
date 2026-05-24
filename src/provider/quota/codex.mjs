@@ -1,6 +1,6 @@
 import { getOAuthProvider } from "@earendil-works/pi-ai/oauth";
 
-const CODEX_USAGE_URL = "https://chatgpt.com/backend-api/api/codex/usage";
+const CODEX_USAGE_URL = "https://chatgpt.com/backend-api/wham/usage";
 const JWT_CLAIM_PATH = "https://api.openai.com/auth";
 
 export async function fetchOpenAICodexQuota({ authStorage, model, fetchImpl = fetch, now = new Date() } = {}) {
