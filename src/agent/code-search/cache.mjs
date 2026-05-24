@@ -2,7 +2,7 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { chunkFile } from "./chunker.mjs";
 import { Bm25Index } from "./retrieval/bm25.mjs";
-import { LocalVectorIndex } from "./retrieval/vector.mjs";
+import { LocalVectorIndex, defaultVectorizer } from "./retrieval/vector.mjs";
 
 const DEFAULT_MAX_FILE_ENTRIES = 8_000;
 const DEFAULT_MAX_INDEX_ENTRIES = 24;
@@ -12,10 +12,12 @@ export class CodeSearchIndexCache {
     maxFileEntries = DEFAULT_MAX_FILE_ENTRIES,
     maxIndexEntries = DEFAULT_MAX_INDEX_ENTRIES,
     storagePath = null,
+    vectorizer = defaultVectorizer,
   } = {}) {
     this.maxFileEntries = maxFileEntries;
     this.maxIndexEntries = maxIndexEntries;
     this.storagePath = storagePath;
+    this.vectorizer = vectorizer;
     this.fileChunks = new Map();
     this.indices = new Map();
     this.loaded = false;
@@ -46,21 +48,21 @@ export class CodeSearchIndexCache {
     this.pruneFileCache();
     await this.persist();
 
-    const indexSignature = files.map(fileSignature).join("\n");
+    const indexSignature = [this.vectorizer.id, ...files.map(fileSignature)].join("\n");
     const cachedIndex = this.indices.get(indexSignature);
     if (cachedIndex) {
       this.indices.delete(indexSignature);
       this.indices.set(indexSignature, cachedIndex);
-      return { chunks, index: cachedIndex, reusedFiles, indexedFiles, reusedIndex: true };
+      return { chunks, index: cachedIndex, reusedFiles, indexedFiles, reusedIndex: true, vectorizer: this.vectorizer.id };
     }
 
     const index = {
       lexical: new Bm25Index(chunks),
-      vector: new LocalVectorIndex(chunks),
+      vector: await LocalVectorIndex.create(chunks, { vectorizer: this.vectorizer }),
     };
     this.indices.set(indexSignature, index);
     this.pruneIndexCache();
-    return { chunks, index, reusedFiles, indexedFiles, reusedIndex: false };
+    return { chunks, index, reusedFiles, indexedFiles, reusedIndex: false, vectorizer: this.vectorizer.id };
   }
 
   clear() {

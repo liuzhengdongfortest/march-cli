@@ -25,7 +25,7 @@ export async function searchCode(options = {}) {
   const built = await activeCache.build(files);
   const related = related_to ? relatedQuery(built.chunks, related_to, normalizedQuery) : null;
   const queryText = related?.query ?? normalizedQuery;
-  const retrieved = retrieveChunks(built.index, queryText, mode);
+  const retrieved = await retrieveChunks(built.index, queryText, mode);
   const filtered = related ? retrieved.filter((result) => result.chunk.id !== related.targetId) : retrieved;
   const ranked = rerankResults(filtered, queryText, { includeTests: include_tests });
   const limit = clampTopK(top_k);
@@ -35,10 +35,10 @@ export async function searchCode(options = {}) {
   };
 }
 
-function retrieveChunks(index, queryText, mode) {
+async function retrieveChunks(index, queryText, mode) {
   const lexical = index.lexical.search(queryText, { limit: RETRIEVAL_LIMIT });
   if (mode === "lexical" || mode === "symbol") return lexical;
-  const semantic = index.vector.search(queryText, { limit: RETRIEVAL_LIMIT });
+  const semantic = await index.vector.search(queryText, { limit: RETRIEVAL_LIMIT });
   if (mode === "semantic") return semantic;
   return rrfFuse([
     { results: lexical, weight: 1.2 },
@@ -78,6 +78,7 @@ function formatStats(files, built, mode) {
     reused_files: built.reusedFiles,
     indexed_files: built.indexedFiles,
     reused_index: built.reusedIndex,
+    vectorizer: built.vectorizer,
   };
 }
 

@@ -27,6 +27,7 @@ export async function runCodeSearchSmoke({ setupTmp, cleanup }) {
 
     const { searchCode } = await import("../src/agent/code-search/engine.mjs");
     const { CodeSearchIndexCache } = await import("../src/agent/code-search/cache.mjs");
+    const { Model2VecVectorizer } = await import("../src/agent/code-search/retrieval/model2vec.mjs");
     const cache = new CodeSearchIndexCache();
     const result = await searchCode({ root, query: "issueSessionToken", top_k: 3, cache });
     assert.ok(result.stats.files >= 1);
@@ -64,6 +65,15 @@ export async function runCodeSearchSmoke({ setupTmp, cleanup }) {
     assert.equal(restored.stats.indexed_files, 0);
     assert.ok(restored.stats.reused_files >= 1);
 
+    const modelDir = join(root, "model2vec-fixture");
+    writeTinyModel2Vec(modelDir);
+    const model2vecCache = new CodeSearchIndexCache({
+      vectorizer: new Model2VecVectorizer({ modelDir, allowDownload: false }),
+    });
+    const model2vec = await searchCode({ root, query: "jwt payload", top_k: 1, mode: "semantic", cache: model2vecCache });
+    assert.equal(model2vec.stats.mode, "semantic");
+    assert.equal(model2vec.results[0].file_path, "src/auth-service.mjs");
+
     const fileScoped = await searchCode({ root, path: "src/auth-service.mjs", query: "sign jwt payload", top_k: 1, cache });
     assert.equal(fileScoped.results[0].file_path, "src/auth-service.mjs");
 
@@ -93,4 +103,65 @@ export async function runCodeSearchSmoke({ setupTmp, cleanup }) {
     cleanup(root);
   }
   console.log("  PASS");
+}
+
+function writeTinyModel2Vec(modelDir) {
+  mkdirSync(modelDir, { recursive: true });
+  writeFileSync(join(modelDir, "config.json"), JSON.stringify({ normalize: true, embedding_dtype: "float32" }));
+  writeFileSync(join(modelDir, "tokenizer.json"), JSON.stringify({
+    normalizer: { lowercase: true },
+    model: {
+      type: "WordPiece",
+      unk_token: "[UNK]",
+      continuing_subword_prefix: "##",
+      max_input_chars_per_word: 100,
+      vocab: {
+        "[PAD]": 0,
+        "[UNK]": 1,
+        jwt: 2,
+        payload: 3,
+        sign: 4,
+        subject: 5,
+        token: 6,
+        issuer: 7,
+        class: 8,
+        session: 9,
+      },
+    },
+  }));
+  writeFileSync(join(modelDir, "model.safetensors"), tinySafetensors({
+    embeddings: {
+      shape: [10, 4],
+      values: new Float32Array([
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        1, 0, 0, 0,
+        1, 0, 0, 0,
+        0.8, 0, 0, 0,
+        0.6, 0, 0, 0,
+        0.2, 1, 0, 0,
+        0, 1, 0, 0,
+        0, 1, 0, 0,
+        0.2, 1, 0, 0,
+      ]),
+    },
+  }));
+}
+
+function tinySafetensors(tensors) {
+  let offset = 0;
+  const header = {};
+  const buffers = [];
+  for (const [name, tensor] of Object.entries(tensors)) {
+    const bytes = Buffer.from(tensor.values.buffer, tensor.values.byteOffset, tensor.values.byteLength);
+    header[name] = { dtype: "F32", shape: tensor.shape, data_offsets: [offset, offset + bytes.length] };
+    buffers.push(bytes);
+    offset += bytes.length;
+  }
+  let headerBytes = Buffer.from(JSON.stringify(header), "utf8");
+  const paddedLength = Math.ceil(headerBytes.length / 8) * 8;
+  headerBytes = Buffer.concat([headerBytes, Buffer.alloc(paddedLength - headerBytes.length, 0x20)]);
+  const prefix = Buffer.alloc(8);
+  prefix.writeBigUInt64LE(BigInt(headerBytes.length));
+  return Buffer.concat([prefix, headerBytes, ...buffers]);
 }

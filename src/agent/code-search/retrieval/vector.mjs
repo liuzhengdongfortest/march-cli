@@ -4,14 +4,24 @@ const DEFAULT_DIMENSIONS = 256;
 const SEMANTIC_MIN_SCORE = 0.05;
 
 export class LocalVectorIndex {
-  constructor(chunks, { dimensions = DEFAULT_DIMENSIONS } = {}) {
+  constructor(chunks, vectors, { vectorizer = defaultVectorizer } = {}) {
     this.chunks = chunks;
-    this.dimensions = dimensions;
-    this.vectors = chunks.map((chunk) => vectorizeText(chunkVectorText(chunk), dimensions));
+    this.dimensions = vectorizer.dimensions;
+    this.vectorizer = vectorizer;
+    this.vectors = vectors;
   }
 
-  search(query, { limit = 50 } = {}) {
-    const queryVector = vectorizeText(query, this.dimensions);
+  static async create(chunks, { vectorizer = defaultVectorizer } = {}) {
+    const vectors = await vectorizer.encode(chunks.map(chunkVectorText));
+    return new LocalVectorIndex(chunks, vectors, { vectorizer });
+  }
+
+  async search(query, { limit = 50 } = {}) {
+    const [queryVector] = await this.vectorizer.encode([query]);
+    return this.searchVector(queryVector, { limit });
+  }
+
+  searchVector(queryVector, { limit = 50 } = {}) {
     if (queryVector.norm === 0) return [];
     const scored = [];
     for (let index = 0; index < this.vectors.length; index += 1) {
@@ -22,6 +32,19 @@ export class LocalVectorIndex {
     return scored.slice(0, limit);
   }
 }
+
+export class HashingVectorizer {
+  constructor({ dimensions = DEFAULT_DIMENSIONS } = {}) {
+    this.id = `hashing-${dimensions}`;
+    this.dimensions = dimensions;
+  }
+
+  async encode(texts) {
+    return texts.map((text) => vectorizeText(text, this.dimensions));
+  }
+}
+
+export const defaultVectorizer = new HashingVectorizer();
 
 function chunkVectorText(chunk) {
   return [
@@ -39,6 +62,10 @@ function vectorizeText(text, dimensions) {
     addFeature(values, token, 1);
     for (const gram of charTrigrams(token)) addFeature(values, gram, 0.35);
   }
+  return normalizedVector(values);
+}
+
+export function normalizedVector(values) {
   return { values, norm: vectorNorm(values) };
 }
 

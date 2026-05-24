@@ -4,6 +4,7 @@ import { Type } from "typebox";
 import { toolText } from "../tool-result.mjs";
 import { CodeSearchIndexCache } from "./cache.mjs";
 import { searchCode } from "./engine.mjs";
+import { Model2VecVectorizer, POTION_CODE_MODEL_ID } from "./retrieval/model2vec.mjs";
 
 const persistentCaches = new Map();
 
@@ -22,7 +23,7 @@ export function createCodeSearchTool({ engine, stateRoot = null }) {
         Type.Literal("symbol"),
         Type.Literal("lexical"),
         Type.Literal("semantic"),
-      ], { description: "Search mode. auto uses BM25 + local vector retrieval with RRF fusion." })),
+      ], { description: "Search mode. auto uses BM25 + Model2Vec retrieval with RRF fusion." })),
       include_tests: Type.Optional(Type.Boolean({ description: "Include test/spec paths without penalty; default false" })),
       related_to: Type.Optional(Type.Object({
         file_path: Type.String({ description: "Workspace-relative file path containing the known code" }),
@@ -46,10 +47,15 @@ export async function executeCodeSearch({ engine, cache, query, path = ".", top_
 
 function persistentCacheFor(stateRoot) {
   const storagePath = join(stateRoot, "code-search", "chunks.json");
-  let cache = persistentCaches.get(storagePath);
+  const modelDir = join(stateRoot, "code-search", "models", POTION_CODE_MODEL_ID.replaceAll("/", "__"));
+  const cacheKey = `${storagePath}\n${modelDir}`;
+  let cache = persistentCaches.get(cacheKey);
   if (!cache) {
-    cache = new CodeSearchIndexCache({ storagePath });
-    persistentCaches.set(storagePath, cache);
+    cache = new CodeSearchIndexCache({
+      storagePath,
+      vectorizer: new Model2VecVectorizer({ modelDir }),
+    });
+    persistentCaches.set(cacheKey, cache);
   }
   return cache;
 }
