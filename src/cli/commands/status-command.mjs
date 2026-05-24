@@ -11,7 +11,7 @@ export function statusCommand({
   gitBranch = getGitBranch(runner.engine.cwd),
 }) {
   const providerQuota = runner.getCachedProviderQuotaSnapshot?.() ?? null;
-  return [
+  const lines = [
     ...formatStatusLines({
       engine: runner.engine,
       sessionState,
@@ -23,6 +23,7 @@ export function statusCommand({
     }),
     ...formatProviderQuotaLines(providerQuota),
   ];
+  return lines.length > 0 ? lines : ["No provider quota available."];
 }
 
 export function statusBarLine({
@@ -46,28 +47,11 @@ export function formatStatusLine(options) {
 }
 
 export function formatStatusLines({
-  engine,
-  sessionState,
-  sessionStats = null,
-  sessionSource = "pi",
   extensionDiagnostics = [],
   lifecycleState = null,
-  gitBranch = null,
 }) {
-  const statsSessionId = sessionStats?.sessionId ?? sessionState?.sessionId ?? "unknown";
-  const tokens = sessionStats?.tokens
-    ? `${sessionStats.tokens.input ?? 0}in/${sessionStats.tokens.output ?? 0}out`
-    : "n/a";
-  const sessionParts = [`id:${statsSessionId}`, `source:${sessionSource}`];
-  if (engine.sessionName) sessionParts.push(`name:${engine.sessionName}`);
-  const remoteMemories = engine.remoteMemorySources ?? [];
-  if (remoteMemories.length > 0) sessionParts.push(`remote-memory:${remoteMemories.map((source) => source.name).join(",")}`);
-  return [
-    `Workspace: git:${gitBranch || "none"}`,
-    `Session:   ${sessionParts.join("  ")}`,
-    `Model:     model:${engine.modelId}  provider:${engine.provider}  thinking:${engine.thinkingLevel ?? "unknown"}`,
-    `Usage:     tokens:${tokens}  ext:${formatExtensionDiagnosticSummary(extensionDiagnostics, lifecycleState)}`,
-  ];
+  const diagnosticSummary = formatExtensionDiagnosticSummary(extensionDiagnostics, lifecycleState);
+  return shouldShowDiagnostics(diagnosticSummary) ? [`Extensions: ${diagnosticSummary}`] : [];
 }
 
 export function formatProviderQuotaLines(providerQuota, { width = 20 } = {}) {
@@ -186,6 +170,10 @@ export function formatCompactTokenCount(tokens) {
   if (value < 1000) return String(Math.ceil(value));
   if (value < 1000000) return `${formatOneDecimal(value / 1000)}K`;
   return `${formatOneDecimal(value / 1000000)}M`;
+}
+
+function shouldShowDiagnostics(summary) {
+  return summary !== "ok" && summary.split(",").some((part) => !part.endsWith("info"));
 }
 
 export function formatExtensionDiagnosticSummary(extensionDiagnostics = [], lifecycleState = null) {

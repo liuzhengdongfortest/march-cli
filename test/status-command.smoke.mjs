@@ -49,19 +49,10 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
   ]);
   const line = formatStatusLine({
     engine,
-    sessionState: { sessionId: "legacy1" },
-    sessionStats,
-    sessionSource: "pi",
     extensionDiagnostics: [{ type: "warning", message: "a" }],
     lifecycleState: { diagnostics: [] },
-    gitBranch: "main",
   });
-  assert.ok(line.includes("Workspace: git:main"));
-  assert.ok(line.includes("Session:   id:pi1"));
-  assert.ok(line.includes("source:pi"));
-  assert.ok(line.includes("name:Sprint"));
-  assert.ok(line.includes("Model:     model:deepseek-chat  provider:deepseek  thinking:high"));
-  assert.ok(line.includes("Usage:     tokens:10in/20out  ext:1warning"));
+  assert.equal(line, "Extensions: 1warning");
   assert.equal(shortSessionId("019e0ff8-8f03-74d3-a8cb-39635eae5ca1"), "019e0ff8");
   const rawDoStatusBar = formatStatusBarLine({
     engine,
@@ -147,13 +138,19 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
     sessionSource: "pi",
     gitBranch: null,
   }), [
-    "Workspace: git:none",
-    "Session:   id:pi1  source:pi  name:Sprint",
-    "Model:     model:deepseek-chat  provider:deepseek  thinking:high",
-    "Usage:     tokens:10in/20out  ext:ok",
     "5h limit:                    [████████████████░░░░] 82% left (reset unknown)",
     "Weekly limit:                [███████████████████░] 97% left (resets 15:26 on 31 May)",
   ]);
+  assert.deepEqual(statusCommand({
+    runner: {
+      engine,
+      getSessionStats: () => sessionStats,
+      getCachedProviderQuotaSnapshot: () => null,
+    },
+    sessionState: { sessionId: "legacy1" },
+    extensionDiagnostics: [{ type: "info", message: "a" }],
+    gitBranch: null,
+  }), ["No provider quota available."]);
   cleanup(dir);
   console.log("  PASS");
 }
