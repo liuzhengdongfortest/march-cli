@@ -13,7 +13,7 @@ export function createCodeSearchTool({ engine, stateRoot = null }) {
   return defineTool({
     name: "code_search",
     label: "Code Search",
-    description: "Native code-aware search over the workspace. Use it to locate relevant code snippets before reading full files; use grep for exact string confirmation.",
+    description: "Native semantic/symbol code search over the workspace. Use it first for unknown entry points, cross-module flows, responsibility boundaries, and related implementations. Use grep/read afterward for exact confirmation before editing or making claims.",
     parameters: Type.Object({
       query: Type.Optional(Type.String({ description: "Natural-language or symbol query" })),
       path: Type.Optional(Type.String({ description: "Relative or absolute workspace path to search; default current workspace" })),
