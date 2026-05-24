@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 export async function runCodeSearchSmoke({ setupTmp, cleanup }) {
@@ -43,6 +43,16 @@ export async function runCodeSearchSmoke({ setupTmp, cleanup }) {
     assert.ok(repeated.stats.reused_files >= 1);
     assert.equal(repeated.stats.indexed_files, 0);
     assert.equal(repeated.stats.reused_index, true);
+
+    const storagePath = join(root, "node_modules", ".cache", "code-search", "chunks.json");
+    const persistentCache = new CodeSearchIndexCache({ storagePath });
+    await searchCode({ root, query: "issue session token", top_k: 1, cache: persistentCache });
+    assert.equal(existsSync(storagePath), true);
+
+    const restoredCache = new CodeSearchIndexCache({ storagePath });
+    const restored = await searchCode({ root, query: "issue session token", top_k: 1, cache: restoredCache });
+    assert.equal(restored.stats.indexed_files, 0);
+    assert.ok(restored.stats.reused_files >= 1);
 
     const fileScoped = await searchCode({ root, path: "src/auth-service.mjs", query: "sign jwt payload", top_k: 1, cache });
     assert.equal(fileScoped.results[0].file_path, "src/auth-service.mjs");

@@ -18,10 +18,11 @@ export async function searchCode(options = {}) {
     cache = defaultCodeSearchIndexCache,
   } = options;
   const normalizedQuery = String(query ?? "").trim();
+  const activeCache = cache ?? defaultCodeSearchIndexCache;
   if (!normalizedQuery && !related_to) return { results: [], stats: { files: 0, chunks: 0 } };
 
   const files = await scanCodeFiles({ root, path });
-  const built = await cache.build(files);
+  const built = await activeCache.build(files);
   const related = related_to ? relatedQuery(built.chunks, related_to, normalizedQuery) : null;
   const queryText = related?.query ?? normalizedQuery;
   const retrieved = retrieveChunks(built.index, queryText, mode);

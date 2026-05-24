@@ -16,7 +16,7 @@ import { createRuntimeRestartTool } from "./lifecycle/runtime-restart-tool.mjs";
 
 export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], shellRuntime = null, lspService = null, mcpTools = [], webTools = [], lifecycle = null, permissionController = null, authStorage = null, projectMarchDir = null, stateRoot = null, getCurrentModel = null }) {
   const commandExecTool = createCommandExecTool({ cwd });
-  const codeSearchTool = createCodeSearchTool({ engine });
+  const codeSearchTool = createCodeSearchTool({ engine, stateRoot });
   const contextStatsTool = createContextStatsTool({ engine });
   const editFileTool = createEditFileTool({ engine, ui, lspService });
   const readFileTool = createReadFileTool({ engine });

@@ -1,9 +1,14 @@
+import { join } from "node:path";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { toolText } from "../tool-result.mjs";
+import { CodeSearchIndexCache } from "./cache.mjs";
 import { searchCode } from "./engine.mjs";
 
-export function createCodeSearchTool({ engine }) {
+const persistentCaches = new Map();
+
+export function createCodeSearchTool({ engine, stateRoot = null }) {
+  const cache = stateRoot ? persistentCacheFor(stateRoot) : null;
   return defineTool({
     name: "code_search",
     label: "Code Search",
@@ -24,19 +29,29 @@ export function createCodeSearchTool({ engine }) {
         line: Type.Number({ description: "Line inside the known code chunk" }),
       }, { description: "Find code related to a known file location; query can optionally refine the relation" })),
     }),
-    execute: async (_toolCallId, params) => executeCodeSearch({ engine, ...params }),
+    execute: async (_toolCallId, params) => executeCodeSearch({ engine, cache, ...params }),
   });
 }
 
-export async function executeCodeSearch({ engine, query, path = ".", top_k, mode = "auto", include_tests = false, related_to }) {
+export async function executeCodeSearch({ engine, cache, query, path = ".", top_k, mode = "auto", include_tests = false, related_to }) {
   try {
     const root = engine.cwd;
     const searchPath = path === "." ? "." : engine.resolvePath(path);
-    const result = await searchCode({ root, query, path: searchPath, top_k, mode, include_tests, related_to });
+    const result = await searchCode({ root, query, path: searchPath, top_k, mode, include_tests, related_to, cache });
     return toolText(formatSearchOutput(result), result);
   } catch (err) {
     return toolText(`Error running code_search: ${err.message}`, { error: true });
   }
+}
+
+function persistentCacheFor(stateRoot) {
+  const storagePath = join(stateRoot, "code-search", "chunks.json");
+  let cache = persistentCaches.get(storagePath);
+  if (!cache) {
+    cache = new CodeSearchIndexCache({ storagePath });
+    persistentCaches.set(storagePath, cache);
+  }
+  return cache;
 }
 
 function formatSearchOutput({ results, stats }) {
