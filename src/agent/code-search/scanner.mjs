@@ -19,7 +19,7 @@ export async function scanCodeFiles({ root, path = ".", maxFiles = DEFAULT_MAX_F
     ? [relative(rootPath, base).replace(/\\/g, "/")]
     : await listCandidateFiles(rootPath, base);
   const files = [];
-  for (const relPath of candidates) {
+  for (const relPath of [...candidates].sort()) {
     if (files.length >= maxFiles) break;
     if (!isSearchableTextPath(relPath)) continue;
     const absPath = resolve(root, relPath);
@@ -28,7 +28,14 @@ export async function scanCodeFiles({ root, path = ".", maxFiles = DEFAULT_MAX_F
     if (!info.isFile() || info.size > maxFileBytes) continue;
     const content = await readUtf8Text(absPath);
     if (content === null) continue;
-    files.push({ absPath, relPath: relPath.replace(/\\/g, "/"), language: languageForPath(relPath), content });
+    files.push({
+      absPath,
+      relPath: relPath.replace(/\\/g, "/"),
+      language: languageForPath(relPath),
+      content,
+      size: info.size,
+      mtimeMs: info.mtimeMs,
+    });
   }
   return files;
 }

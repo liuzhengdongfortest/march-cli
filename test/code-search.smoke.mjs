@@ -21,14 +21,25 @@ export async function runCodeSearchSmoke({ setupTmp, cleanup }) {
     writeFileSync(join(root, "test", "auth-service.test.mjs"), "assert.equal(issueSessionToken(user).token, expectedToken);\n");
 
     const { searchCode } = await import("../src/agent/code-search/engine.mjs");
-    const result = await searchCode({ root, query: "issue session token", top_k: 3 });
+    const { CodeSearchIndexCache } = await import("../src/agent/code-search/cache.mjs");
+    const cache = new CodeSearchIndexCache();
+    const result = await searchCode({ root, query: "issue session token", top_k: 3, cache });
     assert.ok(result.stats.files >= 1);
     assert.ok(result.stats.chunks >= 1);
     assert.equal(result.results[0].file_path, "src/auth-service.mjs");
     assert.equal(result.results[0].kind, "function");
     assert.match(result.results[0].snippet, /issueSessionToken/);
 
-    const fileScoped = await searchCode({ root, path: "src/auth-service.mjs", query: "sign jwt payload", top_k: 1 });
+    assert.ok(result.stats.indexed_files >= 1);
+    assert.equal(result.stats.reused_index, false);
+
+    const repeated = await searchCode({ root, query: "sign jwt payload", top_k: 1, cache });
+    assert.equal(repeated.results[0].file_path, "src/auth-service.mjs");
+    assert.ok(repeated.stats.reused_files >= 1);
+    assert.equal(repeated.stats.indexed_files, 0);
+    assert.equal(repeated.stats.reused_index, true);
+
+    const fileScoped = await searchCode({ root, path: "src/auth-service.mjs", query: "sign jwt payload", top_k: 1, cache });
     assert.equal(fileScoped.results[0].file_path, "src/auth-service.mjs");
 
     await assert.rejects(() => searchCode({ root, path: "..", query: "outside" }), /escapes workspace/);

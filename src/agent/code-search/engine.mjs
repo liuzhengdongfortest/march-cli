@@ -1,26 +1,23 @@
-import { chunkFile } from "./chunker.mjs";
-import { Bm25Index } from "./bm25.mjs";
+import { defaultCodeSearchIndexCache } from "./cache.mjs";
 import { rerankResults } from "./rerank.mjs";
 import { scanCodeFiles } from "./scanner.mjs";
 
 const DEFAULT_TOP_K = 5;
 const RETRIEVAL_LIMIT = 80;
 
-export async function searchCode({ root, query, path = ".", top_k = DEFAULT_TOP_K, mode = "auto", include_tests = false } = {}) {
+export async function searchCode({ root, query, path = ".", top_k = DEFAULT_TOP_K, mode = "auto", include_tests = false, cache = defaultCodeSearchIndexCache } = {}) {
   const normalizedQuery = String(query ?? "").trim();
   if (!normalizedQuery) return { results: [], stats: { files: 0, chunks: 0 } };
   if (mode === "semantic") throw new Error("Native semantic code search is not enabled yet; use auto, lexical, or symbol.");
 
   const files = await scanCodeFiles({ root, path });
-  const chunks = [];
-  for (const file of files) chunks.push(...await chunkFile(file));
-  const index = new Bm25Index(chunks);
+  const { chunks, index, reusedFiles, indexedFiles, reusedIndex } = await cache.build(files);
   const lexicalResults = index.search(normalizedQuery, { limit: RETRIEVAL_LIMIT });
   const ranked = rerankResults(lexicalResults, normalizedQuery, { includeTests: include_tests });
   const limit = clampTopK(top_k);
   return {
     results: ranked.slice(0, limit).map(formatResult),
-    stats: { files: files.length, chunks: chunks.length, mode: mode === "symbol" ? "symbol" : "lexical" },
+    stats: { files: files.length, chunks: chunks.length, mode: mode === "symbol" ? "symbol" : "lexical", reused_files: reusedFiles, indexed_files: indexedFiles, reused_index: reusedIndex },
   };
 }
 
