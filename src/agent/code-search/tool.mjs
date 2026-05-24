@@ -9,7 +9,7 @@ export function createCodeSearchTool({ engine }) {
     label: "Code Search",
     description: "Native code-aware search over the workspace. Use it to locate relevant code snippets before reading full files; use grep for exact string confirmation.",
     parameters: Type.Object({
-      query: Type.String({ description: "Natural-language or symbol query" }),
+      query: Type.Optional(Type.String({ description: "Natural-language or symbol query" })),
       path: Type.Optional(Type.String({ description: "Relative or absolute workspace path to search; default current workspace" })),
       top_k: Type.Optional(Type.Number({ description: "Maximum results to return; default 5, max 20" })),
       mode: Type.Optional(Type.Union([
@@ -19,16 +19,20 @@ export function createCodeSearchTool({ engine }) {
         Type.Literal("semantic"),
       ], { description: "Search mode. semantic is reserved until local vector search is enabled." })),
       include_tests: Type.Optional(Type.Boolean({ description: "Include test/spec paths without penalty; default false" })),
+      related_to: Type.Optional(Type.Object({
+        file_path: Type.String({ description: "Workspace-relative file path containing the known code" }),
+        line: Type.Number({ description: "Line inside the known code chunk" }),
+      }, { description: "Find code related to a known file location; query can optionally refine the relation" })),
     }),
     execute: async (_toolCallId, params) => executeCodeSearch({ engine, ...params }),
   });
 }
 
-export async function executeCodeSearch({ engine, query, path = ".", top_k, mode = "auto", include_tests = false }) {
+export async function executeCodeSearch({ engine, query, path = ".", top_k, mode = "auto", include_tests = false, related_to }) {
   try {
     const root = engine.cwd;
     const searchPath = path === "." ? "." : engine.resolvePath(path);
-    const result = await searchCode({ root, query, path: searchPath, top_k, mode, include_tests });
+    const result = await searchCode({ root, query, path: searchPath, top_k, mode, include_tests, related_to });
     return toolText(formatSearchOutput(result), result);
   } catch (err) {
     return toolText(`Error running code_search: ${err.message}`, { error: true });

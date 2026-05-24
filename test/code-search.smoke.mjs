@@ -42,6 +42,16 @@ export async function runCodeSearchSmoke({ setupTmp, cleanup }) {
     const fileScoped = await searchCode({ root, path: "src/auth-service.mjs", query: "sign jwt payload", top_k: 1, cache });
     assert.equal(fileScoped.results[0].file_path, "src/auth-service.mjs");
 
+    const related = await searchCode({
+      root,
+      related_to: { file_path: "src/auth-service.mjs", line: 1 },
+      top_k: 1,
+      cache,
+    });
+    assert.equal(related.stats.mode, "related");
+    assert.equal(related.results[0].file_path, "src/auth-service.mjs");
+    assert.match(related.results[0].snippet, /signJwt/);
+
     await assert.rejects(() => searchCode({ root, path: "..", query: "outside" }), /escapes workspace/);
 
     const { executeCodeSearch } = await import("../src/agent/code-search/tool.mjs");

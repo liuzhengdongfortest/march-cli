@@ -5,19 +5,59 @@ import { scanCodeFiles } from "./scanner.mjs";
 const DEFAULT_TOP_K = 5;
 const RETRIEVAL_LIMIT = 80;
 
-export async function searchCode({ root, query, path = ".", top_k = DEFAULT_TOP_K, mode = "auto", include_tests = false, cache = defaultCodeSearchIndexCache } = {}) {
+export async function searchCode(options = {}) {
+  const {
+    root,
+    query,
+    path = ".",
+    top_k = DEFAULT_TOP_K,
+    mode = "auto",
+    include_tests = false,
+    related_to,
+    cache = defaultCodeSearchIndexCache,
+  } = options;
   const normalizedQuery = String(query ?? "").trim();
-  if (!normalizedQuery) return { results: [], stats: { files: 0, chunks: 0 } };
+  if (!normalizedQuery && !related_to) return { results: [], stats: { files: 0, chunks: 0 } };
   if (mode === "semantic") throw new Error("Native semantic code search is not enabled yet; use auto, lexical, or symbol.");
 
   const files = await scanCodeFiles({ root, path });
-  const { chunks, index, reusedFiles, indexedFiles, reusedIndex } = await cache.build(files);
-  const lexicalResults = index.search(normalizedQuery, { limit: RETRIEVAL_LIMIT });
-  const ranked = rerankResults(lexicalResults, normalizedQuery, { includeTests: include_tests });
+  const built = await cache.build(files);
+  const related = related_to ? relatedQuery(built.chunks, related_to, normalizedQuery) : null;
+  const queryText = related?.query ?? normalizedQuery;
+  const lexicalResults = built.index.search(queryText, { limit: RETRIEVAL_LIMIT });
+  const filtered = related ? lexicalResults.filter((result) => result.chunk.id !== related.targetId) : lexicalResults;
+  const ranked = rerankResults(filtered, queryText, { includeTests: include_tests });
   const limit = clampTopK(top_k);
   return {
     results: ranked.slice(0, limit).map(formatResult),
-    stats: { files: files.length, chunks: chunks.length, mode: mode === "symbol" ? "symbol" : "lexical", reused_files: reusedFiles, indexed_files: indexedFiles, reused_index: reusedIndex },
+    stats: formatStats(files, built, related_to ? "related" : mode === "symbol" ? "symbol" : "lexical"),
+  };
+}
+
+function relatedQuery(chunks, relatedTo, query) {
+  const target = findRelatedTarget(chunks, relatedTo);
+  if (!target) throw new Error(`No indexed chunk found at ${relatedTo.file_path}:${relatedTo.line}`);
+  return {
+    targetId: target.id,
+    query: [query, target.symbols.join(" "), target.identifiers.join(" "), target.content].filter(Boolean).join("\n"),
+  };
+}
+
+function findRelatedTarget(chunks, relatedTo) {
+  const filePath = String(relatedTo?.file_path ?? "").replace(/\\/g, "/");
+  const line = Math.trunc(Number(relatedTo?.line));
+  if (!filePath || !Number.isFinite(line)) throw new Error("related_to requires file_path and line");
+  return chunks.find((chunk) => chunk.file_path === filePath && chunk.start_line <= line && chunk.end_line >= line);
+}
+
+function formatStats(files, built, mode) {
+  return {
+    files: files.length,
+    chunks: built.chunks.length,
+    mode,
+    reused_files: built.reusedFiles,
+    indexed_files: built.indexedFiles,
+    reused_index: built.reusedIndex,
   };
 }
 
