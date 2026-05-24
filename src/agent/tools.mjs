@@ -1,4 +1,5 @@
 import { createCommandExecTool } from "./command-exec-tool.mjs";
+import { createCodeSearchTool } from "./code-search/tool.mjs";
 import { createContextStatsTool } from "./context-stats-tool.mjs";
 import { createEditFileTool } from "./file-edit-tool.mjs";
 import { createReadFileTool } from "./file-tools/read-file-tool.mjs";
@@ -15,6 +16,7 @@ import { createRuntimeRestartTool } from "./lifecycle/runtime-restart-tool.mjs";
 
 export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], shellRuntime = null, lspService = null, mcpTools = [], webTools = [], lifecycle = null, permissionController = null, authStorage = null, projectMarchDir = null, stateRoot = null, getCurrentModel = null }) {
   const commandExecTool = createCommandExecTool({ cwd });
+  const codeSearchTool = createCodeSearchTool({ engine });
   const contextStatsTool = createContextStatsTool({ engine });
   const editFileTool = createEditFileTool({ engine, ui, lspService });
   const readFileTool = createReadFileTool({ engine });
@@ -30,6 +32,7 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], shel
     screenTool,
     listWindowsTool,
     contextStatsTool,
+    codeSearchTool,
     commandExecTool,
     editFileTool,
     ...createShellTools(shellRuntime),
