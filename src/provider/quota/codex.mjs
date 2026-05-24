@@ -20,6 +20,10 @@ export async function fetchOpenAICodexQuota({ authStorage, model, fetchImpl = fe
 
 export function normalizeCodexQuotaPayload(payload, { model = null, capturedAt = new Date().toISOString() } = {}) {
   const snapshots = Array.isArray(payload) ? payload : snapshotsFromCodexUsagePayload(payload);
+  return normalizeCodexQuotaSnapshots(snapshots, { model, capturedAt });
+}
+
+export function normalizeCodexQuotaSnapshots(snapshots, { model = null, capturedAt = new Date().toISOString() } = {}) {
   const limits = snapshots.map(normalizeSnapshot).filter((limit) => limit.windows.length > 0);
   if (limits.length === 0) return null;
   return {
@@ -30,6 +34,34 @@ export function normalizeCodexQuotaPayload(payload, { model = null, capturedAt =
     capturedAt,
     limits,
   };
+}
+
+export function parseOpenAICodexQuotaHeaders(headers, { model = null, capturedAt = new Date().toISOString() } = {}) {
+  const normalized = normalizeHeaders(headers);
+  const limitIds = new Set(["codex"]);
+  for (const name of Object.keys(normalized)) {
+    const prefix = name.endsWith("-primary-used-percent") ? name.slice(2, -"-primary-used-percent".length) : null;
+    if (prefix) limitIds.add(prefix.replaceAll("-", "_"));
+  }
+  const snapshots = [...limitIds]
+    .map((limitId) => snapshotFromHeaders(normalized, limitId))
+    .filter((snapshot) => snapshot.primary || snapshot.secondary || snapshot.credits);
+  return normalizeCodexQuotaSnapshots(snapshots, { model, capturedAt });
+}
+
+export function parseOpenAICodexQuotaEvent(payload, { model = null, capturedAt = new Date().toISOString() } = {}) {
+  const event = typeof payload === "string" ? parseJson(payload) : payload;
+  if (!event || event.type !== "codex.rate_limits") return null;
+  const snapshot = {
+    limitId: readField(event, "metered_limit_name", "limit_name") ?? "codex",
+    limitName: null,
+    primary: mapWindow(readField(readField(event, "rate_limits", "rateLimits"), "primary")),
+    secondary: mapWindow(readField(readField(event, "rate_limits", "rateLimits"), "secondary")),
+    credits: readField(event, "credits") ?? null,
+    planType: readField(event, "plan_type", "planType") ?? null,
+    rateLimitReachedType: null,
+  };
+  return normalizeCodexQuotaSnapshots([snapshot], { model, capturedAt });
 }
 
 async function resolveCodexAccessToken(authStorage) {
@@ -107,6 +139,36 @@ function makeSnapshot({ limitId, limitName, rateLimit, credits, planType, rateLi
   };
 }
 
+function snapshotFromHeaders(headers, limitId) {
+  const headerPrefix = `x-${limitId.replaceAll("_", "-")}`;
+  return {
+    limitId,
+    limitName: readHeader(headers, `${headerPrefix}-limit-name`),
+    primary: windowFromHeaders(headers, headerPrefix, "primary"),
+    secondary: windowFromHeaders(headers, headerPrefix, "secondary"),
+    credits: limitId === "codex" ? creditsFromHeaders(headers) : null,
+    planType: null,
+    rateLimitReachedType: null,
+  };
+}
+
+function windowFromHeaders(headers, prefix, windowId) {
+  const usedPercent = readHeader(headers, `${prefix}-${windowId}-used-percent`);
+  if (usedPercent === undefined) return null;
+  return {
+    usedPercent,
+    windowDurationMins: readHeader(headers, `${prefix}-${windowId}-window-minutes`),
+    resetsAt: readHeader(headers, `${prefix}-${windowId}-reset-at`),
+  };
+}
+
+function creditsFromHeaders(headers) {
+  const hasCredits = parseHeaderBool(readHeader(headers, "x-codex-credits-has-credits"));
+  const unlimited = parseHeaderBool(readHeader(headers, "x-codex-credits-unlimited"));
+  if (hasCredits === null || unlimited === null) return null;
+  return { hasCredits, unlimited, balance: readHeader(headers, "x-codex-credits-balance") ?? null };
+}
+
 function normalizeSnapshot(snapshot) {
   const id = readField(snapshot, "limitId", "limit_id") ?? "quota";
   return {
@@ -181,6 +243,34 @@ function readField(object, ...keys) {
   if (!object || typeof object !== "object") return undefined;
   for (const key of keys) if (Object.hasOwn(object, key)) return object[key];
   return undefined;
+}
+
+function normalizeHeaders(headers) {
+  if (!headers) return {};
+  if (typeof headers.entries === "function") {
+    return Object.fromEntries([...headers.entries()].map(([key, value]) => [key.toLowerCase(), String(value)]));
+  }
+  return Object.fromEntries(Object.entries(headers).map(([key, value]) => [key.toLowerCase(), String(value)]));
+}
+
+function readHeader(headers, name) {
+  const value = headers[name.toLowerCase()];
+  return value === undefined || value === "" ? undefined : value;
+}
+
+function parseHeaderBool(value) {
+  if (value === undefined) return null;
+  if (value === "1" || value.toLowerCase() === "true") return true;
+  if (value === "0" || value.toLowerCase() === "false") return false;
+  return null;
+}
+
+function parseJson(value) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
 }
 
 function firstNonEmpty(values) {

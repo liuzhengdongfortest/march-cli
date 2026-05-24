@@ -253,6 +253,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
         () => shellRuntime?.dispose?.() ?? shellRuntime?.killAll?.(),
         () => lspService.dispose(),
         () => mcpClientManager?.disconnectAll?.(),
+        () => providerQuotaRuntime.disposeProviderQuotaRuntime(),
         () => detachRuntimeUi(),
       ]);
     },
