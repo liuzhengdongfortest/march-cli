@@ -16,6 +16,7 @@ import { showEditorSelectList } from "./tui/select/editor-select-list.mjs";
 import { StatusBar } from "./tui/status/status-bar.mjs";
 import { MainPaneLayout } from "./tui/layout/main-pane-layout.mjs";
 import { SafeRenderBoundary } from "./tui/layout/safe-render-boundary.mjs";
+import { createHistoryNavigationController } from "./tui/input/history-navigation-controller.mjs";
 import { createMouseSelectionController } from "./tui/input/mouse-selection-controller.mjs";
 import { ScreenSelection } from "./tui/selection-screen.mjs";
 import { writeEditDiff } from "./tui/tui-diff-rendering.mjs";
@@ -68,6 +69,12 @@ export function createTuiUI({
   const retryStatus = createRetryStatusController({ output, requestRender, stopSpinner: spinnerStatus.stop });
   const shellDrawerControls = createShellDrawerControls({ shellDrawer, output, requestRender });
   const mouseSelectionController = createMouseSelectionController({ terminal, output, shellDrawer, shellDrawerControls, selection, writeClipboard, requestRender });
+  const historyNavigationController = createHistoryNavigationController({
+    editor,
+    requestRender,
+    isAutocompleteOpen: () => editor.isShowingAutocomplete(),
+    hasOverlay: () => tui.hasOverlay(),
+  });
 
   let onEscapeHandler = null, onCtrlCHandler = null, onShiftTabHandler = null;
   let onCtrlTHandler = null, onCtrlLHandler = null, onPasteImageHandler = null, onToggleModeHandler = null;
@@ -108,6 +115,8 @@ export function createTuiUI({
           requestRender();
           return { consume: true };
         }
+        const historyNavigationResult = historyNavigationController.handleInput(data);
+        if (historyNavigationResult) return historyNavigationResult;
       });
       terminal.write("\x1b[?1049h");
       terminal.write("\x1b[?1002h\x1b[?1006h");

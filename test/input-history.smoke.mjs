@@ -5,6 +5,7 @@ import { FakeTerminal } from "./helpers/fake-terminal.mjs";
 
 const ARROW_UP = "\x1b[A";
 const ARROW_DOWN = "\x1b[B";
+const ALT_ARROW_UP = "\x1bp";
 
 export async function runInputHistorySmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: input history persistence ---");
@@ -51,12 +52,31 @@ export async function runInputHistorySmoke({ setupTmp, cleanup }) {
   const secondUi = createTuiUI({ cwd: dir, terminal: secondTerminal, historyStore });
   const secondPending = secondUi.readline("> ");
   secondTerminal.input(ARROW_UP);
-  assert.equal(secondUi.getInputText(), "hello history");
+  assert.equal(secondUi.getInputText(), "stale session command");
   secondTerminal.input(ARROW_DOWN);
   assert.equal(secondUi.getInputText(), "");
   secondUi.requestExit();
   assert.equal(await secondPending, null);
   await secondUi.close();
+
+  const draftTerminal = new FakeTerminal();
+  const draftUi = createTuiUI({ cwd: dir, terminal: draftTerminal, historyStore });
+  const draftPending = draftUi.readline("> ");
+  draftUi.insertTextAtCursor("draft line one\ndraft line two");
+  draftTerminal.input(ARROW_UP);
+  assert.equal(draftUi.getInputText(), "stale session command");
+  draftTerminal.input(ARROW_UP);
+  assert.equal(draftUi.getInputText(), "hello history");
+  draftTerminal.input(ARROW_DOWN);
+  assert.equal(draftUi.getInputText(), "stale session command");
+  draftTerminal.input(ARROW_DOWN);
+  assert.equal(draftUi.getInputText(), "draft line one\ndraft line two");
+  draftTerminal.input(ALT_ARROW_UP);
+  draftTerminal.input("!");
+  assert.equal(draftUi.getInputText(), "draft line one!\ndraft line two");
+  draftUi.requestExit();
+  assert.equal(await draftPending, null);
+  await draftUi.close();
 
   cleanup(dir);
   console.log("  PASS");
