@@ -3,9 +3,10 @@ import { LspDiagnosticStore } from "./diagnostic-store.mjs";
 import { resolveLspServerStatus } from "./servers.mjs";
 
 export class LspService {
-  constructor({ cwd, onEvent = null }) {
+  constructor({ cwd, onEvent = null, onStatusChange = null }) {
     this.cwd = cwd;
     this.onEvent = onEvent;
+    this.onStatusChange = onStatusChange;
     this.store = new LspDiagnosticStore();
     this.clients = new Map();
     this.spawning = new Map();
@@ -19,6 +20,7 @@ export class LspService {
     if (result.status === "unavailable") {
       this.unavailable.set(result.id, result);
       this.#emitOnce(`unavailable:${result.id}:${result.reason}`, result);
+      this.#emitStatusChange(result);
       return result;
     }
 
@@ -34,7 +36,9 @@ export class LspService {
       return { status: "starting", id: server.id, root: server.root };
     }
 
-    this.#emitOnce(`starting:${key}`, { status: "starting", id: server.id, root: server.root, managed: server.managed });
+    const startingEvent = { status: "starting", id: server.id, root: server.root, managed: server.managed };
+    this.#emitOnce(`starting:${key}`, startingEvent);
+    this.#emitStatusChange(startingEvent);
     const task = this.#startClient(server, key).then((client) => {
       client?.touchFile(path);
       return client;
@@ -76,18 +80,22 @@ export class LspService {
       cwd: server.root,
       initialization: server.initialization,
       store: this.store,
+      onStatusChange: (event) => this.#emitStatusChange(event),
     });
     try {
       await client.start();
       this.clients.set(key, client);
       this.unavailable.delete(server.id);
-      this.#emitOnce(`attached:${key}`, { status: "attached", id: server.id, root: server.root, managed: server.managed });
+      const attachedEvent = { status: "attached", id: server.id, root: server.root, managed: server.managed };
+      this.#emitOnce(`attached:${key}`, attachedEvent);
+      this.#emitStatusChange(attachedEvent);
       return client;
     } catch (err) {
       client.status = "failed";
       const event = { status: "failed", id: server.id, root: server.root, reason: err.message };
       this.unavailable.set(server.id, event);
       this.#emitOnce(`failed:${key}:${err.message}`, event);
+      this.#emitStatusChange(event);
       return null;
     }
   }
@@ -96,6 +104,10 @@ export class LspService {
     if (this.announced.has(key)) return;
     this.announced.add(key);
     this.onEvent?.(event);
+  }
+
+  #emitStatusChange(event) {
+    this.onStatusChange?.(event);
   }
 }
 

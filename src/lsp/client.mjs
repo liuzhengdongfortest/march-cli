@@ -73,13 +73,14 @@ export function languageIdForPath(path) {
 }
 
 export class LspClient {
-  constructor({ serverId, command, args = [], cwd, initialization = {}, store }) {
+  constructor({ serverId, command, args = [], cwd, initialization = {}, store, onStatusChange = null }) {
     this.serverId = serverId;
     this.command = command;
     this.args = args;
     this.cwd = cwd;
     this.initialization = initialization;
     this.store = store;
+    this.onStatusChange = onStatusChange;
     this.status = "starting";
     this.process = null;
     this.buffer = Buffer.alloc(0);
@@ -98,7 +99,7 @@ export class LspClient {
     });
     this.process.stdout.on("data", (chunk) => this.#onData(chunk));
     this.process.on("exit", () => {
-      this.status = "failed";
+      this.#setStatus("failed");
       for (const pending of this.pending.values()) pending.reject(new Error("LSP exited"));
       this.pending.clear();
     });
@@ -124,7 +125,7 @@ export class LspClient {
     }), INITIALIZE_TIMEOUT_MS);
     this.syncKind = getSyncKind(initialized?.capabilities);
     this.#notify("initialized", {});
-    this.status = "ready";
+    this.#setStatus("ready");
   }
 
   touchFile(path) {
@@ -132,7 +133,7 @@ export class LspClient {
     const text = readFileSync(path, "utf8");
     const uri = pathToFileURL(path).href;
     const existing = this.documents.get(path);
-    this.status = "busy";
+    this.#setStatus("busy");
     if (existing) {
       const version = existing.version + 1;
       this.documents.set(path, { version, text });
@@ -199,13 +200,19 @@ export class LspClient {
         uri: message.params?.uri,
         diagnostics: message.params?.diagnostics ?? [],
       });
-      this.status = "idle";
+      this.#setStatus("idle");
       return;
     }
 
     if (message.id !== undefined && message.method) {
       this.#send({ jsonrpc: "2.0", id: message.id, result: this.#requestResult(message.method) });
     }
+  }
+
+  #setStatus(status) {
+    if (this.status === status) return;
+    this.status = status;
+    this.onStatusChange?.({ id: this.serverId, root: this.cwd, status });
   }
 
   #requestResult(method) {

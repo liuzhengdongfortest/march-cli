@@ -10,6 +10,7 @@ export async function createRunnerProcessClient({
   runnerOptions,
   ui,
   onModelPayload = null,
+  onLspStatusChange = null,
   entry = fileURLToPath(DEFAULT_ENTRY),
   forkImpl = fork,
   timeoutMs = 0,
@@ -46,6 +47,10 @@ export async function createRunnerProcessClient({
       target: {
         ...createRuntimeUiEventTarget(ui),
         modelPayload: (event) => onModelPayload?.(event),
+        lspStatusChange: async (event) => {
+          await active?.runner?.refreshState?.();
+          onLspStatusChange?.(event);
+        },
       },
       timeoutMs,
     });

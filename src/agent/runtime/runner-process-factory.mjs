@@ -93,6 +93,7 @@ export async function createIsolatedRunner(options = {}, deps = {}) {
     }),
     logger,
     onModelPayload: (event) => d.peer.notify("modelPayload", pickModelPayloadEvent(event)),
+    onLspStatusChange: (event) => d.peer.notify("lspStatusChange", pickLspStatusEvent(event)),
   });
 
   const originalDispose = runner.dispose;
@@ -108,4 +109,8 @@ export async function createIsolatedRunner(options = {}, deps = {}) {
 
 function pickModelPayloadEvent({ estimatedTokens, provider, model, kind, turnId } = {}) {
   return { estimatedTokens, provider, model, kind, turnId };
+}
+
+function pickLspStatusEvent({ id, root, status, reason, managed } = {}) {
+  return { id, root, status, reason, managed };
 }

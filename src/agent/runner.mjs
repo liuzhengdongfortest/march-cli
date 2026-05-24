@@ -31,7 +31,7 @@ import { createRunnerProviderQuotaRuntime } from "./runner/provider-quota-runtim
 export { MARCH_BASE_TOOL_NAMES, installModelPayloadDumper };
 export { createDefaultSessionManager, resolveRunnerSessionManager } from "./runner/runner-init.mjs";
 export { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
-export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, memoryRoot = null, profilePaths = null, memoryStore = null, memoryTools = [], remoteMemorySources = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, modelContextDumper = null, turnNotifier = null, logger = null, onModelPayload = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices, maxTurns, trimBatch, serviceTier = null, hostedTools = {} }) {
+export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, memoryRoot = null, profilePaths = null, memoryStore = null, memoryTools = [], remoteMemorySources = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, modelContextDumper = null, turnNotifier = null, logger = null, onModelPayload = null, onLspStatusChange = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices, maxTurns, trimBatch, serviceTier = null, hostedTools = {} }) {
   installCodexLargeContextGuard();
   installCodexTransportCompression();
   installCodexWebSocketEventDebug();
@@ -55,7 +55,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     retry: { enabled: true, maxRetries: 3, baseDelayMs: 2000 },
   });
   const { ui: runtimeUi, eventBus: runtimeUiEvents, detach: detachRuntimeUi } = createRuntimeUiBridge(ui);
-  const lspService = new LspService({ cwd, onEvent: (event) => runtimeUi.status?.(formatLspServiceEvent(event)) });
+  const lspService = new LspService({ cwd, onEvent: (event) => runtimeUi.status?.(formatLspServiceEvent(event)), onStatusChange: (event) => onLspStatusChange?.(event) });
   const engine = new ContextEngine({ cwd, modelId, provider, namespace, memoryRoot, profilePaths, remoteMemorySources, shellRuntime, lspService, injections: mcpInjections, maxTurns, trimBatch });
   const resolvedSessionManager = resolveRunnerSessionManager(cwd, sessionManager);
   const sessionBinding = createSessionBinding(null);

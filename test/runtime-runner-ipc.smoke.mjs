@@ -51,11 +51,13 @@ export async function runRuntimeRunnerIpcSmoke() {
     target: createRunnerIpcTarget({ createRunnerImpl: async (options) => createFakeRunner({ calls: [], options }) }),
   });
   const payloadEvents = [];
+  const lspEvents = [];
   const uiStatusCalls = [];
   const { runner, dispose } = await createRunnerProcessClient({
     runnerOptions: { cwd: "D:/child" },
     ui: { status: (text) => uiStatusCalls.push(text) },
     onModelPayload: (event) => payloadEvents.push(event),
+    onLspStatusChange: (event) => lspEvents.push(event),
     forkImpl: () => processLink.parent,
   });
   assert.equal(runner.engine.modelId, "model-a");
@@ -63,6 +65,9 @@ export async function runRuntimeRunnerIpcSmoke() {
   processLink.child.send({ channel: "march-runtime", kind: "notify", method: "modelPayload", args: [{ estimatedTokens: 1234 }] });
   await new Promise((resolve) => setImmediate(resolve));
   assert.deepEqual(payloadEvents, [{ estimatedTokens: 1234 }]);
+  processLink.child.send({ channel: "march-runtime", kind: "notify", method: "lspStatusChange", args: [{ id: "typescript", status: "idle" }] });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(lspEvents, [{ id: "typescript", status: "idle" }]);
   assert.deepEqual(uiStatusCalls, []);
   const reloadedState = await runner.restartRuntime();
   assert.equal(reloadedState.engine.modelId, "model-a");

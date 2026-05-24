@@ -25,9 +25,12 @@ export async function createRuntimeRunner({
   const onModelPayload = ({ estimatedTokens }) => {
     refreshStatusBar?.({ contextTokens: estimatedTokens });
   };
+  const onLspStatusChange = () => {
+    refreshStatusBar?.();
+  };
 
   const runner = useRuntimeProcess
-    ? (await createRunnerProcessClient({ runnerOptions, ui, onModelPayload })).runner
+    ? (await createRunnerProcessClient({ runnerOptions, ui, onModelPayload, onLspStatusChange })).runner
     : await createRunner({
       ...runnerOptions,
       ui,
@@ -54,6 +57,7 @@ export async function createRuntimeRunner({
       turnNotifier,
       logger,
       onModelPayload,
+      onLspStatusChange,
     });
 
   runner.shellRuntime ??= shellRuntime;
