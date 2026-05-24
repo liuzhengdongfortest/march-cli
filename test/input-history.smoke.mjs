@@ -33,6 +33,20 @@ export async function runInputHistorySmoke({ setupTmp, cleanup }) {
     items: ["hello history"],
   });
 
+  const staleHistoryStore = createInputHistoryStore({ path: historyPath });
+  const staleTerminal = new FakeTerminal();
+  const staleUi = createTuiUI({ cwd: dir, terminal: staleTerminal, historyStore: staleHistoryStore });
+  writeFileSync(historyPath, JSON.stringify({ version: 1, items: ["other session command"] }), "utf8");
+  const stalePending = staleUi.readline("> ");
+  staleTerminal.input("stale session command");
+  staleTerminal.input("\r");
+  assert.equal(await stalePending, "stale session command");
+  await staleUi.close();
+  assert.deepEqual(JSON.parse(readFileSync(historyPath, "utf8")), {
+    version: 1,
+    items: ["stale session command", "hello history", "other session command"],
+  });
+
   const secondTerminal = new FakeTerminal();
   const secondUi = createTuiUI({ cwd: dir, terminal: secondTerminal, historyStore });
   const secondPending = secondUi.readline("> ");
