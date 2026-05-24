@@ -19,6 +19,8 @@ export async function runModeStateSmoke() {
   let carryoverTaken = false;
   let pendingAfterTurn = [];
   let pendingRendered = false;
+  let memoryBeginCount = 0;
+  let memoryEndCount = 0;
   await runSingleShotPrompt({
     prompt: "please inspect",
     runner: {
@@ -51,9 +53,9 @@ export async function runModeStateSmoke() {
       },
     },
     memoryStore: {
-      beginTurn() {},
+      beginTurn() { memoryBeginCount += 1; },
       recallForUser: () => [],
-      endTurn() {},
+      endTurn() { memoryEndCount += 1; },
     },
     currentProject: "project",
     ui: {
@@ -80,5 +82,7 @@ export async function runModeStateSmoke() {
   assert.ok(uiLines.join("\n").includes("please inspect"));
   assert.ok(uiLines.includes("assistant:mem_final"));
   assert.equal(pendingRendered, true);
+  assert.equal(memoryBeginCount, 1);
+  assert.equal(memoryEndCount, 1);
   console.log("  PASS");
 }

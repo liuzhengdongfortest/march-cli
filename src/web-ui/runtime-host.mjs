@@ -100,9 +100,10 @@ export async function createWebRuntimeHost({ args, config, cwd, stateRoot, useRu
     async runTurn(prompt) {
       if (turnRunning) throw new Error("A turn is already running");
       turnRunning = true;
-      const input = prepareTurnInput({ prompt, runner, memoryStore, currentProject });
-      runner.runtimeUiEvents.emit({ type: "web_user_message", text: input.userMessage });
+      memoryStore.beginTurn();
       try {
+        const input = prepareTurnInput({ prompt, runner, memoryStore, currentProject });
+        runner.runtimeUiEvents.emit({ type: "web_user_message", text: input.userMessage });
         return await runner.runTurn(input.fullPrompt, input.userMessage, input.runOptions);
       } finally {
         turnRunning = false;

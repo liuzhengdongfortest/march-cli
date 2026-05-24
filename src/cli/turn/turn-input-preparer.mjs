@@ -5,7 +5,6 @@ import { formatMessageAttachmentsForDisplay } from "../../session/attachment-dis
 import { formatShellHints } from "../../shell/hints.mjs";
 
 export function prepareTurnInput({ prompt, runner, memoryStore, currentProject, modeState = null }) {
-  memoryStore.beginTurn();
   const engine = runner.engine ?? {};
   const carryoverAlreadyRendered = engine.hasRenderedPendingAssistantRecallHints?.() ?? false;
   const carryoverRecallHints = engine.takePendingAssistantRecallHints?.() ?? [];
