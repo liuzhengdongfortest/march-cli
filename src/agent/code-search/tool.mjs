@@ -17,7 +17,7 @@ export function createCodeSearchTool({ engine }) {
         Type.Literal("symbol"),
         Type.Literal("lexical"),
         Type.Literal("semantic"),
-      ], { description: "Search mode. semantic is reserved until local vector search is enabled." })),
+      ], { description: "Search mode. auto uses BM25 + local vector retrieval with RRF fusion." })),
       include_tests: Type.Optional(Type.Boolean({ description: "Include test/spec paths without penalty; default false" })),
       related_to: Type.Optional(Type.Object({
         file_path: Type.String({ description: "Workspace-relative file path containing the known code" }),

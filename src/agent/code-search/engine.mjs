@@ -1,4 +1,5 @@
 import { defaultCodeSearchIndexCache } from "./cache.mjs";
+import { rrfFuse } from "./retrieval/fusion.mjs";
 import { rerankResults } from "./rerank.mjs";
 import { scanCodeFiles } from "./scanner.mjs";
 
@@ -18,20 +19,38 @@ export async function searchCode(options = {}) {
   } = options;
   const normalizedQuery = String(query ?? "").trim();
   if (!normalizedQuery && !related_to) return { results: [], stats: { files: 0, chunks: 0 } };
-  if (mode === "semantic") throw new Error("Native semantic code search is not enabled yet; use auto, lexical, or symbol.");
 
   const files = await scanCodeFiles({ root, path });
   const built = await cache.build(files);
   const related = related_to ? relatedQuery(built.chunks, related_to, normalizedQuery) : null;
   const queryText = related?.query ?? normalizedQuery;
-  const lexicalResults = built.index.search(queryText, { limit: RETRIEVAL_LIMIT });
-  const filtered = related ? lexicalResults.filter((result) => result.chunk.id !== related.targetId) : lexicalResults;
+  const retrieved = retrieveChunks(built.index, queryText, mode);
+  const filtered = related ? retrieved.filter((result) => result.chunk.id !== related.targetId) : retrieved;
   const ranked = rerankResults(filtered, queryText, { includeTests: include_tests });
   const limit = clampTopK(top_k);
   return {
     results: ranked.slice(0, limit).map(formatResult),
-    stats: formatStats(files, built, related_to ? "related" : mode === "symbol" ? "symbol" : "lexical"),
+    stats: formatStats(files, built, resultMode({ related_to, mode })),
   };
+}
+
+function retrieveChunks(index, queryText, mode) {
+  const lexical = index.lexical.search(queryText, { limit: RETRIEVAL_LIMIT });
+  if (mode === "lexical" || mode === "symbol") return lexical;
+  const semantic = index.vector.search(queryText, { limit: RETRIEVAL_LIMIT });
+  if (mode === "semantic") return semantic;
+  return rrfFuse([
+    { results: lexical, weight: 1.2 },
+    { results: semantic, weight: 1 },
+  ], { limit: RETRIEVAL_LIMIT });
+}
+
+function resultMode({ related_to, mode }) {
+  if (related_to) return "related";
+  if (mode === "symbol") return "symbol";
+  if (mode === "semantic") return "semantic";
+  if (mode === "lexical") return "lexical";
+  return "hybrid";
 }
 
 function relatedQuery(chunks, relatedTo, query) {

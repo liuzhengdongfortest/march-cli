@@ -1,5 +1,6 @@
 import { chunkFile } from "./chunker.mjs";
-import { Bm25Index } from "./bm25.mjs";
+import { Bm25Index } from "./retrieval/bm25.mjs";
+import { LocalVectorIndex } from "./retrieval/vector.mjs";
 
 const DEFAULT_MAX_FILE_ENTRIES = 8_000;
 const DEFAULT_MAX_INDEX_ENTRIES = 24;
@@ -41,7 +42,10 @@ export class CodeSearchIndexCache {
       return { chunks, index: cachedIndex, reusedFiles, indexedFiles, reusedIndex: true };
     }
 
-    const index = new Bm25Index(chunks);
+    const index = {
+      lexical: new Bm25Index(chunks),
+      vector: new LocalVectorIndex(chunks),
+    };
     this.indices.set(indexSignature, index);
     this.pruneIndexCache();
     return { chunks, index, reusedFiles, indexedFiles, reusedIndex: false };

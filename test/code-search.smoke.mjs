@@ -29,6 +29,11 @@ export async function runCodeSearchSmoke({ setupTmp, cleanup }) {
     assert.equal(result.results[0].file_path, "src/auth-service.mjs");
     assert.equal(result.results[0].kind, "function");
     assert.match(result.results[0].snippet, /issueSessionToken/);
+    assert.equal(result.stats.mode, "hybrid");
+
+    const semantic = await searchCode({ root, query: "jwt payload serialization", top_k: 1, mode: "semantic", cache });
+    assert.equal(semantic.stats.mode, "semantic");
+    assert.equal(semantic.results[0].file_path, "src/auth-service.mjs");
 
     assert.ok(result.stats.indexed_files >= 1);
     assert.equal(result.stats.reused_index, false);
