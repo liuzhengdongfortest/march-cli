@@ -91,7 +91,15 @@ export function formatQuotaReset(resetsAt) {
   if (!resetsAt) return "reset unknown";
   const date = new Date(resetsAt);
   if (Number.isNaN(date.getTime())) return "reset unknown";
-  return `resets ${date.toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}`;
+  return `resets ${formatResetDate(date)}`;
+}
+
+function formatResetDate(date) {
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const day = date.getDate();
+  const month = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][date.getMonth()];
+  return `${hours}:${minutes} on ${day} ${month}`;
 }
 
 export function formatStatusBarLine({

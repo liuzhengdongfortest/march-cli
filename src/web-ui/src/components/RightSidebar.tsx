@@ -106,7 +106,10 @@ function formatQuotaLabel(label: string) {
 
 function formatReset(resetsAt?: string | null) {
   if (!resetsAt) return "reset unknown";
-  return `resets ${new Date(resetsAt).toLocaleString([], {
-    weekday: "short", hour: "2-digit", minute: "2-digit",
-  })}`;
+  const date = new Date(resetsAt);
+  if (Number.isNaN(date.getTime())) return "reset unknown";
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const month = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][date.getMonth()];
+  return `resets ${hours}:${minutes} on ${date.getDate()} ${month}`;
 }

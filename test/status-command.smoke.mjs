@@ -7,6 +7,7 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
     formatCompactTokenCount,
     formatProviderQuotaLines,
     formatQuotaBar,
+    formatQuotaReset,
     formatStatusBarLine,
     formatStatusLine,
     getGitBranch,
@@ -35,14 +36,16 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
   assert.equal(formatCompactTokenCount(980), "980");
   assert.equal(formatCompactTokenCount(11300), "11.3K");
   assert.equal(formatCompactTokenCount(1200000), "1.2M");
+  const resetAt = new Date(2026, 4, 31, 15, 26).toISOString();
   const providerQuota = { limits: [{ windows: [
     { label: "5h", usedPercent: 18, remainingPercent: 82, resetsAt: null },
-    { label: "weekly", usedPercent: 3, remainingPercent: 97, resetsAt: null },
+    { label: "weekly", usedPercent: 3, remainingPercent: 97, resetsAt: resetAt },
   ] }] };
   assert.equal(formatQuotaBar(82, 20), "[████████████████░░░░]");
+  assert.equal(formatQuotaReset(resetAt), "resets 15:26 on 31 May");
   assert.deepEqual(formatProviderQuotaLines(providerQuota), [
     "5h limit:                    [████████████████░░░░] 82% left (reset unknown)",
-    "Weekly limit:                [███████████████████░] 97% left (reset unknown)",
+    "Weekly limit:                [███████████████████░] 97% left (resets 15:26 on 31 May)",
   ]);
   const line = formatStatusLine({
     engine,
@@ -149,7 +152,7 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
     "Model:     model:deepseek-chat  provider:deepseek  thinking:high",
     "Usage:     tokens:10in/20out  ext:ok",
     "5h limit:                    [████████████████░░░░] 82% left (reset unknown)",
-    "Weekly limit:                [███████████████████░] 97% left (reset unknown)",
+    "Weekly limit:                [███████████████████░] 97% left (resets 15:26 on 31 May)",
   ]);
   cleanup(dir);
   console.log("  PASS");
