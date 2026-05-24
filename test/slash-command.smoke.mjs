@@ -32,7 +32,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   });
   let restored = null;
   let providerQuotaRefreshCount = 0;
-  const providerQuota = { limits: [{ windows: [{ label: "5h", usedPercent: 42 }] }] };
+  const providerQuota = { limits: [{ windows: [{ label: "5h", remainingPercent: 58 }] }] };
   const runner = {
     engine: {
       cwd: dir,
@@ -124,10 +124,11 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   const status = await handleSlashCommand("/status", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(status.handled, true);
   assert.equal(providerQuotaRefreshCount, 1);
-  assert.ok(output.join("\n").includes("session:s1"));
-  assert.ok(output.join("\n").includes("model:test-model"));
-  assert.ok(output.join("\n").includes("tokens:1in/2out"));
-  assert.ok(output.join("\n").includes("quota:5h:42%"));
+  const statusText = output.join("\n");
+  assert.ok(statusText.includes("Extensions:"));
+  assert.ok(statusText.includes("warning"));
+  assert.ok(statusText.includes("5h limit:"));
+  assert.ok(statusText.includes("58% left"));
   const help = await handleSlashCommand("/help", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(help.handled, true);
   const helpText = output.join("\n");
