@@ -27,6 +27,7 @@ import { registerSuperGrokProvider } from "../supergrok/provider.mjs";
 import { registerCustomProviders } from "../provider/custom-provider.mjs";
 import { injectHostedTools } from "../provider/hosted-tools.mjs";
 import { createRunnerLifecycle } from "./lifecycle/runner-lifecycle.mjs";
+import { createRunnerProviderQuotaRuntime } from "./runner/provider-quota-runtime.mjs";
 export { MARCH_BASE_TOOL_NAMES, installModelPayloadDumper };
 export { createDefaultSessionManager, resolveRunnerSessionManager } from "./runner/runner-init.mjs";
 export { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
@@ -107,6 +108,8 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   if (serviceTier === "priority" && selectedModel && isFastProvider(selectedModel.provider)) {
     _currentFastEntry = createFastModelEntry(selectedModel).model;
   }
+  const providerQuotaRuntime = createRunnerProviderQuotaRuntime({ authStorage: resolvedAuth, ui: runtimeUi,
+    getCurrentModel: () => _currentFastEntry ?? sessionBinding.get().model });
   return {
     engine,
     get session() { return sessionBinding.get(); },
@@ -176,6 +179,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       return result;
     },
     getCurrentModel() { return _currentFastEntry ?? sessionBinding.get().model; },
+    ...providerQuotaRuntime,
     async setModel(model) {
       const activeSession = sessionBinding.get();
       const { baseId, isFast } = fromFastEntryModel(model);

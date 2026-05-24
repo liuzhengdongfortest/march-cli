@@ -37,6 +37,13 @@ export function createRunnerIpcTarget({ createRunnerImpl, runnerOptions = {} } =
     getSessionStats() {
       return getRunner().getSessionStats();
     },
+    async getProviderQuotaSnapshot(options = {}) {
+      const result = await getRunner().getProviderQuotaSnapshot(options);
+      return { result, state: getRunnerState(runner) };
+    },
+    getCachedProviderQuotaSnapshot() {
+      return getRunner().getCachedProviderQuotaSnapshot?.() ?? null;
+    },
     getState() {
       return getRunnerState(getRunner());
     },

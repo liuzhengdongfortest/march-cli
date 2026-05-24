@@ -18,6 +18,7 @@ export function statusCommand({
     extensionDiagnostics,
     lifecycleState,
     gitBranch,
+    providerQuota: runner.getCachedProviderQuotaSnapshot?.() ?? null,
   })];
 }
 
@@ -45,6 +46,7 @@ export function formatStatusLine({
   extensionDiagnostics = [],
   lifecycleState = null,
   gitBranch = null,
+  providerQuota = null,
 }) {
   const statsSessionId = sessionStats?.sessionId ?? sessionState?.sessionId ?? "unknown";
   const tokens = sessionStats?.tokens
@@ -65,7 +67,16 @@ export function formatStatusLine({
     `tokens:${tokens}`,
     `ext:${formatExtensionDiagnosticSummary(extensionDiagnostics, lifecycleState)}`,
   );
+  const quota = formatProviderQuotaSegment(providerQuota);
+  if (quota) parts.push(quota);
   return parts.join("  ");
+}
+
+export function formatProviderQuotaSegment(providerQuota) {
+  const windows = providerQuota?.limits?.flatMap((limit) => limit.windows ?? []) ?? [];
+  if (windows.length === 0) return "";
+  const visible = windows.slice(0, 2).map((window) => `${window.label}:${Math.round(window.usedPercent)}%`);
+  return `quota:${visible.join(",")}`;
 }
 
 export function formatStatusBarLine({

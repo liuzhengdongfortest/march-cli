@@ -110,6 +110,11 @@
   .fs-entry-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px; }
   .fs-entry-row button, .fs-row { min-height: 28px; padding: 0 7px; text-align: left; }
   .fs-entry-row button:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-primary); }
+  .provider-quota { margin-top: 12px; border-top: 1px solid var(--color-border-subtle); padding-top: 12px; display: grid; gap: 7px; }
+  .provider-quota-header, .quota-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; }
+  .provider-quota-header span { color: var(--color-text-primary); font-weight: var(--font-weight-ui-medium); }
+  .provider-quota-header time, .quota-row em { color: var(--color-text-muted); font-style: normal; }
+  .quota-row strong { color: var(--color-accent); font-size: 12px; }
   .session-row, .activity-row { width: 100%; min-height: 34px; border: 0; border-radius: var(--radius-control); padding: 7px 8px; background: transparent; color: var(--color-text-primary); display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; font-size: 13px; }
   .session-row.active { background: var(--color-accent-soft); color: var(--color-accent); font-weight: var(--font-weight-ui-medium); }
   .session-row time, .activity-row time { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-muted); font-size: 12px; }

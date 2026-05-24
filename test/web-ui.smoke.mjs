@@ -59,16 +59,19 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(server, /\/api\/sessions/);
   assert.match(server, /\/api\/fs\/roots/);
   assert.match(server, /\/api\/fs\/list/);
+  assert.match(server, /\/api\/provider-quota/);
   assert.match(server, /\/api\/events/);
   assert.match(server, /\/api\/turn/);
   assert.match(app, /useWebRuntime/);
   assert.match(shell, /<FileExplorer root=\{model\.workspace\}/);
   assert.match(shell, /<SessionTimeline timeline=\{model\.timeline\}/);
   assert.match(shell, /fsEntries=\{runtime\.fsEntries\}/);
+  assert.match(shell, /providerQuota=\{model\.providerQuota\}/);
   assert.match(shell, /onCreateSession=\{runtime\.createSession\}/);
   assert.match(shell, /disabled=\{!model\.activeSessionId\}/);
   assert.match(model, /activeSessionId\?: string \| null/);
   assert.match(model, /workspacePath\?: string/);
+  assert.match(model, /ProviderQuotaSnapshot/);
   assert.match(model, /export type WebUiModel/);
   assert.match(model, /MarchTimelineEvent/);
   assert.match(model, /TimelineItem/);
@@ -89,6 +92,8 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(right, /Workspace picker/);
   assert.match(right, /onCreateSession/);
   assert.match(right, /onBrowsePath/);
+  assert.match(right, /ProviderQuotaCard/);
+  assert.match(right, /aria-label="Provider quota"/);
   assert.match(right, /className="right-header">会话/);
   assert.match(right, /right-divider">Activity/);
   assert.doesNotMatch(right, /todo|Todos/i);
@@ -98,8 +103,10 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(runtimeClient, /new EventSource\(apiPath\("\/api\/events"/);
   assert.match(runtimeClient, /createRuntimeSession/);
   assert.match(runtimeClient, /fetchFsRoots/);
+  assert.match(runtimeClient, /fetchProviderQuota/);
   assert.match(runtimeHook, /fetchRuntimeSnapshot/);
   assert.match(runtimeHook, /connectRuntimeEvents\(\s*activeSessionId/);
+  assert.match(runtimeHook, /provider_quota_snapshot/);
   assert.match(runtimeHook, /rememberTimeline/);
   assert.match(runtimeHook, /restoreCachedTimeline/);
   assert.match(runtimeHook, /submitRuntimeTurn\(activeSessionId/);
@@ -112,6 +119,7 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(css, /\.timeline-aux/);
   assert.match(css, /\.runtime-pill\.connected/);
   assert.match(css, /\.workspace-picker/);
+  assert.match(css, /\.provider-quota/);
   assert.match(css, /\.message-body[\s\S]*font-weight: var\(--font-weight-content-normal\)/);
   assert.match(css, /\.composer textarea[\s\S]*font-weight: var\(--font-weight-content-normal\)/);
   assert.match(css, /\.terminal-block pre/);

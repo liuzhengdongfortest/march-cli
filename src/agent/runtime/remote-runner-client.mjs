@@ -26,6 +26,8 @@ export function createRemoteRunnerClient(peer, { initialState = null } = {}) {
     getScopedModels: () => state?.scopedModels ?? [],
     getConfiguredProviders: () => state?.configuredProviders ?? [],
     getSessionStats: () => state?.sessionStats ?? null,
+    getCachedProviderQuotaSnapshot: () => state?.providerQuota ?? null,
+    async getProviderQuotaSnapshot(options = {}) { return applyResultWithState(await peer.call("getProviderQuotaSnapshot", options)); },
     async refreshState() { return refreshState(); },
     getLastNotificationResult: () => peer.call("getLastNotificationResult"),
     notifyTest: (options) => peer.call("notifyTest", options),

@@ -22,6 +22,7 @@ export function createRunnerStateSnapshot(runner) {
     availableThinkingLevels: runner.getAvailableThinkingLevels?.() ?? [],
     canSwitchPiSession: runner.canSwitchPiSession?.() ?? false,
     sessionStats: runner.getSessionStats?.() ?? null,
+    providerQuota: runner.getCachedProviderQuotaSnapshot?.() ?? null,
     lspStatus: runner.getLspStatus?.() ?? null,
     extensionDiagnostics: runner.getExtensionDiagnostics?.() ?? [],
     extensionLifecycleState: runner.getExtensionLifecycleState?.() ?? null,

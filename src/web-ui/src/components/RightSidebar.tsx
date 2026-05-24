@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ActivityEvent, SessionSummary } from "../model";
+import type { ActivityEvent, ProviderQuotaSnapshot, SessionSummary } from "../model";
 import type { FsEntry } from "../runtime/client";
 
 type RightSidebarProps = {
@@ -7,6 +7,7 @@ type RightSidebarProps = {
   activity: ActivityEvent[];
   fsEntries: FsEntry[];
   fsPath: string | null;
+  providerQuota?: ProviderQuotaSnapshot | null;
   running: boolean;
   onOpenSession: (sessionId: string) => Promise<void>;
   onCreateSession: (workspacePath: string) => Promise<void>;
@@ -14,7 +15,9 @@ type RightSidebarProps = {
   onBrowsePath: (path: string) => Promise<void>;
 };
 
-export function RightSidebar({ sessions, activity, fsEntries, fsPath, running, onOpenSession, onCreateSession, onBrowseRoots, onBrowsePath }: RightSidebarProps) {
+export function RightSidebar(props: RightSidebarProps) {
+  const { sessions, activity, fsEntries, fsPath, providerQuota, running } = props;
+  const { onOpenSession, onCreateSession, onBrowseRoots, onBrowsePath } = props;
   const [workspacePath, setWorkspacePath] = useState("");
   const canCreate = workspacePath.trim().length > 0 && !running;
 
@@ -50,6 +53,8 @@ export function RightSidebar({ sessions, activity, fsEntries, fsPath, running, o
           ))}
         </div>
 
+        {providerQuota ? <ProviderQuotaCard quota={providerQuota} /> : null}
+
         <div className="right-divider">Sessions</div>
         {sessions.map((session) => (
           <button key={session.id} className={session.active ? "session-row active" : "session-row"} type="button" onClick={() => onOpenSession(session.id)}>
@@ -67,4 +72,29 @@ export function RightSidebar({ sessions, activity, fsEntries, fsPath, running, o
       </div>
     </aside>
   );
+}
+
+function ProviderQuotaCard({ quota }: { quota: ProviderQuotaSnapshot }) {
+  return (
+    <div className="provider-quota" aria-label="Provider quota">
+      <div className="provider-quota-header">
+        <span>{quota.label}</span>
+        <time>{quota.providerId}</time>
+      </div>
+      {quota.limits.flatMap((limit) => limit.windows.map((window) => (
+        <div key={`${limit.id}:${window.id}`} className="quota-row">
+          <span>{window.label}</span>
+          <strong>{Math.round(window.usedPercent)}% used</strong>
+          <em>{formatReset(window.resetsAt)}</em>
+        </div>
+      )))}
+    </div>
+  );
+}
+
+function formatReset(resetsAt?: string | null) {
+  if (!resetsAt) return "reset unknown";
+  return `resets ${new Date(resetsAt).toLocaleString([], {
+    weekday: "short", hour: "2-digit", minute: "2-digit",
+  })}`;
 }

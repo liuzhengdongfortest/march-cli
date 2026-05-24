@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { mockWebUiModel } from "../mockData";
 import type { MarchTimelineEvent, WebUiModel } from "../model";
 import { applyRuntimeEvent } from "./runtimeTimeline";
-import { connectRuntimeEvents, createRuntimeSession, fetchFsList, fetchFsRoots, fetchRuntimeSnapshot, submitRuntimeTurn } from "./client";
+import { connectRuntimeEvents, createRuntimeSession, fetchFsList, fetchFsRoots, fetchProviderQuota, fetchRuntimeSnapshot, submitRuntimeTurn } from "./client";
 import type { FsEntry } from "./client";
 
 export type WebRuntimeState = {
@@ -48,6 +48,12 @@ export function useWebRuntime(): WebRuntimeState {
       activeSessionId,
       (event) => {
         setConnected(true);
+        if (event.type === "provider_quota_snapshot") {
+          setModel((current) => current.activeSessionId === activeSessionId
+            ? { ...current, providerQuota: event.snapshot }
+            : current);
+          return;
+        }
         setModel((current) => {
           const next = updateTimelineEvents(current, (events) => applyRuntimeEvent(events, event));
           rememberTimeline(next, timelineCache.current);
@@ -56,6 +62,7 @@ export function useWebRuntime(): WebRuntimeState {
       },
       () => setConnected(false),
     );
+    refreshProviderQuota(activeSessionId).catch(() => undefined);
     return disconnect;
   }, [activeSessionId]);
 
@@ -77,6 +84,11 @@ export function useWebRuntime(): WebRuntimeState {
     } finally {
       setRunning(false);
     }
+  }
+
+  async function refreshProviderQuota(sessionId: string) {
+    const providerQuota = await fetchProviderQuota(sessionId);
+    setModel((current) => current.activeSessionId === sessionId ? { ...current, providerQuota } : current);
   }
 
   async function browseRoots() {

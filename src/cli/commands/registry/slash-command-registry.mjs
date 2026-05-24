@@ -97,13 +97,16 @@ export const SLASH_COMMANDS = [
   exactCommand({
     name: "status",
     description: "Show runtime status",
-    run: async ({ ui, runner, sessionState, sessionSource }) => writeLines(ui, statusCommand({
-      runner,
-      sessionState,
-      sessionSource,
-      extensionDiagnostics: runner.getExtensionDiagnostics?.() ?? [],
-      lifecycleState: runner.getExtensionLifecycleState?.() ?? null,
-    })),
+    run: async ({ ui, runner, sessionState, sessionSource }) => {
+      await runner.getProviderQuotaSnapshot?.({ emit: true }).catch(() => null);
+      writeLines(ui, statusCommand({
+        runner,
+        sessionState,
+        sessionSource,
+        extensionDiagnostics: runner.getExtensionDiagnostics?.() ?? [],
+        lifecycleState: runner.getExtensionLifecycleState?.() ?? null,
+      }));
+    },
   }),
   exactCommand({
     name: "notify",

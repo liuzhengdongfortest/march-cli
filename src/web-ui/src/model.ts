@@ -43,6 +43,25 @@ export type ActivityEvent = {
   time: string;
 };
 
+export type ProviderQuotaSnapshot = {
+  providerId: string;
+  modelId?: string | null;
+  label: string;
+  planType?: string | null;
+  capturedAt: string;
+  limits: Array<{
+    id: string;
+    name: string;
+    windows: Array<{
+      id: string;
+      label: string;
+      usedPercent: number;
+      remainingPercent: number;
+      resetsAt?: string | null;
+    }>;
+  }>;
+};
+
 export type ComposerState = {
   mode: string;
   placeholder: string;
@@ -57,6 +76,7 @@ export type WebUiModel = {
     events: MarchTimelineEvent[];
   };
   sessions: SessionSummary[];
+  providerQuota?: ProviderQuotaSnapshot | null;
   activity: ActivityEvent[];
   composer: ComposerState;
 };

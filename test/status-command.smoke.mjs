@@ -5,6 +5,7 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
   const {
     formatExtensionDiagnosticSummary,
     formatCompactTokenCount,
+    formatProviderQuotaSegment,
     formatStatusBarLine,
     formatStatusLine,
     getGitBranch,
@@ -33,6 +34,7 @@ export async function runStatusCommandSmoke({ setupTmp, cleanup }) {
   assert.equal(formatCompactTokenCount(980), "980");
   assert.equal(formatCompactTokenCount(11300), "11.3K");
   assert.equal(formatCompactTokenCount(1200000), "1.2M");
+  assert.equal(formatProviderQuotaSegment({ limits: [{ windows: [{ label: "5h", usedPercent: 42 }] }] }), "quota:5h:42%");
   const line = formatStatusLine({
     engine,
     sessionState: { sessionId: "legacy1" },

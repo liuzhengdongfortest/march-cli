@@ -34,6 +34,7 @@ export async function handleApiRequest(req, res, runtime) {
     if (req.method === "POST" && pathname === "/api/sessions") return sendJson(res, await createRuntimeSession(req, runtime));
     if (req.method === "GET" && pathname === "/api/fs/roots") return sendJson(res, { roots: runtime.fsRoots() });
     if (req.method === "GET" && pathname === "/api/fs/list") return sendJson(res, { entries: runtime.fsList(getPathParam(req)) });
+    if (req.method === "GET" && pathname === "/api/provider-quota") return sendJson(res, { snapshot: await runtime.refreshProviderQuota(getSessionId(req)) });
     if (req.method === "POST" && pathname === "/api/turn") return sendJson(res, await runRuntimeTurn(req, runtime));
     if (req.method === "POST" && pathname === "/api/abort") return sendJson(res, { ok: true, result: runtime.abort(getSessionId(req)) });
     sendJson(res, { error: "Not found" }, 404);

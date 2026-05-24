@@ -28,6 +28,7 @@ export function AppShell({ runtime }: AppShellProps) {
         activity={model.activity}
         fsEntries={runtime.fsEntries}
         fsPath={runtime.fsPath}
+        providerQuota={model.providerQuota}
         running={runtime.running}
         onOpenSession={runtime.openSession}
         onCreateSession={runtime.createSession}

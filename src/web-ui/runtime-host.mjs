@@ -96,6 +96,7 @@ export async function createWebRuntimeHost({ args, config, cwd, stateRoot, useRu
     currentProject,
     snapshot: () => createWebSnapshot({ cwd, runner, currentProject }),
     subscribe: (listener) => runner.runtimeUiEvents.on(listener),
+    refreshProviderQuota: () => runner.getProviderQuotaSnapshot?.({ emit: true }) ?? null,
     async runTurn(prompt) {
       if (turnRunning) throw new Error("A turn is already running");
       turnRunning = true;
@@ -123,6 +124,7 @@ export function createHeadlessWebUi() {
     thinkingBlock: () => {}, toggleLastThinking: () => false,
     toolStart: () => {}, toolEnd: () => {}, textDelta: () => {},
     assistantReplyEnd: () => {}, status: () => {}, recall: () => {},
+    providerQuotaSnapshot: () => {},
     clearOutput: () => {}, restoreTranscript: () => {}, setStatusBar: () => {},
     turnStart: () => {}, turnEnd: () => {}, retryStart: () => {}, retryEnd: () => {},
     editDiff: () => {}, requestPermission: async () => true,
@@ -138,6 +140,7 @@ export function createWebSnapshot({ cwd, runner, currentProject = basename(cwd) 
   return {
     workspace: readWorkspaceTree(cwd),
     timeline: { title: currentProject, meta: runtimeMeta(model), events: [] },
+    providerQuota: runner.getCachedProviderQuotaSnapshot?.() ?? null,
     sessions: [{ id: "current", title: runner.engine?.sessionName ?? currentProject, time: "now", active: true }],
     activity: [{ id: "runtime", action: "runner connected", time: "now" }],
     composer: { mode: "Chat", placeholder: "Message March…" },

@@ -1,4 +1,4 @@
-import type { SessionSummary, WebUiModel } from "../model";
+import type { ProviderQuotaSnapshot, SessionSummary, WebUiModel } from "../model";
 
 export type RuntimeUiEvent =
   | { type: "web_user_message"; text: string }
@@ -13,6 +13,7 @@ export type RuntimeUiEvent =
   | { type: "tool_end"; name: string; isError?: boolean; result?: unknown }
   | { type: "edit_diff"; path: string; diffLines?: Array<{ type?: string; text?: string }> }
   | { type: "permission_request"; toolName: string; category?: string; params?: unknown }
+  | { type: "provider_quota_snapshot"; snapshot: ProviderQuotaSnapshot | null }
   | { type: "status"; text: string }
   | { type: "retry_start"; errorMessage?: string }
   | { type: "retry_end"; success?: boolean; finalError?: string };
@@ -45,6 +46,12 @@ export async function fetchFsList(path: string): Promise<FsEntry[]> {
   const response = await fetch(apiPath("/api/fs/list", { path }));
   if (!response.ok) throw new Error(await response.text());
   return (await response.json()).entries;
+}
+
+export async function fetchProviderQuota(sessionId: string): Promise<ProviderQuotaSnapshot | null> {
+  const response = await fetch(apiPath("/api/provider-quota", { sessionId }));
+  if (!response.ok) throw new Error(await response.text());
+  return (await response.json()).snapshot ?? null;
 }
 
 export async function submitRuntimeTurn(sessionId: string, prompt: string) {
