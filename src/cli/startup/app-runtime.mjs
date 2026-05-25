@@ -22,6 +22,7 @@ import { ensureBrowserDaemon } from "../../browser/client/lifecycle.mjs";
 import { registerProject } from "../../workspace/project-registry.mjs";
 import { createWorkspaceSessionSupervisor } from "../../workspace/supervisor.mjs";
 import { createWorkspaceProjectRuntime } from "../workspace/project-runtime.mjs";
+import { createWorkspaceOutputRouter } from "../workspace/output-router.mjs";
 
 export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot } = {}) {
   if (!existsSync(stateRoot)) mkdirSync(stateRoot, { recursive: true });
@@ -86,7 +87,8 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
     shellRuntime,
     historyStore: inputHistoryStore,
   });
-
+  const outputRouter = createWorkspaceOutputRouter({ ui, activeProjectId: currentProjectInfo.projectId });
+  const runtimeUi = outputRouter.createProjectUi(currentProjectInfo.projectId);
   let turnRunning = false;
   let refreshStatusBar = null;
   const runnerOptions = {
@@ -114,7 +116,7 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
   try {
     runner = await createRuntimeRunner({
       runnerOptions,
-      ui,
+      ui: runtimeUi,
       shellRuntime,
       refreshStatusBar: (...args) => refreshStatusBar?.(...args),
     });
@@ -130,6 +132,7 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
     cwd,
     currentProject,
     runner,
+    ui: runtimeUi,
     memoryStore,
     sessionState,
     sessionsRoot,
@@ -153,9 +156,10 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
       model,
       permissionMode,
       remoteMemorySources,
-      ui,
+      ui: outputRouter.createProjectUi(project.projectId),
       refreshStatusBar: (...args) => refreshStatusBar?.(...args),
     }),
+    onActivate: ({ projectId }) => outputRouter.setActiveProject(projectId),
   });
   runner = workspaceSupervisor.runner;
 

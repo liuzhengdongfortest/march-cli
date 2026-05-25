@@ -76,6 +76,7 @@ export async function createWorkspaceProjectRuntime({
     cwd,
     currentProject: basename(cwd),
     runner,
+    ui,
     memoryStore,
     sessionState,
     sessionsRoot,

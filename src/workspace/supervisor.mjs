@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { loadPiSessionSidecar } from "../session/sidecar.mjs";
 
-export function createWorkspaceSessionSupervisor({ initialRuntime, createProjectRuntime, viewSessionState = initialRuntime?.sessionState }) {
+export function createWorkspaceSessionSupervisor({ initialRuntime, createProjectRuntime, viewSessionState = initialRuntime?.sessionState, onActivate = null }) {
   if (!initialRuntime?.project?.projectId) throw new Error("initial workspace runtime is missing project metadata");
   if (typeof createProjectRuntime !== "function") throw new Error("createProjectRuntime is required");
 
@@ -29,12 +29,22 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
   return {
     runner,
     getActive,
+    hasRunningTurn,
+    getRunningTurns,
     activateWorkspaceSession,
     dispose,
   };
 
   function getActive() {
     return active;
+  }
+
+  function hasRunningTurn() {
+    return getRunningTurns().length > 0;
+  }
+
+  function getRunningTurns() {
+    return Array.from(runtimes.values()).filter((runtime) => runtime.turnTask);
   }
 
   async function activateWorkspaceSession({ project, session = null }) {
@@ -54,6 +64,7 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
       syncSessionState(runtime, session.id);
     }
     mirrorSessionState(viewSessionState, runtime.sessionState);
+    onActivate?.({ projectId: runtime.project.projectId, runtime });
     return active;
   }
 

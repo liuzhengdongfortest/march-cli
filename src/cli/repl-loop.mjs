@@ -102,11 +102,14 @@ export async function runInteractiveRepl({
       trimmed = templateResult.prompt;
     }
 
-    await runReplTurn({
+    if (workspaceSupervisor?.hasRunningTurn?.()) {
+      ui.writeln("A session is still running. Use /switch to inspect sessions; starting another turn while one is running is not enabled yet.");
+      continue;
+    }
+
+    startReplTurn({
+      runtime: turnActive,
       prompt: trimmed,
-      runner: turnActive.runner,
-      memoryStore: turnActive.memoryStore,
-      currentProject: turnActive.currentProject,
       ui,
       refreshStatusBar,
       setTurnRunning,
@@ -149,6 +152,23 @@ function handleInlineCommand(trimmed, { cwd, ui, lastInlineShellCommand }) {
     return { type: "handled", lastInlineShellCommand: inlineShell.command };
   }
   return { type: "none" };
+}
+
+function startReplTurn({ runtime, prompt, ui, refreshStatusBar, setTurnRunning, modeState = null }) {
+  const turnUi = runtime.ui ?? ui;
+  const task = runReplTurn({
+    prompt,
+    runner: runtime.runner,
+    memoryStore: runtime.memoryStore,
+    currentProject: runtime.currentProject,
+    ui: turnUi,
+    refreshStatusBar,
+    setTurnRunning,
+    modeState,
+  }).finally(() => {
+    if (runtime.turnTask === task) runtime.turnTask = null;
+  });
+  runtime.turnTask = task;
 }
 
 async function runReplTurn({ prompt, runner, memoryStore, currentProject, ui, refreshStatusBar, setTurnRunning, modeState = null }) {

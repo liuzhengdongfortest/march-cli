@@ -8,6 +8,7 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
   const { buildWorkspaceSessionSelectItems, listWorkspaceSessions, workspaceSessionSearchText } = await import("../src/workspace/session-index.mjs");
   const { handleProjectCommand, parseProjectCommand } = await import("../src/cli/workspace/command.mjs");
   const { createWorkspaceSessionSupervisor } = await import("../src/workspace/supervisor.mjs");
+  const { createWorkspaceOutputRouter } = await import("../src/cli/workspace/output-router.mjs");
   const { savePiSessionSidecarState } = await import("../src/session/sidecar.mjs");
 
   const stateRoot = setupTmp();
@@ -50,18 +51,39 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
     const lines = await handleProjectCommand({ type: "add", path: rootB }, { stateRoot });
     assert.ok(lines.join("\n").includes("Registered project"));
 
+    const rendered = [];
+    const baseUi = { textDelta: (text) => rendered.push(text), writeln: (text) => rendered.push(text), requestPermission: async () => true };
+    const outputRouter = createWorkspaceOutputRouter({ ui: baseUi, activeProjectId: projectA.projectId });
+    const uiA = outputRouter.createProjectUi(projectA.projectId);
+    const uiB = outputRouter.createProjectUi(projectB.projectId);
+    uiA.textDelta("visible-a");
+    uiB.textDelta("hidden-b");
+    assert.deepEqual(rendered, ["visible-a"]);
+    assert.equal(outputRouter.getBufferedCalls(projectB.projectId)[0].method, "textDelta");
+    assert.equal(await uiB.requestPermission({ toolName: "edit" }), false);
+    outputRouter.setActiveProject(projectB.projectId);
+    uiB.textDelta("visible-b");
+    assert.deepEqual(rendered, ["visible-a", "visible-b"]);
+
     const viewSessionState = { sessionId: "s-a", sessionDir: "" };
     const disposed = [];
+    const activated = [];
     const supervisor = createWorkspaceSessionSupervisor({
       initialRuntime: mockRuntime({ project: projectA, cwd: rootA, sessionId: "s-a", disposed }),
       viewSessionState,
       createProjectRuntime: async (project) => mockRuntime({ project, cwd: project.rootPath, sessionId: "new", disposed }),
+      onActivate: ({ projectId }) => activated.push(projectId),
     });
     const targetSession = { id: "s-b", path: join(rootB, ".march", "pi-sessions", "s-b.json") };
     savePiSessionSidecarState({ projectMarchDir: join(rootB, ".march"), sessionRef: targetSession.path, state: { version: 1, cwd: resolve(rootB), turns: [] } });
     assert.equal(supervisor.runner.engine.cwd, resolve(rootA));
+    assert.equal(supervisor.hasRunningTurn(), false);
+    supervisor.getActive().turnTask = Promise.resolve();
+    assert.equal(supervisor.hasRunningTurn(), true);
+    supervisor.getActive().turnTask = null;
     await supervisor.activateWorkspaceSession({ project: projectB, session: targetSession });
     assert.equal(supervisor.runner.engine.cwd, resolve(rootB));
+    assert.deepEqual(activated, [projectB.projectId]);
     assert.equal(viewSessionState.sessionId, "s-b");
     await supervisor.dispose();
     assert.deepEqual(disposed.sort(), [projectA.projectId, projectB.projectId].sort());
