@@ -96,12 +96,13 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
     let runtime = session?.id ? runtimes.get(runtimeKey(project.projectId, session.id)) : findIdleRuntime(project.projectId);
     if (!runtime) runtime = await createProjectRuntime(project);
 
+    const targetSessionId = session?.id ?? null;
     let restoreState = null;
-    if (session?.path && getRuntimeSessionId(runtime) !== session.id) {
+    if (session?.path && getRuntimeSessionId(runtime) !== targetSessionId) {
       restoreState = loadWorkspaceMarchSessionState({ runtime, session });
       await runtime.runner.switchPiSession(session.path, restoreState);
-      syncSessionState(runtime, session.id);
     }
+    if (targetSessionId) syncSessionState(runtime, targetSessionId);
 
     active = runtime;
     rememberRuntime(runtime);
@@ -158,7 +159,7 @@ function loadWorkspaceMarchSessionState({ runtime, session }) {
 }
 
 function getRuntimeSessionId(runtime) {
-  return runtime.runner.getSessionStats?.()?.sessionId ?? runtime.sessionState?.sessionId ?? null;
+  return runtime.sessionState?.sessionId ?? runtime.runner.getSessionStats?.()?.sessionId ?? null;
 }
 
 function syncSessionState(runtime, sessionId) {

@@ -159,7 +159,7 @@ function mockRunner({ project, cwd, sessionId, disposed, startNewSession }) {
       this.sessionPath = path;
       this.lastRestoreState = restoreState;
       this.engine.turns = restoreState?.turns ?? [];
-      activeSessionId = path.includes("s-b2") ? "s-b2" : "s-b";
+      // Backend stats can lag behind the March-selected session; supervisor routing must not depend on it.
     },
     async startNewSession() {
       const result = await startNewSession();
