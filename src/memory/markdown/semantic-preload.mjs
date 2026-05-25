@@ -15,3 +15,12 @@ export async function preloadSemanticMemoryRecall({ memoryStore, ui = null, logg
     return { ok: false, error: message };
   }
 }
+
+export function startSemanticMemoryRecallPreload({ memoryStore, ui = null, logger = null, delayMs = 0 } = {}) {
+  if (!memoryStore?.semanticRecall?.enabled) return null;
+  const start = () => preloadSemanticMemoryRecall({ memoryStore, ui, logger });
+  if (delayMs <= 0) return start();
+  const timer = setTimeout(start, delayMs);
+  timer.unref?.();
+  return timer;
+}

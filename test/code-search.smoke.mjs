@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 export async function runCodeSearchSmoke({ setupTmp, cleanup }) {
@@ -29,6 +29,7 @@ export async function runCodeSearchSmoke({ setupTmp, cleanup }) {
     const { CodeSearchIndexCache } = await import("../src/agent/code-search/cache.mjs");
     const { Model2VecVectorizer } = await import("../src/agent/code-search/retrieval/model2vec.mjs");
     const { ResilientVectorizer } = await import("../src/agent/code-search/retrieval/resilient-vectorizer.mjs");
+    const { parseSafetensors } = await import("../src/agent/code-search/retrieval/safetensors.mjs");
     const cache = new CodeSearchIndexCache();
     const result = await searchCode({ root, query: "issueSessionToken", top_k: 3, cache });
     assert.ok(result.stats.files >= 1);
@@ -71,6 +72,10 @@ export async function runCodeSearchSmoke({ setupTmp, cleanup }) {
     const model2vecCache = new CodeSearchIndexCache({
       vectorizer: new Model2VecVectorizer({ modelDir, allowDownload: false }),
     });
+    const safetensorsFile = readFileSync(join(modelDir, "model.safetensors"));
+    const embeddings = parseSafetensors(safetensorsFile).getTensor("embeddings");
+    assert.equal(embeddings.values.buffer, safetensorsFile.buffer);
+
     const model2vec = await searchCode({ root, query: "jwt payload", top_k: 1, mode: "semantic", cache: model2vecCache });
     assert.equal(model2vec.stats.mode, "semantic");
     assert.equal(model2vec.results[0].file_path, "src/auth-service.mjs");

@@ -5,7 +5,7 @@ import { createMarchAuthStorage } from "../auth/storage.mjs";
 import { createRuntimeRunner } from "../cli/startup/create-runtime-runner.mjs";
 import { createCliShellRuntime } from "../shell/cli-runtime.mjs";
 import { MarkdownMemoryStore } from "../memory/markdown-store.mjs";
-import { preloadSemanticMemoryRecall } from "../memory/markdown/semantic-preload.mjs";
+import { startSemanticMemoryRecallPreload } from "../memory/markdown/semantic-preload.mjs";
 import { resolveMemoryRoot } from "../memory/root.mjs";
 import { defaultProfilePaths, ensureProfileFiles } from "../context/profiles.mjs";
 import { loadOrCreateProjectId } from "../cli/startup/startup-session.mjs";
@@ -41,7 +41,6 @@ export async function createWebRuntimeHost({ args, config, cwd, stateRoot } = {}
   const lifecycleManifests = loadProjectLifecycleHookManifests(cwd);
   const contextDumpRoot = resolve(projectMarchDir, "context-dumps", Date.now().toString(36));
   const ui = createHeadlessWebUi();
-  await preloadSemanticMemoryRecall({ memoryStore, ui, logger });
   const currentProject = basename(cwd);
   const namespace = loadOrCreateProjectId(projectMarchDir);
   const runnerOptions = {
@@ -68,6 +67,7 @@ export async function createWebRuntimeHost({ args, config, cwd, stateRoot } = {}
     ui,
     shellRuntime,
   });
+  startSemanticMemoryRecallPreload({ memoryStore, logger, delayMs: 1000 });
   let turnRunning = false;
 
   return {

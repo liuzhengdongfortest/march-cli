@@ -16,34 +16,40 @@ export async function readSafetensors(filePath) {
 }
 
 export function parseSafetensors(buffer) {
-  const data = toArrayBuffer(buffer);
-  const headerLength = Number(new DataView(data, 0, HEADER_BYTES).getBigUint64(0, true));
+  const source = toByteSource(buffer);
+  const headerLength = Number(new DataView(source.buffer, source.byteOffset, HEADER_BYTES).getBigUint64(0, true));
   const headerStart = HEADER_BYTES;
   const headerEnd = headerStart + headerLength;
-  const headerJson = new TextDecoder().decode(new Uint8Array(data, headerStart, headerLength));
+  const headerJson = new TextDecoder().decode(new Uint8Array(source.buffer, source.byteOffset + headerStart, headerLength));
   const header = JSON.parse(headerJson);
   return {
     names: Object.keys(header).filter((name) => name !== "__metadata__"),
     getTensor(name) {
       const descriptor = header[name];
       if (!descriptor) throw new Error(`Missing safetensors tensor: ${name}`);
-      return readTensor(data, headerEnd, descriptor);
+      return readTensor(source, headerEnd, descriptor);
     },
   };
 }
 
-function readTensor(data, dataStart, descriptor) {
+function readTensor(source, dataStart, descriptor) {
   const reader = DTYPE_READERS[descriptor.dtype];
   if (!reader) throw new Error(`Unsupported safetensors dtype: ${descriptor.dtype}`);
   const [start, end] = descriptor.data_offsets;
-  const byteOffset = dataStart + start;
-  const length = (end - start) / reader.size;
-  const view = new DataView(data, byteOffset, end - start);
+  const byteOffset = source.byteOffset + dataStart + start;
+  const byteLength = end - start;
+  const length = byteLength / reader.size;
+  if (descriptor.dtype === "F32" && byteOffset % Float32Array.BYTES_PER_ELEMENT === 0) {
+    return { values: new Float32Array(source.buffer, byteOffset, length), shape: descriptor.shape, dtype: descriptor.dtype };
+  }
+  const view = new DataView(source.buffer, byteOffset, byteLength);
   const values = new Float32Array(length);
   for (let index = 0; index < length; index += 1) values[index] = reader.read(view, index * reader.size);
   return { values, shape: descriptor.shape, dtype: descriptor.dtype };
 }
 
-function toArrayBuffer(buffer) {
-  return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+function toByteSource(buffer) {
+  if (buffer instanceof ArrayBuffer) return { buffer, byteOffset: 0, byteLength: buffer.byteLength };
+  if (ArrayBuffer.isView(buffer)) return { buffer: buffer.buffer, byteOffset: buffer.byteOffset, byteLength: buffer.byteLength };
+  throw new TypeError("safetensors input must be an ArrayBuffer or typed array view");
 }
