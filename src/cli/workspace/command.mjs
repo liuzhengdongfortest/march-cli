@@ -45,14 +45,15 @@ export async function handleProjectCommand(command, { stateRoot }) {
   return ["Registered projects:", ...projects.map((project) => `- ${project.displayName}  ${brightBlack(project.rootPath)}`)];
 }
 
-export async function handleSwitchCommand({ stateRoot, currentProjectId, projectMarchDir, runner, workspaceSupervisor, ui }) {
+export async function handleSwitchCommand({ stateRoot, currentProjectId, projectMarchDir, runner, workspaceSupervisor, workspaceOutputRouter, ui }) {
   if (!stateRoot) {
     ui.writeln("Session switcher is not available: workspace registry is missing.");
     return { handled: true };
   }
   const projects = await listWorkspaceSessions({ stateRoot, currentProjectId });
   const currentSessionId = runner.getSessionStats?.().sessionId ?? null;
-  const items = buildWorkspaceSessionSelectItems(projects, currentSessionId);
+  const runtimeSummaries = workspaceSupervisor?.getRuntimeSummaries?.() ?? [];
+  const items = annotateWorkspaceItems(buildWorkspaceSessionSelectItems(projects, currentSessionId), runtimeSummaries);
   if (items.length === 0) {
     ui.writeln("No registered projects. Start March in a project or run /project add <path>.");
     return { handled: true };
@@ -75,14 +76,26 @@ export async function handleSwitchCommand({ stateRoot, currentProjectId, project
     return { handled: true };
   }
   if (!item.session) {
-    ui.writeln("New session creation from switcher is not active yet.");
-    return { handled: true };
+    if (!workspaceSupervisor?.startNewWorkspaceSession) {
+      ui.writeln("New session creation requires the workspace supervisor.");
+      return { handled: true };
+    }
+    try {
+      const { result } = await workspaceSupervisor.startNewWorkspaceSession(item.project);
+      ui.restoreTranscript?.([]);
+      ui.writeln(`Created session: ${item.project.displayName} / ${result?.sessionId ?? "new session"}`);
+      return { handled: true, refreshContextTokens: true, activeChanged: true };
+    } catch (err) {
+      ui.writeln(`Error: ${err.message}`);
+      return { handled: true };
+    }
   }
   if (workspaceSupervisor) {
     try {
       await workspaceSupervisor.activateWorkspaceSession({ project: item.project, session: item.session });
       restoreTranscriptFromSession(item.session, ui);
-      ui.writeln(`Switched to session: ${item.project.displayName} / ${item.session.name || item.session.id}`);
+      const replayed = ctxReplayBufferedOutput({ workspaceOutputRouter, projectId: item.project.projectId });
+      ui.writeln(`Switched to session: ${item.project.displayName} / ${item.session.name || item.session.id}${replayed ? ` (${replayed} buffered events replayed)` : ""}`);
       return { handled: true, refreshContextTokens: true, activeChanged: true };
     } catch (err) {
       ui.writeln(`Error: ${err.message}`);
@@ -99,6 +112,20 @@ export async function handleSwitchCommand({ stateRoot, currentProjectId, project
   if (isResumeSuccess(lines)) restoreTranscriptFromSession(item.session, ui);
   for (const line of lines) ui.writeln(line);
   return { handled: true, refreshContextTokens: isResumeSuccess(lines) };
+}
+
+function annotateWorkspaceItems(items, runtimeSummaries) {
+  if (!runtimeSummaries.length) return items;
+  const running = new Set(runtimeSummaries.filter((runtime) => runtime.running).map((runtime) => `${runtime.projectId}:${runtime.sessionId}`));
+  return items.map((item) => {
+    if (!item.session) return item;
+    if (!running.has(`${item.project.projectId}:${item.session.id}`)) return item;
+    return { ...item, description: `running · ${item.description}` };
+  });
+}
+
+function ctxReplayBufferedOutput({ workspaceOutputRouter, projectId }) {
+  return workspaceOutputRouter?.replayBufferedCalls?.(projectId) ?? 0;
 }
 
 function restoreTranscriptFromSession(session, ui) {

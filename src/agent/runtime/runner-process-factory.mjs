@@ -85,11 +85,13 @@ export async function createIsolatedRunner(options = {}, deps = {}) {
     maxTurns: options.config?.maxTurns ?? undefined,
     trimBatch: options.config?.trimBatch ?? undefined,
     hostedTools: options.config?.hostedTools,
+    notificationContext: options.notificationContext,
     permissionController: d.createPermissionController({ mode: options.permissionMode }),
     modelContextDumper: d.createModelContextDumper(options.modelContextDumper ?? { enabled: false }),
     turnNotifier: d.createDesktopTurnNotifier({
       enabled: Boolean(options.config?.notifications?.turnEnd),
       config: options.config?.notifications,
+      onActivation: (activation) => d.peer.notify("notificationActivation", activation),
     }),
     logger,
     onModelPayload: (event) => d.peer.notify("modelPayload", pickModelPayloadEvent(event)),

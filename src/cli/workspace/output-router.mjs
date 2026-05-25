@@ -55,10 +55,25 @@ export function createWorkspaceOutputRouter({ ui, activeProjectId }) {
     getBufferedCalls(projectId) {
       return [...(buffers.get(projectId) ?? [])];
     },
+    getBufferedCallCount(projectId) {
+      return buffers.get(projectId)?.length ?? 0;
+    },
+    replayBufferedCalls(projectId) {
+      const calls = buffers.get(projectId) ?? [];
+      buffers.delete(projectId);
+      for (const call of calls) replayBufferedCall(call);
+      return calls.length;
+    },
     clearBufferedCalls(projectId) {
       buffers.delete(projectId);
     },
   };
+
+  function replayBufferedCall({ method, args }) {
+    if (method === "requestPermission") return;
+    const value = ui[method];
+    if (typeof value === "function") value.apply(ui, args);
+  }
 
   function bufferBackgroundCall(projectId, method, args) {
     const calls = buffers.get(projectId) ?? [];

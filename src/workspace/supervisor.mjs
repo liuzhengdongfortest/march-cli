@@ -14,6 +14,8 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
       if (prop === "dispose") return dispose;
       if (prop === "getActiveWorkspaceRuntime") return getActive;
       if (prop === "activateWorkspaceSession") return activateWorkspaceSession;
+      if (prop === "activateWorkspaceSessionById") return activateWorkspaceSessionById;
+      if (prop === "startNewWorkspaceSession") return startNewWorkspaceSession;
       const value = active.runner[prop];
       return typeof value === "function" ? value.bind(active.runner) : value;
     },
@@ -22,7 +24,7 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
       return true;
     },
     has(_target, prop) {
-      return prop === "dispose" || prop === "getActiveWorkspaceRuntime" || prop === "activateWorkspaceSession" || prop in active.runner;
+      return prop === "dispose" || prop === "getActiveWorkspaceRuntime" || prop === "activateWorkspaceSession" || prop === "activateWorkspaceSessionById" || prop === "startNewWorkspaceSession" || prop in active.runner;
     },
   });
 
@@ -31,7 +33,10 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
     getActive,
     hasRunningTurn,
     getRunningTurns,
+    getRuntimeSummaries,
     activateWorkspaceSession,
+    activateWorkspaceSessionById,
+    startNewWorkspaceSession,
     dispose,
   };
 
@@ -45,6 +50,31 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
 
   function getRunningTurns() {
     return Array.from(runtimes.values()).filter((runtime) => runtime.turnTask);
+  }
+
+  function getRuntimeSummaries() {
+    return Array.from(runtimes.values()).map((runtime) => ({
+      projectId: runtime.project.projectId,
+      sessionId: runtime.runner.getSessionStats?.()?.sessionId ?? runtime.sessionState?.sessionId ?? null,
+      running: Boolean(runtime.turnTask),
+      active: runtime === active,
+    }));
+  }
+
+  async function activateWorkspaceSessionById({ projects = [], projectId, sessionId }) {
+    const project = projects.find((candidate) => candidate.projectId === projectId);
+    if (!project) throw new Error(`workspace project not found: ${projectId}`);
+    const session = project.sessions?.find((candidate) => candidate.id === sessionId) ?? null;
+    if (sessionId && !session) throw new Error(`workspace session not found: ${sessionId}`);
+    return await activateWorkspaceSession({ project, session });
+  }
+
+  async function startNewWorkspaceSession(project) {
+    await activateWorkspaceSession({ project, session: null });
+    const result = await active.runner.startNewSession();
+    if (!result?.cancelled && result?.sessionId) syncSessionState(active, result.sessionId);
+    mirrorSessionState(viewSessionState, active.sessionState);
+    return { runtime: active, result };
   }
 
   async function activateWorkspaceSession({ project, session = null }) {

@@ -11,11 +11,9 @@ import { runRunnerCleanup } from "./runner/runner-cleanup.mjs";
 import { createRunnerRuntimeHost } from "./runtime/runner-runtime-host.mjs";
 import { createRuntimeUiBridge } from "./runtime/ui-event-bridge.mjs";
 import { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
-import { notifyTurnEndBestEffort, notifyTurnEndDetached, providerContextToPayload } from "./runner/runner-utils.mjs";
+import { buildNotificationActivation, installRunnerProcessGuards, notifyTurnEndBestEffort, notifyTurnEndDetached, providerContextToPayload } from "./runner/runner-utils.mjs";
 import { dumpCodexTransportDebug, getCodexTransportDebugSnapshot } from "./runner/codex-transport-debug.mjs";
-import { installCodexWebSocketEventDebug } from "./runner/codex-websocket-event-debug.mjs";
-import { installCodexTransportCompression } from "./runner/codex-transport-compression.mjs";
-import { applyCodexLargeContextGuardToPayload, installCodexLargeContextGuard } from "./runner/codex-large-context-guard.mjs";
+import { applyCodexLargeContextGuardToPayload } from "./runner/codex-large-context-guard.mjs";
 import { resolveRunnerSessionOptions } from "./session/session-options.mjs";
 import { createSessionBinding } from "./session/session-binding.mjs";
 import { maybeAutoNameSession } from "./session/session-auto-name.mjs";
@@ -32,10 +30,8 @@ import { appendRunnerTurnHistory, createRunnerHistoryStore } from "../history/ru
 export { MARCH_BASE_TOOL_NAMES, installModelPayloadDumper };
 export { createDefaultSessionManager, resolveRunnerSessionManager } from "./runner/runner-init.mjs";
 export { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
-export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, memoryRoot = null, profilePaths = null, memoryStore = null, memoryTools = [], remoteMemorySources = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, modelContextDumper = null, turnNotifier = null, logger = null, onModelPayload = null, onLspStatusChange = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices, maxTurns, trimBatch, serviceTier = null, hostedTools = {} }) {
-  installCodexLargeContextGuard();
-  installCodexTransportCompression();
-  installCodexWebSocketEventDebug();
+export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, memoryRoot = null, profilePaths = null, memoryStore = null, memoryTools = [], remoteMemorySources = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, permissionController = null, modelContextDumper = null, turnNotifier = null, logger = null, onModelPayload = null, onLspStatusChange = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices, maxTurns, trimBatch, serviceTier = null, hostedTools = {}, notificationContext = null }) {
+  installRunnerProcessGuards();
   if (!useRuntimeHost && extensionPaths.length > 0) throw new Error("--extension requires the default pi runtime host path");
   const authConfig = authStorage ? { authStorage, hasAuth: true } : createMarchAuthStorage({ provider: provider ?? "deepseek", providers, cwd });
   if (!authConfig.hasAuth) throw new Error("No providers configured. Run: march provider --config");
@@ -139,6 +135,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
           sessionName: engine.sessionName,
           draft: result?.draft ?? "",
           durationMs: Date.now() - turnStartedAt,
+          activation: buildNotificationActivation({ notificationContext, sessionStats: getRunnerSessionStats(sessionBinding.get(), runtimeHost) }),
         }, (notificationResult) => { lastNotificationResult = notificationResult; });
         const lifecycleAction = lifecycle.takePendingAction();
         if (lifecycleAction) result.lifecycleAction = lifecycleAction;
@@ -150,6 +147,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
           sessionName: engine.sessionName,
           errorMessage: err?.message ?? String(err),
           durationMs: Date.now() - turnStartedAt,
+          activation: buildNotificationActivation({ notificationContext, sessionStats: getRunnerSessionStats(sessionBinding.get(), runtimeHost) }),
         }, (notificationResult) => { lastNotificationResult = notificationResult; });
         turnLog.endError(err);
         throw err;
@@ -257,6 +255,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       ]);
     },
   };
+  return runner;
   function syncCurrentPiSidecar() {
     return syncPiSessionSidecar({
       enabled: syncPiSidecar, projectMarchDir, engine,

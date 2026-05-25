@@ -11,6 +11,7 @@ export async function createRunnerProcessClient({
   ui,
   onModelPayload = null,
   onLspStatusChange = null,
+  onNotificationActivation = null,
   entry = fileURLToPath(DEFAULT_ENTRY),
   forkImpl = fork,
   timeoutMs = 0,
@@ -51,6 +52,7 @@ export async function createRunnerProcessClient({
           await active?.runner?.refreshState?.();
           onLspStatusChange?.(event);
         },
+        notificationActivation: (activation) => onNotificationActivation?.(activation),
       },
       timeoutMs,
     });

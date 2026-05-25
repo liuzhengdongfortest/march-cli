@@ -24,6 +24,7 @@ export async function createWorkspaceProjectRuntime({
   remoteMemorySources,
   ui,
   refreshStatusBar,
+  onNotificationActivation = null,
 }) {
   const cwd = project.rootPath;
   const projectMarchDir = resolve(cwd, ".march");
@@ -65,10 +66,12 @@ export async function createWorkspaceProjectRuntime({
       lifecycleDiagnostics: lifecycleManifests.diagnostics,
       modelContextDumper: { enabled: args.dumpContext, rootDir: contextDumpRoot },
       remoteMemorySources,
+      notificationContext: { projectId: project.projectId },
     },
     ui,
     shellRuntime: projectShellRuntime,
     refreshStatusBar,
+    onNotificationActivation,
   });
 
   return {

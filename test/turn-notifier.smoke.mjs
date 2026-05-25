@@ -9,6 +9,7 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
   const { handleSlashCommand } = await import("../src/cli/slash-commands.mjs");
 
   const toastCalls = [];
+  const activations = [];
   const notifier = createDesktopTurnNotifier({
     platform: "win32",
     toastNotifier: {
@@ -17,6 +18,7 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
         setImmediate(() => callback(null, { activationType: "timeout" }));
       },
     },
+    onActivation: (activation) => activations.push(activation),
   });
   const result = await notifier.notifyTurnEnd({ status: "success", sessionName: "Smoke", draft: "Smoke reply", durationMs: 25 });
   assert.equal(result.ok, true);
@@ -26,6 +28,12 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
   assert.ok(toastCalls[0].icon.endsWith("march-icon.png"));
   assert.equal(toastCalls[0].appID, "March");
   assert.equal(toastCalls[0].sound, true);
+  assert.equal(toastCalls[0].wait, false);
+
+  await notifier.notifyTurnEnd({ status: "success", draft: "Activated", activation: { type: "workspace-session", projectId: "p", sessionId: "s" } });
+  assert.equal(toastCalls[1].wait, true);
+  assert.deepEqual(toastCalls[1].activation, { type: "workspace-session", projectId: "p", sessionId: "s" });
+  assert.deepEqual(activations, []);
 
   const spawned = [];
   const fallback = await createDesktopTurnNotifier({
@@ -73,6 +81,14 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
   }).notifyTurnEnd({ status: "success" });
   assert.equal(customSoundCalls[0].sound, "ms-winsoundevent:Notification.IM");
 
+  const clickActivations = [];
+  await createDesktopTurnNotifier({
+    platform: "win32",
+    toastNotifier: { notify: (_options, callback) => setImmediate(() => callback(null, "activate")) },
+    onActivation: (activation) => clickActivations.push(activation),
+  }).notifyTurnEnd({ status: "success", activation: { type: "workspace-session", projectId: "p-click", sessionId: "s-click" } });
+  assert.deepEqual(clickActivations, [{ type: "workspace-session", projectId: "p-click", sessionId: "s-click" }]);
+
   const silentCalls = [];
   await createDesktopTurnNotifier({
     platform: "win32",
@@ -112,6 +128,7 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
   assert.ok(buildWindowsBalloonScript({ title: "March's turn", message: "done" }).includes("March''s turn"));
   const toastOptions = buildWindowsToastOptions({ title: "March's turn", message: "ready & waiting", iconPath: "C:\\tmp\\March's icon.png", sound: "ms-winsoundevent:Notification.Default" });
   assert.deepEqual(toastOptions, { title: "March's turn", message: "ready & waiting", icon: "C:\\tmp\\March's icon.png", appID: "March", sound: "ms-winsoundevent:Notification.Default", wait: false });
+  assert.equal(buildWindowsToastOptions({ title: "x", message: "y", activation: { projectId: "p" } }).wait, true);
   const notificationScript = buildWindowsNotificationScript({ title: "March's turn", message: "ready & waiting", iconPath: "C:\\tmp\\March's icon.png" });
   assert.ok(notificationScript.includes("System.Windows.Forms.NotifyIcon"));
   assert.ok(notificationScript.includes("March''s turn"));

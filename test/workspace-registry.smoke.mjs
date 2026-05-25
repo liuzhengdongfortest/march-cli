@@ -60,18 +60,21 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
     uiB.textDelta("hidden-b");
     assert.deepEqual(rendered, ["visible-a"]);
     assert.equal(outputRouter.getBufferedCalls(projectB.projectId)[0].method, "textDelta");
+    assert.equal(outputRouter.getBufferedCallCount(projectB.projectId), 1);
     assert.equal(await uiB.requestPermission({ toolName: "edit" }), false);
     outputRouter.setActiveProject(projectB.projectId);
+    assert.equal(outputRouter.replayBufferedCalls(projectB.projectId), 2);
     uiB.textDelta("visible-b");
-    assert.deepEqual(rendered, ["visible-a", "visible-b"]);
+    assert.deepEqual(rendered, ["visible-a", "hidden-b", "visible-b"]);
 
     const viewSessionState = { sessionId: "s-a", sessionDir: "" };
     const disposed = [];
     const activated = [];
+    let newSessionCounter = 0;
     const supervisor = createWorkspaceSessionSupervisor({
       initialRuntime: mockRuntime({ project: projectA, cwd: rootA, sessionId: "s-a", disposed }),
       viewSessionState,
-      createProjectRuntime: async (project) => mockRuntime({ project, cwd: project.rootPath, sessionId: "new", disposed }),
+      createProjectRuntime: async (project) => mockRuntime({ project, cwd: project.rootPath, sessionId: "new", disposed, startNewSession: async () => ({ sessionId: `created-${++newSessionCounter}` }) }),
       onActivate: ({ projectId }) => activated.push(projectId),
     });
     const targetSession = { id: "s-b", path: join(rootB, ".march", "pi-sessions", "s-b.json") };
@@ -85,6 +88,10 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
     assert.equal(supervisor.runner.engine.cwd, resolve(rootB));
     assert.deepEqual(activated, [projectB.projectId]);
     assert.equal(viewSessionState.sessionId, "s-b");
+    const summaries = supervisor.getRuntimeSummaries();
+    assert.ok(summaries.some((runtime) => runtime.projectId === projectB.projectId && runtime.sessionId === "s-b"));
+    await supervisor.startNewWorkspaceSession(projectB);
+    assert.equal(viewSessionState.sessionId, "created-1");
     await supervisor.dispose();
     assert.deepEqual(disposed.sort(), [projectA.projectId, projectB.projectId].sort());
   } finally {
@@ -95,7 +102,7 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
   console.log("  PASS");
 }
 
-function mockRuntime({ project, cwd, sessionId, disposed }) {
+function mockRuntime({ project, cwd, sessionId, disposed, startNewSession = async () => ({ sessionId: "created" }) }) {
   return {
     project,
     cwd: resolve(cwd),
@@ -109,6 +116,7 @@ function mockRuntime({ project, cwd, sessionId, disposed }) {
       async switchPiSession(path) {
         this.sessionPath = path;
       },
+      startNewSession,
       async dispose() {
         disposed.push(project.projectId);
       },

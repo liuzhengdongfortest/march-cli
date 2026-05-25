@@ -79,6 +79,7 @@ export async function run(argv) {
       currentProject: app.currentProject,
       currentProjectInfo: app.currentProjectInfo,
       workspaceSupervisor: app.workspaceSupervisor,
+      workspaceOutputRouter: app.workspaceOutputRouter,
       stateRoot,
       sessionState: app.sessionState,
       sessionsRoot: app.sessionsRoot,

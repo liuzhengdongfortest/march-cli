@@ -12,6 +12,7 @@ export function createDesktopTurnNotifier({
   writeBell = () => process.stdout.write("\x07"),
   toastNotifier = nodeNotifier,
   config = {},
+  onActivation = null,
 } = {}) {
   const channels = resolveNotificationChannels(config);
   const minDurationMs = normalizeNonNegativeInteger(config.minDurationMs, 0);
@@ -31,7 +32,7 @@ export function createDesktopTurnNotifier({
       if (channels.desktop) {
         results.push({
           channel: "desktop",
-          ...(await sendDesktopNotification({ platform, spawnProcess, toastNotifier, ...payload })),
+          ...(await sendDesktopNotification({ platform, spawnProcess, toastNotifier, onActivation, activation: normalizedEvent.activation, ...payload })),
         });
       }
       if (channels.bell) results.push({ channel: "bell", ...sendBellNotification({ writeBell }) });
@@ -52,14 +53,14 @@ export function createDesktopTurnNotifier({
   };
 }
 
-export async function sendDesktopNotification({ platform = process.platform, spawnProcess = spawn, toastNotifier = nodeNotifier, title, message, iconPath = DEFAULT_NOTIFICATION_ICON_PATH, sound = true }) {
+export async function sendDesktopNotification({ platform = process.platform, spawnProcess = spawn, toastNotifier = nodeNotifier, title, message, iconPath = DEFAULT_NOTIFICATION_ICON_PATH, sound = true, activation = null, onActivation = null }) {
   if (platform !== "win32") return { ok: false, reason: "unsupported-platform" };
 
   const safeTitle = normalizeNotificationText(title) || "March";
   const safeMessage = normalizeNotificationText(message) || "Turn finished";
 
   try {
-    const toastResult = await sendWindowsToastNotification({ toastNotifier, title: safeTitle, message: safeMessage, iconPath, sound });
+    const toastResult = await sendWindowsToastNotification({ toastNotifier, title: safeTitle, message: safeMessage, iconPath, sound, activation, onActivation });
     if (toastResult.ok) return { ok: true };
 
     const script = buildWindowsNotificationScript({ title: safeTitle, message: safeMessage, iconPath });
@@ -140,18 +141,19 @@ export function buildWindowsNotificationScript({ title, message, timeoutMs = DEF
   return buildWindowsBalloonScript({ title, message, timeoutMs, iconPath });
 }
 
-export function buildWindowsToastOptions({ title, message, iconPath = DEFAULT_NOTIFICATION_ICON_PATH, sound = true }) {
+export function buildWindowsToastOptions({ title, message, iconPath = DEFAULT_NOTIFICATION_ICON_PATH, sound = true, activation = null }) {
   return {
     title,
     message,
     icon: iconPath,
     appID: "March",
     sound,
-    wait: false,
+    wait: Boolean(activation),
+    ...(activation ? { activation } : {}),
   };
 }
 
-function sendWindowsToastNotification({ toastNotifier = nodeNotifier, title, message, iconPath, sound }) {
+function sendWindowsToastNotification({ toastNotifier = nodeNotifier, title, message, iconPath, sound, activation = null, onActivation = null }) {
   return new Promise((resolve) => {
     const notify = toastNotifier?.notify;
     if (typeof notify !== "function") {
@@ -161,12 +163,13 @@ function sendWindowsToastNotification({ toastNotifier = nodeNotifier, title, mes
 
     let settled = false;
     const timeout = setTimeout(() => finish({ ok: false, reason: "toast-timeout" }), DEFAULT_BALLOON_TIMEOUT_MS + 5000);
-    notify.call(toastNotifier, buildWindowsToastOptions({ title, message, iconPath, sound }), (err) => {
+    notify.call(toastNotifier, buildWindowsToastOptions({ title, message, iconPath, sound, activation }), (err, response, metadata) => {
       if (err) {
         finish({ ok: false, reason: err?.message ?? String(err) });
         return;
       }
-      finish({ ok: true });
+      if (isNotificationActivation(response, metadata)) onActivation?.(activation);
+      finish({ ok: true, activated: isNotificationActivation(response, metadata) });
     });
 
     function finish(result) {
@@ -176,6 +179,11 @@ function sendWindowsToastNotification({ toastNotifier = nodeNotifier, title, mes
       resolve(result);
     }
   });
+}
+
+function isNotificationActivation(response, metadata) {
+  const text = `${response ?? ""} ${metadata?.activationType ?? ""} ${metadata?.activationKind ?? ""}`.toLowerCase();
+  return /activate|click|contentsclicked|buttonclicked/.test(text);
 }
 
 function resolveNotificationChannels(config) {

@@ -20,6 +20,7 @@ import { normalizeRemoteMemorySources } from "../../memory/remote/config.mjs";
 import { resolveMemoryRoot } from "../../memory/root.mjs";
 import { ensureBrowserDaemon } from "../../browser/client/lifecycle.mjs";
 import { registerProject } from "../../workspace/project-registry.mjs";
+import { listWorkspaceSessions } from "../../workspace/session-index.mjs";
 import { createWorkspaceSessionSupervisor } from "../../workspace/supervisor.mjs";
 import { createWorkspaceProjectRuntime } from "../workspace/project-runtime.mjs";
 import { createWorkspaceOutputRouter } from "../workspace/output-router.mjs";
@@ -110,15 +111,21 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
     lifecycleDiagnostics: lifecycleManifests.diagnostics,
     modelContextDumper: { enabled: args.dumpContext, rootDir: contextDumpRoot },
     remoteMemorySources,
+    notificationContext: { projectId: currentProjectInfo.projectId },
   };
 
   let runner;
+  let workspaceSupervisor = null;
+  const onNotificationActivation = (activation) => {
+    handleNotificationActivation({ activation, stateRoot, workspaceSupervisor, outputRouter, ui }).catch((err) => ui.writeln(`Notification activation failed: ${err.message}`));
+  };
   try {
     runner = await createRuntimeRunner({
       runnerOptions,
       ui: runtimeUi,
       shellRuntime,
       refreshStatusBar: (...args) => refreshStatusBar?.(...args),
+      onNotificationActivation,
     });
   } catch (err) {
     process.stderr.write(`Error: ${err.message}\n`);
@@ -141,7 +148,7 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
     keybindingConfig,
     promptTemplateConfig,
   };
-  const workspaceSupervisor = createWorkspaceSessionSupervisor({
+  workspaceSupervisor = createWorkspaceSessionSupervisor({
     initialRuntime,
     createProjectRuntime: (project) => createWorkspaceProjectRuntime({
       project,
@@ -158,6 +165,7 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
       remoteMemorySources,
       ui: outputRouter.createProjectUi(project.projectId),
       refreshStatusBar: (...args) => refreshStatusBar?.(...args),
+      onNotificationActivation,
     }),
     onActivate: ({ projectId }) => outputRouter.setActiveProject(projectId),
   });
@@ -201,6 +209,7 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
     ui,
     runner,
     workspaceSupervisor,
+    workspaceOutputRouter: outputRouter,
     memoryStore,
     currentProject,
     currentProjectInfo,
@@ -218,4 +227,17 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
     refreshStatusBar,
     setTurnRunning(value) { turnRunning = value; },
   };
+}
+
+async function handleNotificationActivation({ activation, stateRoot, workspaceSupervisor, outputRouter, ui }) {
+  if (activation?.type !== "workspace-session" || !activation.projectId) return;
+  if (!workspaceSupervisor) throw new Error("workspace supervisor is not ready");
+  const projects = await listWorkspaceSessions({ stateRoot, currentProjectId: workspaceSupervisor.getActive?.()?.project?.projectId ?? null });
+  const runtime = await workspaceSupervisor.activateWorkspaceSessionById({
+    projects,
+    projectId: activation.projectId,
+    sessionId: activation.sessionId,
+  });
+  outputRouter?.replayBufferedCalls?.(activation.projectId);
+  ui.writeln(`Activated session from notification: ${runtime.project.displayName}`);
 }

@@ -5,6 +5,7 @@ export async function createRuntimeRunner({
   ui,
   shellRuntime,
   refreshStatusBar,
+  onNotificationActivation = null,
 } = {}) {
   const onModelPayload = ({ estimatedTokens }) => {
     refreshStatusBar?.({ contextTokens: estimatedTokens });
@@ -13,7 +14,7 @@ export async function createRuntimeRunner({
     refreshStatusBar?.();
   };
 
-  const { runner } = await createRunnerProcessClient({ runnerOptions, ui, onModelPayload, onLspStatusChange });
+  const { runner } = await createRunnerProcessClient({ runnerOptions, ui, onModelPayload, onLspStatusChange, onNotificationActivation });
   runner.shellRuntime ??= shellRuntime;
   return runner;
 }
