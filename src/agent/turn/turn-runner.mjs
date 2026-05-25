@@ -20,6 +20,7 @@ export async function runRunnerTurn({
   autoNameSession,
   contextMode = "rebuild",
   recordHistory = null,
+  trackMidTurnRecallInjection = null,
 }) {
   const {
     userRecallHints = [],
@@ -57,7 +58,8 @@ export async function runRunnerTurn({
     }
     handleRunnerSessionEvent(event, { ui, engine, state: turnState });
     if (event.type === "tool_execution_start") {
-      const task = flushMidTurnAssistantRecall({ memoryStore, engine, turnState, activeSession, ui, logger, midTurnRecallHints });
+      const task = flushMidTurnAssistantRecall({ memoryStore, engine, turnState, activeSession, ui, logger, midTurnRecallHints, trackMidTurnRecallInjection });
+      trackMidTurnRecallInjection?.({ task });
       midTurnRecallTasks.push(task);
     }
   });
@@ -169,16 +171,16 @@ function throwIfAssistantEndedWithError(turnState) {
 
 function queueMidTurnRecallHints(session, hints, logger) {
   const content = formatRecallHints(hints);
-  if (!content) return;
-  const injected = session.sendCustomMessage?.({
+  if (!content) return null;
+  const task = Promise.resolve(session.sendCustomMessage?.({
     customType: "march.recall",
     content,
     display: false,
     details: { type: "recall" },
-  }, { deliverAs: "steer" });
-  void injected?.catch?.((err) => {
+  }, { deliverAs: "steer" })).catch((err) => {
     logger?.debug("memory.mid_turn_recall.inject_failed", { errorMessage: err?.message ?? String(err) });
   });
+  return { content, task };
 }
 
 function logSessionEvent(logger, event) {
@@ -234,12 +236,13 @@ async function flushAssistantRecall({ memoryStore, engine, turnState }) {
   });
 }
 
-async function flushMidTurnAssistantRecall({ memoryStore, engine, turnState, activeSession, ui, logger, midTurnRecallHints }) {
+async function flushMidTurnAssistantRecall({ memoryStore, engine, turnState, activeSession, ui, logger, midTurnRecallHints, trackMidTurnRecallInjection }) {
   try {
     const { hints, report } = await flushAssistantRecall({ memoryStore, engine, turnState });
     if (hints.length > 0) {
       midTurnRecallHints.push(...hints);
-      queueMidTurnRecallHints(activeSession, hints, logger);
+      const injection = queueMidTurnRecallHints(activeSession, hints, logger);
+      if (injection) trackMidTurnRecallInjection?.(injection);
     }
     if (report) ui.recall?.({ hints, report, variant: "assistant" });
   } catch (err) {

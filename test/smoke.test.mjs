@@ -42,7 +42,7 @@ import { runReadFileToolSmoke } from "./read-file-tool.smoke.mjs";
 import { runReadImageToolSmoke } from "./read-image-tool.smoke.mjs";
 import { runRipgrepResolverSmoke } from "./ripgrep-resolver.smoke.mjs";
 import { runRunnerCoreSmoke } from "./runner-core.smoke.mjs";
-import { runRunnerIdleTimeoutSmoke } from "./runner-idle-timeout.smoke.mjs";
+import { runRunnerProviderRetrySettingsSmoke } from "./runner-provider-retry-settings.smoke.mjs";
 import { runRunnerModelErrorSmoke } from "./runner-model-error.smoke.mjs";
 import { runRuntimeIpcSmoke } from "./runtime-ipc.smoke.mjs";
 import { runRuntimeRunnerIpcSmoke } from "./runtime-runner-ipc.smoke.mjs";
@@ -340,7 +340,7 @@ await runRuntimeUiEventsSmoke();
 await runRuntimeIpcSmoke();
 await runRuntimeRunnerIpcSmoke();
 await runRunnerCoreSmoke();
-await runRunnerIdleTimeoutSmoke({ setupTmp, cleanup });
+await runRunnerProviderRetrySettingsSmoke({ setupTmp, cleanup });
 await runRunnerModelErrorSmoke({ setupTmp, cleanup });
 
 // ── 3d. Autocomplete provider ───────────────────────────────────────

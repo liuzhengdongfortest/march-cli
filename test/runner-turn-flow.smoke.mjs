@@ -80,7 +80,6 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
             { role: "system", content: "Pi system" },
             { role: "assistant", content: null, tool_calls: [{ id: "call_1", type: "function", function: { name: "read", arguments: '{"path":"a.txt"}' } }] },
             { role: "tool", content: "file body", tool_call_id: "call_1" },
-            ...customSteerMessages.map((content) => ({ role: "user", content })),
           ],
         }, this.model));
         emit({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "draft text" } });
@@ -202,7 +201,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.equal(providerPayloads[1].messages[0].role, "system");
   assert.equal(providerPayloads[1].messages[0].content, "Pi system");
   assert.ok(!providerPayloads[1].messages.some((message) => providerMessageText(message).includes("[system_core]")));
-  assert.ok(providerPayloads[1].messages.some((message) => providerMessageText(message).includes("[recall]")));
+  assert.equal(providerPayloads[1].messages.filter((message) => providerMessageText(message).includes("[recall]")).length, 1);
   assert.ok(customSteerMessages[0].includes("mem_thinking | Thinking memory | Matched from thinking text."));
   assert.equal(runner.engine.turns[0].assistantRecallHints.length, 2);
   assert.equal(runner.engine.turns[0].assistantRecallHints[0].id, "mem_thinking");

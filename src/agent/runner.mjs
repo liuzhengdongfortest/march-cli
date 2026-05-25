@@ -15,6 +15,7 @@ import { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-s
 import { buildNotificationActivation, installRunnerProcessGuards, notifyTurnEndBestEffort, notifyTurnEndDetached, providerContextToPayload } from "./runner/runner-utils.mjs";
 import { dumpCodexTransportDebug, getCodexTransportDebugSnapshot } from "./runner/codex-transport-debug.mjs";
 import { createRunnerProviderPayloadTransform } from "./runner/payload/provider-payload-transform.mjs";
+import { createMidTurnRecallBridge } from "./runner/recall/mid-turn-recall-bridge.mjs";
 import { resolveRunnerSessionOptions } from "./session/session-options.mjs";
 import { createSessionBinding } from "./session/session-binding.mjs";
 import { maybeAutoNameSession } from "./session/session-auto-name.mjs";
@@ -28,8 +29,7 @@ import { createRunnerLifecycle } from "./lifecycle/runner-lifecycle.mjs";
 import { createRunnerProviderQuotaRuntime } from "./runner/provider-quota-runtime.mjs";
 import { appendRunnerTurnHistory, createRunnerHistoryStore } from "../history/runner.mjs";
 export { MARCH_BASE_TOOL_NAMES, installModelPayloadDumper };
-export { createDefaultSessionManager, resolveRunnerSessionManager } from "./runner/runner-init.mjs";
-export { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
+export { createDefaultSessionManager, resolveRunnerSessionManager } from "./runner/runner-init.mjs"; export { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
 export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, memoryRoot = null, profilePaths = null, memoryStore = null, memoryTools = [], remoteMemorySources = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncMarchSessionState: syncMarchSessionStateEnabled = false, syncPiSidecar = syncMarchSessionStateEnabled, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, modelContextDumper = null, turnNotifier = null, logger = null, onModelPayload = null, onLspStatusChange = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices, maxTurns, trimBatch, serviceTier = null, hostedTools = {}, notificationContext = null }) {
   installRunnerProcessGuards();
   if (!useRuntimeHost && extensionPaths.length > 0) throw new Error("--extension requires the default pi runtime host path");
@@ -43,10 +43,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   if (!selectedModel) throw new Error("No authenticated models available. Run: march provider --config");
   provider = selectedModel.provider;
   modelId = selectedModel.id;
-  const settingsManager = SettingsManager.inMemory({
-    compaction: { enabled: false },
-    retry: { enabled: true, maxRetries: 3, baseDelayMs: 2000 },
-  });
+  const settingsManager = SettingsManager.inMemory({ compaction: { enabled: false }, retry: { enabled: true, maxRetries: 3, baseDelayMs: 2000, provider: { timeoutMs: 20000, maxRetries: 3, maxRetryDelayMs: 60000 } } });
   const { ui: runtimeUi, eventBus: runtimeUiEvents, detach: detachRuntimeUi } = createRuntimeUiBridge(ui);
   const lspService = new LspService({ cwd, onEvent: (event) => runtimeUi.status?.(formatLspServiceEvent(event)), onStatusChange: (event) => onLspStatusChange?.(event) });
   const engine = new ContextEngine({ cwd, modelId, provider, namespace, memoryRoot, profilePaths, remoteMemorySources, shellRuntime, lspService, injections: mcpInjections, maxTurns, trimBatch });
@@ -54,16 +51,17 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   const resolvedSessionManager = resolveRunnerSessionManager(cwd, sessionManager);
   const sessionBinding = createSessionBinding(null);
   let currentModelCallKind = "model", currentTurnId = null, currentPromptForContext = "";
+  const midTurnRecallBridge = createMidTurnRecallBridge();
   const lifecycle = createRunnerLifecycle();
-  let currentTurnContextMode = "rebuild";
-  let nextTurnContextMode = "rebuild";
-  let lastNotificationResult = null, runtimeHost = null, lifecycleAdapter = null;
-  let _currentFastEntry = null;
+  let currentTurnContextMode = "rebuild", nextTurnContextMode = "rebuild";
+  let lastNotificationResult = null, runtimeHost = null, lifecycleAdapter = null, _currentFastEntry = null;
   const providerPayloadTransform = createRunnerProviderPayloadTransform({
     engine, sessionBinding, hostedTools,
     getCurrentPrompt: () => currentPromptForContext,
     getContextMode: () => currentTurnContextMode,
     getFastEntry: () => _currentFastEntry,
+    waitForMidTurnRecall: () => midTurnRecallBridge.wait(),
+    getMidTurnRecallMessages: () => midTurnRecallBridge.messages(),
   });
   if (useRuntimeHost) {
     runtimeHost = await createRunnerRuntimeHost({
@@ -125,6 +123,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       const contextMode = nextTurnContextMode;
       currentTurnContextMode = contextMode;
       providerPayloadTransform.resetTurn();
+      midTurnRecallBridge.reset();
       nextTurnContextMode = "rebuild";
       lifecycle.clearPendingAction();
       const turnStartedAt = Date.now();
@@ -141,6 +140,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
           autoNameSession,
           contextMode,
           recordHistory: (turn) => appendRunnerTurnHistory({ store: historyStore, turn, sessionStats: getRunnerSessionStats(sessionBinding.get(), runtimeHost), modelId: engine.modelId, provider: engine.provider }),
+          trackMidTurnRecallInjection: (injection) => midTurnRecallBridge.track(injection),
         });
         notifyTurnEndDetached(turnNotifier, {
           status: "success",

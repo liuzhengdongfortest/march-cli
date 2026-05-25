@@ -9,6 +9,8 @@ export function createRunnerProviderPayloadTransform({
   getCurrentPrompt,
   getContextMode,
   getFastEntry,
+  waitForMidTurnRecall = null,
+  getMidTurnRecallMessages = null,
 }) {
   let didReplaceProviderContext = false;
 
@@ -16,7 +18,7 @@ export function createRunnerProviderPayloadTransform({
     resetTurn() {
       didReplaceProviderContext = false;
     },
-    transform(payload, { kind, model } = {}) {
+    async transform(payload, { kind, model } = {}) {
       if (kind !== "user") return payload;
       const shouldReplaceProviderContext = getContextMode() !== "continueExistingPiTranscript"
         && !didReplaceProviderContext;
@@ -24,6 +26,9 @@ export function createRunnerProviderPayloadTransform({
       if (shouldReplaceProviderContext) {
         nextPayload = replaceProviderContextMessages(payload, engine.buildProviderContext(getCurrentPrompt()));
         didReplaceProviderContext = true;
+      } else {
+        await waitForMidTurnRecall?.();
+        nextPayload = appendMissingMidTurnRecallMessages(nextPayload, getMidTurnRecallMessages?.() ?? []);
       }
       nextPayload = injectHostedTools(nextPayload, model, hostedTools);
       nextPayload = applyCodexLargeContextGuardToPayload(nextPayload, { model, session: sessionBinding.get() });
@@ -31,4 +36,24 @@ export function createRunnerProviderPayloadTransform({
       return nextPayload;
     },
   };
+}
+
+function appendMissingMidTurnRecallMessages(payload, recallMessages) {
+  if (!Array.isArray(payload?.messages) || recallMessages.length === 0) return payload;
+  const existingText = payload.messages.map((message) => providerMessageText(message)).join("\n");
+  const missing = recallMessages.filter((content) => content && !existingText.includes(content));
+  if (missing.length === 0) return payload;
+  return {
+    ...payload,
+    messages: [
+      ...payload.messages,
+      ...missing.map((content) => ({ role: "user", content })),
+    ],
+  };
+}
+
+function providerMessageText(message) {
+  if (typeof message?.content === "string") return message.content;
+  if (Array.isArray(message?.content)) return message.content.map((part) => part?.text ?? "").join("");
+  return "";
 }

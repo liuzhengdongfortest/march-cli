@@ -14,7 +14,7 @@ export function installModelPayloadDumper(session, modelContextDumper, getKind =
     const originalEffectivePayload = replacement === undefined ? payload : replacement;
     const kind = getKind();
     const effectivePayload = typeof transformPayload === "function"
-      ? transformPayload(originalEffectivePayload, { kind, model })
+      ? await transformPayload(originalEffectivePayload, { kind, model })
       : originalEffectivePayload;
     onModelPayload?.({
       payload: effectivePayload,
