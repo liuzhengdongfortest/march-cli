@@ -3,7 +3,6 @@ import { resolve } from "node:path";
 import { brightBlack } from "../tui/ui-theme.mjs";
 import { registerProject, listRegisteredProjects } from "../../workspace/project-registry.mjs";
 import { buildWorkspaceSessionSelectItems, listWorkspaceSessions, workspaceSessionSearchText } from "../../workspace/session-index.mjs";
-import { loadPiSessionTranscriptTurns } from "../../session/transcript.mjs";
 
 export const WORKSPACE_SLASH_COMMANDS = [
   {
@@ -81,7 +80,6 @@ export async function handleSessionCommand({ stateRoot, currentProjectId, runner
     }
     try {
       const { result } = await workspaceSupervisor.startNewWorkspaceSession(item.project);
-      ui.restoreTranscript?.([]);
       ui.writeln(`Created session: ${item.project.displayName} / ${result?.sessionId ?? "new session"}`);
       return { handled: true, refreshContextTokens: true, activeChanged: true };
     } catch (err) {
@@ -92,9 +90,8 @@ export async function handleSessionCommand({ stateRoot, currentProjectId, runner
   if (workspaceSupervisor) {
     try {
       await workspaceSupervisor.activateWorkspaceSession({ project: item.project, session: item.session });
-      restoreTranscriptFromSession(item.session, ui);
-      const replayed = ctxReplayBufferedOutput({ workspaceOutputRouter, projectId: item.project.projectId, sessionId: item.session.id });
-      ui.writeln(`Switched to session: ${item.project.displayName} / ${item.session.name || item.session.id}${replayed ? ` (${replayed} buffered events replayed)` : ""}`);
+      const rendered = ctxRenderActiveSession({ workspaceOutputRouter, projectId: item.project.projectId, sessionId: item.session.id });
+      ui.writeln(`Switched to session: ${item.project.displayName} / ${item.session.name || item.session.id}${rendered ? ` (${rendered} render events)` : ""}`);
       return { handled: true, refreshContextTokens: true, activeChanged: true };
     } catch (err) {
       ui.writeln(`Error: ${err.message}`);
@@ -115,17 +112,8 @@ function annotateWorkspaceItems(items, runtimeSummaries) {
   });
 }
 
-function ctxReplayBufferedOutput({ workspaceOutputRouter, projectId, sessionId }) {
-  return workspaceOutputRouter?.replayBufferedCalls?.(projectId, sessionId) ?? 0;
-}
-
-function restoreTranscriptFromSession(session, ui) {
-  if (typeof ui.restoreTranscript !== "function" || !session.path) return;
-  try {
-    ui.restoreTranscript(loadPiSessionTranscriptTurns(session.path));
-  } catch (err) {
-    ui.writeln(`Warning: failed to restore backend transcript: ${err.message}`);
-  }
+function ctxRenderActiveSession({ workspaceOutputRouter, projectId, sessionId }) {
+  return workspaceOutputRouter?.getRenderEventCount?.(projectId, sessionId) ?? 0;
 }
 
 function writeLines(ui, lines) {

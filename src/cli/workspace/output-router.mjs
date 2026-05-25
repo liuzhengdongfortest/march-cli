@@ -1,4 +1,4 @@
-const BACKGROUND_METHODS_TO_BUFFER = new Set([
+const RENDER_METHODS = new Set([
   "turnStart",
   "turnEnd",
   "assistantReplyEnd",
@@ -6,28 +6,34 @@ const BACKGROUND_METHODS_TO_BUFFER = new Set([
   "thinkingStart",
   "thinkingDelta",
   "thinkingEnd",
+  "thinkingBlock",
   "toolStart",
   "toolEnd",
   "retryStart",
   "retryEnd",
   "status",
-  "debugLines",
   "recall",
-  "providerQuotaSnapshot",
   "editDiff",
+  "write",
   "writeln",
+  "clearOutput",
 ]);
+
+const MAX_RENDER_EVENTS_PER_ROUTE = 4000;
 
 export function createWorkspaceOutputRouter({ ui, activeProjectId, activeSessionId = null }) {
   let active = routeKey(activeProjectId, activeSessionId);
-  const buffers = new Map();
+  const timelines = new Map();
 
   return {
     setActiveProject(projectId) {
-      active = routeKey(projectId, null);
+      this.setActiveSession(projectId, null);
     },
     setActiveSession(projectId, sessionId) {
-      active = routeKey(projectId, sessionId);
+      const next = routeKey(projectId, sessionId);
+      if (next === active) return 0;
+      active = next;
+      return renderRoute(next);
     },
     getActiveRouteKey() {
       return active;
@@ -46,8 +52,9 @@ export function createWorkspaceOutputRouter({ ui, activeProjectId, activeSession
           if (typeof value !== "function") return value;
           return (...args) => {
             const key = routeKey(projectId, typeof getSessionId === "function" ? getSessionId() : sessionId);
-            if (isActiveRoute(key) || !BACKGROUND_METHODS_TO_BUFFER.has(prop)) return value.apply(ui, args);
-            bufferBackgroundCall(key, prop, args);
+            if (!RENDER_METHODS.has(prop)) return value.apply(ui, args);
+            recordRenderEvent(key, prop, args);
+            if (key === active) return value.apply(ui, args);
             return undefined;
           };
         },
@@ -60,41 +67,38 @@ export function createWorkspaceOutputRouter({ ui, activeProjectId, activeSession
         },
       });
     },
-    getBufferedCalls(projectId, sessionId = null) {
-      return [...(buffers.get(routeKey(projectId, sessionId)) ?? [])];
+    renderActiveSession() {
+      return renderRoute(active);
     },
-    getBufferedCallCount(projectId, sessionId = null) {
-      return buffers.get(routeKey(projectId, sessionId))?.length ?? 0;
+    getRenderEvents(projectId, sessionId = null) {
+      return [...(timelines.get(routeKey(projectId, sessionId)) ?? [])];
     },
-    replayBufferedCalls(projectId, sessionId = null) {
-      const key = routeKey(projectId, sessionId);
-      const calls = buffers.get(key) ?? [];
-      buffers.delete(key);
-      for (const call of calls) replayBufferedCall(call);
-      return calls.length;
-    },
-    clearBufferedCalls(projectId, sessionId = null) {
-      buffers.delete(routeKey(projectId, sessionId));
+    getRenderEventCount(projectId, sessionId = null) {
+      return timelines.get(routeKey(projectId, sessionId))?.length ?? 0;
     },
   };
 
-  function isActiveRoute(key) {
-    if (key === active) return true;
-    const current = parseRouteKey(active);
-    const candidate = parseRouteKey(key);
-    return current.sessionId == null && current.projectId === candidate.projectId;
+  function renderRoute(key) {
+    ui.clearOutput?.();
+    const events = timelines.get(key) ?? [];
+    for (const event of events) applyRenderEvent(event);
+    return events.length;
   }
 
-  function replayBufferedCall({ method, args }) {
+  function applyRenderEvent({ method, args }) {
     const value = ui[method];
     if (typeof value === "function") value.apply(ui, args);
   }
 
-  function bufferBackgroundCall(key, method, args) {
-    const calls = buffers.get(key) ?? [];
-    calls.push({ method, args, at: Date.now() });
-    if (calls.length > 2000) calls.splice(0, calls.length - 2000);
-    buffers.set(key, calls);
+  function recordRenderEvent(key, method, args) {
+    if (method === "clearOutput") {
+      timelines.delete(key);
+      return;
+    }
+    const events = timelines.get(key) ?? [];
+    events.push({ method, args, at: Date.now() });
+    if (events.length > MAX_RENDER_EVENTS_PER_ROUTE) events.splice(0, events.length - MAX_RENDER_EVENTS_PER_ROUTE);
+    timelines.set(key, events);
   }
 }
 

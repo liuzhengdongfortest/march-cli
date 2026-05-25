@@ -115,7 +115,7 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
   let runner;
   let workspaceSupervisor = null;
   const onNotificationActivation = (activation) => {
-    handleNotificationActivation({ activation, stateRoot, workspaceSupervisor, outputRouter, ui }).catch((err) => ui.writeln(`Notification activation failed: ${err.message}`));
+    handleNotificationActivation({ activation, stateRoot, workspaceSupervisor, ui }).catch((err) => ui.writeln(`Notification activation failed: ${err.message}`));
   };
   try {
     runner = await createRuntimeRunner({
@@ -228,7 +228,7 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
   };
 }
 
-async function handleNotificationActivation({ activation, stateRoot, workspaceSupervisor, outputRouter, ui }) {
+async function handleNotificationActivation({ activation, stateRoot, workspaceSupervisor, ui }) {
   if (activation?.type !== "workspace-session" || !activation.projectId) return;
   if (!workspaceSupervisor) throw new Error("workspace supervisor is not ready");
   const projects = await listWorkspaceSessions({ stateRoot, currentProjectId: workspaceSupervisor.getActive?.()?.project?.projectId ?? null });
@@ -237,6 +237,5 @@ async function handleNotificationActivation({ activation, stateRoot, workspaceSu
     projectId: activation.projectId,
     sessionId: activation.sessionId,
   });
-  outputRouter?.replayBufferedCalls?.(activation.projectId, activation.sessionId);
   ui.writeln(`Activated session from notification: ${runtime.project.displayName}`);
 }

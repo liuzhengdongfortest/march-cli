@@ -54,7 +54,7 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
     assert.ok(lines.join("\n").includes("Registered project"));
 
     const rendered = [];
-    const baseUi = { textDelta: (text) => rendered.push(text), writeln: (text) => rendered.push(text) };
+    const baseUi = { clearOutput: () => { rendered.length = 0; }, textDelta: (text) => rendered.push(text), writeln: (text) => rendered.push(text) };
     const outputRouter = createWorkspaceOutputRouter({ ui: baseUi, activeProjectId: projectA.projectId, activeSessionId: "s-a" });
     const uiA = outputRouter.createProjectUi(projectA.projectId, () => "s-a");
     const uiB = outputRouter.createProjectUi(projectB.projectId, () => "s-b");
@@ -63,14 +63,17 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
     uiB.textDelta("hidden-b");
     uiB2.textDelta("hidden-b2");
     assert.deepEqual(rendered, ["visible-a"]);
-    assert.equal(outputRouter.getBufferedCalls(projectB.projectId, "s-b")[0].method, "textDelta");
-    assert.equal(outputRouter.getBufferedCallCount(projectB.projectId, "s-b"), 1);
-    assert.equal(outputRouter.getBufferedCallCount(projectB.projectId, "s-b2"), 1);
+    assert.equal(outputRouter.getRenderEvents(projectB.projectId, "s-b")[0].method, "textDelta");
+    assert.equal(outputRouter.getRenderEventCount(projectA.projectId, "s-a"), 1);
+    assert.equal(outputRouter.getRenderEventCount(projectB.projectId, "s-b"), 1);
+    assert.equal(outputRouter.getRenderEventCount(projectB.projectId, "s-b2"), 1);
 
-    outputRouter.setActiveSession(projectB.projectId, "s-b");
-    assert.equal(outputRouter.replayBufferedCalls(projectB.projectId, "s-b"), 1);
+    assert.equal(outputRouter.setActiveSession(projectB.projectId, "s-b"), 1);
+    assert.deepEqual(rendered, ["hidden-b"]);
     uiB.textDelta("visible-b");
-    assert.deepEqual(rendered, ["visible-a", "hidden-b", "visible-b"]);
+    assert.deepEqual(rendered, ["hidden-b", "visible-b"]);
+    assert.equal(outputRouter.setActiveSession(projectA.projectId, "s-a"), 1);
+    assert.deepEqual(rendered, ["visible-a"]);
 
     const viewSessionState = { sessionId: "s-a", sessionDir: "" };
     const disposed = [];

@@ -74,7 +74,6 @@ export async function run(argv) {
   }
 
   const dumpContextPath = args.dumpContext ? relative(cwd, app.contextDumpRoot) : null;
-  if (app.startupResume.transcriptTurns?.length > 0) app.ui.restoreTranscript?.(app.startupResume.transcriptTurns);
   for (const line of formatStartupBanner({ cwd, modelId: app.runner.engine.modelId, thinkingLevel: app.runner.engine.thinkingLevel, mode: app.modeState.get(), dumpContextPath })) app.ui.writeln(line);
   try {
     await runInteractiveRepl({
