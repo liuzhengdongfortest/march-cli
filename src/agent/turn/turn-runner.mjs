@@ -82,6 +82,7 @@ export async function runRunnerTurn({
         contextMode === "continueExistingPiTranscript" ? (userMessage ?? prompt) : prompt,
         attachmentReferences.images.length > 0 ? { images: attachmentReferences.images } : undefined,
       ));
+      throwIfAssistantEndedWithError(turnState);
     } finally {
       idleWatchdog.clear();
       setModelCallKind("model");
@@ -159,8 +160,15 @@ function createModelStreamIdleTimeoutError(timeoutMs, reason) {
 function getModelStreamIdleTimeoutMs() {
   const raw = process.env.MARCH_MODEL_STREAM_IDLE_TIMEOUT_MS;
   if (raw === "0" || raw === "false" || raw === "no") return 0;
-  const parsed = raw ? Number.parseInt(raw, 10) : 180000;
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 180000;
+  const parsed = raw ? Number.parseInt(raw, 10) : 18000;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 18000;
+}
+
+function throwIfAssistantEndedWithError(turnState) {
+  if (turnState.lastAssistantStopReason !== "error") return;
+  const error = new Error(turnState.lastAssistantErrorMessage || "Model provider returned an error");
+  error.code = "MODEL_PROVIDER_ERROR";
+  throw error;
 }
 
 function queueMidTurnRecallHints(session, hints, logger) {

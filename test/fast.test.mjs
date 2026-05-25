@@ -19,6 +19,7 @@ import { runProviderConfigCommandSmoke } from "./provider-config-command.smoke.m
 import { runProviderRemoveCommandSmoke } from "./provider-remove-command.smoke.mjs";
 import { runProviderQuotaSmoke } from "./provider-quota.smoke.mjs";
 import { runRunnerIdleTimeoutSmoke } from "./runner-idle-timeout.smoke.mjs";
+import { runRunnerModelErrorSmoke } from "./runner-model-error.smoke.mjs";
 import { runReadFileToolSmoke } from "./read-file-tool.smoke.mjs";
 import { runReadImageToolSmoke } from "./read-image-tool.smoke.mjs";
 import { runScreenToolsSmoke } from "./screen-tools.smoke.mjs";
@@ -121,6 +122,7 @@ await runScreenToolsSmoke();
 await runSendBinaryToolSmoke({ setupTmp, cleanup });
 await runSessionControllerLeaseSmoke({ setupTmp, cleanup });
 await runRunnerIdleTimeoutSmoke({ setupTmp, cleanup });
+await runRunnerModelErrorSmoke({ setupTmp, cleanup });
 await runEditFileToolSmoke({ setupTmp, cleanup });
 await runFileSearchIndexSmoke();
 await runPlatformOpenFileSmoke();

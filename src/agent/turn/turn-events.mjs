@@ -12,12 +12,18 @@ export function createTurnEventState() {
     assistantContextParts: [],
     activeToolContextPart: null,
     toolCalls: [],
+    lastAssistantStopReason: null,
+    lastAssistantErrorMessage: null,
   };
 }
 
 export function handleRunnerSessionEvent(event, { ui, engine, state }) {
   if (event.type === "message_update" && event.assistantMessageEvent) {
     handleAssistantMessageEvent(event.assistantMessageEvent, { ui, state });
+  }
+  if (event.type === "message_end" && event.message?.role === "assistant") {
+    state.lastAssistantStopReason = event.message.stopReason ?? null;
+    state.lastAssistantErrorMessage = event.message.errorMessage ?? null;
   }
   if (event.type === "tool_execution_start") {
     closeAssistantReply({ ui, state });
