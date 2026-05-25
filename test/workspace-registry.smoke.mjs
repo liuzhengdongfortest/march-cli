@@ -57,8 +57,7 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
 
     const rendered = [];
     const baseUi = { clearOutput: () => { rendered.length = 0; }, textDelta: (text) => rendered.push(text), writeln: (text) => rendered.push(text), assistantReplyEnd: () => {} };
-    const persistedRenderChanges = [];
-    const outputRouter = createWorkspaceOutputRouter({ ui: baseUi, activeProjectId: projectA.projectId, activeSessionId: "s-a", onRenderTimelineChange: (change) => persistedRenderChanges.push(change) });
+    const outputRouter = createWorkspaceOutputRouter({ ui: baseUi, activeProjectId: projectA.projectId, activeSessionId: "s-a" });
     const uiA = outputRouter.createProjectUi(projectA.projectId, () => "s-a");
     const uiB = outputRouter.createProjectUi(projectB.projectId, () => "s-b");
     const uiB2 = outputRouter.createProjectUi(projectB.projectId, () => "s-b2");
@@ -99,7 +98,6 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
 
     uiA.clearOutput();
     assert.equal(outputRouter.getRenderEventCount(projectA.projectId, "s-a"), 0);
-    assert.deepEqual(persistedRenderChanges.at(-1).events, []);
 
     const boundedTimeline = createTuiTimelineInstance({ key: "bounded", maxEvents: 2 });
     boundedTimeline.apply("textDelta", ["one"], { at: 1 });
@@ -132,6 +130,9 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
     });
     const persistUiA = persistRouter.createProjectUi(projectA.projectId, () => "persist-a");
     const persistUiB = persistRouter.createProjectUi(projectA.projectId, () => "persist-b");
+    persistRouter.setRenderEvents(projectA.projectId, "persist-a", [{ method: "textDelta", args: ["restored-a"], at: 1 }]);
+    assert.equal(persistedTimelines.length, 0);
+    assert.equal(persistRouter.getRenderBlocks(projectA.projectId, "persist-a")[0].content, "restored-a");
     persistUiA.textDelta("debounced-a");
     assert.equal(persistedTimelines.length, 0);
     await delay(20);

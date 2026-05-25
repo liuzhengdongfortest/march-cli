@@ -31,9 +31,9 @@ export function createTuiTimelineRegistry({
     has(key) {
       return timelines.has(key);
     },
-    clear(key) {
+    clear(key, options) {
       const timeline = this.ensure(key);
-      timeline.clear();
+      timeline.clear(options);
       return timeline;
     },
     flush(key, reason = "manual") {
@@ -45,6 +45,11 @@ export function createTuiTimelineRegistry({
         if (timeline.flushPersist(reason)) flushed += 1;
       }
       return flushed;
+    },
+    replaceEvents(key, events) {
+      const timeline = this.ensure(key);
+      timeline.replaceEvents(events);
+      return timeline;
     },
     getEvents(key) {
       return this.get(key)?.getEvents() ?? [];
@@ -93,14 +98,12 @@ export function createTuiTimelineInstance({
     hydrateIfEmpty(nextEvents) {
       touch();
       if (events.length > 0) return false;
-      events = normalizeTimelineEvents(nextEvents);
-      trimToBudget();
-      rebuildProjection();
-      hydrated = true;
-      dirty = false;
-      lastUpdatedAt = events.at(-1)?.at ?? null;
-      updateEstimatedBytes();
+      replaceEvents(nextEvents, { markHydrated: true });
       return true;
+    },
+    replaceEvents(nextEvents) {
+      touch();
+      replaceEvents(nextEvents, { markHydrated: false });
     },
     clear({ flush = true } = {}) {
       touch();
@@ -168,6 +171,18 @@ export function createTuiTimelineInstance({
     if (!persistTimer) return;
     clearTimeout(persistTimer);
     persistTimer = null;
+  }
+
+  function replaceEvents(nextEvents, { markHydrated }) {
+    clearPersistTimer();
+    events = normalizeTimelineEvents(nextEvents);
+    trimToBudget();
+    rebuildProjection();
+    hydrated = markHydrated;
+    dirty = false;
+    lastUpdatedAt = events.at(-1)?.at ?? null;
+    lastPersistedAt = null;
+    updateEstimatedBytes();
   }
 
   function trimToBudget() {

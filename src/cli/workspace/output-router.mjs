@@ -28,7 +28,6 @@ export function createWorkspaceOutputRouter({
   activeProjectId,
   activeSessionId = null,
   onPersistRenderTimeline = null,
-  onRenderTimelineChange = null,
   persistDebounceMs,
 } = {}) {
   let active = routeKey(activeProjectId, activeSessionId);
@@ -92,8 +91,7 @@ export function createWorkspaceOutputRouter({
     },
     setRenderEvents(projectId, sessionId = null, events = []) {
       const key = routeKey(projectId, sessionId);
-      const timeline = timelineRegistry.clear(key);
-      timeline.hydrateIfEmpty(events);
+      timelineRegistry.replaceEvents(key, events);
     },
     getRenderEventCount(projectId, sessionId = null) {
       return timelineRegistry.getEventCount(routeKey(projectId, sessionId));
@@ -117,14 +115,12 @@ export function createWorkspaceOutputRouter({
 
   function recordRenderEvent(key, method, args) {
     if (method === "clearOutput") {
-      const timeline = timelineRegistry.clear(key);
-      onRenderTimelineChange?.({ ...parseRouteKey(key), events: [], event: { method, args }, timeline: timeline.getMetadata() });
+      timelineRegistry.clear(key);
       return;
     }
     const timeline = timelineRegistry.ensure(key);
     timeline.apply(method, args);
     if (PERSIST_FLUSH_METHODS.has(method)) timeline.flushPersist(method);
-    onRenderTimelineChange?.({ ...parseRouteKey(key), events: timeline.getEvents(), event: { method, args }, timeline: timeline.getMetadata() });
   }
 }
 
