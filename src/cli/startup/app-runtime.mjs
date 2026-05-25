@@ -11,6 +11,7 @@ import { createMarchAuthStorage } from "../../auth/storage.mjs";
 import { createRuntimeRunner } from "./create-runtime-runner.mjs";
 import { createCliShellRuntime } from "../../shell/cli-runtime.mjs";
 import { MarkdownMemoryStore } from "../../memory/markdown-store.mjs";
+import { preloadSemanticMemoryRecall } from "../../memory/markdown/semantic-preload.mjs";
 import { discoverProjectExtensionPaths } from "../../extensions/discovery.mjs";
 import { loadProjectLifecycleHookManifests } from "../../extensions/lifecycle-manifest.mjs";
 import { loadOrCreateProjectId, resumeStartupSession } from "./startup-session.mjs";
@@ -90,6 +91,8 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
     shellRuntime,
     historyStore: inputHistoryStore,
   });
+  await preloadSemanticMemoryRecall({ memoryStore, ui, logger });
+
   const outputRouter = createWorkspaceOutputRouter({
     ui,
     activeProjectId: currentProjectInfo.projectId,

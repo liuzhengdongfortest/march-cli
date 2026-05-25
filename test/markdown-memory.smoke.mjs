@@ -7,14 +7,22 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   const { MarkdownMemoryStore, formatRecallHints } = await import("../src/memory/markdown-store.mjs");
   const { KeywordVectorizer } = await import("./semantic-test-vectorizer.mjs");
   const { createMarkdownMemoryTools } = await import("../src/memory/markdown-tools.mjs");
+  const { preloadSemanticMemoryRecall } = await import("../src/memory/markdown/semantic-preload.mjs");
   const { formatRecallLines, writeRecall } = await import("../src/cli/tui/recall-rendering.mjs");
   const dir = setupTmp();
 
+  const warmupVectorizer = new KeywordVectorizer(["rolling", "suppression", "window"]);
+  let preloaded = false;
+  warmupVectorizer.load = async () => { preloaded = true; };
   const store = new MarkdownMemoryStore({
     root: dir,
     now: () => new Date("2026-05-14T10:30:00.000Z"),
-    semanticVectorizer: new KeywordVectorizer(["rolling", "suppression", "window"]),
+    semanticVectorizer: warmupVectorizer,
   });
+  const preloadStatuses = [];
+  await preloadSemanticMemoryRecall({ memoryStore: store, ui: { status: (text) => preloadStatuses.push(text) } });
+  assert.equal(preloaded, true);
+  assert.deepEqual(preloadStatuses, ["Preparing memory recall model..."]);
   assert.equal(store.db.prepare("PRAGMA busy_timeout").get().timeout, 5000);
 
   assert.throws(() => store.save({ name: "No tags", description: "Missing tags", body: "Body" }), /tags are required/);
@@ -54,7 +62,7 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
     "✦ Memory Recall · 2 notes",
     "  ✓ 1.00 Recall hint dedup",
     "    User recall uses a rolling suppression window.",
-    "  ✓ Other memory",
+    "  ✓ -- Other memory",
   ]);
   const renderedHints = [];
   writeRecall({ output: { writeln: (line) => renderedHints.push(line) }, hints: userHints, report: userRecallReport });

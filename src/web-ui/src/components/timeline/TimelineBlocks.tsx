@@ -101,12 +101,16 @@ function MemoryRecallBlock({ item }: { item: Extract<TimelineItem, { kind: "memo
         {candidates.map((hint) => (
           <li key={hint.id} className={hint.recalled === false ? "skipped" : "recalled"}>
             <span>{hint.recalled === false ? "×" : "✓"}</span>
-            <strong>{typeof hint.score === "number" ? `${hint.score.toFixed(2)} ` : ""}{hint.name ?? hint.id}</strong>
+            <strong>{formatRecallScore(hint.score)} {hint.name ?? hint.id}</strong>
           </li>
         ))}
       </ul>
     </div>
   );
+}
+
+function formatRecallScore(score?: number) {
+  return typeof score === "number" && Number.isFinite(score) ? score.toFixed(2) : "--";
 }
 
 function ErrorBlock({ item }: { item: Extract<TimelineItem, { kind: "error" }> }) {

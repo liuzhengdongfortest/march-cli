@@ -22,6 +22,13 @@ export class SemanticMemoryRecallIndex {
     return Boolean(this.vectorizer);
   }
 
+  async preload() {
+    if (!this.vectorizer) return false;
+    if (typeof this.vectorizer.load === "function") await this.vectorizer.load();
+    else await this.vectorizer.encode(["memory recall warmup"]);
+    return true;
+  }
+
   async search(query, { entries, excluded = new Set(), limit = 3, candidateLimit = 5 } = {}) {
     const empty = { recalled: [], candidates: [], threshold: this.minScore };
     if (!this.vectorizer || !String(query ?? "").trim()) return empty;

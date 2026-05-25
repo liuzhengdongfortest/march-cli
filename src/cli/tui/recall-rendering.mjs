@@ -25,7 +25,7 @@ export function writeRecall({ output, hints = [], report = null }) {
 function formatHintLines(hint) {
   const title = hint.name || hint.id || "Untitled memory";
   const mark = hint.recalled === false ? "×" : "✓";
-  const score = Number.isFinite(hint.score) ? `${formatScore(hint.score)} ` : "";
+  const score = `${formatScore(hint.score)} `;
   const lines = [`  ${mark} ${score}${title}`];
   if (hint.description) lines.push(`    ${hint.description}`);
   return lines;
