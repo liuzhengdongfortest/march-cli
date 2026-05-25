@@ -27,6 +27,7 @@ import { runStartupBannerSmoke } from "./startup-banner.smoke.mjs";
 import { runWebUiSmoke } from "./web-ui.smoke.mjs";
 import { runRemoteMemorySmoke } from "./remote-memory.smoke.mjs";
 import { runRuntimeRestartLifecycleSmoke } from "./runtime-restart-lifecycle.smoke.mjs";
+import { runWorkspaceRegistrySmoke } from "./workspace-registry.smoke.mjs";
 function setupTmp() {
   const dir = resolve(tmpdir(), `march-fast-smoke-${randomUUID().slice(0, 8)}`);
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
@@ -123,4 +124,5 @@ await runProviderQuotaSmoke();
 await runCustomProviderSmoke();
 await runRemoteMemorySmoke({ setupTmp, cleanup });
 await runRuntimeRestartLifecycleSmoke({ setupTmp, cleanup });
+await runWorkspaceRegistrySmoke({ setupTmp, cleanup });
 console.log("All fast smoke tests passed.");

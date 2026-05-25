@@ -37,6 +37,8 @@ export async function runInteractiveRepl({
   runner,
   memoryStore,
   currentProject,
+  currentProjectInfo = null,
+  stateRoot = null,
   sessionState,
   sessionsRoot,
   projectMarchDir,
@@ -80,6 +82,8 @@ export async function runInteractiveRepl({
       modeState,
       renderStartupBanner,
       configHomeDir,
+      stateRoot,
+      currentProjectId: currentProjectInfo?.projectId ?? null,
     });
     if (slashResult.exit) break;
     if (slashResult.handled) {

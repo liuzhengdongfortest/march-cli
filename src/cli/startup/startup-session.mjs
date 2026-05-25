@@ -1,20 +1,10 @@
-import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { loadOrCreateProjectId } from "../../workspace/project-id.mjs";
 import { listPiSessionInfos } from "../../session/pi-manager.mjs";
+
 import { loadPiSessionTranscriptTurns } from "../../session/transcript.mjs";
 import { resumePiSessionById } from "../session/pi-session-switch-command.mjs";
 
-export function loadOrCreateProjectId(projectMarchDir) {
-  if (!existsSync(projectMarchDir)) mkdirSync(projectMarchDir, { recursive: true });
-  const idFile = resolve(projectMarchDir, "project-id");
-  if (existsSync(idFile)) {
-    return readFileSync(idFile, "utf8").trim();
-  }
-  const id = randomUUID();
-  writeFileSync(idFile, id, "utf8");
-  return id;
-}
+export { loadOrCreateProjectId };
 
 export async function resumeStartupSession({
   resumeId,

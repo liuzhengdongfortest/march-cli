@@ -66,6 +66,7 @@ import { runTurnNotifierSmoke } from "./turn-notifier.smoke.mjs";
 import { runUserDisplayMessageSmoke } from "./user-display-message.smoke.mjs";
 import { runWebSearchConfigCommandSmoke } from "./websearch-config-command.smoke.mjs";
 import { runWebToolsSmoke } from "./web-tools.smoke.mjs";
+import { runWorkspaceRegistrySmoke } from "./workspace-registry.smoke.mjs";
 import { FakeTerminal } from "./helpers/fake-terminal.mjs";
 
 // Minimal mocks for smoke testing without DEEPSEEK_API_KEY
@@ -199,6 +200,7 @@ await runProviderShareCommandSmoke({ setupTmp, cleanup });
 await runCustomProviderSmoke();
 await runWebSearchConfigCommandSmoke({ setupTmp, cleanup });
 await runWebToolsSmoke();
+await runWorkspaceRegistrySmoke({ setupTmp, cleanup });
 await runHostedToolsSmoke();
 await runSuperGrokToolSmoke({ setupTmp, cleanup });
 await runRipgrepResolverSmoke();

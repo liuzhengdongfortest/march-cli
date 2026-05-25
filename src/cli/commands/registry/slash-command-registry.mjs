@@ -12,6 +12,7 @@ import { handleSessionNameCommand, parseSessionNameCommand } from "../../session
 import { handleShellCommand, parseShellCommand } from "../../shell/shell-command.mjs";
 import { handleProviderCommand, parseProviderCommand } from "../provider-command.mjs";
 import { handleModeCommand, parseModeCommand } from "../mode-command.mjs";
+import { WORKSPACE_SLASH_COMMANDS } from "../../workspace/command.mjs";
 
 export const SLASH_COMMANDS = [
   exactCommand({
@@ -94,6 +95,7 @@ export const SLASH_COMMANDS = [
     parse: parseThinkingCommand,
     run: async (ctx, command) => writeLines(ctx.ui, await handleThinkingCommand(command, { runner: ctx.runner, ui: ctx.ui })),
   }),
+  ...WORKSPACE_SLASH_COMMANDS,
   exactCommand({
     name: "status",
     description: "Show runtime status",

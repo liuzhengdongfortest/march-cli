@@ -19,6 +19,7 @@ import { defaultProfilePaths, ensureProfileFiles } from "../../context/profiles.
 import { normalizeRemoteMemorySources } from "../../memory/remote/config.mjs";
 import { resolveMemoryRoot } from "../../memory/root.mjs";
 import { ensureBrowserDaemon } from "../../browser/client/lifecycle.mjs";
+import { registerProject } from "../../workspace/project-registry.mjs";
 
 export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot } = {}) {
   if (!existsSync(stateRoot)) mkdirSync(stateRoot, { recursive: true });
@@ -56,6 +57,7 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
   const inputHistoryStore = createInputHistoryStore({ path: join(projectMarchDir, "input-history.json") });
   const modeState = createModeState();
   const namespace = loadOrCreateProjectId(projectMarchDir);
+  const currentProjectInfo = registerProject({ stateRoot, rootPath: cwd });
   const memoryRoot = resolveMemoryRoot(config.memoryRoot, stateRoot);
   const profilePaths = defaultProfilePaths();
   ensureProfileFiles(profilePaths);
@@ -160,6 +162,7 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
     runner,
     memoryStore,
     currentProject,
+    currentProjectInfo,
     sessionState,
     sessionsRoot,
     projectMarchDir,
