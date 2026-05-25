@@ -110,7 +110,7 @@ export async function runPiSessionSidecarSyncSmoke({ setupTmp, cleanup }) {
   const { loadPiSessionSidecar } = await import("../src/session/sidecar.mjs");
   const { syncPiSessionSidecar } = await import("../src/session/sidecar-sync.mjs");
   const { loadMarchSessionState } = await import("../src/session/state/march-session-state.mjs");
-  const { loadMarchSessionRenderTimeline, saveMarchSessionRenderTimeline } = await import("../src/session/state/march-session-ui-state.mjs");
+  const { getTuiSessionTimelinePath, loadMarchSessionRenderTimeline, saveMarchSessionRenderTimeline } = await import("../src/session/state/march-session-ui-state.mjs");
 
   const dir = setupTmp();
   const projectMarchDir = join(dir, ".march");
@@ -153,7 +153,7 @@ export async function runPiSessionSidecarSyncSmoke({ setupTmp, cleanup }) {
   assert.equal(loaded.state.backend.runtimeHost, true);
   assert.equal(loaded.state.thinkingLevel, "high");
   assert.equal(loaded.state.turns[0].assistantMessage, "answer");
-  assert.deepEqual(loaded.state.renderTimeline, []);
+  assert.equal(Object.hasOwn(loaded.state, "renderTimeline"), false);
   assert.deepEqual(loadMarchSessionRenderTimeline({ projectMarchDir, sessionId: "pi1" }).renderTimeline.map((event) => event.method), ["writeln", "turnStart", "textDelta", "assistantReplyEnd", "turnEnd"]);
 
   saveMarchSessionRenderTimeline({
@@ -167,7 +167,9 @@ export async function runPiSessionSidecarSyncSmoke({ setupTmp, cleanup }) {
     engine,
     sessionStats: { sessionId: "pi1", persisted: true, sessionFile: "2026-05-10T00-00-00-000Z_test.jsonl" },
   });
-  assert.equal(loadMarchSessionState({ projectMarchDir, sessionId: "pi1" }).state.renderTimeline[0].args[0], "visible chat");
+  assert.equal(Object.hasOwn(loadMarchSessionState({ projectMarchDir, sessionId: "pi1" }).state, "renderTimeline"), false);
+  assert.equal(loadMarchSessionRenderTimeline({ projectMarchDir, sessionId: "pi1" }).renderTimeline[0].args[0], "visible chat");
+  assert.ok(getTuiSessionTimelinePath(projectMarchDir, "pi1").endsWith(join("ui", "tui", "sessions", "pi1", "timeline.json")));
 
   cleanup(dir);
   console.log("  PASS");

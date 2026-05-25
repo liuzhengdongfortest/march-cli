@@ -45,7 +45,7 @@ export function saveMarchSessionState({ projectMarchDir, sessionId, engine, back
 export function saveMarchSessionStateValue({ projectMarchDir, sessionId, state }) {
   if (!sessionId) throw new Error("March session id is required");
   const existing = loadMarchSessionState({ projectMarchDir, sessionId })?.state ?? null;
-  const nextState = normalizeMarchSessionStateForSave({ ...existing, ...state, renderTimeline: state.renderTimeline ?? existing?.renderTimeline });
+  const nextState = normalizeMarchSessionStateForSave({ ...existing, ...state });
   validateMarchSessionState(nextState);
   const dir = getMarchSessionStateDir(projectMarchDir, sessionId);
   mkdirSync(dir, { recursive: true });
@@ -135,22 +135,12 @@ function validateMarchSessionState(state) {
 function isValidMarchSessionState(state) {
   return state?.version === MARCH_SESSION_STATE_VERSION
     && Boolean(state.cwd)
-    && Array.isArray(state.turns)
-    && Array.isArray(state.renderTimeline);
+    && Array.isArray(state.turns);
 }
 
 function normalizeMarchSessionStateForSave(state) {
-  return {
-    ...state,
-    renderTimeline: normalizePersistedRenderTimeline(state.renderTimeline),
-  };
-}
-
-function normalizePersistedRenderTimeline(events) {
-  if (!Array.isArray(events)) return [];
-  return events
-    .filter((event) => typeof event?.method === "string" && Array.isArray(event.args))
-    .map((event) => ({ method: event.method, args: event.args, at: event.at ?? null }));
+  const { renderTimeline: _renderTimeline, renderTimelineUpdatedAt: _renderTimelineUpdatedAt, ...coreState } = state ?? {};
+  return coreState;
 }
 
 function normalizeSessionRef(sessionRef) {
