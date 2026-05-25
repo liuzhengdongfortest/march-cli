@@ -1,7 +1,8 @@
-import { join } from "node:path";
+import { basename, join } from "node:path";
+import { createSessionControllerLeaseManager } from "../session/control/controller-lease.mjs";
 import { loadMarchSessionStateForPiBackend } from "../session/state/march-session-state.mjs";
 
-export function createWorkspaceSessionSupervisor({ initialRuntime, createProjectRuntime, viewSessionState = initialRuntime?.sessionState, onActivate = null }) {
+export function createWorkspaceSessionSupervisor({ initialRuntime, createProjectRuntime, viewSessionState = initialRuntime?.sessionState, onActivate = null, controllerLeases = createSessionControllerLeaseManager({ cwd: initialRuntime?.cwd }) }) {
   if (!initialRuntime?.project?.projectId) throw new Error("initial workspace runtime is missing project metadata");
   if (typeof createProjectRuntime !== "function") throw new Error("createProjectRuntime is required");
 
@@ -18,6 +19,10 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
       if (prop === "activateWorkspaceSessionById") return activateWorkspaceSessionById;
       if (prop === "startNewWorkspaceSession") return startNewWorkspaceSession;
       if (prop === "refreshActiveRuntime") return refreshActiveRuntime;
+      if (prop === "runTurn") return runActiveTurn;
+      if (prop === "abort") return abortActiveTurn;
+      if (prop === "startNewSession") return startActiveNewSession;
+      if (prop === "switchPiSession") return switchActivePiSession;
       const value = active.runner[prop];
       return typeof value === "function" ? value.bind(active.runner) : value;
     },
@@ -26,7 +31,7 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
       return true;
     },
     has(_target, prop) {
-      return prop === "dispose" || prop === "getActiveWorkspaceRuntime" || prop === "activateWorkspaceSession" || prop === "activateWorkspaceSessionById" || prop === "startNewWorkspaceSession" || prop === "refreshActiveRuntime" || prop in active.runner;
+      return prop === "dispose" || prop === "getActiveWorkspaceRuntime" || prop === "activateWorkspaceSession" || prop === "activateWorkspaceSessionById" || prop === "startNewWorkspaceSession" || prop === "refreshActiveRuntime" || prop === "runTurn" || prop === "abort" || prop === "startNewSession" || prop === "switchPiSession" || prop in active.runner;
     },
   });
 
@@ -79,17 +84,22 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
   }
 
   async function startNewWorkspaceSession(project) {
+    const previous = active;
     const runtime = await getIdleRuntimeForProject(project);
     active = runtime;
     const result = await active.runner.startNewSession();
-    if (!result?.cancelled && result?.sessionId) syncSessionState(active, result.sessionId);
+    if (!result?.cancelled && result?.sessionId) {
+      syncSessionState(active, result.sessionId);
+      replaceRuntimeLease(active, acquireRuntimeLease(active, { sessionId: result.sessionId, sessionPath: result.sessionFile ?? null }));
+      releaseIdleRuntimeLease(previous, active);
+    }
     rememberRuntime(active);
     mirrorSessionState(viewSessionState, active.sessionState);
     onActivate?.({ projectId: active.project.projectId, sessionId: getRuntimeSessionId(active), runtime: active, restoreState: null });
     return { runtime: active, result };
   }
 
-  async function activateWorkspaceSession({ project, session = null }) {
+  async function activateWorkspaceSession({ project, session = null, force = false }) {
     if (disposed) throw new Error("workspace supervisor is already disposed");
     if (!project?.projectId) throw new Error("workspace project is required");
 
@@ -97,18 +107,27 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
     if (!runtime) runtime = await createProjectRuntime(project);
 
     const targetSessionId = session?.id ?? null;
-    let restoreState = null;
-    if (session?.path && getRuntimeSessionId(runtime) !== targetSessionId) {
-      restoreState = loadWorkspaceMarchSessionState({ runtime, session });
-      await runtime.runner.switchPiSession(session.path, restoreState);
-    }
-    if (targetSessionId) syncSessionState(runtime, targetSessionId);
+    const lease = targetSessionId ? acquireRuntimeLease(runtime, { sessionId: targetSessionId, sessionPath: session?.path ?? null }, { force }) : null;
+    const previous = active;
+    try {
+      let restoreState = null;
+      if (session?.path && getRuntimeSessionId(runtime) !== targetSessionId) {
+        restoreState = loadWorkspaceMarchSessionState({ runtime, session });
+        await runtime.runner.switchPiSession(session.path, restoreState);
+      }
+      if (targetSessionId) syncSessionState(runtime, targetSessionId);
 
-    active = runtime;
-    rememberRuntime(runtime);
-    mirrorSessionState(viewSessionState, runtime.sessionState);
-    onActivate?.({ projectId: runtime.project.projectId, sessionId: getRuntimeSessionId(runtime), runtime, restoreState });
-    return active;
+      replaceRuntimeLease(runtime, lease);
+      releaseIdleRuntimeLease(previous, runtime);
+      active = runtime;
+      rememberRuntime(runtime);
+      mirrorSessionState(viewSessionState, runtime.sessionState);
+      onActivate?.({ projectId: runtime.project.projectId, sessionId: getRuntimeSessionId(runtime), runtime, restoreState });
+      return active;
+    } catch (err) {
+      lease?.release?.();
+      throw err;
+    }
   }
 
   async function getIdleRuntimeForProject(project) {
@@ -138,9 +157,85 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
     disposed = true;
     const uniqueRuntimes = new Set(runtimes.values());
     await Promise.all(Array.from(uniqueRuntimes, async (runtime) => {
+      releaseRuntimeLease(runtime);
       await runtime.runner.dispose?.();
       runtime.memoryStore?.close?.();
     }));
+  }
+
+  async function runActiveTurn(...args) {
+    ensureRuntimeLease(active);
+    return await active.runner.runTurn(...args);
+  }
+
+  function abortActiveTurn(...args) {
+    ensureRuntimeLease(active);
+    return active.runner.abort(...args);
+  }
+
+  async function startActiveNewSession(...args) {
+    const result = await active.runner.startNewSession(...args);
+    if (!result?.cancelled && result?.sessionId) {
+      syncSessionState(active, result.sessionId);
+      replaceRuntimeLease(active, acquireRuntimeLease(active, { sessionId: result.sessionId, sessionPath: result.sessionFile ?? null }));
+      rememberRuntime(active);
+      mirrorSessionState(viewSessionState, active.sessionState);
+    }
+    return result;
+  }
+
+  async function switchActivePiSession(sessionPath, restoreState = null, ...args) {
+    const sessionId = sessionIdFromSessionPath(sessionPath);
+    const lease = acquireRuntimeLease(active, { sessionId, sessionPath });
+    try {
+      const result = await active.runner.switchPiSession(sessionPath, restoreState, ...args);
+      if (result?.cancelled) {
+        lease.release?.();
+        return result;
+      }
+      const stats = active.runner.getSessionStats?.() ?? {};
+      syncSessionState(active, stats.sessionId ?? sessionId);
+      replaceRuntimeLease(active, lease);
+      rememberRuntime(active);
+      mirrorSessionState(viewSessionState, active.sessionState);
+      return result;
+    } catch (err) {
+      lease.release?.();
+      throw err;
+    }
+  }
+
+  function acquireRuntimeLease(runtime, session, options = {}) {
+    if (!session?.sessionId) return null;
+    return controllerLeases.acquire({
+      sessionId: session.sessionId,
+      sessionPath: session.sessionPath ?? getRuntimeSessionFile(runtime),
+      projectMarchDir: runtime.projectMarchDir,
+    }, options);
+  }
+
+  function ensureRuntimeLease(runtime) {
+    const sessionId = getRuntimeSessionId(runtime);
+    if (!sessionId) return null;
+    if (!runtime.controllerLease) replaceRuntimeLease(runtime, acquireRuntimeLease(runtime, { sessionId }));
+    runtime.controllerLease.assertOwned();
+    return runtime.controllerLease;
+  }
+
+  function replaceRuntimeLease(runtime, lease) {
+    if (runtime.controllerLease === lease) return;
+    runtime.controllerLease?.release?.();
+    runtime.controllerLease = lease;
+  }
+
+  function releaseRuntimeLease(runtime) {
+    runtime.controllerLease?.release?.();
+    runtime.controllerLease = null;
+  }
+
+  function releaseIdleRuntimeLease(runtime, nextRuntime) {
+    if (!runtime || runtime === nextRuntime || runtime.turnTask) return;
+    releaseRuntimeLease(runtime);
   }
 }
 
@@ -161,6 +256,10 @@ function getRuntimeSessionId(runtime) {
   return runtime.sessionState?.sessionId ?? runtime.runner.getSessionStats?.()?.sessionId ?? null;
 }
 
+function getRuntimeSessionFile(runtime) {
+  return runtime.runner.getSessionStats?.()?.sessionFile ?? null;
+}
+
 function syncSessionState(runtime, sessionId) {
   if (!runtime.sessionState || !sessionId) return;
   runtime.sessionState.sessionId = sessionId;
@@ -175,4 +274,8 @@ function mirrorSessionState(target, source) {
 
 function runtimeKey(projectId, sessionId = null) {
   return `${projectId}:${sessionId ?? ""}`;
+}
+
+function sessionIdFromSessionPath(sessionPath) {
+  return basename(String(sessionPath)).replace(/\.jsonl?$/i, "");
 }

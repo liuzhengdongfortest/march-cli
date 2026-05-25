@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { brightBlack } from "../tui/ui-theme.mjs";
 import { registerProject, listRegisteredProjects } from "../../workspace/project-registry.mjs";
 import { buildWorkspaceSessionSelectItems, listWorkspaceSessions, workspaceSessionSearchText } from "../../workspace/session-index.mjs";
+import { SessionControllerLeaseConflictError } from "../../session/control/controller-lease.mjs";
 
 export const WORKSPACE_SLASH_COMMANDS = [
   {
@@ -93,12 +94,42 @@ export async function handleSessionCommand({ stateRoot, currentProjectId, runner
       ctxRenderActiveSession({ workspaceOutputRouter, projectId: item.project.projectId, sessionId: item.session.id });
       return { handled: true, refreshContextTokens: true, activeChanged: true };
     } catch (err) {
+      if (err instanceof SessionControllerLeaseConflictError) {
+        return await handleSessionControllerConflict({ err, item, workspaceSupervisor, workspaceOutputRouter, ui });
+      }
       ui.writeln(`Error: ${err.message}`);
       return { handled: true };
     }
   }
   ui.writeln("Workspace session activation requires the workspace supervisor.");
   return { handled: true };
+}
+
+async function handleSessionControllerConflict({ err, item, workspaceSupervisor, workspaceOutputRouter, ui }) {
+  ui.writeln(err.message);
+  if (!ui.selectList) return { handled: true };
+  const choice = await ui.selectList({
+    items: [
+      { value: "cancel", label: "Cancel", description: "leave current controller unchanged" },
+      { value: "take-over", label: "Take over control", description: "steal the controller lease for this session" },
+    ],
+    selectedIndex: 0,
+    width: 70,
+    suppressInitialConfirm: true,
+  });
+  if (choice?.value !== "take-over") {
+    ui.writeln("Session unchanged.");
+    return { handled: true };
+  }
+  try {
+    await workspaceSupervisor.activateWorkspaceSession({ project: item.project, session: item.session, force: true });
+    ctxRenderActiveSession({ workspaceOutputRouter, projectId: item.project.projectId, sessionId: item.session.id });
+    ui.writeln(`Took over session: ${item.project.displayName} / ${item.session.name || item.session.id}`);
+    return { handled: true, refreshContextTokens: true, activeChanged: true };
+  } catch (takeoverErr) {
+    ui.writeln(`Error: ${takeoverErr.message}`);
+    return { handled: true };
+  }
 }
 
 function annotateWorkspaceItems(items, runtimeSummaries) {

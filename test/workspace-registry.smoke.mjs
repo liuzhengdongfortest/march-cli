@@ -152,10 +152,18 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
     const viewSessionState = { sessionId: "s-a", sessionDir: "" };
     const disposed = [];
     const activated = [];
+    const acquiredLeases = [];
+    const releasedLeases = [];
     let newSessionCounter = 0;
     const supervisor = createWorkspaceSessionSupervisor({
       initialRuntime: mockRuntime({ project: projectA, cwd: rootA, sessionId: "s-a", disposed }),
       viewSessionState,
+      controllerLeases: {
+        acquire(session, options = {}) {
+          acquiredLeases.push({ session, options });
+          return { assertOwned() {}, release: () => releasedLeases.push(session.sessionId) };
+        },
+      },
       createProjectRuntime: async (project) => mockRuntime({ project, cwd: project.rootPath, sessionId: "new", disposed, startNewSession: async () => ({ sessionId: `created-${++newSessionCounter}` }) }),
       onActivate: ({ projectId }) => activated.push(projectId),
     });
@@ -168,6 +176,7 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
     assert.equal(supervisor.hasRunningTurn(), true);
     supervisor.getActive().turnTask = null;
     await supervisor.activateWorkspaceSession({ project: projectB, session: targetSession });
+    assert.equal(acquiredLeases.at(-1).session.sessionPath, targetSession.path);
     assert.equal(supervisor.runner.engine.cwd, resolve(rootB));
     assert.deepEqual(supervisor.getActive().runner.lastRestoreState.turns, [{ index: 1, userMessage: "hello b", assistantMessage: "answer b" }]);
     assert.deepEqual(activated, [projectB.projectId]);
@@ -175,16 +184,19 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
     const summaries = supervisor.getRuntimeSummaries();
     assert.ok(summaries.some((runtime) => runtime.projectId === projectB.projectId && runtime.sessionId === "s-b"));
     await supervisor.startNewWorkspaceSession(projectB);
+    assert.equal(acquiredLeases.at(-1).session.sessionId, "created-1");
     assert.equal(viewSessionState.sessionId, "created-1");
     const sameProjectOtherSession = { id: "s-b2", path: join(rootB, ".march", "pi-sessions", "s-b2.json") };
     savePiSessionSidecarState({ projectMarchDir: join(rootB, ".march"), sessionRef: sameProjectOtherSession.path, state: { version: 1, cwd: resolve(rootB), turns: [] } });
     supervisor.getActive().turnTask = Promise.resolve();
     await supervisor.activateWorkspaceSession({ project: projectB, session: sameProjectOtherSession });
+    assert.equal(acquiredLeases.at(-1).session.sessionPath, sameProjectOtherSession.path);
     assert.equal(viewSessionState.sessionId, "s-b2");
     assert.equal(supervisor.getRunningTurns().length, 1);
     assert.ok(supervisor.getRuntimeSummaries().some((runtime) => runtime.projectId === projectB.projectId && runtime.sessionId === "created-1" && runtime.running));
     supervisor.getRuntimeSummaries().find((runtime) => runtime.sessionId === "created-1");
     await supervisor.dispose();
+    assert.ok(releasedLeases.includes("s-b2"));
     assert.equal(disposed.filter((item) => item === projectA.projectId).length, 1);
     assert.equal(disposed.filter((item) => item === projectB.projectId).length, 2);
     assert.equal(disposed.filter((item) => item === `memory:${projectB.projectId}`).length, 2);
