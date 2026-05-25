@@ -21,7 +21,7 @@ const RENDER_METHODS = new Set([
 
 const MAX_RENDER_EVENTS_PER_ROUTE = 4000;
 
-export function createWorkspaceOutputRouter({ ui, activeProjectId, activeSessionId = null }) {
+export function createWorkspaceOutputRouter({ ui, activeProjectId, activeSessionId = null, onRenderTimelineChange = null }) {
   let active = routeKey(activeProjectId, activeSessionId);
   const timelines = new Map();
 
@@ -29,9 +29,10 @@ export function createWorkspaceOutputRouter({ ui, activeProjectId, activeSession
     setActiveProject(projectId) {
       this.setActiveSession(projectId, null);
     },
-    setActiveSession(projectId, sessionId) {
+    setActiveSession(projectId, sessionId, { renderTimeline = null } = {}) {
       const next = routeKey(projectId, sessionId);
-      if (next === active) return 0;
+      if (Array.isArray(renderTimeline)) setRenderEvents(next, renderTimeline);
+      if (next === active) return renderRoute(next);
       active = next;
       return renderRoute(next);
     },
@@ -73,6 +74,9 @@ export function createWorkspaceOutputRouter({ ui, activeProjectId, activeSession
     getRenderEvents(projectId, sessionId = null) {
       return [...(timelines.get(routeKey(projectId, sessionId)) ?? [])];
     },
+    setRenderEvents(projectId, sessionId = null, events = []) {
+      setRenderEvents(routeKey(projectId, sessionId), events);
+    },
     getRenderEventCount(projectId, sessionId = null) {
       return timelines.get(routeKey(projectId, sessionId))?.length ?? 0;
     },
@@ -99,6 +103,11 @@ export function createWorkspaceOutputRouter({ ui, activeProjectId, activeSession
     events.push({ method, args, at: Date.now() });
     if (events.length > MAX_RENDER_EVENTS_PER_ROUTE) events.splice(0, events.length - MAX_RENDER_EVENTS_PER_ROUTE);
     timelines.set(key, events);
+    onRenderTimelineChange?.({ ...parseRouteKey(key), events: [...events], event: { method, args } });
+  }
+
+  function setRenderEvents(key, events) {
+    timelines.set(key, normalizeRenderEvents(events));
   }
 }
 
@@ -109,4 +118,9 @@ export function routeKey(projectId, sessionId = null) {
 function parseRouteKey(key) {
   const [projectId, sessionId = ""] = String(key ?? "").split(":", 2);
   return { projectId: projectId || null, sessionId: sessionId || null };
+}
+
+function normalizeRenderEvents(events) {
+  if (!Array.isArray(events)) return [];
+  return events.filter((event) => typeof event?.method === "string" && Array.isArray(event.args));
 }

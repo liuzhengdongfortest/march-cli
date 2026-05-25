@@ -85,7 +85,7 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
     if (!result?.cancelled && result?.sessionId) syncSessionState(active, result.sessionId);
     rememberRuntime(active);
     mirrorSessionState(viewSessionState, active.sessionState);
-    onActivate?.({ projectId: active.project.projectId, sessionId: getRuntimeSessionId(active), runtime: active });
+    onActivate?.({ projectId: active.project.projectId, sessionId: getRuntimeSessionId(active), runtime: active, restoreState: null });
     return { runtime: active, result };
   }
 
@@ -96,8 +96,9 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
     let runtime = session?.id ? runtimes.get(runtimeKey(project.projectId, session.id)) : findIdleRuntime(project.projectId);
     if (!runtime) runtime = await createProjectRuntime(project);
 
+    let restoreState = null;
     if (session?.path && getRuntimeSessionId(runtime) !== session.id) {
-      const restoreState = loadWorkspaceMarchSessionState({ runtime, session });
+      restoreState = loadWorkspaceMarchSessionState({ runtime, session });
       await runtime.runner.switchPiSession(session.path, restoreState);
       syncSessionState(runtime, session.id);
     }
@@ -105,7 +106,7 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
     active = runtime;
     rememberRuntime(runtime);
     mirrorSessionState(viewSessionState, runtime.sessionState);
-    onActivate?.({ projectId: runtime.project.projectId, sessionId: getRuntimeSessionId(runtime), runtime });
+    onActivate?.({ projectId: runtime.project.projectId, sessionId: getRuntimeSessionId(runtime), runtime, restoreState });
     return active;
   }
 

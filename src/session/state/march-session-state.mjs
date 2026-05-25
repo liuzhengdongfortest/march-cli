@@ -44,18 +44,30 @@ export function saveMarchSessionState({ projectMarchDir, sessionId, engine, back
 
 export function saveMarchSessionStateValue({ projectMarchDir, sessionId, state }) {
   if (!sessionId) throw new Error("March session id is required");
-  validateMarchSessionState(state);
+  const existing = loadMarchSessionState({ projectMarchDir, sessionId })?.state ?? null;
+  const nextState = normalizeMarchSessionStateForSave({ ...existing, ...state, renderTimeline: state.renderTimeline ?? existing?.renderTimeline });
+  validateMarchSessionState(nextState);
   const dir = getMarchSessionStateDir(projectMarchDir, sessionId);
   mkdirSync(dir, { recursive: true });
   const path = getMarchSessionStatePath(projectMarchDir, sessionId);
-  writeFileSync(path, JSON.stringify({ ...state, sessionId: state.sessionId ?? sessionId }, null, 2), "utf8");
-  return { path, state: { ...state, sessionId: state.sessionId ?? sessionId } };
+  writeFileSync(path, JSON.stringify({ ...nextState, sessionId: nextState.sessionId ?? sessionId }, null, 2), "utf8");
+  return { path, state: { ...nextState, sessionId: nextState.sessionId ?? sessionId } };
+}
+
+export function saveMarchSessionRenderTimeline({ projectMarchDir, sessionId, renderTimeline }) {
+  const stored = loadMarchSessionState({ projectMarchDir, sessionId });
+  if (!stored) return null;
+  return saveMarchSessionStateValue({
+    projectMarchDir,
+    sessionId,
+    state: { ...stored.state, renderTimeline: normalizeRenderTimeline(renderTimeline) },
+  });
 }
 
 export function loadMarchSessionState({ projectMarchDir, sessionId }) {
   const path = getMarchSessionStatePath(projectMarchDir, sessionId);
   if (!existsSync(path)) return null;
-  const state = JSON.parse(readFileSync(path, "utf8"));
+  const state = normalizeMarchSessionStateForSave(JSON.parse(readFileSync(path, "utf8")));
   if (!isValidMarchSessionState(state)) throw new Error("Invalid March session state");
   return { path, state };
 }
@@ -109,7 +121,7 @@ export function getLegacyPiSidecarPath(projectMarchDir, sessionRef) {
 export function loadLegacyPiSidecar({ projectMarchDir, sessionRef }) {
   const path = getLegacyPiSidecarPath(projectMarchDir, sessionRef);
   if (!existsSync(path)) return null;
-  const state = JSON.parse(readFileSync(path, "utf8"));
+  const state = normalizeMarchSessionStateForSave(JSON.parse(readFileSync(path, "utf8")));
   if (!isValidMarchSessionState(state)) throw new Error("Invalid March session state");
   return { path, state };
 }
@@ -131,7 +143,38 @@ function validateMarchSessionState(state) {
 }
 
 function isValidMarchSessionState(state) {
-  return state?.version === MARCH_SESSION_STATE_VERSION && Boolean(state.cwd) && Array.isArray(state.turns);
+  return state?.version === MARCH_SESSION_STATE_VERSION
+    && Boolean(state.cwd)
+    && Array.isArray(state.turns)
+    && Array.isArray(state.renderTimeline);
+}
+
+function normalizeMarchSessionStateForSave(state) {
+  return {
+    ...state,
+    renderTimeline: normalizeRenderTimeline(state.renderTimeline ?? renderTimelineFromTurns(state.turns ?? [])),
+  };
+}
+
+function normalizeRenderTimeline(events) {
+  if (!Array.isArray(events)) return [];
+  return events
+    .filter((event) => typeof event?.method === "string" && Array.isArray(event.args))
+    .map((event) => ({ method: event.method, args: event.args, at: event.at ?? null }));
+}
+
+function renderTimelineFromTurns(turns) {
+  return turns.flatMap((turn) => {
+    const events = [];
+    if (turn.userMessage) events.push({ method: "writeln", args: [turn.userMessage], at: null });
+    if (turn.assistantMessage) {
+      events.push({ method: "turnStart", args: [], at: null });
+      events.push({ method: "textDelta", args: [turn.assistantMessage], at: null });
+      events.push({ method: "assistantReplyEnd", args: [], at: null });
+      events.push({ method: "turnEnd", args: [], at: null });
+    }
+    return events;
+  });
 }
 
 function normalizeSessionRef(sessionRef) {
@@ -149,5 +192,9 @@ function withBackendTranscriptTurns(state, sessionFile) {
     return { ...state };
   }
   if (transcriptTurns.length <= (state.turns?.length ?? 0)) return { ...state };
-  return { ...state, turns: transcriptTurns };
+  return {
+    ...state,
+    turns: transcriptTurns,
+    renderTimeline: state.renderTimeline?.length ? state.renderTimeline : renderTimelineFromTurns(transcriptTurns),
+  };
 }

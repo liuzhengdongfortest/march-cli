@@ -24,6 +24,8 @@ import { listWorkspaceSessions } from "../../workspace/session-index.mjs";
 import { createWorkspaceSessionSupervisor } from "../../workspace/supervisor.mjs";
 import { createWorkspaceProjectRuntime } from "../workspace/project-runtime.mjs";
 import { createWorkspaceOutputRouter } from "../workspace/output-router.mjs";
+import { syncRuntimeSessionStateFromRunner } from "../workspace/runtime-session-state.mjs";
+import { loadMarchSessionState, saveMarchSessionRenderTimeline } from "../../session/state/march-session-state.mjs";
 
 export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot } = {}) {
   if (!existsSync(stateRoot)) mkdirSync(stateRoot, { recursive: true });
@@ -62,6 +64,7 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
   const modeState = createModeState();
   const namespace = loadOrCreateProjectId(projectMarchDir);
   const currentProjectInfo = registerProject({ stateRoot, rootPath: cwd });
+  const projectMarchDirs = new Map([[currentProjectInfo.projectId, projectMarchDir]]);
   const memoryRoot = resolveMemoryRoot(config.memoryRoot, stateRoot);
   const profilePaths = defaultProfilePaths();
   ensureProfileFiles(profilePaths);
@@ -87,7 +90,12 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
     shellRuntime,
     historyStore: inputHistoryStore,
   });
-  const outputRouter = createWorkspaceOutputRouter({ ui, activeProjectId: currentProjectInfo.projectId, activeSessionId: sessionState.sessionId });
+  const outputRouter = createWorkspaceOutputRouter({
+    ui,
+    activeProjectId: currentProjectInfo.projectId,
+    activeSessionId: sessionState.sessionId,
+    onRenderTimelineChange: persistRenderTimeline,
+  });
   const runtimeUi = outputRouter.createProjectUi(currentProjectInfo.projectId, () => sessionState.sessionId);
   let turnRunning = false;
   let refreshStatusBar = null;
@@ -131,6 +139,7 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
     memoryStore.close?.();
     return { ok: false, code: 1, logger };
   }
+  syncRuntimeSessionStateFromRunner(sessionState, runner, sessionsRoot);
 
   const initialRuntime = {
     project: currentProjectInfo,
@@ -148,23 +157,26 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
   };
   workspaceSupervisor = createWorkspaceSessionSupervisor({
     initialRuntime,
-    createProjectRuntime: (project) => createWorkspaceProjectRuntime({
-      project,
-      args,
-      config,
-      stateRoot,
-      memoryRoot,
-      profilePaths,
-      createMemoryStore: () => new MarkdownMemoryStore({ root: memoryRoot }),
-      provider,
-      serviceTier,
-      model,
-      remoteMemorySources,
-      createUi: (runtimeSessionState) => outputRouter.createProjectUi(project.projectId, () => runtimeSessionState.sessionId),
-      refreshStatusBar: (...args) => refreshStatusBar?.(...args),
-      onNotificationActivation,
-    }),
-    onActivate: ({ projectId, sessionId }) => outputRouter.setActiveSession(projectId, sessionId),
+    createProjectRuntime: (project) => {
+      projectMarchDirs.set(project.projectId, resolve(project.rootPath, ".march"));
+      return createWorkspaceProjectRuntime({
+        project,
+        args,
+        config,
+        stateRoot,
+        memoryRoot,
+        profilePaths,
+        createMemoryStore: () => new MarkdownMemoryStore({ root: memoryRoot }),
+        provider,
+        serviceTier,
+        model,
+        remoteMemorySources,
+        createUi: (runtimeSessionState) => outputRouter.createProjectUi(project.projectId, () => runtimeSessionState.sessionId),
+        refreshStatusBar: (...args) => refreshStatusBar?.(...args),
+        onNotificationActivation,
+      });
+    },
+    onActivate: ({ projectId, sessionId, restoreState }) => outputRouter.setActiveSession(projectId, sessionId, { renderTimeline: restoreState?.renderTimeline }),
   });
   runner = workspaceSupervisor.runner;
 
@@ -198,8 +210,19 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
     ui,
   });
   workspaceSupervisor.refreshActiveRuntime();
-  outputRouter.setActiveSession(currentProjectInfo.projectId, sessionState.sessionId);
+  outputRouter.setActiveSession(currentProjectInfo.projectId, sessionState.sessionId, { renderTimeline: loadStoredRenderTimeline(projectMarchDir, sessionState.sessionId) });
   refreshStatusBar();
+
+  function persistRenderTimeline({ projectId, sessionId, events, event }) {
+    if (!sessionId || !shouldPersistRenderEvent(event?.method)) return;
+    const routeProjectMarchDir = projectMarchDirs.get(projectId);
+    if (!routeProjectMarchDir) return;
+    try {
+      saveMarchSessionRenderTimeline({ projectMarchDir: routeProjectMarchDir, sessionId, renderTimeline: events });
+    } catch {
+      // Render persistence is separate from model context; a UI write failure must not corrupt the turn.
+    }
+  }
 
   return {
     ok: true,
@@ -226,6 +249,18 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
     refreshStatusBar,
     setTurnRunning(value) { turnRunning = value; },
   };
+}
+function loadStoredRenderTimeline(projectMarchDir, sessionId) {
+  if (!sessionId) return null;
+  try {
+    return loadMarchSessionState({ projectMarchDir, sessionId })?.state.renderTimeline ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function shouldPersistRenderEvent(method) {
+  return method === "turnEnd" || method === "assistantReplyEnd" || method === "toolEnd" || method === "writeln" || method === "clearOutput";
 }
 
 async function handleNotificationActivation({ activation, stateRoot, workspaceSupervisor, ui }) {

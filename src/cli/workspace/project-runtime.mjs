@@ -8,6 +8,7 @@ import { loadProjectLifecycleHookManifests } from "../../extensions/lifecycle-ma
 import { loadKeybindings } from "../input/keybindings.mjs";
 import { loadPromptTemplates } from "../input/prompt-templates.mjs";
 import { loadOrCreateProjectId } from "../../workspace/project-id.mjs";
+import { syncRuntimeSessionStateFromRunner } from "./runtime-session-state.mjs";
 
 export async function createWorkspaceProjectRuntime({
   project,
@@ -73,6 +74,7 @@ export async function createWorkspaceProjectRuntime({
     refreshStatusBar,
     onNotificationActivation,
   });
+  syncRuntimeSessionStateFromRunner(sessionState, runner, sessionsRoot);
 
   return {
     project,
