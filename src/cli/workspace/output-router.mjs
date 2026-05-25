@@ -97,6 +97,7 @@ export function createWorkspaceOutputRouter({ ui, activeProjectId, activeSession
   function recordRenderEvent(key, method, args) {
     if (method === "clearOutput") {
       timelines.delete(key);
+      onRenderTimelineChange?.({ ...parseRouteKey(key), events: [], event: { method, args } });
       return;
     }
     const events = timelines.get(key) ?? [];

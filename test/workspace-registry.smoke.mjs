@@ -55,7 +55,8 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
 
     const rendered = [];
     const baseUi = { clearOutput: () => { rendered.length = 0; }, textDelta: (text) => rendered.push(text), writeln: (text) => rendered.push(text) };
-    const outputRouter = createWorkspaceOutputRouter({ ui: baseUi, activeProjectId: projectA.projectId, activeSessionId: "s-a" });
+    const persistedRenderChanges = [];
+    const outputRouter = createWorkspaceOutputRouter({ ui: baseUi, activeProjectId: projectA.projectId, activeSessionId: "s-a", onRenderTimelineChange: (change) => persistedRenderChanges.push(change) });
     const uiA = outputRouter.createProjectUi(projectA.projectId, () => "s-a");
     const uiB = outputRouter.createProjectUi(projectB.projectId, () => "s-b");
     const uiB2 = outputRouter.createProjectUi(projectB.projectId, () => "s-b2");
@@ -74,6 +75,9 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
     assert.deepEqual(rendered, ["hidden-b", "visible-b"]);
     assert.equal(outputRouter.setActiveSession(projectA.projectId, "s-a"), 1);
     assert.deepEqual(rendered, ["visible-a"]);
+    uiA.clearOutput();
+    assert.equal(outputRouter.getRenderEventCount(projectA.projectId, "s-a"), 0);
+    assert.deepEqual(persistedRenderChanges.at(-1).events, []);
 
     const viewSessionState = { sessionId: "s-a", sessionDir: "" };
     const disposed = [];

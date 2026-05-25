@@ -153,7 +153,8 @@ function loadWorkspaceMarchSessionState({ runtime, session }) {
   if (stored.state.cwd && stored.state.cwd !== runtime.runner.engine.cwd) {
     throw new Error(`March session state cwd mismatch for ${session.id}: ${stored.state.cwd}`);
   }
-  return { ...stored.state };
+  const { renderTimeline: _renderTimeline, ...contextState } = stored.state;
+  return contextState;
 }
 
 function getRuntimeSessionId(runtime) {

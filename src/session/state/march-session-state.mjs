@@ -54,16 +54,6 @@ export function saveMarchSessionStateValue({ projectMarchDir, sessionId, state }
   return { path, state: { ...nextState, sessionId: nextState.sessionId ?? sessionId } };
 }
 
-export function saveMarchSessionRenderTimeline({ projectMarchDir, sessionId, renderTimeline }) {
-  const stored = loadMarchSessionState({ projectMarchDir, sessionId });
-  if (!stored) return null;
-  return saveMarchSessionStateValue({
-    projectMarchDir,
-    sessionId,
-    state: { ...stored.state, renderTimeline: normalizeRenderTimeline(renderTimeline) },
-  });
-}
-
 export function loadMarchSessionState({ projectMarchDir, sessionId }) {
   const path = getMarchSessionStatePath(projectMarchDir, sessionId);
   if (!existsSync(path)) return null;
@@ -152,29 +142,15 @@ function isValidMarchSessionState(state) {
 function normalizeMarchSessionStateForSave(state) {
   return {
     ...state,
-    renderTimeline: normalizeRenderTimeline(state.renderTimeline ?? renderTimelineFromTurns(state.turns ?? [])),
+    renderTimeline: normalizePersistedRenderTimeline(state.renderTimeline),
   };
 }
 
-function normalizeRenderTimeline(events) {
+function normalizePersistedRenderTimeline(events) {
   if (!Array.isArray(events)) return [];
   return events
     .filter((event) => typeof event?.method === "string" && Array.isArray(event.args))
     .map((event) => ({ method: event.method, args: event.args, at: event.at ?? null }));
-}
-
-function renderTimelineFromTurns(turns) {
-  return turns.flatMap((turn) => {
-    const events = [];
-    if (turn.userMessage) events.push({ method: "writeln", args: [turn.userMessage], at: null });
-    if (turn.assistantMessage) {
-      events.push({ method: "turnStart", args: [], at: null });
-      events.push({ method: "textDelta", args: [turn.assistantMessage], at: null });
-      events.push({ method: "assistantReplyEnd", args: [], at: null });
-      events.push({ method: "turnEnd", args: [], at: null });
-    }
-    return events;
-  });
 }
 
 function normalizeSessionRef(sessionRef) {
@@ -195,6 +171,5 @@ function withBackendTranscriptTurns(state, sessionFile) {
   return {
     ...state,
     turns: transcriptTurns,
-    renderTimeline: state.renderTimeline?.length ? state.renderTimeline : renderTimelineFromTurns(transcriptTurns),
   };
 }

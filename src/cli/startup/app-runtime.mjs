@@ -25,7 +25,7 @@ import { createWorkspaceSessionSupervisor } from "../../workspace/supervisor.mjs
 import { createWorkspaceProjectRuntime } from "../workspace/project-runtime.mjs";
 import { createWorkspaceOutputRouter } from "../workspace/output-router.mjs";
 import { syncRuntimeSessionStateFromRunner } from "../workspace/runtime-session-state.mjs";
-import { loadMarchSessionState, saveMarchSessionRenderTimeline } from "../../session/state/march-session-state.mjs";
+import { loadMarchSessionRenderTimeline, saveMarchSessionRenderTimeline } from "../../session/state/march-session-ui-state.mjs";
 
 export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot } = {}) {
   if (!existsSync(stateRoot)) mkdirSync(stateRoot, { recursive: true });
@@ -176,7 +176,7 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
         onNotificationActivation,
       });
     },
-    onActivate: ({ projectId, sessionId, restoreState }) => outputRouter.setActiveSession(projectId, sessionId, { renderTimeline: restoreState?.renderTimeline }),
+    onActivate: ({ projectId, sessionId }) => outputRouter.setActiveSession(projectId, sessionId, { renderTimeline: loadStoredRenderTimeline(projectMarchDirs.get(projectId), sessionId) }),
   });
   runner = workspaceSupervisor.runner;
 
@@ -251,9 +251,9 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
   };
 }
 function loadStoredRenderTimeline(projectMarchDir, sessionId) {
-  if (!sessionId) return null;
+  if (!projectMarchDir || !sessionId) return null;
   try {
-    return loadMarchSessionState({ projectMarchDir, sessionId })?.state.renderTimeline ?? null;
+    return loadMarchSessionRenderTimeline({ projectMarchDir, sessionId })?.renderTimeline ?? null;
   } catch {
     return null;
   }
