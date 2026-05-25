@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 export async function runSessionPersistenceSmoke({ setupTmp, cleanup }) {
-  console.log("--- smoke: session persistence (removed — all sessions use pi JSONL) ---");
+  console.log("--- smoke: legacy session persistence removed; March state owns context ---");
   console.log("  PASS");
 }
 export async function runPiSessionManagerFactorySmoke({ setupTmp, cleanup }) {
@@ -43,7 +43,7 @@ export async function runPiSessionManagerFactorySmoke({ setupTmp, cleanup }) {
 }
 
 export async function runPiSessionSidecarSmoke({ setupTmp, cleanup }) {
-  console.log("--- smoke: pi session sidecar ---");
+  console.log("--- smoke: March session state with pi backend compatibility ---");
   const { mkdirSync, writeFileSync } = await import("node:fs");
   const { join } = await import("node:path");
   const { ContextEngine } = await import("../src/context/engine.mjs");
@@ -65,19 +65,19 @@ export async function runPiSessionSidecarSmoke({ setupTmp, cleanup }) {
     namespace: "project-ns",
   });
   engine.recordTurn({ userMessage: "hello", assistantMessage: "answer" });
-  engine.setSessionName("Pi Sidecar");
+  engine.setSessionName("March Session State");
 
   const saved = savePiSessionSidecar({
     projectMarchDir,
     sessionRef: "2026-05-10T00-00-00-000Z_test.jsonl",
     engine,
-    metadata: { sessionId: "pi1", sessionFile: "session.jsonl" },
+    metadata: { sessionId: "pi1", sessionFile: "2026-05-10T00-00-00-000Z_test.jsonl" },
   });
-  assert.ok(saved.path.endsWith(join("pi-sidecars", "2026-05-10T00-00-00-000Z_test.json")));
+  assert.ok(saved.path.endsWith(join("sessions", "pi1", "state.json")));
   assert.equal(saved.state.sessionId, "pi1");
   assert.equal(saved.state.namespace, "project-ns");
   assert.equal(saved.state.thinkingLevel, "high");
-  assert.equal(saved.state.sessionName, "Pi Sidecar");
+  assert.equal(saved.state.sessionName, "March Session State");
   assert.equal(Object.hasOwn(saved.state, "skills"), false);
 
   const loaded = loadPiSessionSidecar({ projectMarchDir, sessionRef: "2026-05-10T00-00-00-000Z_test" });
@@ -96,15 +96,16 @@ export async function runPiSessionSidecarSmoke({ setupTmp, cleanup }) {
   assert.deepEqual(contextState.state.turns, [{ index: 1, userMessage: "from transcript", assistantMessage: "restored answer" }]);
 
   const invalidPath = getPiSidecarPath(projectMarchDir, "invalid");
+  mkdirSync(join(invalidPath, ".."), { recursive: true });
   writeFileSync(invalidPath, JSON.stringify({ version: 999 }), "utf8");
-  assert.throws(() => loadPiSessionSidecar({ projectMarchDir, sessionRef: "invalid" }), /Invalid pi session sidecar/);
+  assert.throws(() => loadPiSessionSidecar({ projectMarchDir, sessionRef: "invalid" }), /Invalid March session state/);
 
   cleanup(dir);
   console.log("  PASS");
 }
 
 export async function runPiSessionSidecarSyncSmoke({ setupTmp, cleanup }) {
-  console.log("--- smoke: pi session sidecar sync ---");
+  console.log("--- smoke: March session state sync ---");
   const { ContextEngine } = await import("../src/context/engine.mjs");
   const { loadPiSessionSidecar } = await import("../src/session/sidecar.mjs");
   const { syncPiSessionSidecar } = await import("../src/session/sidecar-sync.mjs");
@@ -144,10 +145,10 @@ export async function runPiSessionSidecarSyncSmoke({ setupTmp, cleanup }) {
       runtimeHost: true,
     },
   });
-  assert.ok(synced.path.endsWith(join("pi-sidecars", "2026-05-10T00-00-00-000Z_test.json")));
+  assert.ok(synced.path.endsWith(join("sessions", "pi1", "state.json")));
   const loaded = loadPiSessionSidecar({ projectMarchDir, sessionRef: "2026-05-10T00-00-00-000Z_test.jsonl" });
   assert.equal(loaded.state.sessionId, "pi1");
-  assert.equal(loaded.state.runtimeHost, true);
+  assert.equal(loaded.state.backend.runtimeHost, true);
   assert.equal(loaded.state.thinkingLevel, "high");
   assert.equal(loaded.state.turns[0].assistantMessage, "answer");
 

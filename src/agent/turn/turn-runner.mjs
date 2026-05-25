@@ -14,7 +14,7 @@ export async function runRunnerTurn({
   setModelCallKind,
   logger = null,
   setPhase = null,
-  syncCurrentPiSidecar,
+  syncCurrentMarchSessionState,
   autoNameSession,
   contextMode = "rebuild",
   recordHistory = null,
@@ -79,7 +79,7 @@ export async function runRunnerTurn({
       ui,
       turnState,
       midTurnRecallHints,
-      syncCurrentPiSidecar,
+      syncCurrentMarchSessionState,
       autoNameSession,
       recordHistory,
     });
@@ -129,7 +129,7 @@ function logSessionEvent(logger, event) {
   });
 }
 
-function finalizeTurn({ prompt, userMessage, userRecallHints, currentProject, memoryStore, engine, ui, turnState, midTurnRecallHints, syncCurrentPiSidecar, autoNameSession, recordHistory }) {
+function finalizeTurn({ prompt, userMessage, userRecallHints, currentProject, memoryStore, engine, ui, turnState, midTurnRecallHints, syncCurrentMarchSessionState, autoNameSession, recordHistory }) {
   closeAssistantReply({ ui, state: turnState });
   const assistantRecallHints = flushAssistantRecall({ memoryStore, engine, turnState, currentProject });
   engine.setPendingAssistantRecallHints?.(assistantRecallHints);
@@ -145,7 +145,7 @@ function finalizeTurn({ prompt, userMessage, userRecallHints, currentProject, me
   recordHistory?.({ ...turn, thinking: assistantThinkingText(turnState), toolCalls: turnState.toolCalls });
 
   autoNameSession?.();
-  syncCurrentPiSidecar();
+  syncCurrentMarchSessionState();
 }
 
 function flushAssistantRecall({ memoryStore, engine, turnState, currentProject }) {

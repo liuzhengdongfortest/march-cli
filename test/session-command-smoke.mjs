@@ -116,7 +116,7 @@ export async function runSessionListCommandSmoke() {
 }
 
 export async function runSessionSwitchCommandSmoke({ setupTmp, cleanup }) {
-  console.log("--- smoke: session switch (removed — all sessions use pi) ---");
+  console.log("--- smoke: legacy session switch command removed ---");
   console.log("  PASS");
 }
 
@@ -144,7 +144,7 @@ export async function runPiSessionSwitchCommandSmoke() {
     runner: { canSwitchPiSession: () => true, engine: { cwd: "D:/repo" } },
     sessions,
     projectMarchDir,
-  }), ["Error: pi session sidecar not found for abc123; refusing partial resume"]);
+  }), ["Error: March session state not found for abc123; refusing partial resume"]);
 
   let switchedPath = null;
   const engine = new ContextEngine({ cwd: "D:/repo", modelId: "test", provider: "deepseek" });
@@ -192,7 +192,7 @@ export async function runPiSessionSwitchCommandSmoke() {
     runner,
     sessions: [{ id: "bad999", path: "bad.jsonl" }],
     projectMarchDir,
-  }), ["Error: pi session sidecar is invalid for bad999: Invalid pi session sidecar"]);
+  }), ["Error: March session state is invalid for bad999: Invalid March session state"]);
   assert.deepEqual(await resumePiSessionById("def", {
     runner: { canSwitchPiSession: () => true, engine: { cwd: "D:/repo" }, switchPiSession: async () => ({ cancelled: true }) },
     sessions,
@@ -219,7 +219,7 @@ export async function runPiSessionSwitchCommandSmoke() {
     runner: { canSwitchPiSession: () => true, engine: mismatchEngine },
     sessions,
     projectMarchDir,
-  }), ["Error: pi session sidecar cwd mismatch for abc123: D:/repo"]);
+  }), ["Error: March session state cwd mismatch for abc123: D:/repo"]);
   rmSync(tempRoot, { recursive: true, force: true });
   console.log("  PASS");
 }

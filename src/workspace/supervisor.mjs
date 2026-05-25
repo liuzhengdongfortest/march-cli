@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { loadPiSessionContextState } from "../session/sidecar.mjs";
+import { loadMarchSessionStateForPiBackend } from "../session/state/march-session-state.mjs";
 
 export function createWorkspaceSessionSupervisor({ initialRuntime, createProjectRuntime, viewSessionState = initialRuntime?.sessionState, onActivate = null }) {
   if (!initialRuntime?.project?.projectId) throw new Error("initial workspace runtime is missing project metadata");
@@ -97,7 +97,7 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
     if (!runtime) runtime = await createProjectRuntime(project);
 
     if (session?.path && getRuntimeSessionId(runtime) !== session.id) {
-      const restoreState = loadWorkspacePiSessionState({ runtime, session });
+      const restoreState = loadWorkspaceMarchSessionState({ runtime, session });
       await runtime.runner.switchPiSession(session.path, restoreState);
       syncSessionState(runtime, session.id);
     }
@@ -142,13 +142,17 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
   }
 }
 
-function loadWorkspacePiSessionState({ runtime, session }) {
-  const sidecar = loadPiSessionContextState({ projectMarchDir: runtime.projectMarchDir, sessionRef: session.path });
-  if (!sidecar) throw new Error(`pi session sidecar not found for ${session.id}; refusing partial resume`);
-  if (sidecar.state.cwd && sidecar.state.cwd !== runtime.runner.engine.cwd) {
-    throw new Error(`pi session sidecar cwd mismatch for ${session.id}: ${sidecar.state.cwd}`);
+function loadWorkspaceMarchSessionState({ runtime, session }) {
+  const stored = loadMarchSessionStateForPiBackend({
+    projectMarchDir: runtime.projectMarchDir,
+    sessionId: session.id,
+    sessionRef: session.path,
+  });
+  if (!stored) throw new Error(`March session state not found for ${session.id}; refusing partial resume`);
+  if (stored.state.cwd && stored.state.cwd !== runtime.runner.engine.cwd) {
+    throw new Error(`March session state cwd mismatch for ${session.id}: ${stored.state.cwd}`);
   }
-  return { ...sidecar.state };
+  return { ...stored.state };
 }
 
 function getRuntimeSessionId(runtime) {

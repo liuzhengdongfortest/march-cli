@@ -2,7 +2,7 @@ import { createAgentSession, ModelRegistry, SettingsManager } from "@earendil-wo
 import { createMarchAuthStorage } from "../auth/storage.mjs";
 import { ContextEngine } from "../context/engine.mjs";
 import { createMarchLifecycleAdapter } from "../extensions/lifecycle-adapter.mjs";
-import { syncPiSessionSidecar } from "../session/sidecar-sync.mjs";
+import { syncMarchSessionState } from "../session/state/march-session-sync.mjs";
 import { LspService } from "../lsp/service.mjs";
 import { formatLspServiceEvent } from "../lsp/status-message.mjs";
 import { estimateProviderPayloadTokens, installModelPayloadDumper, replaceProviderContextMessages } from "./model-payload-dumper.mjs";
@@ -30,7 +30,7 @@ import { appendRunnerTurnHistory, createRunnerHistoryStore } from "../history/ru
 export { MARCH_BASE_TOOL_NAMES, installModelPayloadDumper };
 export { createDefaultSessionManager, resolveRunnerSessionManager } from "./runner/runner-init.mjs";
 export { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
-export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, memoryRoot = null, profilePaths = null, memoryStore = null, memoryTools = [], remoteMemorySources = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncPiSidecar = false, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, modelContextDumper = null, turnNotifier = null, logger = null, onModelPayload = null, onLspStatusChange = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices, maxTurns, trimBatch, serviceTier = null, hostedTools = {}, notificationContext = null }) {
+export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, memoryRoot = null, profilePaths = null, memoryStore = null, memoryTools = [], remoteMemorySources = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncMarchSessionState: syncMarchSessionStateEnabled = false, syncPiSidecar = syncMarchSessionStateEnabled, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, modelContextDumper = null, turnNotifier = null, logger = null, onModelPayload = null, onLspStatusChange = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices, maxTurns, trimBatch, serviceTier = null, hostedTools = {}, notificationContext = null }) {
   installRunnerProcessGuards();
   if (!useRuntimeHost && extensionPaths.length > 0) throw new Error("--extension requires the default pi runtime host path");
   const authConfig = authStorage ? { authStorage, hasAuth: true } : createMarchAuthStorage({ provider: provider ?? "deepseek", providers, cwd });
@@ -125,7 +125,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
           setModelCallKind: (kind) => { currentModelCallKind = kind; },
           logger: turnLog.logger,
           setPhase: turnLog.setPhase,
-          syncCurrentPiSidecar,
+          syncCurrentMarchSessionState,
           autoNameSession,
           contextMode,
           recordHistory: (turn) => appendRunnerTurnHistory({ store: historyStore, turn, sessionStats: getRunnerSessionStats(sessionBinding.get(), runtimeHost), modelId: engine.modelId, provider: engine.provider }),
@@ -206,14 +206,14 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       const activeSession = sessionBinding.get();
       activeSession.setSessionName?.(name);
       engine.setSessionName(name);
-      syncCurrentPiSidecar();
+      syncCurrentMarchSessionState();
       return engine.sessionName;
     },
     canSwitchPiSession() { return Boolean(runtimeHost); },
     async startNewSession() {
       if (!runtimeHost) throw new Error("pi runtime host is not enabled");
       nextTurnContextMode = "rebuild";
-      syncCurrentPiSidecar();
+      syncCurrentMarchSessionState();
       const result = await runtimeHost.newSession();
       if (result?.cancelled) return { cancelled: true };
       engine.restoreSession({}, [], { replace: true });
@@ -256,9 +256,9 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     },
   };
   return runner;
-  function syncCurrentPiSidecar() {
-    return syncPiSessionSidecar({
-      enabled: syncPiSidecar, projectMarchDir, engine,
+  function syncCurrentMarchSessionState() {
+    return syncMarchSessionState({
+      enabled: syncPiSidecar || syncMarchSessionStateEnabled, projectMarchDir, engine,
       sessionStats: getRunnerSessionStats(sessionBinding.get(), runtimeHost),
     });
   }

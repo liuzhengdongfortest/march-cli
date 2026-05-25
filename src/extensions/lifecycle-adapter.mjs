@@ -7,7 +7,7 @@ export const MARCH_LIFECYCLE_LAYERS = Object.freeze([
   {
     name: "march-agent-runtime",
     owner: "March runner",
-    effects: Object.freeze(["read-session-ref", "read-sidecar-metadata", "read-runtime-state"]),
+    effects: Object.freeze(["read-session-ref", "read-session-state", "read-runtime-state"]),
   },
   {
     name: "march-collaboration",
@@ -24,7 +24,7 @@ export const DEFAULT_MARCH_HOOK_POLICY = Object.freeze({
     "read-agent-ref",
     "read-workspace-ref",
     "read-session-ref",
-    "read-sidecar-metadata",
+    "read-session-state",
     "read-diff-metadata",
     "read-runtime-diagnostics",
     "write-diagnostics",

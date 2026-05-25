@@ -1,4 +1,4 @@
-import { loadPiSessionContextState } from "../../session/sidecar.mjs";
+import { loadMarchSessionStateForPiBackend } from "../../session/state/march-session-state.mjs";
 
 export async function resumePiSessionById(id, { runner, sessions, projectMarchDir }) {
   if (!runner.canSwitchPiSession?.()) {
@@ -12,21 +12,21 @@ export async function resumePiSessionById(id, { runner, sessions, projectMarchDi
   }
 
   const session = matches[0];
-  let sidecar;
+  let stored;
   try {
-    sidecar = loadPiSessionContextState({ projectMarchDir, sessionRef: session.path });
+    stored = loadMarchSessionStateForPiBackend({ projectMarchDir, sessionId: session.id, sessionRef: session.path });
   } catch (err) {
-    return [`Error: pi session sidecar is invalid for ${session.id}: ${err.message}`];
+    return [`Error: March session state is invalid for ${session.id}: ${err.message}`];
   }
-  if (!sidecar) {
-    return [`Error: pi session sidecar not found for ${session.id}; refusing partial resume`];
+  if (!stored) {
+    return [`Error: March session state not found for ${session.id}; refusing partial resume`];
   }
-  if (sidecar.state.cwd && sidecar.state.cwd !== runner.engine.cwd) {
-    return [`Error: pi session sidecar cwd mismatch for ${session.id}: ${sidecar.state.cwd}`];
+  if (stored.state.cwd && stored.state.cwd !== runner.engine.cwd) {
+    return [`Error: March session state cwd mismatch for ${session.id}: ${stored.state.cwd}`];
   }
 
   let result;
-  const restoreState = toContextSessionState(sidecar.state);
+  const restoreState = toContextSessionState(stored.state);
   try {
     result = await runner.switchPiSession(session.path, restoreState);
   } catch (err) {
@@ -36,6 +36,6 @@ export async function resumePiSessionById(id, { runner, sessions, projectMarchDi
   return [`Resumed pi session: ${session.id}`];
 }
 
-function toContextSessionState(sidecarState) {
-  return { ...sidecarState };
+function toContextSessionState(sessionState) {
+  return { ...sessionState };
 }

@@ -72,7 +72,7 @@ export async function createIsolatedRunner(options = {}, deps = {}) {
       enabled: true,
     }),
     useRuntimeHost: true,
-    syncPiSidecar: true,
+    syncMarchSessionState: true,
     lifecycleHooks: options.lifecycleHooks ?? [],
     lifecycleDiagnostics: options.lifecycleDiagnostics ?? [],
     authStorage: d.createMarchAuthStorage({

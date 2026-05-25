@@ -120,11 +120,11 @@ function ctxReplayBufferedOutput({ workspaceOutputRouter, projectId, sessionId }
 }
 
 function restoreTranscriptFromSession(session, ui) {
-  if (typeof ui.restoreTranscript !== "function") return;
+  if (typeof ui.restoreTranscript !== "function" || !session.path) return;
   try {
     ui.restoreTranscript(loadPiSessionTranscriptTurns(session.path));
   } catch (err) {
-    ui.writeln(`Warning: failed to restore session transcript: ${err.message}`);
+    ui.writeln(`Warning: failed to restore backend transcript: ${err.message}`);
   }
 }
 

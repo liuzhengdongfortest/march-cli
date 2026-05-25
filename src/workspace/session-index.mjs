@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { listPiSessionInfos } from "../session/pi-manager.mjs";
+import { listMarchSessionStates } from "../session/state/march-session-state.mjs";
 import { listRegisteredProjects } from "./project-registry.mjs";
 
 export async function listWorkspaceSessions({ stateRoot, currentProjectId = null, listSessions = listPiSessionInfos }) {
@@ -10,6 +11,7 @@ export async function listWorkspaceSessions({ stateRoot, currentProjectId = null
     let sessions = [];
     try {
       sessions = await listSessions({ cwd: project.rootPath, projectMarchDir });
+      sessions = mergeMarchSessionStates({ projectMarchDir, backendSessions: sessions });
     } catch {
       sessions = [];
     }
@@ -72,4 +74,29 @@ function compareWorkspaceItems(a, b) {
 function formatWorkspaceSessionTime(value) {
   if (!value) return "no saved time";
   return String(value).slice(0, 16).replace("T", " ");
+}
+
+function mergeMarchSessionStates({ projectMarchDir, backendSessions }) {
+  const backendById = new Map(backendSessions.map((session) => [session.id, session]));
+  const backendByPath = new Map(backendSessions.map((session) => [session.path, session]));
+  const marchSessions = listMarchSessionStates({ projectMarchDir }).map(({ state }) => {
+    const backend = state.backend?.type === "pi"
+      ? backendById.get(state.backend.sessionId) ?? backendByPath.get(state.backend.sessionFile)
+      : null;
+    return {
+      id: state.sessionId,
+      path: state.backend?.sessionFile ?? backend?.path ?? null,
+      savedAt: state.savedAt,
+      createdAt: backend?.createdAt ?? "",
+      cwd: state.cwd,
+      name: state.sessionName || backend?.name || "",
+      turnCount: state.turns?.length ?? backend?.turnCount ?? 0,
+      firstMessage: state.turns?.[0]?.userMessage ?? backend?.firstMessage ?? "",
+      parentSessionPath: backend?.parentSessionPath ?? null,
+      backend,
+    };
+  });
+  const seenBackendIds = new Set(marchSessions.map((session) => session.backend?.id).filter(Boolean));
+  const legacyBackendSessions = backendSessions.filter((session) => !seenBackendIds.has(session.id));
+  return [...marchSessions, ...legacyBackendSessions];
 }
