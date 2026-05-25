@@ -214,7 +214,7 @@ export class MarkdownMemoryStore {
     try {
       const result = await this.semanticRecall.search(text, { entries: this.entries, excluded, limit });
       const hints = result.recalled.map(({ entry, score }) => toHint(entry, { score }));
-      this.lastUserRecallReport = { threshold: result.threshold, hints, candidates: result.candidates.map(({ entry, score, recalled }) => ({ ...toHint(entry, { score }), recalled })) };
+      this.lastUserRecallReport = { threshold: result.threshold, vectorizerStatus: result.vectorizerStatus, warning: result.warning, hints, candidates: result.candidates.map(({ entry, score, recalled }) => ({ ...toHint(entry, { score }), recalled })) };
       return hints;
     } catch (err) {
       this.semanticRecallWarning = err?.message ?? String(err);

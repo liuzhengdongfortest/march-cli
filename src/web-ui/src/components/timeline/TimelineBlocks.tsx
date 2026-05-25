@@ -94,9 +94,11 @@ function TerminalBlock({ item }: { item: Extract<TimelineItem, { kind: "terminal
 function MemoryRecallBlock({ item }: { item: Extract<TimelineItem, { kind: "memoryRecall" }> }) {
   const candidates = item.report?.candidates?.length ? item.report.candidates : item.hints.map((hint) => ({ ...hint, recalled: true }));
   const threshold = typeof item.report?.threshold === "number" ? `threshold ${item.report.threshold.toFixed(2)}` : "semantic recall";
+  const fallback = item.report?.vectorizerStatus === "fallback" ? " · fallback" : "";
   return (
     <div className="timeline-aux memory-recall-block">
-      <div className="aux-title"><span>memory</span><strong>{item.source} recall · {threshold}</strong></div>
+      <div className="aux-title"><span>memory</span><strong>{item.source} recall · {threshold}{fallback}</strong></div>
+      {item.report?.warning ? <p className="memory-recall-warning">! {item.report.warning}</p> : null}
       <ul>
         {candidates.map((hint) => (
           <li key={hint.id} className={hint.recalled === false ? "skipped" : "recalled"}>

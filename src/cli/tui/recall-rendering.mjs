@@ -8,8 +8,10 @@ export function formatRecallLines(hints = [], report = null) {
   if (!hints.length && !candidates.length) return [];
   const noun = hints.length === 1 ? "note" : "notes";
   const threshold = Number.isFinite(report?.threshold) ? ` · threshold ${formatScore(report.threshold)}` : "";
+  const fallback = report?.vectorizerStatus === "fallback" ? " · fallback" : "";
   return [
-    `${RECALL_ICON} Memory Recall · ${hints.length} ${noun}${threshold}`,
+    `${RECALL_ICON} Memory Recall · ${hints.length} ${noun}${threshold}${fallback}`,
+    ...(report?.warning ? [`    ! ${report.warning}`] : []),
     ...(candidates.length ? candidates : hints.map((hint) => ({ ...hint, recalled: true }))).flatMap(formatHintLines),
   ];
 }

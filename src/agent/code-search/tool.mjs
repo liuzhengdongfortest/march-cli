@@ -5,6 +5,7 @@ import { toolText } from "../tool-result.mjs";
 import { CodeSearchIndexCache } from "./cache.mjs";
 import { searchCode } from "./engine.mjs";
 import { Model2VecVectorizer, POTION_CODE_MODEL_ID } from "./retrieval/model2vec.mjs";
+import { ResilientVectorizer } from "./retrieval/resilient-vectorizer.mjs";
 
 const persistentCaches = new Map();
 
@@ -23,7 +24,7 @@ export function createCodeSearchTool({ engine, stateRoot = null }) {
         Type.Literal("symbol"),
         Type.Literal("lexical"),
         Type.Literal("semantic"),
-      ], { description: "Search mode. auto uses BM25 + Model2Vec retrieval with RRF fusion." })),
+      ], { description: "Search mode. auto uses BM25 + Model2Vec retrieval with RRF fusion; falls back to local hashing if the model is unavailable." })),
       include_tests: Type.Optional(Type.Boolean({ description: "Include test/spec paths without penalty; default false" })),
       related_to: Type.Optional(Type.Object({
         file_path: Type.String({ description: "Workspace-relative file path containing the known code" }),
@@ -53,7 +54,10 @@ function persistentCacheFor(stateRoot) {
   if (!cache) {
     cache = new CodeSearchIndexCache({
       storagePath,
-      vectorizer: new Model2VecVectorizer({ modelDir }),
+      vectorizer: new ResilientVectorizer({
+        primary: new Model2VecVectorizer({ modelDir }),
+        label: "code_search",
+      }),
     });
     persistentCaches.set(cacheKey, cache);
   }
@@ -61,13 +65,15 @@ function persistentCacheFor(stateRoot) {
 }
 
 function formatSearchOutput({ results, stats }) {
-  const header = `--- code_search (${results.length} results, ${stats.files} files, ${stats.chunks} chunks, ${stats.mode}) ---`;
-  if (results.length === 0) return `${header}\nNo matching code snippets found.`;
+  const mode = stats.vectorizer_status === "fallback" ? `${stats.mode}-fallback` : stats.mode;
+  const header = `--- code_search (${results.length} results, ${stats.files} files, ${stats.chunks} chunks, ${mode}) ---`;
+  const warning = stats.vectorizer_warning ? `\nwarning: ${stats.vectorizer_warning}` : "";
+  if (results.length === 0) return `${header}${warning}\nNo matching code snippets found.`;
   const body = results.map((result, index) => [
     `${index + 1}. ${result.file_path}:${result.start_line}-${result.end_line} score=${result.score} kind=${result.kind}${result.symbols.length ? ` symbols=${result.symbols.join(",")}` : ""}`,
     fenceSnippet(result.snippet),
   ].join("\n")).join("\n\n");
-  return `${header}\n${body}`;
+  return `${header}${warning}\n${body}`;
 }
 
 function fenceSnippet(snippet) {

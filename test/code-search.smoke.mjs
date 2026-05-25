@@ -28,6 +28,7 @@ export async function runCodeSearchSmoke({ setupTmp, cleanup }) {
     const { searchCode } = await import("../src/agent/code-search/engine.mjs");
     const { CodeSearchIndexCache } = await import("../src/agent/code-search/cache.mjs");
     const { Model2VecVectorizer } = await import("../src/agent/code-search/retrieval/model2vec.mjs");
+    const { ResilientVectorizer } = await import("../src/agent/code-search/retrieval/resilient-vectorizer.mjs");
     const cache = new CodeSearchIndexCache();
     const result = await searchCode({ root, query: "issueSessionToken", top_k: 3, cache });
     assert.ok(result.stats.files >= 1);
@@ -74,6 +75,14 @@ export async function runCodeSearchSmoke({ setupTmp, cleanup }) {
     assert.equal(model2vec.stats.mode, "semantic");
     assert.equal(model2vec.results[0].file_path, "src/auth-service.mjs");
 
+    const fallbackCache = new CodeSearchIndexCache({
+      vectorizer: new ResilientVectorizer({ primary: new FailingVectorizer(), label: "code_search" }),
+    });
+    const fallback = await searchCode({ root, query: "issueSessionToken", top_k: 1, mode: "semantic", cache: fallbackCache });
+    assert.equal(fallback.stats.vectorizer_status, "fallback");
+    assert.match(fallback.stats.vectorizer_warning, /using local hashing fallback/);
+    assert.equal(fallback.results[0].file_path, "src/auth-service.mjs");
+
     const fileScoped = await searchCode({ root, path: "src/auth-service.mjs", query: "sign jwt payload", top_k: 1, cache });
     assert.equal(fileScoped.results[0].file_path, "src/auth-service.mjs");
 
@@ -103,6 +112,17 @@ export async function runCodeSearchSmoke({ setupTmp, cleanup }) {
     cleanup(root);
   }
   console.log("  PASS");
+}
+
+class FailingVectorizer {
+  constructor() {
+    this.id = "failing-vectorizer";
+    this.dimensions = 256;
+  }
+
+  async encode() {
+    throw new Error("fixture download failed");
+  }
 }
 
 function writeTinyModel2Vec(modelDir) {

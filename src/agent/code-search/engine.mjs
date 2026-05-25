@@ -79,6 +79,8 @@ function formatStats(files, built, mode) {
     indexed_files: built.indexedFiles,
     reused_index: built.reusedIndex,
     vectorizer: built.vectorizer,
+    vectorizer_status: built.vectorizer_status,
+    vectorizer_warning: built.vectorizer_warning,
   };
 }
 

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Model2VecVectorizer } from "../../agent/code-search/retrieval/model2vec.mjs";
+import { ResilientVectorizer } from "../../agent/code-search/retrieval/resilient-vectorizer.mjs";
 import { parseMemoryMarkdown } from "./markdown-format.mjs";
 
 export const POTION_RETRIEVAL_MODEL_ID = "minishlab/potion-retrieval-32M";
@@ -20,6 +21,14 @@ export class SemanticMemoryRecallIndex {
 
   get enabled() {
     return Boolean(this.vectorizer);
+  }
+
+  get warning() {
+    return this.vectorizer?.warning ?? null;
+  }
+
+  get status() {
+    return this.vectorizer?.status ?? "primary";
   }
 
   async preload() {
@@ -55,6 +64,8 @@ export class SemanticMemoryRecallIndex {
       recalled: candidates.filter((candidate) => candidate.recalled).slice(0, limit),
       candidates: candidates.slice(0, Math.max(limit, candidateLimit)),
       threshold: this.minScore,
+      vectorizerStatus: this.status,
+      warning: this.warning,
     };
   }
 
@@ -80,7 +91,10 @@ export function parseMemoryRecallMinScore(value = process.env.MARCH_MEMORY_RECAL
 function createDefaultVectorizer({ stateRoot, modelId, modelDir }) {
   const dir = modelDir ?? (stateRoot ? join(stateRoot, "memory", "models", modelId.replaceAll("/", "__")) : null);
   if (!dir) return null;
-  return new Model2VecVectorizer({ modelDir: dir, modelId });
+  return new ResilientVectorizer({
+    primary: new Model2VecVectorizer({ modelDir: dir, modelId }),
+    label: "memory recall",
+  });
 }
 
 function memoryChunks(entry) {

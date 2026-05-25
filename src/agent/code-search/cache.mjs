@@ -2,6 +2,7 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { chunkFile } from "./chunker.mjs";
 import { Bm25Index } from "./retrieval/bm25.mjs";
+import { describeVectorizer } from "./retrieval/resilient-vectorizer.mjs";
 import { LocalVectorIndex, defaultVectorizer } from "./retrieval/vector.mjs";
 
 const DEFAULT_MAX_FILE_ENTRIES = 8_000;
@@ -53,7 +54,7 @@ export class CodeSearchIndexCache {
     if (cachedIndex) {
       this.indices.delete(indexSignature);
       this.indices.set(indexSignature, cachedIndex);
-      return { chunks, index: cachedIndex, reusedFiles, indexedFiles, reusedIndex: true, vectorizer: this.vectorizer.id };
+      return { chunks, index: cachedIndex, reusedFiles, indexedFiles, reusedIndex: true, ...describeVectorizer(this.vectorizer) };
     }
 
     const index = {
@@ -62,7 +63,7 @@ export class CodeSearchIndexCache {
     };
     this.indices.set(indexSignature, index);
     this.pruneIndexCache();
-    return { chunks, index, reusedFiles, indexedFiles, reusedIndex: false, vectorizer: this.vectorizer.id };
+    return { chunks, index, reusedFiles, indexedFiles, reusedIndex: false, ...describeVectorizer(this.vectorizer) };
   }
 
   clear() {

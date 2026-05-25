@@ -6,6 +6,7 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: markdown memory system ---");
   const { MarkdownMemoryStore, formatRecallHints } = await import("../src/memory/markdown-store.mjs");
   const { KeywordVectorizer } = await import("./semantic-test-vectorizer.mjs");
+  const { ResilientVectorizer } = await import("../src/agent/code-search/retrieval/resilient-vectorizer.mjs");
   const { createMarkdownMemoryTools } = await import("../src/memory/markdown-tools.mjs");
   const { preloadSemanticMemoryRecall } = await import("../src/memory/markdown/semantic-preload.mjs");
   const { formatRecallLines, writeRecall } = await import("../src/cli/tui/recall-rendering.mjs");
@@ -82,6 +83,17 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
     "  × 0.58 Recall hint dedup",
   ]);
   store.semanticRecall.minScore = 0.3;
+  store.semanticRecall.vectorizer = new ResilientVectorizer({
+    primary: new FailingVectorizer(),
+    fallback: new KeywordVectorizer(["rolling", "suppression", "window"]),
+    label: "memory recall",
+  });
+  const fallbackHints = await store.recallForUser("rolling suppression window");
+  assert.equal(fallbackHints.length, 1);
+  assert.equal(store.lastUserRecallReport.vectorizerStatus, "fallback");
+  assert.match(store.lastUserRecallReport.warning, /using local hashing fallback|fixture download failed/);
+  assert.ok(formatRecallLines(fallbackHints, store.lastUserRecallReport)[0].includes("fallback"));
+  store.semanticRecall.vectorizer = warmupVectorizer;
 
   store.beginTurn();
   const suppressed = await store.recallForUser("rolling suppression", { currentProject: "march-cli", excludedIds: [entry.id] });
@@ -154,4 +166,15 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
 
   cleanup(dir);
   console.log("  PASS");
+}
+
+class FailingVectorizer {
+  constructor() {
+    this.id = "failing-memory-vectorizer";
+    this.dimensions = 256;
+  }
+
+  async encode() {
+    throw new Error("fixture download failed");
+  }
 }

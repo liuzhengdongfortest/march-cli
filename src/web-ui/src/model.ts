@@ -21,6 +21,8 @@ export type MemoryRecallReport = {
   threshold?: number;
   hints?: MemoryRecallHint[];
   candidates?: MemoryRecallHint[];
+  vectorizerStatus?: string;
+  warning?: string | null;
 };
 
 export type MarchTimelineEvent =
