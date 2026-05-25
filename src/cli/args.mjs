@@ -69,6 +69,7 @@ Usage:
   march [options]            (starts REPL)
   march login [provider]     Login to an OAuth provider
   march provider --config    Configure provider credentials
+  march provider remove      Remove a configured provider interactively
   march provider share [id]  Share a provider profile
   march provider accept <token>
   march web [path]       Start the local Web UI session manager

@@ -38,6 +38,26 @@ export function upsertProviderProfile({ path = globalConfigJsonPath(), id, type,
   return config;
 }
 
+export function removeProviderProfile({ path = globalConfigJsonPath(), id }) {
+  const config = readConfigJson(path);
+  const providers = config.providers && typeof config.providers === "object" && !Array.isArray(config.providers)
+    ? config.providers
+    : {};
+  const hadProviderProfile = Object.prototype.hasOwnProperty.call(providers, id);
+  const wasSelectedProvider = config.provider === id;
+  if (hadProviderProfile) delete providers[id];
+  if (Object.keys(providers).length) config.providers = providers;
+  else delete config.providers;
+  if (wasSelectedProvider) {
+    delete config.provider;
+    delete config.model;
+    delete config.serviceTier;
+  }
+  if (!hadProviderProfile && !wasSelectedProvider) return false;
+  writeConfigJson(path, config);
+  return true;
+}
+
 export function upsertSharedProviderProfile({ path = globalConfigJsonPath(), id, provider }) {
   const config = readConfigJson(path);
   const providers = config.providers && typeof config.providers === "object" && !Array.isArray(config.providers)
