@@ -299,6 +299,26 @@ await runStreamDeltaBufferSmoke();
   console.log("  PASS");
 }
 
+{
+  console.log("--- smoke: TUI clear input shortcut ---");
+  const { createTuiUI } = await import("../src/cli/ui.mjs");
+  const { TERMINAL_KEY_SEQUENCES } = await import("../src/cli/input/keybinding-dispatch.mjs");
+  const terminal = new FakeTerminal();
+  const ui = createTuiUI({ terminal });
+  const submitted = ui.readline();
+  await delay(50);
+  ui.insertTextAtCursor("draft to clear");
+  assert.equal(ui.getInputText(), "draft to clear");
+  terminal.input(TERMINAL_KEY_SEQUENCES["Ctrl+U"]);
+  await delay(50);
+  assert.equal(ui.getInputText(), "");
+  terminal.input("kept");
+  terminal.input("\r");
+  assert.equal(await submitted, "kept");
+  await ui.close();
+  console.log("  PASS");
+}
+
 await runContextSessionStatusSmoke();
 await runContextStatsToolSmoke({ setupTmp, cleanup });
 

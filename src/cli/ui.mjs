@@ -87,6 +87,7 @@ export function createTuiUI({
       thinkingSelector: () => onCtrlTHandler?.(),
       modelSelector: () => onCtrlLHandler?.(),
       externalEditor: () => openExternalEditor(),
+      clearInput: () => inputController.clearInput(),
       toggleToolOutput: () => toggleToolOutput(),
       toggleShellDrawer: () => shellDrawerControls.toggle(),
       nextShell: () => shellDrawerControls.selectNext(),

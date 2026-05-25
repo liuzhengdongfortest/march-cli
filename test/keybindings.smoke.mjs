@@ -45,9 +45,11 @@ export async function runKeybindingsSmoke({ setupTmp, cleanup }) {
 
   let toggles = 0;
   let modeToggles = 0;
+  let clearedInputs = 0;
   const defaultDispatcher = createKeybindingDispatcher({
     handlers: {
       toggleMode: () => { modeToggles += 1; },
+      clearInput: () => { clearedInputs += 1; },
       toggleToolOutput: () => { toggles += 1; },
     },
   });
@@ -55,6 +57,8 @@ export async function runKeybindingsSmoke({ setupTmp, cleanup }) {
   assert.equal(modeToggles, 1);
   assert.deepEqual(defaultDispatcher.dispatch(TERMINAL_KEY_SEQUENCES["Ctrl+O"]), { consume: true });
   assert.equal(toggles, 1);
+  assert.deepEqual(defaultDispatcher.dispatch(TERMINAL_KEY_SEQUENCES["Ctrl+U"]), { consume: true });
+  assert.equal(clearedInputs, 1);
 
   let interrupts = 0;
   const interruptDispatcher = createKeybindingDispatcher({

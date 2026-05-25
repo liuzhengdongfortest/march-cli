@@ -40,6 +40,14 @@ export function createTuiInputController({ editor, requestRender, historyStore =
       requestRender();
     },
 
+    clearInput() {
+      attachmentTokens.clear();
+      editor.lastAction = null;
+      editor.historyIndex = -1;
+      setEditorText("");
+      requestRender();
+    },
+
     insertAttachmentAtCursor({ marker, label }) {
       const token = uniqueAttachmentToken(label || "[image]", attachmentTokens);
       attachmentTokens.set(token, marker);
@@ -58,5 +66,13 @@ export function createTuiInputController({ editor, requestRender, historyStore =
     try {
       historyStore?.save?.(editor.history);
     } catch {}
+  }
+
+  function setEditorText(text) {
+    if (typeof editor.setTextInternal === "function") {
+      editor.setTextInternal(text);
+      return;
+    }
+    editor.setText?.(text);
   }
 }
