@@ -176,7 +176,10 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
         onNotificationActivation,
       });
     },
-    onActivate: ({ projectId, sessionId }) => outputRouter.setActiveSession(projectId, sessionId, { renderTimeline: loadStoredRenderTimeline(projectMarchDirs.get(projectId), sessionId) }),
+    onActivate: ({ projectId, sessionId, runtime }) => {
+      if (runtime?.projectMarchDir) projectMarchDirs.set(projectId, runtime.projectMarchDir);
+      outputRouter.setActiveSession(projectId, sessionId, { renderTimeline: loadStoredRenderTimeline(projectMarchDirs.get(projectId), sessionId) });
+    },
   });
   runner = workspaceSupervisor.runner;
 

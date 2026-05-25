@@ -110,13 +110,26 @@ async function handleSessionControllerConflict({ err, item, workspaceSupervisor,
   if (!ui.selectList) return { handled: true };
   const choice = await ui.selectList({
     items: [
-      { value: "cancel", label: "Cancel", description: "leave current controller unchanged" },
+      { value: "view-only", label: "View only", description: "inspect this session without taking control" },
       { value: "take-over", label: "Take over control", description: "steal the controller lease for this session" },
+      { value: "cancel", label: "Cancel", description: "leave current controller unchanged" },
     ],
     selectedIndex: 0,
     width: 70,
     suppressInitialConfirm: true,
   });
+  if (choice?.value === "view-only") {
+    try {
+      await workspaceSupervisor.viewWorkspaceSession({ project: item.project, session: item.session });
+      ctxRenderActiveSession({ workspaceOutputRouter, projectId: item.project.projectId, sessionId: item.session.id });
+      ui.writeln(`Viewing session: ${item.project.displayName} / ${item.session.name || item.session.id}`);
+      ui.writeln("View-only mode: prompts are disabled until you take over control.");
+      return { handled: true, refreshContextTokens: true, activeChanged: true };
+    } catch (viewErr) {
+      ui.writeln(`Error: ${viewErr.message}`);
+      return { handled: true };
+    }
+  }
   if (choice?.value !== "take-over") {
     ui.writeln("Session unchanged.");
     return { handled: true };

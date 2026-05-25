@@ -104,6 +104,10 @@ export async function runInteractiveRepl({
       trimmed = templateResult.prompt;
     }
 
+    if (turnActive.viewOnly) {
+      ui.writeln("This session is view-only. Use /session and Take over control before sending prompts.");
+      continue;
+    }
     if (turnActive.turnTask) {
       ui.writeln("This session is still running. Use /session to start or inspect another session.");
       continue;

@@ -1,6 +1,7 @@
 import { basename, join } from "node:path";
 import { createSessionControllerLeaseManager } from "../session/control/controller-lease.mjs";
-import { loadMarchSessionStateForPiBackend } from "../session/state/march-session-state.mjs";
+import { loadOptionalWorkspaceMarchSessionState, loadWorkspaceMarchSessionState } from "./session-restore.mjs";
+import { createViewOnlyRuntime } from "./view-runtime.mjs";
 
 export function createWorkspaceSessionSupervisor({ initialRuntime, createProjectRuntime, viewSessionState = initialRuntime?.sessionState, onActivate = null, controllerLeases = createSessionControllerLeaseManager({ cwd: initialRuntime?.cwd }) }) {
   if (!initialRuntime?.project?.projectId) throw new Error("initial workspace runtime is missing project metadata");
@@ -8,6 +9,7 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
 
   const runtimes = new Map();
   let active = initialRuntime;
+  let activeView = null;
   let disposed = false;
   rememberRuntime(initialRuntime);
 
@@ -19,19 +21,21 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
       if (prop === "activateWorkspaceSessionById") return activateWorkspaceSessionById;
       if (prop === "startNewWorkspaceSession") return startNewWorkspaceSession;
       if (prop === "refreshActiveRuntime") return refreshActiveRuntime;
+      if (prop === "viewWorkspaceSession") return viewWorkspaceSession;
       if (prop === "runTurn") return runActiveTurn;
       if (prop === "abort") return abortActiveTurn;
       if (prop === "startNewSession") return startActiveNewSession;
       if (prop === "switchPiSession") return switchActivePiSession;
-      const value = active.runner[prop];
-      return typeof value === "function" ? value.bind(active.runner) : value;
+      const current = getActive();
+      const value = current.runner[prop];
+      return typeof value === "function" ? value.bind(current.runner) : value;
     },
     set(_target, prop, value) {
-      active.runner[prop] = value;
+      getActive().runner[prop] = value;
       return true;
     },
     has(_target, prop) {
-      return prop === "dispose" || prop === "getActiveWorkspaceRuntime" || prop === "activateWorkspaceSession" || prop === "activateWorkspaceSessionById" || prop === "startNewWorkspaceSession" || prop === "refreshActiveRuntime" || prop === "runTurn" || prop === "abort" || prop === "startNewSession" || prop === "switchPiSession" || prop in active.runner;
+      return prop === "dispose" || prop === "getActiveWorkspaceRuntime" || prop === "activateWorkspaceSession" || prop === "activateWorkspaceSessionById" || prop === "startNewWorkspaceSession" || prop === "refreshActiveRuntime" || prop === "viewWorkspaceSession" || prop === "runTurn" || prop === "abort" || prop === "startNewSession" || prop === "switchPiSession" || prop in getActive().runner;
     },
   });
 
@@ -42,6 +46,7 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
     getRunningTurns,
     getRuntimeSummaries,
     refreshActiveRuntime,
+    viewWorkspaceSession,
     activateWorkspaceSession,
     activateWorkspaceSessionById,
     startNewWorkspaceSession,
@@ -49,7 +54,7 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
   };
 
   function getActive() {
-    return active;
+    return activeView ?? active;
   }
 
   function hasRunningTurn() {
@@ -70,9 +75,10 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
   }
 
   function refreshActiveRuntime() {
-    rememberRuntime(active);
-    mirrorSessionState(viewSessionState, active.sessionState);
-    onActivate?.({ projectId: active.project.projectId, sessionId: getRuntimeSessionId(active), runtime: active });
+    const current = getActive();
+    if (!current.viewOnly) rememberRuntime(current);
+    mirrorSessionState(viewSessionState, current.sessionState);
+    onActivate?.({ projectId: current.project.projectId, sessionId: getRuntimeSessionId(current), runtime: current });
   }
 
   async function activateWorkspaceSessionById({ projects = [], projectId, sessionId }) {
@@ -84,6 +90,7 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
   }
 
   async function startNewWorkspaceSession(project) {
+    activeView = null;
     const previous = active;
     const runtime = await getIdleRuntimeForProject(project);
     active = runtime;
@@ -119,6 +126,7 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
 
       replaceRuntimeLease(runtime, lease);
       releaseIdleRuntimeLease(previous, runtime);
+      activeView = null;
       active = runtime;
       rememberRuntime(runtime);
       mirrorSessionState(viewSessionState, runtime.sessionState);
@@ -128,6 +136,18 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
       lease?.release?.();
       throw err;
     }
+  }
+
+  function viewWorkspaceSession({ project, session }) {
+    if (disposed) throw new Error("workspace supervisor is already disposed");
+    if (!project?.projectId || !session?.id) throw new Error("workspace session is required");
+    const baseRuntime = findIdleRuntime(project.projectId, { allowSessionRuntime: false }) ?? active;
+    const restoreState = session.path ? loadOptionalWorkspaceMarchSessionState({ runtime: { ...baseRuntime, project, projectMarchDir: join(project.rootPath, ".march") }, session }) : null;
+    const view = createViewOnlyRuntime({ project, session, baseRuntime, restoreState });
+    activeView = view;
+    mirrorSessionState(viewSessionState, view.sessionState);
+    onActivate?.({ projectId: project.projectId, sessionId: session.id, runtime: view, restoreState, viewOnly: true });
+    return view;
   }
 
   async function getIdleRuntimeForProject(project) {
@@ -164,16 +184,19 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
   }
 
   async function runActiveTurn(...args) {
+    if (activeView) throw new Error("This session is view-only. Use /session and Take over control before sending prompts.");
     ensureRuntimeLease(active);
     return await active.runner.runTurn(...args);
   }
 
   function abortActiveTurn(...args) {
+    if (activeView) throw new Error("This session is view-only; there is no local turn to abort.");
     ensureRuntimeLease(active);
     return active.runner.abort(...args);
   }
 
   async function startActiveNewSession(...args) {
+    activeView = null;
     const result = await active.runner.startNewSession(...args);
     if (!result?.cancelled && result?.sessionId) {
       syncSessionState(active, result.sessionId);
@@ -185,6 +208,7 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
   }
 
   async function switchActivePiSession(sessionPath, restoreState = null, ...args) {
+    activeView = null;
     const sessionId = sessionIdFromSessionPath(sessionPath);
     const lease = acquireRuntimeLease(active, { sessionId, sessionPath });
     try {
@@ -237,19 +261,6 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
     if (!runtime || runtime === nextRuntime || runtime.turnTask) return;
     releaseRuntimeLease(runtime);
   }
-}
-
-function loadWorkspaceMarchSessionState({ runtime, session }) {
-  const stored = loadMarchSessionStateForPiBackend({
-    projectMarchDir: runtime.projectMarchDir,
-    sessionId: session.id,
-    sessionRef: session.path,
-  });
-  if (!stored) throw new Error(`March session state not found for ${session.id}; refusing partial resume`);
-  if (stored.state.cwd && stored.state.cwd !== runtime.runner.engine.cwd) {
-    throw new Error(`March session state cwd mismatch for ${session.id}: ${stored.state.cwd}`);
-  }
-  return stored.state;
 }
 
 function getRuntimeSessionId(runtime) {

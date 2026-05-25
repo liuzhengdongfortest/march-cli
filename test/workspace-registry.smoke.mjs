@@ -195,11 +195,19 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
     assert.equal(supervisor.getRunningTurns().length, 1);
     assert.ok(supervisor.getRuntimeSummaries().some((runtime) => runtime.projectId === projectB.projectId && runtime.sessionId === "created-1" && runtime.running));
     supervisor.getRuntimeSummaries().find((runtime) => runtime.sessionId === "created-1");
+    const acquiredBeforeView = acquiredLeases.length;
+    supervisor.viewWorkspaceSession({ project: projectB, session: targetSession });
+    assert.equal(acquiredLeases.length, acquiredBeforeView);
+    assert.equal(supervisor.getActive().viewOnly, true);
+    assert.equal(supervisor.runner.getSessionStats().sessionId, "s-b");
+    await assert.rejects(() => supervisor.runner.runTurn("prompt"), /view-only/);
+    await supervisor.activateWorkspaceSession({ project: projectB, session: targetSession, force: true });
+    assert.equal(supervisor.getActive().viewOnly, undefined);
     await supervisor.dispose();
     assert.ok(releasedLeases.includes("s-b2"));
     assert.equal(disposed.filter((item) => item === projectA.projectId).length, 1);
-    assert.equal(disposed.filter((item) => item === projectB.projectId).length, 2);
-    assert.equal(disposed.filter((item) => item === `memory:${projectB.projectId}`).length, 2);
+    assert.equal(disposed.filter((item) => item === projectB.projectId).length, 3);
+    assert.equal(disposed.filter((item) => item === `memory:${projectB.projectId}`).length, 3);
   } finally {
     cleanup(stateRoot);
     cleanup(rootA);
