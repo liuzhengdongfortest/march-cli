@@ -1,4 +1,4 @@
-import { loadPiSessionSidecar } from "../../session/sidecar.mjs";
+import { loadPiSessionContextState } from "../../session/sidecar.mjs";
 
 export async function resumePiSessionById(id, { runner, sessions, projectMarchDir }) {
   if (!runner.canSwitchPiSession?.()) {
@@ -14,7 +14,7 @@ export async function resumePiSessionById(id, { runner, sessions, projectMarchDi
   const session = matches[0];
   let sidecar;
   try {
-    sidecar = loadPiSessionSidecar({ projectMarchDir, sessionRef: session.path });
+    sidecar = loadPiSessionContextState({ projectMarchDir, sessionRef: session.path });
   } catch (err) {
     return [`Error: pi session sidecar is invalid for ${session.id}: ${err.message}`];
   }

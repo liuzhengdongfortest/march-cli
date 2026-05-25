@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
@@ -83,6 +83,7 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
       onActivate: ({ projectId }) => activated.push(projectId),
     });
     const targetSession = { id: "s-b", path: join(rootB, ".march", "pi-sessions", "s-b.json") };
+    writePiSessionTranscript(targetSession.path, "hello b", "answer b");
     savePiSessionSidecarState({ projectMarchDir: join(rootB, ".march"), sessionRef: targetSession.path, state: { version: 1, cwd: resolve(rootB), turns: [] } });
     assert.equal(supervisor.runner.engine.cwd, resolve(rootA));
     assert.equal(supervisor.hasRunningTurn(), false);
@@ -91,6 +92,7 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
     supervisor.getActive().turnTask = null;
     await supervisor.activateWorkspaceSession({ project: projectB, session: targetSession });
     assert.equal(supervisor.runner.engine.cwd, resolve(rootB));
+    assert.deepEqual(supervisor.getActive().runner.lastRestoreState.turns, [{ index: 1, userMessage: "hello b", assistantMessage: "answer b" }]);
     assert.deepEqual(activated, [projectB.projectId]);
     assert.equal(viewSessionState.sessionId, "s-b");
     const summaries = supervisor.getRuntimeSummaries();
@@ -117,6 +119,14 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
   console.log("  PASS");
 }
 
+function writePiSessionTranscript(path, userMessage, assistantMessage) {
+  mkdirSync(join(path, ".."), { recursive: true });
+  writeFileSync(path, [
+    JSON.stringify({ type: "message", message: { role: "user", content: userMessage } }),
+    JSON.stringify({ type: "message", message: { role: "assistant", content: assistantMessage } }),
+  ].join("\n"), "utf8");
+}
+
 function mockRuntime({ project, cwd, sessionId, disposed, startNewSession = async () => ({ sessionId: "created" }) }) {
   return {
     project,
@@ -138,8 +148,10 @@ function mockRunner({ project, cwd, sessionId, disposed, startNewSession }) {
     getSessionStats() {
       return { sessionId: activeSessionId };
     },
-    async switchPiSession(path) {
+    async switchPiSession(path, restoreState) {
       this.sessionPath = path;
+      this.lastRestoreState = restoreState;
+      this.engine.turns = restoreState?.turns ?? [];
       activeSessionId = path.includes("s-b2") ? "s-b2" : "s-b";
     },
     async startNewSession() {

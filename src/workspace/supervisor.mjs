@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { loadPiSessionSidecar } from "../session/sidecar.mjs";
+import { loadPiSessionContextState } from "../session/sidecar.mjs";
 
 export function createWorkspaceSessionSupervisor({ initialRuntime, createProjectRuntime, viewSessionState = initialRuntime?.sessionState, onActivate = null }) {
   if (!initialRuntime?.project?.projectId) throw new Error("initial workspace runtime is missing project metadata");
@@ -143,7 +143,7 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
 }
 
 function loadWorkspacePiSessionState({ runtime, session }) {
-  const sidecar = loadPiSessionSidecar({ projectMarchDir: runtime.projectMarchDir, sessionRef: session.path });
+  const sidecar = loadPiSessionContextState({ projectMarchDir: runtime.projectMarchDir, sessionRef: session.path });
   if (!sidecar) throw new Error(`pi session sidecar not found for ${session.id}; refusing partial resume`);
   if (sidecar.state.cwd && sidecar.state.cwd !== runtime.runner.engine.cwd) {
     throw new Error(`pi session sidecar cwd mismatch for ${session.id}: ${sidecar.state.cwd}`);

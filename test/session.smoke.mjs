@@ -49,6 +49,7 @@ export async function runPiSessionSidecarSmoke({ setupTmp, cleanup }) {
   const { ContextEngine } = await import("../src/context/engine.mjs");
   const {
     getPiSidecarPath,
+    loadPiSessionContextState,
     loadPiSessionSidecar,
     savePiSessionSidecar,
   } = await import("../src/session/sidecar.mjs");
@@ -83,6 +84,16 @@ export async function runPiSessionSidecarSmoke({ setupTmp, cleanup }) {
   assert.equal(loaded.path, saved.path);
   assert.equal(loaded.state.turns[0].assistantMessage, "answer");
   assert.equal(loadPiSessionSidecar({ projectMarchDir, sessionRef: "missing" }), null);
+
+  const staleSessionPath = join(projectMarchDir, "pi-sessions", "stale.jsonl");
+  mkdirSync(join(projectMarchDir, "pi-sessions"), { recursive: true });
+  writeFileSync(staleSessionPath, [
+    JSON.stringify({ type: "message", message: { role: "user", content: "from transcript" } }),
+    JSON.stringify({ type: "message", message: { role: "assistant", content: "restored answer" } }),
+  ].join("\n"), "utf8");
+  savePiSessionSidecar({ projectMarchDir, sessionRef: staleSessionPath, engine: new ContextEngine({ cwd: dir, modelId: "model" }) });
+  const contextState = loadPiSessionContextState({ projectMarchDir, sessionRef: staleSessionPath });
+  assert.deepEqual(contextState.state.turns, [{ index: 1, userMessage: "from transcript", assistantMessage: "restored answer" }]);
 
   const invalidPath = getPiSidecarPath(projectMarchDir, "invalid");
   writeFileSync(invalidPath, JSON.stringify({ version: 999 }), "utf8");
