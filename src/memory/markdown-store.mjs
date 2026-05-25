@@ -11,6 +11,7 @@ import {
   walkMarkdownFiles,
 } from "./markdown/markdown-format.mjs";
 import { scoreEntry, toHint } from "./markdown/markdown-recall.mjs";
+import { SemanticMemoryRecallIndex } from "./markdown/semantic-recall.mjs";
 import { clearMarkdownMemoryIndex, loadMarkdownMemoryIndex, openMarkdownMemoryIndex, queryMarkdownMemoryIndex, replaceMarkdownMemoryIndex } from "./markdown/sqlite-index.mjs";
 import { softDeleteMemoryFile } from "./markdown/markdown-delete.mjs";
 import { isMemoryIdLike, isSingleEditAway } from "./markdown/memory-id.mjs";
@@ -22,10 +23,12 @@ export { normalizeTags } from "./markdown/markdown-format.mjs";
 const DEFAULT_SCAN_INTERVAL_MS = 5000;
 
 export class MarkdownMemoryStore {
-  constructor({ root, now = () => new Date(), indexPath = null } = {}) {
+  constructor({ root, now = () => new Date(), indexPath = null, stateRoot = null, semanticRecall = true, semanticVectorizer = null, semanticModelId = undefined, semanticModelDir = null } = {}) {
     if (!root) throw new Error("MarkdownMemoryStore requires a root path");
     this.root = resolve(root);
     this.now = now;
+    this.semanticRecall = semanticRecall ? new SemanticMemoryRecallIndex({ stateRoot, modelId: semanticModelId, modelDir: semanticModelDir, vectorizer: semanticVectorizer }) : null;
+    this.semanticRecallWarning = null;
     this.indexPath = indexPath ? resolve(indexPath) : join(this.root, ".march-memory-index.sqlite");
     this.db = openMarkdownMemoryIndex(this.indexPath);
     this.entries = new Map();
@@ -121,9 +124,9 @@ export class MarkdownMemoryStore {
     this.db.close?.();
   }
 
-  recallForUser(text, { limit = 3, currentProject = "", excludedIds = [] } = {}) {
+  async recallForUser(text, { limit = 3, excludedIds = [] } = {}) {
     const excluded = new Set([...excludedIds, ...this.turnSeenMemoryIds]);
-    const hints = this.#recall(text, { limit, excluded, currentProject });
+    const hints = await this.#recallSemantic(text, { limit, excluded });
     for (const hint of hints) {
       this.turnSeenMemoryIds.add(hint.id);
     }
@@ -132,7 +135,7 @@ export class MarkdownMemoryStore {
 
   recallForAssistant(text, { limit = 2, currentProject = "", excludedIds = [] } = {}) {
     const excluded = new Set([...excludedIds, ...this.turnSeenMemoryIds]);
-    const hints = this.#recall(text, { limit, excluded, currentProject });
+    const hints = this.#recallTags(text, { limit, excluded, currentProject });
     for (const hint of hints) this.turnSeenMemoryIds.add(hint.id);
     return hints;
   }
@@ -205,7 +208,19 @@ export class MarkdownMemoryStore {
     return result;
   }
 
-  #recall(text, { limit, excluded, currentProject }) {
+  async #recallSemantic(text, { limit, excluded }) {
+    this.ensureFresh();
+    if (!this.semanticRecall?.enabled) return [];
+    try {
+      const entries = await this.semanticRecall.search(text, { entries: this.entries, excluded, limit });
+      return entries.map((entry) => toHint(entry));
+    } catch (err) {
+      this.semanticRecallWarning = err?.message ?? String(err);
+      return [];
+    }
+  }
+
+  #recallTags(text, { limit, excluded, currentProject }) {
     this.ensureFresh();
     const queryTerms = this.#extractKnownTagTerms(text);
     if (queryTerms.length === 0) return [];

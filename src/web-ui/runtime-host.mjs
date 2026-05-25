@@ -33,7 +33,7 @@ export async function createWebRuntimeHost({ args, config, cwd, stateRoot } = {}
   const profilePaths = defaultProfilePaths();
   ensureProfileFiles(profilePaths);
 
-  const memoryStore = new MarkdownMemoryStore({ root: memoryRoot });
+  const memoryStore = new MarkdownMemoryStore({ root: memoryRoot, stateRoot });
   const remoteMemorySources = normalizeRemoteMemorySources(config);
   const shellRuntime = args.shellRuntime ? createCliShellRuntime({ cwd }) : null;
   const extensionPaths = discoverProjectExtensionPaths(cwd);
@@ -81,7 +81,7 @@ export async function createWebRuntimeHost({ args, config, cwd, stateRoot } = {}
       turnRunning = true;
       memoryStore.beginTurn();
       try {
-        const input = prepareTurnInput({ prompt, runner, memoryStore, currentProject });
+        const input = await prepareTurnInput({ prompt, runner, memoryStore, currentProject });
         runner.runtimeUiEvents.emit({ type: "web_user_message", text: input.userMessage });
         return await runner.runTurn(input.fullPrompt, input.userMessage, input.runOptions);
       } finally {

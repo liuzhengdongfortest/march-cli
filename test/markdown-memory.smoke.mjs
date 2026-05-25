@@ -5,6 +5,7 @@ import { join, relative } from "node:path";
 export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: markdown memory system ---");
   const { MarkdownMemoryStore, formatRecallHints } = await import("../src/memory/markdown-store.mjs");
+  const { KeywordVectorizer } = await import("./semantic-test-vectorizer.mjs");
   const { createMarkdownMemoryTools } = await import("../src/memory/markdown-tools.mjs");
   const { formatRecallLines, writeRecall } = await import("../src/cli/tui/recall-rendering.mjs");
   const dir = setupTmp();
@@ -12,6 +13,7 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   const store = new MarkdownMemoryStore({
     root: dir,
     now: () => new Date("2026-05-14T10:30:00.000Z"),
+    semanticVectorizer: new KeywordVectorizer(["rolling", "suppression", "window"]),
   });
   assert.equal(store.db.prepare("PRAGMA busy_timeout").get().timeout, 5000);
 
@@ -35,7 +37,7 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   assert.equal(store.open("mem_legacytitle").path, legacyPath);
 
   store.beginTurn();
-  const userHints = store.recallForUser("我们继续讨论 recall hint 的去重", { currentProject: "march-cli" });
+  const userHints = await store.recallForUser("我们继续讨论 rolling suppression window", { currentProject: "march-cli" });
   assert.equal(userHints.length, 1);
   assert.equal(userHints[0].id, entry.id);
   assert.ok(formatRecallHints("user", userHints).includes("[recall source=\"user\"]"));
@@ -60,9 +62,9 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   store.endTurn();
 
   store.beginTurn();
-  const suppressed = store.recallForUser("recall hint", { currentProject: "march-cli", excludedIds: [entry.id] });
+  const suppressed = await store.recallForUser("rolling suppression", { currentProject: "march-cli", excludedIds: [entry.id] });
   assert.equal(suppressed.length, 0);
-  const recalledAfterTurn = store.recallForUser("recall hint", { currentProject: "march-cli" });
+  const recalledAfterTurn = await store.recallForUser("rolling suppression", { currentProject: "march-cli" });
   assert.equal(recalledAfterTurn.length, 1);
   store.endTurn();
 

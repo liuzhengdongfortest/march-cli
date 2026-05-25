@@ -4,11 +4,11 @@ import { formatRecallHints } from "../../memory/markdown-store.mjs";
 import { formatMessageAttachmentsForDisplay } from "../../session/attachment-display.mjs";
 import { formatShellHints } from "../../shell/hints.mjs";
 
-export function prepareTurnInput({ prompt, runner, memoryStore, currentProject, modeState = null }) {
+export async function prepareTurnInput({ prompt, runner, memoryStore, currentProject, modeState = null }) {
   const engine = runner.engine ?? {};
   const carryoverAlreadyRendered = engine.hasRenderedPendingAssistantRecallHints?.() ?? false;
   const carryoverRecallHints = engine.takePendingAssistantRecallHints?.() ?? [];
-  const userRecallHints = memoryStore.recallForUser(prompt, {
+  const userRecallHints = await memoryStore.recallForUser(prompt, {
     currentProject,
     excludedIds: engine.getRecentRecallMemoryIds?.() ?? [],
   });

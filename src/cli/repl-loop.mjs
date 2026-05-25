@@ -16,7 +16,7 @@ export async function runSingleShotPrompt({
 }) {
   memoryStore.beginTurn();
   try {
-    const turnInput = prepareTurnInput({ prompt, runner, memoryStore, currentProject, modeState });
+    const turnInput = await prepareTurnInput({ prompt, runner, memoryStore, currentProject, modeState });
     ui.writeln(turnInput.displayMessage);
     ui.recall?.({ source: "user", hints: turnInput.userRecallHints });
     if (turnInput.shouldRenderCarryoverRecall) ui.recall?.({ source: "assistant", hints: turnInput.carryoverRecallHints });
@@ -185,7 +185,7 @@ function startReplTurn({ runtime, prompt, ui, refreshStatusBar, setTurnRunning, 
 async function runReplTurn({ prompt, runner, memoryStore, currentProject, ui, refreshStatusBar, setTurnRunning, modeState = null }) {
   memoryStore.beginTurn();
   try {
-    const turnInput = prepareTurnInput({ prompt, runner, memoryStore, currentProject, modeState });
+    const turnInput = await prepareTurnInput({ prompt, runner, memoryStore, currentProject, modeState });
     ui.writeln(turnInput.displayMessage);
     ui.recall?.({ source: "user", hints: turnInput.userRecallHints });
     if (turnInput.shouldRenderCarryoverRecall) ui.recall?.({ source: "assistant", hints: turnInput.carryoverRecallHints });

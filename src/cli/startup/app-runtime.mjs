@@ -68,7 +68,7 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
   const memoryRoot = resolveMemoryRoot(config.memoryRoot, stateRoot);
   const profilePaths = defaultProfilePaths();
   ensureProfileFiles(profilePaths);
-  const memoryStore = new MarkdownMemoryStore({ root: memoryRoot });
+  const memoryStore = new MarkdownMemoryStore({ root: memoryRoot, stateRoot });
   const remoteMemorySources = normalizeRemoteMemorySources(config);
   const currentProject = basename(cwd);
   const shellRuntime = args.shellRuntime ? createCliShellRuntime({ cwd }) : null;
@@ -166,7 +166,7 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
         stateRoot,
         memoryRoot,
         profilePaths,
-        createMemoryStore: () => new MarkdownMemoryStore({ root: memoryRoot }),
+        createMemoryStore: () => new MarkdownMemoryStore({ root: memoryRoot, stateRoot }),
         provider,
         serviceTier,
         model,

@@ -6,9 +6,11 @@ export async function runMemorySystemSmoke({ setupTmp, cleanup }) {
 
   try {
     const { MarkdownMemoryStore } = await import("../src/memory/markdown-store.mjs");
+    const { KeywordVectorizer } = await import("./semantic-test-vectorizer.mjs");
     const store = new MarkdownMemoryStore({
       root: dir,
       now: () => new Date("2026-05-21T10:00:00.000Z"),
+      semanticVectorizer: new KeywordVectorizer(["markdown", "files", "recall", "terms"]),
     });
 
     try {
@@ -28,7 +30,7 @@ export async function runMemorySystemSmoke({ setupTmp, cleanup }) {
       assert.ok(opened.content.includes("# Memory smoke"));
 
       store.beginTurn();
-      const hints = store.recallForUser("memory system smoke", { currentProject: "march-cli" });
+      const hints = await store.recallForUser("markdown files recall terms", { currentProject: "march-cli" });
       assert.equal(hints.length, 1);
       assert.equal(hints[0].id, entry.id);
       assert.equal(store.recallForAssistant("memory system smoke", { currentProject: "march-cli" }).length, 0);
