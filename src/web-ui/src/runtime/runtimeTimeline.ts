@@ -28,7 +28,7 @@ export function applyRuntimeEvent(events: MarchTimelineEvent[], event: RuntimeUi
       return next;
     case "recall":
       if ((event.hints?.length ?? 0) || (event.report?.candidates?.length ?? 0)) {
-        next.push({ id, type: "memory_recall", source: event.source, hints: event.hints ?? [], report: event.report ?? null });
+        next.push({ id, type: "memory_recall", hints: event.hints ?? [], report: event.report ?? null });
       }
       return next;
 

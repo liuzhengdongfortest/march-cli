@@ -49,8 +49,8 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   const userHints = await store.recallForUser("我们继续讨论 rolling suppression window", { currentProject: "march-cli" });
   assert.equal(userHints.length, 1);
   assert.equal(userHints[0].id, entry.id);
-  assert.ok(formatRecallHints("user", userHints).includes("[recall source=\"user\"]"));
-  assert.ok(formatRecallHints("user", userHints).includes("score=1.00"));
+  assert.ok(formatRecallHints(userHints).includes("[recall]"));
+  assert.ok(formatRecallHints(userHints).includes("score=1.00"));
   const userRecallReport = store.lastUserRecallReport;
   assert.equal(userRecallReport.threshold, 0.3);
   assert.equal(userRecallReport.candidates[0].recalled, true);
@@ -70,8 +70,15 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   assert.equal(renderedHints[0], "✦ Memory Recall · 1 note · threshold 0.30");
   assert.match(renderedHints[2], /^\x1b\[90m    User recall/);
 
-  const assistantHints = store.recallForAssistant("recall hint dedup again", { currentProject: "march-cli" });
+  const assistantHints = await store.recallForAssistant("rolling suppression window");
   assert.equal(assistantHints.length, 0);
+  store.endTurn();
+
+  store.beginTurn();
+  const assistantSemanticHints = await store.recallForAssistant("rolling suppression window");
+  assert.equal(assistantSemanticHints.length, 1);
+  assert.equal(assistantSemanticHints[0].id, entry.id);
+  assert.ok(Math.abs(assistantSemanticHints[0].score - 1) < 1e-9);
   store.endTurn();
 
   store.semanticRecall.minScore = 0.9;
@@ -102,7 +109,7 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   assert.equal(recalledAfterTurn.length, 1);
   store.endTurn();
 
-  const miss = store.recallForAssistant("completely unrelated text");
+  const miss = await store.recallForAssistant("completely unrelated text");
   assert.equal(miss.length, 0);
 
   const tools = createMarkdownMemoryTools(store);
@@ -148,7 +155,7 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   assert.equal(deleteResult.details.memory.status, "deleted");
   assert.ok(existsSync(entry.path));
   assert.ok(readFileSync(entry.path, "utf8").includes("status: deleted"));
-  assert.equal(store.recallForAssistant("recall hint window", { currentProject: "march-cli" }).length, 0);
+  assert.equal((await store.recallForAssistant("recall hint window")).length, 0);
   const deletedSearch = await search.execute("t6", { query: "Recall hint dedup", limit: 5 });
   assert.ok(deletedSearch.content[0].text.includes("No memory files matched"));
   const deletedOpen = await open.execute("t7", { id: entry.id });

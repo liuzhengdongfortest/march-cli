@@ -21,9 +21,9 @@ March Memories/**/*.md
         ↓
 parse frontmatter: id / name / description / tags / status
         ↓
-derived FTS5 tag index
+derived semantic vector index + metadata cache
         ↓
-recall hint: id + name + short_description
+recall hint: id + score + name + short_description
         ↓
 memory_open(id) reads Markdown body when needed
 ```
@@ -44,7 +44,7 @@ Markdown Memories 是事件型、经验型或项目型记忆，通过 `memory_se
 
 Markdown 文件是真相：用户可以直接用 Obsidian 打开、编辑、移动或删除。March 不依赖 Obsidian API，只读写文件系统。
 
-FTS5 tag index 是缓存：它服务 March 内部被动召回，不承担长期事实存储。索引错了就重建，不能让索引反过来覆盖 Markdown。
+索引是缓存：semantic vector index 服务 March 内部被动召回，SQLite metadata cache 服务扫描加速；索引错了就重建，不能让索引反过来覆盖 Markdown。
 
 ## 存储位置
 
@@ -161,31 +161,21 @@ status != active 的文件默认不参与搜索和召回
 
 ## 索引源
 
-March 内部被动召回只索引 tags。
+March 内部被动召回索引轻量 metadata 和正文分块：
 
 ```text
-tags
+name + description + tags + body section
 ```
 
-`id`、`name`、`description`、`status`、`path` 是元数据，不参与 March 内部被动召回匹配。`description` 是召回后展示给 AI 的自然语言摘要，不应该为了搜索效果写成关键词堆砌文本。
+`id`、`status`、`path` 是元数据，不参与语义匹配。`description` 仍然是给 AI 和用户看的自然语言摘要，不应该为了搜索效果写成关键词堆砌文本。
 
-默认不索引正文 body。
-
-原因是 body 往往很长，容易把召回变成全文搜索噪声。被动召回的职责不是回答问题，而是提醒模型“这里可能有一条相关记忆”。如果 AI 需要细节，再调用 `memory_open(id)` 读取原文。
+body 会按段落切成有限长度 chunk。被动召回仍只返回 hint，不直接注入正文；如果 AI 需要细节，再调用 `memory_open(id)` 读取原文。
 
 ## 被动召回索引
 
-第一版直接使用 SQLite FTS5，但 FTS5 只索引 tags 展开的文本，不索引 name、description 或正文。
+被动召回使用本地 semantic vector index。索引不写回 Markdown；当 memory 文件的 path、mtime 或 size 变化时，向量索引会按当前 active memory 重新构建。
 
-```sql
-CREATE VIRTUAL TABLE memory_tags_fts USING fts5(
-  id UNINDEXED,
-  tags_text,
-  tokenize = 'unicode61'
-);
-```
-
-普通 metadata 表保存展示和同步所需字段：
+普通 SQLite metadata 表只保存扫描缓存和同步所需字段：
 
 ```sql
 CREATE TABLE memory_index (
@@ -200,63 +190,29 @@ CREATE TABLE memory_index (
 );
 ```
 
-写入 FTS5 前，March 会把层级 tags 展开成适合匹配的 `tags_text`。
-
-例子：
-
-```yaml
-tags:
-  - memory/recall-hint
-  - memory/dedup
-  - context/cache
-  - project/march-cli
-```
-
-展开成：
+语义 chunk 形态：
 
 ```text
-memory/recall-hint memory recall hint
-memory/dedup memory dedup
-context/cache context cache
-project/march-cli project march cli
+entry.name
+entry.description
+entry.tags.join(" ")
+body section
 ```
 
-中文 tag 也按同样原则显式展开：
-
-```yaml
-tags:
-  - 记忆/被动召回
-  - 记忆/去重
-```
-
-展开成：
-
-```text
-记忆/被动召回 记忆 被动召回
-记忆/去重 记忆 去重
-```
-
-这样中文不需要依赖复杂分词。tag 本身就是用户整理过的概念词，March 只需要匹配这些显式概念。
+这样 tags、摘要和正文经验都能参与匹配，但最终注入仍保持为短 hint。
 
 ## 被动召回匹配
 
-March 内部被动召回查询 FTS5 的 `tags_text`。它不是语义搜索，也不是全文搜索。
+March 内部被动召回统一查询 semantic vector index。`user` 和 `assistant` 只是触发时机，不对应不同匹配算法。
 
 打分来源：
 
 ```text
-tag exact match        高权重
-tag partial match      中高权重
-current project tag    小幅加分，不硬过滤
-```
-
-一个简单可落地的打分模型：
-
-```text
-score =
-  tagExactMatch * 10
-+ tagPartialMatch * 5
-+ currentProjectTagMatch * 2
+query embedding ↔ memory chunk embedding
+        ↓
+cosine similarity
+        ↓
+min score threshold
 ```
 
 查询策略：
@@ -264,38 +220,18 @@ score =
 ```text
 用户消息 / assistant output
   ↓
-从当前 tag dictionary 里反向匹配已知 tag phrase 和 tag segment
+encode query
   ↓
-生成 FTS5 tags query
+search memory chunks: name + description + tags + body section
   ↓
-memory_tags_fts MATCH query
-```
-
-这里的 tag dictionary 来自已索引记忆的 frontmatter。March 先扫描所有 memory tags，展开成概念词表；用户消息或 assistant output 只有命中这些已知 tag 词时，才会触发 FTS5 查询。
-
-没有命中 tag 时，March 不做被动召回。这是有意设计：被动召回宁可漏掉，也不要误召回。AI 如果觉得需要更宽的搜索，可以主动调用 `memory_search`，该工具背后使用 ripgrep 搜索 Markdown 全文。
-
-召回流程：
-
-```text
-query = user message or assistant output
-        ↓
-normalize + tokenize
-        ↓
-match tags_text via FTS5
-        ↓
-weighted score
-        ↓
 filter status = active
-        ↓
-boost current project tags, but do not filter other projects
-        ↓
+  ↓
 apply recall dedup rules
-        ↓
-return top hints
+  ↓
+return top hints with score=0.xx
 ```
 
-这个算法的好处是可解释。用户问“为什么召回这条记忆”，March 可以说：命中了哪些 tag。后续如果 tags-only 召回不够，再讨论 embedding 或更复杂的 tag 推荐机制，而不是让 description 变成搜索字段。
+这个算法的边界是：被动召回只返回轻量 hint，不注入 memory 原文；AI 如果需要原文，必须主动调用 `memory_open`。
 
 ## 被动召回
 
@@ -305,9 +241,9 @@ return top hints
 
 ```text
 输入：user message
-搜索：FTS5 tag index
+搜索：semantic vector index
 数量：最多 3 条
-输出：id / name / short_description
+输出：id / score / name / short_description
 位置：user message 后
 去重：rolling suppression window，默认最近 10 个用户 turn
 ```
@@ -316,10 +252,10 @@ assistant 输出触发：
 
 ```text
 输入：assistant model output
-搜索：FTS5 tag index
+搜索：semantic vector index
 数量：最多 2 条
-输出：id / name / short_description
-位置：assistant output 后
+输出：id / score / name / short_description
+位置：assistant output 后或下一 turn carryover
 去重：当前 turn 内去重
 ```
 
@@ -331,15 +267,15 @@ assistant 输出触发：
 [user]
 我们继续讨论 memory 召回。
 
-[recall source="user"]
-- mem_01hx_context_cache | Context cache ordering | 高频变化层不能放在大块稳定上下文前面
-- mem_01hx_recall_dedup | Passive recall dedup | 用户召回按最近 10 个 turn 做滚动抑制
+[recall]
+- mem_01hx_context_cache | score=0.42 | Context cache ordering | 高频变化层不能放在大块稳定上下文前面
+- mem_01hx_recall_dedup | score=0.39 | Passive recall dedup | 用户召回按最近 turn 做滚动抑制
 
 [assistant]
-这里要分用户触发和 assistant 输出触发两种召回...
+这里的 user/assistant 只是触发时机，匹配方式统一走向量检索...
 
-[recall source="assistant"]
-- mem_01hx_turn_seen | Turn seen set | 同一 turn 内 user/assistant recall 不重复
+[recall]
+- mem_01hx_turn_seen | score=0.41 | Turn seen set | 同一 turn 内 user/assistant recall 不重复
 ```
 
 ## 主动回忆工具
@@ -352,7 +288,7 @@ memory_open(id)
 memory_save(id?, name, description, body, tags?)
 ```
 
-`memory_search` 用于 AI 主动回忆，背后使用 ripgrep 搜索 `March Memories/` 里的 Markdown 文件全文。它返回匹配文件、行号和上下文片段。工具描述里必须明确告诉 AI：这是 ripgrep 文本搜索，不是语义搜索，也不是 March 内部 tags-only 被动召回。
+`memory_search` 用于 AI 主动回忆，背后使用 ripgrep 搜索 `March Memories/` 里的 Markdown 文件全文。它返回匹配文件、行号和上下文片段。工具描述里必须明确告诉 AI：这是 ripgrep 文本搜索，不是 March 内部被动语义召回。
 
 `memory_open` 用 id 打开 Markdown 原文。被动召回只给 id、name、description；AI 想要原文必须显式调用这个工具。
 
@@ -386,19 +322,19 @@ status: deprecated
 
 ## 索引同步
 
-索引同步的原则是：Markdown 文件永远是事实源，FTS5 tag index 永远可以重建。
+索引同步的原则是：Markdown 文件永远是事实源，metadata cache 和 semantic vector index 都可以重建。
 
 ```text
 Markdown files
         ↓
 scan / watch
         ↓
-derived FTS5 tag index
+metadata cache + semantic vector index
         ↓
 recall hint
 ```
 
-AI 工具层的 `memory_search` 使用 ripgrep 直接搜索 Markdown 文件，不依赖 FTS5 tag index。即使 FTS5 index 暂时过期，主动 ripgrep 搜索也能看到文件系统上的当前内容。
+AI 工具层的 `memory_search` 使用 ripgrep 直接搜索 Markdown 文件，不依赖被动召回索引。即使 semantic index 暂时过期，主动 ripgrep 搜索也能看到文件系统上的当前内容。
 
 不能只依赖文件 watcher。Obsidian、同步盘、git pull、系统休眠都可能让 watcher 漏事件。所以同步要用三层机制：
 

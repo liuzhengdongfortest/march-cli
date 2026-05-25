@@ -32,24 +32,7 @@ export function normalizeTags(tags) {
   return out;
 }
 
-export function expandTags(tags) {
-  const terms = [];
-  for (const tag of tags) {
-    terms.push(tag);
-    for (const part of tag.split(/[\/_-]+/)) {
-      if (part) terms.push(part);
-    }
-  }
-  return [...new Set(terms.map(normalizeText).filter(Boolean))];
-}
 
-export function quoteFtsTerm(term) {
-  return `"${String(term).replace(/"/g, '""')}"`;
-}
-
-export function normalizeText(text) {
-  return String(text ?? "").trim().toLowerCase();
-}
 
 export function generateMemoryId() {
   return `mem_${randomUUID().replace(/-/g, "").slice(0, 16)}`;

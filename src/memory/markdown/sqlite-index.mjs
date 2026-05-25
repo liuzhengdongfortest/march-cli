@@ -15,11 +15,6 @@ CREATE TABLE IF NOT EXISTS memory_index (
   mtime_ms REAL NOT NULL,
   size INTEGER NOT NULL
 );
-CREATE VIRTUAL TABLE IF NOT EXISTS memory_tags_fts USING fts5(
-  id UNINDEXED,
-  tags_text,
-  tokenize = 'unicode61'
-);
 `;
 
 export function openMarkdownMemoryIndex(path) {
@@ -33,7 +28,6 @@ export function openMarkdownMemoryIndex(path) {
 
 export function clearMarkdownMemoryIndex(db) {
   db.exec("DELETE FROM memory_index");
-  db.exec("DELETE FROM memory_tags_fts");
 }
 
 export function loadMarkdownMemoryIndex(db) {
@@ -48,27 +42,21 @@ export function loadMarkdownMemoryIndex(db) {
   return { entries, pathStats };
 }
 
-export function replaceMarkdownMemoryIndex(db, entries, expandTags) {
+export function replaceMarkdownMemoryIndex(db, entries) {
   db.exec("BEGIN IMMEDIATE");
   try {
     clearMarkdownMemoryIndex(db);
     const insertMeta = db.prepare(
       "INSERT INTO memory_index (id, path, name, description, tags_json, status, created_at, updated_at, mtime_ms, size) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     );
-    const insertFts = db.prepare("INSERT INTO memory_tags_fts (id, tags_text) VALUES (?, ?)");
     for (const entry of entries.values()) {
       insertMeta.run(entry.id, entry.path, entry.name, entry.description, JSON.stringify(entry.tags), entry.status, entry.createdAt, entry.updatedAt, entry.mtimeMs, entry.size);
-      insertFts.run(entry.id, expandTags(entry.tags).join(" "));
     }
     db.exec("COMMIT");
   } catch (err) {
     try { db.exec("ROLLBACK"); } catch {}
     throw err;
   }
-}
-
-export function queryMarkdownMemoryIndex(db, query) {
-  return db.prepare("SELECT id FROM memory_tags_fts WHERE tags_text MATCH ? LIMIT 50").all(query);
 }
 
 function rowToEntry(row) {

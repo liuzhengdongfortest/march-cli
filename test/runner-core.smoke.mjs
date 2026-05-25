@@ -166,8 +166,8 @@ export async function runRunnerCoreSmoke() {
     { type: "function_call", call_id: "call_1", name: "read", arguments: "{}" },
     { type: "function_call_output", call_id: "call_1", output: "ok" },
   ]);
-  const appendedChat = appendProviderUserMessage({ messages: [{ role: "tool", content: "ok" }] }, "[recall source=\"assistant\"]");
-  assert.deepEqual(appendedChat.messages.at(-1), { role: "user", content: "[recall source=\"assistant\"]" });
+  const appendedChat = appendProviderUserMessage({ messages: [{ role: "tool", content: "ok" }] }, "[recall]");
+  assert.deepEqual(appendedChat.messages.at(-1), { role: "user", content: "[recall]" });
   const appendedResponses = appendProviderUserMessage({ instructions: "sys", input: [{ type: "function_call_output", call_id: "call_1", output: "ok" }] }, "recall block");
   assert.deepEqual(appendedResponses.input.at(-1), { role: "user", content: [{ type: "input_text", text: "recall block" }] });
   console.log("  PASS");

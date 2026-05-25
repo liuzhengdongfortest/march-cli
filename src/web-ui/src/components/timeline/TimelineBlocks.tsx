@@ -97,7 +97,7 @@ function MemoryRecallBlock({ item }: { item: Extract<TimelineItem, { kind: "memo
   const fallback = item.report?.vectorizerStatus === "fallback" ? " · fallback" : "";
   return (
     <div className="timeline-aux memory-recall-block">
-      <div className="aux-title"><span>memory</span><strong>{item.source} recall · {threshold}{fallback}</strong></div>
+      <div className="aux-title"><span>memory</span><strong>recall · {threshold}{fallback}</strong></div>
       {item.report?.warning ? <p className="memory-recall-warning">! {item.report.warning}</p> : null}
       <ul>
         {candidates.map((hint) => (

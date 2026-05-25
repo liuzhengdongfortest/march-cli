@@ -60,7 +60,7 @@ export async function runModeStateSmoke() {
     currentProject: "project",
     ui: {
       writeln: (line) => uiLines.push(line),
-      recall: ({ source, hints }) => uiLines.push(`${source}:${hints.map((hint) => hint.id).join(",")}`),
+      recall: ({ hints }) => uiLines.push(`recall:${hints.map((hint) => hint.id).join(",")}`),
     },
     sessionState: { sessionDir: "unused" },
     refreshStatusBar() {},
@@ -73,14 +73,14 @@ export async function runModeStateSmoke() {
   assert.ok(!prompts[0].includes("[system]"));
   assert.ok(prompts[0].includes("You are in discuss mode"));
   assert.ok(carryoverTaken);
-  assert.ok(prompts[0].includes('[recall source="assistant"]'));
+  assert.ok(prompts[0].includes("[recall]"));
   assert.ok(prompts[0].includes("mem_carry | Carryover | Matched after the previous final answer."));
   assert.ok(prompts[0].includes("[shell_hints]"));
   assert.ok(prompts[0].includes("sh1 dev running command: npm run dev cwd: D:/repo lines: 42"));
   assert.ok(prompts[0].includes("Use terminal_read or terminal_snapshot"));
   assert.ok(!userMessages[0].includes("<mode>"));
   assert.ok(uiLines.join("\n").includes("please inspect"));
-  assert.ok(uiLines.includes("assistant:mem_final"));
+  assert.ok(uiLines.includes("recall:mem_final"));
   assert.equal(pendingRendered, true);
   assert.equal(memoryBeginCount, 1);
   assert.equal(memoryEndCount, 1);

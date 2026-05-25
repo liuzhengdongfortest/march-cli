@@ -16,8 +16,8 @@ export async function prepareTurnInput({ prompt, runner, memoryStore, currentPro
   const modePrompt = appendModeReminder(prompt, modeState?.get?.());
   const fullPrompt = appendPromptBlocks(
     modePrompt,
-    formatRecallHints("user", userRecallHints),
-    formatRecallHints("assistant", carryoverRecallHints),
+    formatRecallHints(userRecallHints),
+    formatRecallHints(carryoverRecallHints),
     formatShellHints(runner.shellRuntime),
   );
 

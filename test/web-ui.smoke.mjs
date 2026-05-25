@@ -55,7 +55,7 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(runtimeHost, /createRuntimeRunner/);
   assert.match(runtimeHost, /prepareTurnInput/);
   assert.match(runtimeHost, /runtimeUiEvents\.emit\(\{ type: "web_user_message"/);
-  assert.match(runtimeHost, /type: "recall", source: "user"/);
+  assert.match(runtimeHost, /type: "recall", hints:/);
   assert.match(server, /\/api\/snapshot/);
   assert.match(server, /\/api\/sessions/);
   assert.match(server, /\/api\/fs\/roots/);

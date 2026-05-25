@@ -68,9 +68,10 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
         emit({ type: "message_update", assistantMessageEvent: { type: "thinking_delta", delta: "12345678" } });
         emit({ type: "message_update", assistantMessageEvent: { type: "thinking_end" } });
         emit({ type: "tool_execution_start", toolName: "read", args: { path: "a.txt" } });
+        await new Promise((resolve) => setImmediate(resolve));
         assert.equal(recallCalls, 1);
         assert.equal(customSteerMessages.length, 1);
-        assert.ok(customSteerMessages[0].includes("[recall source=\"assistant\"]"));
+        assert.ok(customSteerMessages[0].includes("[recall]"));
         emit({ type: "tool_execution_end", toolName: "read", isError: false, result: "file body" });
         providerPayloads.push(await this.agent.onPayload({
           messages: [
@@ -159,7 +160,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
     thinkingEnd: (tokens) => calls.push(["thinkingEnd", tokens]),
     toolStart: (name, args) => calls.push(["toolStart", name, args]),
     toolEnd: (name, isError, result) => calls.push(["toolEnd", name, isError, result]),
-    recall: ({ source, hints }) => calls.push(["recall", source, hints.map((hint) => hint.id)]),
+    recall: ({ hints }) => calls.push(["recall", hints.map((hint) => hint.id)]),
   };
   const runner = await createRunner({
     cwd: dir,
@@ -197,7 +198,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.equal(runner.engine.turns[0].assistantRecallHints.length, 2);
   assert.equal(runner.engine.turns[0].assistantRecallHints[0].id, "mem_thinking");
   assert.equal(runner.engine.turns[0].assistantRecallHints[1].id, "mem_draft");
-  assert.ok(calls.some((call) => call[0] === "recall" && call[1] === "assistant" && call[2].includes("mem_thinking") && !call[2].includes("mem_draft")));
+  assert.ok(calls.some((call) => call[0] === "recall" && call[1].includes("mem_thinking") && !call[1].includes("mem_draft")));
   assert.equal(runner.engine.turns[0].assistantMessage, "draft text");
   assert.equal(runner.engine.turns[0].assistantContext, "12345678\n→ read · a.txt\ndraft text");
   assert.equal(runner.engine.sessionName, "hello");

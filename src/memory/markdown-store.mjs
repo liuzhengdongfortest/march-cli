@@ -1,18 +1,15 @@
 import { mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import {
-  expandTags,
   formatMemoryMarkdown,
   generateMemoryId,
   normalizeTags,
-  normalizeText,
   parseMemoryMarkdown,
-  quoteFtsTerm,
   walkMarkdownFiles,
 } from "./markdown/markdown-format.mjs";
-import { scoreEntry, toHint } from "./markdown/markdown-recall.mjs";
+import { toHint } from "./markdown/markdown-recall.mjs";
 import { SemanticMemoryRecallIndex } from "./markdown/semantic-recall.mjs";
-import { clearMarkdownMemoryIndex, loadMarkdownMemoryIndex, openMarkdownMemoryIndex, queryMarkdownMemoryIndex, replaceMarkdownMemoryIndex } from "./markdown/sqlite-index.mjs";
+import { clearMarkdownMemoryIndex, loadMarkdownMemoryIndex, openMarkdownMemoryIndex, replaceMarkdownMemoryIndex } from "./markdown/sqlite-index.mjs";
 import { softDeleteMemoryFile } from "./markdown/markdown-delete.mjs";
 import { isMemoryIdLike, isSingleEditAway } from "./markdown/memory-id.mjs";
 import { openMarkdownRoot, searchMarkdownRoot } from "./search.mjs";
@@ -34,7 +31,6 @@ export class MarkdownMemoryStore {
     this.db = openMarkdownMemoryIndex(this.indexPath);
     this.entries = new Map();
     this.pathStats = new Map();
-    this.tagDictionary = new Set();
     this.diagnostics = [];
     this.lastScanAt = 0;
     this.scanIntervalMs = DEFAULT_SCAN_INTERVAL_MS;
@@ -103,8 +99,7 @@ export class MarkdownMemoryStore {
     this.entries = nextEntries;
     this.pathStats = nextStats;
     this.diagnostics = diagnostics;
-    this.#rebuildTagDictionary();
-    replaceMarkdownMemoryIndex(this.db, this.entries, expandTags);
+    replaceMarkdownMemoryIndex(this.db, this.entries);
     this.lastScanAt = Date.now();
     return { entries: this.entries.size, diagnostics };
   }
@@ -132,9 +127,9 @@ export class MarkdownMemoryStore {
     return hints;
   }
 
-  recallForAssistant(text, { limit = 2, currentProject = "", excludedIds = [] } = {}) {
+  async recallForAssistant(text, { limit = 2, excludedIds = [] } = {}) {
     const excluded = new Set([...excludedIds, ...this.turnSeenMemoryIds]);
-    const hints = this.#recallTags(text, { limit, excluded, currentProject });
+    const hints = await this.#recallSemantic(text, { limit, excluded, recordReport: false });
     for (const hint of hints) this.turnSeenMemoryIds.add(hint.id);
     return hints;
   }
@@ -207,60 +202,20 @@ export class MarkdownMemoryStore {
     return result;
   }
 
-  async #recallSemantic(text, { limit, excluded }) {
+  async #recallSemantic(text, { limit, excluded, recordReport = true }) {
     this.ensureFresh();
-    this.lastUserRecallReport = null;
+    if (recordReport) this.lastUserRecallReport = null;
     if (!this.semanticRecall?.enabled) return [];
     try {
       const result = await this.semanticRecall.search(text, { entries: this.entries, excluded, limit });
       const hints = result.recalled.map(({ entry, score }) => toHint(entry, { score }));
-      this.lastUserRecallReport = { threshold: result.threshold, vectorizerStatus: result.vectorizerStatus, warning: result.warning, hints, candidates: result.candidates.map(({ entry, score, recalled }) => ({ ...toHint(entry, { score }), recalled })) };
+      if (recordReport) {
+        this.lastUserRecallReport = { threshold: result.threshold, vectorizerStatus: result.vectorizerStatus, warning: result.warning, hints, candidates: result.candidates.map(({ entry, score, recalled }) => ({ ...toHint(entry, { score }), recalled })) };
+      }
       return hints;
     } catch (err) {
       this.semanticRecallWarning = err?.message ?? String(err);
       return [];
-    }
-  }
-
-  #recallTags(text, { limit, excluded, currentProject }) {
-    this.ensureFresh();
-    const queryTerms = this.#extractKnownTagTerms(text);
-    if (queryTerms.length === 0) return [];
-    const query = queryTerms.map(quoteFtsTerm).join(" OR ");
-    let rows = [];
-    try {
-      rows = queryMarkdownMemoryIndex(this.db, query);
-    } catch {
-      return [];
-    }
-    const scored = [];
-    for (const row of rows) {
-      if (excluded.has(row.id)) continue;
-      const entry = this.entries.get(row.id);
-      if (!entry || entry.status !== "active" || !entry.description) continue;
-      const score = scoreEntry(entry, queryTerms, currentProject);
-      if (score <= 0) continue;
-      scored.push({ score, entry });
-    }
-    scored.sort((a, b) => b.score - a.score || a.entry.name.localeCompare(b.entry.name));
-    return scored.slice(0, limit).map(({ entry }) => toHint(entry));
-  }
-
-  #extractKnownTagTerms(text) {
-    const normalized = normalizeText(text);
-    if (!normalized) return [];
-    const terms = [];
-    for (const term of this.tagDictionary) {
-      if (term.length < 2) continue;
-      if (normalized.includes(term)) terms.push(term);
-    }
-    return [...new Set(terms)].sort((a, b) => b.length - a.length).slice(0, 16);
-  }
-
-  #rebuildTagDictionary() {
-    this.tagDictionary = new Set();
-    for (const entry of this.entries.values()) {
-      for (const term of expandTags(entry.tags)) this.tagDictionary.add(normalizeText(term));
     }
   }
 

@@ -71,7 +71,7 @@ export function dispatchRuntimeUiEvent(ui, event) {
     case "retry_end": return ui.retryEnd?.(pickRetryEnd(event));
     case "status": return ui.status?.(event.text);
     case "debug_lines": return writeDebugLines(ui, event.lines);
-    case "recall": return ui.recall?.({ source: event.source, hints: event.hints, report: event.report });
+    case "recall": return ui.recall?.({ hints: event.hints, report: event.report });
     case "provider_quota_snapshot": return ui.providerQuotaSnapshot?.(event.snapshot);
     case "edit_diff": return ui.editDiff?.(event.path, event.diffLines);
     default: return undefined;

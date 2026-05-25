@@ -13,7 +13,7 @@ export type RuntimeUiEvent =
   | { type: "tool_end"; name: string; isError?: boolean; result?: unknown }
   | { type: "edit_diff"; path: string; diffLines?: Array<{ type?: string; text?: string }> }
   | { type: "provider_quota_snapshot"; snapshot: ProviderQuotaSnapshot | null }
-  | { type: "recall"; source: string; hints: MemoryRecallHint[]; report?: MemoryRecallReport | null }
+  | { type: "recall"; hints: MemoryRecallHint[]; report?: MemoryRecallReport | null }
   | { type: "status"; text: string }
   | { type: "retry_start"; errorMessage?: string }
   | { type: "retry_end"; success?: boolean; finalError?: string };

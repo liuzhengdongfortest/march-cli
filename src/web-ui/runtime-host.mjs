@@ -85,7 +85,7 @@ export async function createWebRuntimeHost({ args, config, cwd, stateRoot } = {}
       try {
         const input = await prepareTurnInput({ prompt, runner, memoryStore, currentProject });
         runner.runtimeUiEvents.emit({ type: "web_user_message", text: input.userMessage });
-        runner.runtimeUiEvents.emit({ type: "recall", source: "user", hints: input.userRecallHints, report: input.userRecallReport });
+        runner.runtimeUiEvents.emit({ type: "recall", hints: input.userRecallHints, report: input.userRecallReport });
         return await runner.runTurn(input.fullPrompt, input.userMessage, input.runOptions);
       } finally {
         turnRunning = false;

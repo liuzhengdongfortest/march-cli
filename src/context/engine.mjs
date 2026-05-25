@@ -168,14 +168,14 @@ export class ContextEngine {
     for (const turn of this.turns) {
       let block = `## Turn ${turn.index}\n` +
         `[user]\n${String(turn.userMessage ?? "")}\n`;
-      const userRecall = formatRecallHints("user", turn.userRecallHints ?? []);
+      const userRecall = formatRecallHints(turn.userRecallHints ?? []);
       if (userRecall) block += `\n${userRecall}\n`;
       block += `\n[assistant]\n`;
       const assistantText = turn.assistantContext || turn.assistantMessage;
       if (assistantText) {
         block += `\n${String(assistantText ?? "")}\n`;
       }
-      const assistantRecall = formatRecallHints("assistant", turn.assistantRecallHints ?? []);
+      const assistantRecall = formatRecallHints(turn.assistantRecallHints ?? []);
       if (assistantRecall) block += `\n${assistantRecall}\n`;
       entries.push(block);
     }
