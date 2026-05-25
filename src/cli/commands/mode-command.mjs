@@ -15,6 +15,7 @@ export function handleModeCommand(command, { modeState } = {}) {
 
   if (command.type === "set") {
     modeState.set(command.mode);
+    return [];
   }
 
   return [`Mode: ${formatModeLabel(modeState.get())}`];

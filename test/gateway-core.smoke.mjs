@@ -54,7 +54,7 @@ export async function runGatewayCoreSmoke({ setupTmp, cleanup }) {
     });
     assert.equal(modeResult.handled, true);
     assert.equal(session.modeState.get(), "do");
-    assert.deepEqual(modeResult.lines, ["Mode: Do"]);
+    assert.deepEqual(modeResult.lines, []);
 
     const calls = [];
     const binarySends = [];

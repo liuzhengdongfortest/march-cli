@@ -149,17 +149,19 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.equal(reload.refreshContextTokens, true);
   assert.ok(output.join("\n").includes("March runtime 已重启"));
   const modeState = createModeState();
+  const discussOutputStart = output.length;
   const discuss = await handleSlashCommand("/discuss", { ui, runner, sessionState, sessionsRoot, projectMarchDir, modeState });
   assert.equal(discuss.handled, true);
   assert.equal(modeState.get(), "discuss");
-  assert.ok(output.join("\n").includes("Mode: Discuss"));
+  assert.deepEqual(output.slice(discussOutputStart), []);
   const mode = await handleSlashCommand("/mode", { ui, runner, sessionState, sessionsRoot, projectMarchDir, modeState });
   assert.equal(mode.handled, true);
   assert.ok(output.join("\n").includes("Mode: Discuss"));
+  const doOutputStart = output.length;
   const doMode = await handleSlashCommand("/do", { ui, runner, sessionState, sessionsRoot, projectMarchDir, modeState });
   assert.equal(doMode.handled, true);
   assert.equal(modeState.get(), "do");
-  assert.ok(output.join("\n").includes("Mode: Do"));
+  assert.deepEqual(output.slice(doOutputStart), []);
   const hotkeys = await handleSlashCommand("/hotkeys", {
     ui,
     runner,
