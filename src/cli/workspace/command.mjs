@@ -90,8 +90,7 @@ export async function handleSessionCommand({ stateRoot, currentProjectId, runner
   if (workspaceSupervisor) {
     try {
       await workspaceSupervisor.activateWorkspaceSession({ project: item.project, session: item.session });
-      const rendered = ctxRenderActiveSession({ workspaceOutputRouter, projectId: item.project.projectId, sessionId: item.session.id });
-      ui.writeln(`Switched to session: ${item.project.displayName} / ${item.session.name || item.session.id}${rendered ? ` (${rendered} render events)` : ""}`);
+      ctxRenderActiveSession({ workspaceOutputRouter, projectId: item.project.projectId, sessionId: item.session.id });
       return { handled: true, refreshContextTokens: true, activeChanged: true };
     } catch (err) {
       ui.writeln(`Error: ${err.message}`);
