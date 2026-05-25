@@ -15,7 +15,6 @@ const BACKGROUND_METHODS_TO_BUFFER = new Set([
   "recall",
   "providerQuotaSnapshot",
   "editDiff",
-  "requestPermission",
   "writeln",
 ]);
 
@@ -49,7 +48,6 @@ export function createWorkspaceOutputRouter({ ui, activeProjectId, activeSession
             const key = routeKey(projectId, typeof getSessionId === "function" ? getSessionId() : sessionId);
             if (isActiveRoute(key) || !BACKGROUND_METHODS_TO_BUFFER.has(prop)) return value.apply(ui, args);
             bufferBackgroundCall(key, prop, args);
-            if (prop === "requestPermission") return false;
             return undefined;
           };
         },
@@ -88,7 +86,6 @@ export function createWorkspaceOutputRouter({ ui, activeProjectId, activeSession
   }
 
   function replayBufferedCall({ method, args }) {
-    if (method === "requestPermission") return;
     const value = ui[method];
     if (typeof value === "function") value.apply(ui, args);
   }

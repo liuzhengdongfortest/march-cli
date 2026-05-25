@@ -26,9 +26,7 @@ export function applyRuntimeEvent(events: MarchTimelineEvent[], event: RuntimeUi
     case "edit_diff":
       next.push({ id, type: "file_diff", path: event.path, lines: toDiffLines(event.diffLines) });
       return next;
-    case "permission_request":
-      next.push({ id, type: "permission_request", title: event.toolName, detail: event.category ?? "permission", status: "pending" });
-      return next;
+
     case "status":
       next.push({ id, type: "terminal_output", command: "status", output: event.text, status: "done" });
       return next;

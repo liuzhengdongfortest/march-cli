@@ -8,7 +8,6 @@ import { createMarkdownMemoryTools } from "../../memory/markdown-tools.mjs";
 import { normalizeRemoteMemorySources } from "../../memory/remote/config.mjs";
 import { initializeMcp } from "../../mcp/index.mjs";
 import { createWebToolsFromConfig } from "../../web/tools.mjs";
-import { createPermissionController } from "../../cli/permissions.mjs";
 import { resolvePiSessionManager } from "../../session/pi-manager.mjs";
 import { createModelContextDumper } from "../../debug/model-context-dumper.mjs";
 import { createLogger, installProcessLogHandlers } from "../../debug/logger.mjs";
@@ -23,7 +22,6 @@ const DEFAULT_DEPS = {
   createMarkdownMemoryTools,
   initializeMcp,
   createWebToolsFromConfig,
-  createPermissionController,
   resolvePiSessionManager,
   createModelContextDumper,
   createMarchAuthStorage,
@@ -86,7 +84,6 @@ export async function createIsolatedRunner(options = {}, deps = {}) {
     trimBatch: options.config?.trimBatch ?? undefined,
     hostedTools: options.config?.hostedTools,
     notificationContext: options.notificationContext,
-    permissionController: d.createPermissionController({ mode: options.permissionMode }),
     modelContextDumper: d.createModelContextDumper(options.modelContextDumper ?? { enabled: false }),
     turnNotifier: d.createDesktopTurnNotifier({
       enabled: Boolean(options.config?.notifications?.turnEnd),

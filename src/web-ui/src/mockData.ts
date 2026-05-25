@@ -61,14 +61,7 @@ export const mockWebUiModel: WebUiModel = {
         command: "npm run test:fast",
         output: "PASS web-ui.smoke.mjs",
         status: "done",
-      },
-      {
-        id: "perm1",
-        type: "permission_request",
-        title: "Write files",
-        detail: "Edit local workspace source files",
-        status: "approved",
-      },
+      }
     ],
   },
   sessions: [

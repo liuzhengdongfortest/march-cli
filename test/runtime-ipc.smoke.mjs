@@ -16,7 +16,6 @@ export async function runRuntimeIpcSmoke() {
     target: createRuntimeUiEventTarget({
       textDelta: (delta) => calls.push(["text", delta]),
       toolStart: (name, args) => calls.push(["toolStart", name, args]),
-      requestPermission: async ({ toolName, params, category }) => ({ behavior: "allow", toolName, params, category }),
     }),
   });
   const runtime = createRuntimeIpcPeer({
@@ -31,13 +30,11 @@ export async function runRuntimeIpcSmoke() {
 
   remoteUi.textDelta("hello");
   remoteUi.toolStart("read", { path: "a" });
-  const decision = await remoteUi.requestPermission({ toolName: "edit_file", params: { path: "a" }, category: "write" });
 
   assert.deepEqual(calls, [
     ["text", "hello"],
     ["toolStart", "read", { path: "a" }],
   ]);
-  assert.deepEqual(decision, { behavior: "allow", toolName: "edit_file", params: { path: "a" }, category: "write" });
   assert.equal(await host.call("echo", "ok"), "ok");
   await assert.rejects(() => host.call("fail"), /boom/);
 

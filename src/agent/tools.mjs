@@ -7,7 +7,6 @@ import { createReadImageTool } from "./file-tools/read-image-tool.mjs";
 import { createSendBinaryTool } from "./output/send-binary-tool.mjs";
 import { createScreenTool } from "./screen-tools/screen-tool.mjs";
 import { createListWindowsTool } from "./screen-tools/list-windows-tool.mjs";
-import { toolText } from "./tool-result.mjs";
 import { createShellTools } from "../shell/tools.mjs";
 import { initImageGen } from "../image-gen/index.mjs";
 import { createSuperGrokTool } from "../supergrok/tool.mjs";
@@ -15,7 +14,7 @@ import { createBrowserTools } from "../browser/tools/index.mjs";
 import { createRuntimeRestartTool } from "./lifecycle/runtime-restart-tool.mjs";
 import { createHistorySearchTool } from "../history/tool.mjs";
 
-export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], historyStore = null, shellRuntime = null, lspService = null, mcpTools = [], webTools = [], lifecycle = null, permissionController = null, authStorage = null, projectMarchDir = null, stateRoot = null, getCurrentModel = null }) {
+export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], historyStore = null, shellRuntime = null, lspService = null, mcpTools = [], webTools = [], lifecycle = null, authStorage = null, projectMarchDir = null, stateRoot = null, getCurrentModel = null }) {
   const commandExecTool = createCommandExecTool({ cwd });
   const codeSearchTool = createCodeSearchTool({ engine, stateRoot });
   const contextStatsTool = createContextStatsTool({ engine });
@@ -47,25 +46,5 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], hist
     ...(authStorage ? [createSuperGrokTool({ authStorage, projectMarchDir })] : []),
     ...(authStorage ? initImageGen({ authStorage, projectMarchDir }) : []),
   ];
-
-  if (!permissionController) return tools;
-
-  return tools.map((tool) => {
-    const execute = tool.execute;
-    if (!execute) return tool;
-    const wrapped = async (toolCallId, params, signal, onUpdate) => {
-      const decision = await permissionController.requestApproval(
-        tool.name,
-        params,
-        ui.requestPermission
-          ? (ctx) => ui.requestPermission(ctx)
-          : null,
-      );
-      if (decision.behavior === "deny") {
-        return toolText(`Permission denied: ${decision.message}`, { error: true, permissionDenied: true });
-      }
-      return execute(toolCallId, params, signal, onUpdate);
-    };
-    return { ...tool, execute: wrapped };
-  });
+  return tools;
 }

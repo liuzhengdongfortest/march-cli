@@ -48,7 +48,6 @@ export function createJsonUI() {
     editDiff: (path, diffLines) => {
       stdout.write(JSON.stringify({ type: "edit_diff", path, diff: diffLines }) + "\n");
     },
-    requestPermission: async () => true,
     setEscapeHandler: () => {},
     setCtrlCHandler: () => {},
     setShiftTabHandler: () => {},
@@ -137,7 +136,6 @@ export function createPlainUI() {
         else stdout.write(`${dim(`      ${d.text}`)}\n`);
       }
     },
-    requestPermission: async () => true,
     setEscapeHandler: () => {},
     setCtrlCHandler: () => {},
     setShiftTabHandler: () => {},

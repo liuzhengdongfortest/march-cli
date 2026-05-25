@@ -35,8 +35,7 @@ function toTimelineItem(event: MarchTimelineEvent): TimelineItem {
       return { id: event.id, kind: "diff", path: event.path, lines: event.lines };
     case "terminal_output":
       return { id: event.id, kind: "terminal", command: event.command, output: event.output, status: event.status };
-    case "permission_request":
-      return { id: event.id, kind: "permission", title: event.title, detail: event.detail, status: event.status };
+
     case "error":
       return { id: event.id, kind: "error", message: event.message, detail: event.detail };
   }

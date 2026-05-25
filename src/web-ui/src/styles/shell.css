@@ -95,8 +95,7 @@
   .diff-line.remove, .error-block strong { color: var(--color-danger); }
   .diff-line.keep { color: var(--color-text-muted); }
   .terminal-block pre { margin: 7px 0 0; color: var(--color-text-muted); font-size: 12px; white-space: pre-wrap; }
-  .permission-block.pending strong { color: var(--color-warning); }
-  .permission-block.approved strong { color: var(--color-success); }
+
 
   .right-body { flex: 1; min-height: 0; overflow: auto; padding: 12px; }
   .workspace-picker { display: grid; gap: 7px; padding-bottom: 10px; }

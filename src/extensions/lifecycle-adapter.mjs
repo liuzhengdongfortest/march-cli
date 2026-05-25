@@ -109,7 +109,7 @@ export function createMarchLifecycleAdapter({
             type: "info",
             message: hooks.size === 0
               ? "March lifecycle hook adapter is read-only; no March hooks are registered."
-              : "March lifecycle hook adapter is read-only; registered hooks are permission-gated.",
+              : "March lifecycle hook adapter is read-only; registered hooks are policy-gated.",
           },
           ...adapterDiagnostics,
           ...getRuntimeDiagnostics(),

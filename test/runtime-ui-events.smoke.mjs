@@ -10,7 +10,6 @@ export async function runRuntimeUiEventsSmoke() {
     toolStart: (name, args) => calls.push(["toolStart", name, args]),
     retryStart: (event) => calls.push(["retryStart", event.attempt, event.maxAttempts]),
     recall: ({ source, hints }) => calls.push(["recall", source, hints.map((hint) => hint.id)]),
-    requestPermission: async ({ toolName, params, category }) => ({ behavior: "allow", toolName, params, category }),
   });
 
   const observedEvents = [];
@@ -20,7 +19,6 @@ export async function runRuntimeUiEventsSmoke() {
   bridge.ui.toolStart("read", { path: "a" });
   bridge.ui.retryStart({ attempt: 1, maxAttempts: 3, delayMs: 10, errorMessage: "rate" });
   bridge.ui.recall({ source: "assistant", hints: [{ id: "mem_1" }] });
-  const decision = await bridge.ui.requestPermission({ toolName: "edit_file", params: { path: "a" }, category: "write" });
 
   assert.deepEqual(calls, [
     ["text", "hello"],
@@ -28,8 +26,7 @@ export async function runRuntimeUiEventsSmoke() {
     ["retryStart", 1, 3],
     ["recall", "assistant", ["mem_1"]],
   ]);
-  assert.deepEqual(decision, { behavior: "allow", toolName: "edit_file", params: { path: "a" }, category: "write" });
-  assert.deepEqual(observedEvents, ["text_delta", "tool_start", "retry_start", "recall", "permission_request"]);
+  assert.deepEqual(observedEvents, ["text_delta", "tool_start", "retry_start", "recall"]);
 
   detachObserver();
   bridge.detach();

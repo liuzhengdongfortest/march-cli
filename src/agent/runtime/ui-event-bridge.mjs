@@ -53,7 +53,6 @@ export function createRuntimeUiClient(eventBus) {
     recall: ({ source, hints }) => eventBus.emit({ type: "recall", source, hints }),
     providerQuotaSnapshot: (snapshot) => eventBus.emit({ type: "provider_quota_snapshot", snapshot }),
     editDiff: (path, diffLines) => eventBus.emit({ type: "edit_diff", path, diffLines }),
-    requestPermission: (request) => eventBus.request({ type: "permission_request", ...request }),
   };
 }
 
@@ -75,7 +74,6 @@ export function dispatchRuntimeUiEvent(ui, event) {
     case "recall": return ui.recall?.({ source: event.source, hints: event.hints });
     case "provider_quota_snapshot": return ui.providerQuotaSnapshot?.(event.snapshot);
     case "edit_diff": return ui.editDiff?.(event.path, event.diffLines);
-    case "permission_request": return ui.requestPermission?.({ toolName: event.toolName, params: event.params, category: event.category });
     default: return undefined;
   }
 }

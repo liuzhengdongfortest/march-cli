@@ -34,7 +34,7 @@ export function formatModeReminder(mode = MODES.DO) {
       "</mode>";
   }
   return "<mode>\n" +
-    "You are in do mode. You may implement changes when the user asks for execution, following normal permissions and project rules.\n" +
+    "You are in do mode. You may implement changes when the user asks for execution, following normal project rules.\n" +
     "</mode>";
 }
 

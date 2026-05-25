@@ -7,7 +7,6 @@ const DEFAULTS = Object.freeze({
   "experimental.web_search": true,
   "experimental.web_fetch": true,
   "experimental.shell": true,
-  "experimental.permissions": true,
   "ui.markdown_rendering": false,
   "ui.tool_expand_per_card": false,
   "agent.plan_mode": false,

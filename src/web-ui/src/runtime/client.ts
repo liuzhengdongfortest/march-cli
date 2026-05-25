@@ -12,7 +12,6 @@ export type RuntimeUiEvent =
   | { type: "tool_start"; name: string; args?: unknown }
   | { type: "tool_end"; name: string; isError?: boolean; result?: unknown }
   | { type: "edit_diff"; path: string; diffLines?: Array<{ type?: string; text?: string }> }
-  | { type: "permission_request"; toolName: string; category?: string; params?: unknown }
   | { type: "provider_quota_snapshot"; snapshot: ProviderQuotaSnapshot | null }
   | { type: "status"; text: string }
   | { type: "retry_start"; errorMessage?: string }

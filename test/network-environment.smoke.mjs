@@ -63,7 +63,6 @@ function createFakeRuntimeDeps(calls) {
     installProcessLogHandlers: () => calls.push(["log-handlers"]),
     resolvePiSessionManager: () => ({}),
     createMarchAuthStorage: () => ({ authStorage: {} }),
-    createPermissionController: () => ({}),
     createModelContextDumper: () => ({}),
     createDesktopTurnNotifier: () => ({}),
     createRunner: async () => {

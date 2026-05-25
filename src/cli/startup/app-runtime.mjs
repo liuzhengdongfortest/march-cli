@@ -70,7 +70,6 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
   const currentProject = basename(cwd);
   const shellRuntime = args.shellRuntime ? createCliShellRuntime({ cwd }) : null;
 
-  const permissionMode = args.permissionMode;
   const sessionSource = "pi";
   const sessionsRoot = join(projectMarchDir, "sessions");
   const sessionState = {
@@ -105,7 +104,6 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
     namespace,
     projectMarchDir,
     extensionPaths,
-    permissionMode,
     shellRuntime: Boolean(shellRuntime),
     lifecycleHooks: lifecycleManifests.hooks,
     lifecycleDiagnostics: lifecycleManifests.diagnostics,
@@ -161,7 +159,6 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
       provider,
       serviceTier,
       model,
-      permissionMode,
       remoteMemorySources,
       createUi: (runtimeSessionState) => outputRouter.createProjectUi(project.projectId, () => runtimeSessionState.sessionId),
       refreshStatusBar: (...args) => refreshStatusBar?.(...args),

@@ -39,8 +39,7 @@ function AuxBlock({ item }: { item: Exclude<TimelineItem, { kind: "message" }> }
       return <DiffBlock item={item} />;
     case "terminal":
       return <TerminalBlock item={item} />;
-    case "permission":
-      return <PermissionBlock item={item} />;
+
     case "error":
       return <ErrorBlock item={item} />;
   }
@@ -90,14 +89,7 @@ function TerminalBlock({ item }: { item: Extract<TimelineItem, { kind: "terminal
   );
 }
 
-function PermissionBlock({ item }: { item: Extract<TimelineItem, { kind: "permission" }> }) {
-  return (
-    <div className={`timeline-aux permission-block ${item.status}`}>
-      <div className="aux-title"><span>permission</span><strong>{item.title}</strong><em>{item.status}</em></div>
-      <p>{item.detail}</p>
-    </div>
-  );
-}
+
 
 function ErrorBlock({ item }: { item: Extract<TimelineItem, { kind: "error" }> }) {
   return (

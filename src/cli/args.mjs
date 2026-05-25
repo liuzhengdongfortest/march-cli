@@ -17,7 +17,6 @@ export function parseCliArgs(argv) {
       "pi-runtime-host": { type: "boolean" },
       "shell-runtime": { type: "boolean" },
       "no-shell-runtime": { type: "boolean" },
-      "permission-mode": { type: "string" },
       host: { type: "string" },
       port: { type: "string" },
       "api-port": { type: "string" },
@@ -47,7 +46,6 @@ export function parseCliArgs(argv) {
     piSessions: values["pi-sessions"] ?? false,
     piRuntimeHost: values["pi-runtime-host"] ?? false,
     shellRuntime: values["no-shell-runtime"] ? false : true,
-    permissionMode: values["permission-mode"] ?? "bypassPermissions",
     host: values.host ?? null,
     port: values.port ?? null,
     apiPort: values["api-port"] ?? null,
@@ -97,7 +95,6 @@ Options:
   --pi-runtime-host    Force pi AgentSessionRuntime host path
   --shell-runtime      Enable interactive PTY shell tools (default)
   --no-shell-runtime   Disable interactive PTY shell tools and shell pane
-  --permission-mode <mode>  Permission mode: default, bypassPermissions, dontAsk (default: bypassPermissions)
   -e, --extension <path>
                        Load a pi extension path in the default runtime host (repeatable)
   --host <host>        With memory serve/web, bind host (default: 127.0.0.1)

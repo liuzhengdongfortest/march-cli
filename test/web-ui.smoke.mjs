@@ -87,7 +87,7 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(timeline, /<TimelineList items=\{items\}/);
   assert.match(timelineList, /aria-label="Session events"/);
   assert.match(timelineBlocks, /className="timeline-aux tool-block"/);
-  assert.match(timelineBlocks, /permission-block/);
+  assert.doesNotMatch(timelineBlocks, /permission-block/);
   assert.match(timelineAdapter, /tool_result/);
   assert.match(right, /Workspace picker/);
   assert.match(right, /onCreateSession/);

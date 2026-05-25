@@ -5,7 +5,6 @@ import { buildMarchCommands, MarchAutocompleteProvider } from "./input/autocompl
 import { createJsonUI, createPlainUI } from "./fallback-ui.mjs";
 import { createKeybindingDispatcher } from "./input/keybinding-dispatch.mjs";
 import { OutputBuffer } from "./tui/output-buffer.mjs";
-import { requestToolPermission } from "./tui/permission-request-ui.mjs";
 import { runTuiExternalEditor } from "./tui/editor/external-editor-runner.mjs";
 import { createRetryStatusController } from "./tui/status/retry-status.mjs";
 import { createShellDrawerControls } from "./shell/shell-drawer-controls.mjs";
@@ -248,11 +247,6 @@ export function createTuiUI({
       requestRender();
     },
 
-    requestPermission: async ({ toolName, params, category }) => {
-      ensureStarted();
-      spinnerStatus.stop();
-      return requestToolPermission({ toolName, params, category, output, selectList, requestRender });
-    },
 
     setEscapeHandler: (fn) => { onEscapeHandler = fn; },
     setCtrlCHandler: (fn) => { onCtrlCHandler = fn; },
