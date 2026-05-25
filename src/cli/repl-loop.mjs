@@ -170,7 +170,10 @@ function startReplTurn({ runtime, prompt, ui, refreshStatusBar, setTurnRunning, 
     modeState,
   }).finally(() => {
     if (runtime.turnTask === task) runtime.turnTask = null;
-    setTurnRunning(Boolean(workspaceSupervisor?.hasRunningTurn?.()));
+    const hasRunningTurn = Boolean(workspaceSupervisor?.hasRunningTurn?.());
+    setTurnRunning(hasRunningTurn);
+    if (!hasRunningTurn) refreshStatusBar.stopWorking?.();
+    refreshStatusBar();
   });
   runtime.turnTask = task;
 }
@@ -191,10 +194,7 @@ async function runReplTurn({ prompt, runner, memoryStore, currentProject, ui, re
   } catch (err) {
     ui.writeln(`Error: ${err.message}`);
   } finally {
-    setTurnRunning(false);
-    refreshStatusBar.stopWorking?.();
     memoryStore.endTurn();
-    refreshStatusBar();
   }
 }
 

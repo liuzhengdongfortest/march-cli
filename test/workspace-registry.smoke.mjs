@@ -98,10 +98,15 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
     const sameProjectOtherSession = { id: "s-b2", path: join(rootB, ".march", "pi-sessions", "s-b2.json") };
     savePiSessionSidecarState({ projectMarchDir: join(rootB, ".march"), sessionRef: sameProjectOtherSession.path, state: { version: 1, cwd: resolve(rootB), turns: [] } });
     supervisor.getActive().turnTask = Promise.resolve();
-    await assert.rejects(() => supervisor.activateWorkspaceSession({ project: projectB, session: sameProjectOtherSession }), /same-project concurrent sessions/);
-    supervisor.getActive().turnTask = null;
+    await supervisor.activateWorkspaceSession({ project: projectB, session: sameProjectOtherSession });
+    assert.equal(viewSessionState.sessionId, "s-b2");
+    assert.equal(supervisor.getRunningTurns().length, 1);
+    assert.ok(supervisor.getRuntimeSummaries().some((runtime) => runtime.projectId === projectB.projectId && runtime.sessionId === "created-1" && runtime.running));
+    supervisor.getRuntimeSummaries().find((runtime) => runtime.sessionId === "created-1");
     await supervisor.dispose();
-    assert.deepEqual(disposed.sort(), [projectA.projectId, projectB.projectId, `memory:${projectA.projectId}`, `memory:${projectB.projectId}`].sort());
+    assert.equal(disposed.filter((item) => item === projectA.projectId).length, 1);
+    assert.equal(disposed.filter((item) => item === projectB.projectId).length, 2);
+    assert.equal(disposed.filter((item) => item === `memory:${projectB.projectId}`).length, 2);
   } finally {
     cleanup(stateRoot);
     cleanup(rootA);
@@ -133,7 +138,7 @@ function mockRunner({ project, cwd, sessionId, disposed, startNewSession }) {
     },
     async switchPiSession(path) {
       this.sessionPath = path;
-      activeSessionId = "s-b";
+      activeSessionId = path.includes("s-b2") ? "s-b2" : "s-b";
     },
     async startNewSession() {
       const result = await startNewSession();

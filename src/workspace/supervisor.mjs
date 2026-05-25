@@ -5,9 +5,10 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
   if (!initialRuntime?.project?.projectId) throw new Error("initial workspace runtime is missing project metadata");
   if (typeof createProjectRuntime !== "function") throw new Error("createProjectRuntime is required");
 
-  const runtimes = new Map([[initialRuntime.project.projectId, initialRuntime]]);
+  const runtimes = new Map();
   let active = initialRuntime;
   let disposed = false;
+  rememberRuntime(initialRuntime);
 
   const runner = new Proxy({}, {
     get(_target, prop) {
@@ -16,6 +17,7 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
       if (prop === "activateWorkspaceSession") return activateWorkspaceSession;
       if (prop === "activateWorkspaceSessionById") return activateWorkspaceSessionById;
       if (prop === "startNewWorkspaceSession") return startNewWorkspaceSession;
+      if (prop === "refreshActiveRuntime") return refreshActiveRuntime;
       const value = active.runner[prop];
       return typeof value === "function" ? value.bind(active.runner) : value;
     },
@@ -24,7 +26,7 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
       return true;
     },
     has(_target, prop) {
-      return prop === "dispose" || prop === "getActiveWorkspaceRuntime" || prop === "activateWorkspaceSession" || prop === "activateWorkspaceSessionById" || prop === "startNewWorkspaceSession" || prop in active.runner;
+      return prop === "dispose" || prop === "getActiveWorkspaceRuntime" || prop === "activateWorkspaceSession" || prop === "activateWorkspaceSessionById" || prop === "startNewWorkspaceSession" || prop === "refreshActiveRuntime" || prop in active.runner;
     },
   });
 
@@ -34,6 +36,7 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
     hasRunningTurn,
     getRunningTurns,
     getRuntimeSummaries,
+    refreshActiveRuntime,
     activateWorkspaceSession,
     activateWorkspaceSessionById,
     startNewWorkspaceSession,
@@ -61,6 +64,12 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
     }));
   }
 
+  function refreshActiveRuntime() {
+    rememberRuntime(active);
+    mirrorSessionState(viewSessionState, active.sessionState);
+    onActivate?.({ projectId: active.project.projectId, sessionId: getRuntimeSessionId(active), runtime: active });
+  }
+
   async function activateWorkspaceSessionById({ projects = [], projectId, sessionId }) {
     const project = projects.find((candidate) => candidate.projectId === projectId);
     if (!project) throw new Error(`workspace project not found: ${projectId}`);
@@ -70,9 +79,11 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
   }
 
   async function startNewWorkspaceSession(project) {
-    await activateWorkspaceSession({ project, session: null });
+    const runtime = await getIdleRuntimeForProject(project);
+    active = runtime;
     const result = await active.runner.startNewSession();
     if (!result?.cancelled && result?.sessionId) syncSessionState(active, result.sessionId);
+    rememberRuntime(active);
     mirrorSessionState(viewSessionState, active.sessionState);
     onActivate?.({ projectId: active.project.projectId, sessionId: getRuntimeSessionId(active), runtime: active });
     return { runtime: active, result };
@@ -82,27 +93,44 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
     if (disposed) throw new Error("workspace supervisor is already disposed");
     if (!project?.projectId) throw new Error("workspace project is required");
 
-    let runtime = runtimes.get(project.projectId);
-    if (!runtime) {
-      runtime = await createProjectRuntime(project);
-      runtimes.set(project.projectId, runtime);
-    }
+    let runtime = session?.id ? runtimes.get(runtimeKey(project.projectId, session.id)) : findIdleRuntime(project.projectId);
+    if (!runtime) runtime = await createProjectRuntime(project);
 
-    if (session?.path) {
-      const currentSessionId = getRuntimeSessionId(runtime);
-      if (runtime.turnTask && currentSessionId !== session.id) {
-        throw new Error("this project already has a running session; same-project concurrent sessions are not enabled yet");
-      }
+    if (session?.path && getRuntimeSessionId(runtime) !== session.id) {
       const restoreState = loadWorkspacePiSessionState({ runtime, session });
       await runtime.runner.switchPiSession(session.path, restoreState);
       syncSessionState(runtime, session.id);
     }
 
     active = runtime;
+    rememberRuntime(runtime);
     mirrorSessionState(viewSessionState, runtime.sessionState);
     onActivate?.({ projectId: runtime.project.projectId, sessionId: getRuntimeSessionId(runtime), runtime });
     return active;
   }
+
+  async function getIdleRuntimeForProject(project) {
+    if (active.project.projectId === project.projectId && !active.turnTask) return active;
+    const runtime = await createProjectRuntime(project);
+    rememberRuntime(runtime);
+    return runtime;
+  }
+
+  function findIdleRuntime(projectId, { allowSessionRuntime = true } = {}) {
+    return Array.from(runtimes.values()).find((runtime) => {
+      if (runtime.project.projectId !== projectId || runtime.turnTask) return false;
+      return allowSessionRuntime || !getRuntimeSessionId(runtime);
+    }) ?? null;
+  }
+
+  function rememberRuntime(runtime) {
+    const key = runtimeKey(runtime.project.projectId, getRuntimeSessionId(runtime));
+    for (const [candidateKey, candidate] of runtimes) {
+      if (candidate === runtime && candidateKey !== key) runtimes.delete(candidateKey);
+    }
+    runtimes.set(key, runtime);
+  }
+
   async function dispose() {
     if (disposed) return;
     disposed = true;
@@ -137,4 +165,8 @@ function mirrorSessionState(target, source) {
   if (!target || !source) return;
   target.sessionId = source.sessionId;
   target.sessionDir = source.sessionDir;
+}
+
+function runtimeKey(projectId, sessionId = null) {
+  return `${projectId}:${sessionId ?? ""}`;
 }

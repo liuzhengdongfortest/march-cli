@@ -200,6 +200,7 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
     projectMarchDir,
     ui,
   });
+  workspaceSupervisor.refreshActiveRuntime();
   outputRouter.setActiveSession(currentProjectInfo.projectId, sessionState.sessionId);
   refreshStatusBar();
 
