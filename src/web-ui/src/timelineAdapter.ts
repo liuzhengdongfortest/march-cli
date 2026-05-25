@@ -36,7 +36,7 @@ function toTimelineItem(event: MarchTimelineEvent): TimelineItem {
     case "terminal_output":
       return { id: event.id, kind: "terminal", command: event.command, output: event.output, status: event.status };
     case "memory_recall":
-      return { id: event.id, kind: "memoryRecall", hints: event.hints, report: event.report };
+      return { id: event.id, kind: "memoryRecall", hints: event.hints, report: event.report, variant: event.variant };
 
     case "error":
       return { id: event.id, kind: "error", message: event.message, detail: event.detail };

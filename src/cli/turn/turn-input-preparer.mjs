@@ -7,7 +7,8 @@ import { formatShellHints } from "../../shell/hints.mjs";
 export async function prepareTurnInput({ prompt, runner, memoryStore, currentProject, modeState = null }) {
   const engine = runner.engine ?? {};
   const carryoverAlreadyRendered = engine.hasRenderedPendingAssistantRecallHints?.() ?? false;
-  const carryoverRecallHints = engine.takePendingAssistantRecallHints?.() ?? [];
+  const carryoverRecall = normalizePendingAssistantRecall(engine.takePendingAssistantRecallHints?.());
+  const carryoverRecallHints = carryoverRecall.hints;
   const userRecallHints = await memoryStore.recallForUser(prompt, {
     currentProject,
     excludedIds: engine.getRecentRecallMemoryIds?.() ?? [],
@@ -29,7 +30,8 @@ export async function prepareTurnInput({ prompt, runner, memoryStore, currentPro
     userRecallHints,
     userRecallReport,
     carryoverRecallHints,
-    shouldRenderCarryoverRecall: carryoverRecallHints.length > 0 && !carryoverAlreadyRendered,
+    carryoverRecallReport: carryoverRecall.report,
+    shouldRenderCarryoverRecall: (carryoverRecallHints.length > 0 || carryoverRecall.report) && !carryoverAlreadyRendered,
   };
 }
 
@@ -39,4 +41,9 @@ export function formatUserDisplayMessage(prompt) {
 
 function appendPromptBlocks(prompt, ...blocks) {
   return [prompt, ...blocks.filter(Boolean)].join("\n\n");
+}
+
+function normalizePendingAssistantRecall(value) {
+  if (Array.isArray(value)) return { hints: value, report: null };
+  return { hints: value?.hints ?? [], report: value?.report ?? null };
 }

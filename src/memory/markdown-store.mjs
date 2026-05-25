@@ -127,11 +127,11 @@ export class MarkdownMemoryStore {
     return hints;
   }
 
-  async recallForAssistant(text, { limit = 2, excludedIds = [] } = {}) {
+  async recallForAssistant(text, { limit = 2, excludedIds = [], candidateLimit = 3 } = {}) {
     const excluded = new Set([...excludedIds, ...this.turnSeenMemoryIds]);
-    const hints = await this.#recallSemantic(text, { limit, excluded, recordReport: false });
+    const { hints, report } = await this.#recallSemantic(text, { limit, excluded, candidateLimit, recordReport: false, returnReport: true });
     for (const hint of hints) this.turnSeenMemoryIds.add(hint.id);
-    return hints;
+    return { hints, report };
   }
 
   searchRipgrep(query, { limit = 20, context = 2, syntax = "regex", case: caseMode = "smart", caseMode: explicitCaseMode = null, glob = [] } = {}) {
@@ -202,20 +202,28 @@ export class MarkdownMemoryStore {
     return result;
   }
 
-  async #recallSemantic(text, { limit, excluded, recordReport = true }) {
+  async #recallSemantic(text, { limit, excluded, candidateLimit, recordReport = true, returnReport = false }) {
     this.ensureFresh();
     if (recordReport) this.lastUserRecallReport = null;
-    if (!this.semanticRecall?.enabled) return [];
+    const empty = { hints: [], report: null };
+    if (!this.semanticRecall?.enabled) return returnReport ? empty : [];
     try {
-      const result = await this.semanticRecall.search(text, { entries: this.entries, excluded, limit });
+      const result = await this.semanticRecall.search(text, { entries: this.entries, excluded, limit, candidateLimit });
       const hints = result.recalled.map(({ entry, score }) => toHint(entry, { score }));
-      if (recordReport) {
-        this.lastUserRecallReport = { threshold: result.threshold, vectorizerStatus: result.vectorizerStatus, warning: result.warning, hints, candidates: result.candidates.map(({ entry, score, recalled }) => ({ ...toHint(entry, { score }), recalled })) };
-      }
-      return hints;
+      const report = {
+        threshold: result.threshold,
+        vectorizerStatus: result.vectorizerStatus,
+        warning: result.warning,
+        hints,
+        candidates: result.candidates.map(({ entry, score, recalled }) => ({ ...toHint(entry, { score }), recalled })),
+      };
+      if (recordReport) this.lastUserRecallReport = report;
+      return returnReport ? { hints, report } : hints;
     } catch (err) {
       this.semanticRecallWarning = err?.message ?? String(err);
-      return [];
+      const report = { threshold: this.semanticRecall.minScore, vectorizerStatus: this.semanticRecall.status, warning: this.semanticRecallWarning, hints: [], candidates: [] };
+      if (recordReport) this.lastUserRecallReport = report;
+      return returnReport ? { hints: [], report } : [];
     }
   }
 

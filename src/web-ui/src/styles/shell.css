@@ -95,6 +95,7 @@
   .diff-line.remove, .error-block strong { color: var(--color-danger); }
   .diff-line.keep { color: var(--color-text-muted); }
   .terminal-block pre { margin: 7px 0 0; color: var(--color-text-muted); font-size: 12px; white-space: pre-wrap; }
+  .memory-recall-block.compact { opacity: 0.62; }
   .memory-recall-block .memory-recall-warning { margin: 7px 0 0; color: var(--color-text-muted); }
   .memory-recall-block ul { margin: 7px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; }
   .memory-recall-block li { display: flex; gap: 7px; align-items: center; min-width: 0; }

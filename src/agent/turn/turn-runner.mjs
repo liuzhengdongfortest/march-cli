@@ -207,9 +207,9 @@ function logSessionEvent(logger, event) {
 
 async function finalizeTurn({ prompt, userMessage, userRecallHints, memoryStore, engine, ui, turnState, midTurnRecallHints, syncCurrentMarchSessionState, autoNameSession, recordHistory }) {
   closeAssistantReply({ ui, state: turnState });
-  const assistantRecallHints = await flushAssistantRecall({ memoryStore, engine, turnState });
-  engine.setPendingAssistantRecallHints?.(assistantRecallHints);
-  const recordedAssistantRecallHints = uniqueHints([...midTurnRecallHints, ...assistantRecallHints]);
+  const assistantRecall = await flushAssistantRecall({ memoryStore, engine, turnState });
+  engine.setPendingAssistantRecallHints?.(assistantRecall.hints, assistantRecall.report);
+  const recordedAssistantRecallHints = uniqueHints([...midTurnRecallHints, ...assistantRecall.hints]);
 
   const turn = engine.recordTurn({
     userMessage: userMessage ?? prompt.slice(0, 300),
@@ -225,10 +225,10 @@ async function finalizeTurn({ prompt, userMessage, userRecallHints, memoryStore,
 }
 
 async function flushAssistantRecall({ memoryStore, engine, turnState }) {
-  if (!memoryStore) return [];
+  if (!memoryStore) return { hints: [], report: null };
   const text = assistantRecallDeltaText(turnState);
   advanceAssistantRecallCursor(turnState);
-  if (!text.trim()) return [];
+  if (!text.trim()) return { hints: [], report: null };
   return await memoryStore.recallForAssistant(text, {
     excludedIds: engine.getRecentRecallMemoryIds?.() ?? [],
   });
@@ -236,11 +236,12 @@ async function flushAssistantRecall({ memoryStore, engine, turnState }) {
 
 async function flushMidTurnAssistantRecall({ memoryStore, engine, turnState, activeSession, ui, logger, midTurnRecallHints }) {
   try {
-    const hints = await flushAssistantRecall({ memoryStore, engine, turnState });
-    if (hints.length === 0) return;
-    midTurnRecallHints.push(...hints);
-    queueMidTurnRecallHints(activeSession, hints, logger);
-    ui.recall?.({ hints });
+    const { hints, report } = await flushAssistantRecall({ memoryStore, engine, turnState });
+    if (hints.length > 0) {
+      midTurnRecallHints.push(...hints);
+      queueMidTurnRecallHints(activeSession, hints, logger);
+    }
+    if (report) ui.recall?.({ hints, report, variant: "assistant" });
   } catch (err) {
     logger?.debug("memory.mid_turn_recall.failed", { errorMessage: err?.message ?? String(err) });
   }

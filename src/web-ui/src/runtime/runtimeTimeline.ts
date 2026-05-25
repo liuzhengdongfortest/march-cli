@@ -27,8 +27,8 @@ export function applyRuntimeEvent(events: MarchTimelineEvent[], event: RuntimeUi
       next.push({ id, type: "file_diff", path: event.path, lines: toDiffLines(event.diffLines) });
       return next;
     case "recall":
-      if ((event.hints?.length ?? 0) || (event.report?.candidates?.length ?? 0)) {
-        next.push({ id, type: "memory_recall", hints: event.hints ?? [], report: event.report ?? null });
+      if ((event.hints?.length ?? 0) || event.report) {
+        next.push({ id, type: "memory_recall", hints: event.hints ?? [], report: event.report ?? null, variant: event.variant });
       }
       return next;
 

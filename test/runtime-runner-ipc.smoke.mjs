@@ -25,7 +25,7 @@ export async function runRuntimeRunnerIpcSmoke() {
   assert.equal(remote.engine.hasRenderedPendingAssistantRecallHints(), false);
   remote.engine.markPendingAssistantRecallHintsRendered();
   assert.equal(remote.engine.hasRenderedPendingAssistantRecallHints(), true);
-  assert.deepEqual(remote.engine.takePendingAssistantRecallHints(), [{ id: "mem_pending" }]);
+  assert.deepEqual(remote.engine.takePendingAssistantRecallHints(), { hints: [{ id: "mem_pending" }], report: null });
   assert.deepEqual(remote.engine.peekPendingAssistantRecallHints(), []);
   assert.deepEqual(remote.engine.getRecentRecallMemoryIds(), ["mem_recent"]);
   assert.deepEqual(calls, [["create", "D:/repo"]]);

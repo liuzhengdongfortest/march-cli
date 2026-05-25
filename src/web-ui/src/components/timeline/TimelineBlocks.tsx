@@ -92,20 +92,21 @@ function TerminalBlock({ item }: { item: Extract<TimelineItem, { kind: "terminal
 }
 
 function MemoryRecallBlock({ item }: { item: Extract<TimelineItem, { kind: "memoryRecall" }> }) {
-  const candidates = item.report?.candidates?.length ? item.report.candidates : item.hints.map((hint) => ({ ...hint, recalled: true }));
+  const isAssistant = item.variant === "assistant";
+  const candidates = (item.report?.candidates?.length ? item.report.candidates : item.hints.map((hint) => ({ ...hint, recalled: true }))).slice(0, isAssistant ? 3 : undefined);
   const threshold = typeof item.report?.threshold === "number" ? `threshold ${item.report.threshold.toFixed(2)}` : "semantic recall";
   const fallback = item.report?.vectorizerStatus === "fallback" ? " · fallback" : "";
   return (
-    <div className="timeline-aux memory-recall-block">
+    <div className={`timeline-aux memory-recall-block${isAssistant ? " compact" : ""}`}>
       <div className="aux-title"><span>memory</span><strong>recall · {threshold}{fallback}</strong></div>
       {item.report?.warning ? <p className="memory-recall-warning">! {item.report.warning}</p> : null}
       <ul>
-        {candidates.map((hint) => (
+        {candidates.length ? candidates.map((hint) => (
           <li key={hint.id} className={hint.recalled === false ? "skipped" : "recalled"}>
             <span>{hint.recalled === false ? "×" : "✓"}</span>
             <strong>{formatRecallScore(hint.score)} {hint.name ?? hint.id}</strong>
           </li>
-        ))}
+        )) : <li className="skipped"><span>·</span><strong>no candidates</strong></li>}
       </ul>
     </div>
   );

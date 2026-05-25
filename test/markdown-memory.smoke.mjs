@@ -70,15 +70,20 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   assert.equal(renderedHints[0], "✦ Memory Recall · 1 note · threshold 0.30");
   assert.match(renderedHints[2], /^\x1b\[90m    User recall/);
 
-  const assistantHints = await store.recallForAssistant("rolling suppression window");
-  assert.equal(assistantHints.length, 0);
+  const assistantMissAfterUserRecall = await store.recallForAssistant("rolling suppression window");
+  assert.equal(assistantMissAfterUserRecall.hints.length, 0);
+  assert.equal(assistantMissAfterUserRecall.report.candidates.length, 0);
   store.endTurn();
 
   store.beginTurn();
-  const assistantSemanticHints = await store.recallForAssistant("rolling suppression window");
-  assert.equal(assistantSemanticHints.length, 1);
-  assert.equal(assistantSemanticHints[0].id, entry.id);
-  assert.ok(Math.abs(assistantSemanticHints[0].score - 1) < 1e-9);
+  const assistantSemanticRecall = await store.recallForAssistant("rolling suppression window");
+  assert.equal(assistantSemanticRecall.hints.length, 1);
+  assert.equal(assistantSemanticRecall.hints[0].id, entry.id);
+  assert.ok(Math.abs(assistantSemanticRecall.hints[0].score - 1) < 1e-9);
+  assert.deepEqual(formatRecallLines(assistantSemanticRecall.hints, assistantSemanticRecall.report, { variant: "assistant" }), [
+    "✦ Memory Recall · 1 note · threshold 0.30",
+    "  ✓ 1.00 Recall hint dedup",
+  ]);
   store.endTurn();
 
   store.semanticRecall.minScore = 0.9;
@@ -110,7 +115,11 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   store.endTurn();
 
   const miss = await store.recallForAssistant("completely unrelated text");
-  assert.equal(miss.length, 0);
+  assert.equal(miss.hints.length, 0);
+  assert.deepEqual(formatRecallLines(miss.hints, miss.report, { variant: "assistant" }), [
+    "✦ Memory Recall · 0 notes · threshold 0.30",
+    "  no candidates",
+  ]);
 
   const tools = createMarkdownMemoryTools(store);
   const search = tools.find((tool) => tool.name === "memory_search");
@@ -155,7 +164,7 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   assert.equal(deleteResult.details.memory.status, "deleted");
   assert.ok(existsSync(entry.path));
   assert.ok(readFileSync(entry.path, "utf8").includes("status: deleted"));
-  assert.equal((await store.recallForAssistant("recall hint window")).length, 0);
+  assert.equal((await store.recallForAssistant("recall hint window")).hints.length, 0);
   const deletedSearch = await search.execute("t6", { query: "Recall hint dedup", limit: 5 });
   assert.ok(deletedSearch.content[0].text.includes("No memory files matched"));
   const deletedOpen = await open.execute("t7", { id: entry.id });

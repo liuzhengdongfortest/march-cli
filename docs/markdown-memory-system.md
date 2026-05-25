@@ -253,8 +253,8 @@ assistant 输出触发：
 ```text
 输入：assistant model output
 搜索：semantic vector index
-数量：最多 2 条
-输出：id / score / name / short_description
+注入：最多 2 条过阈值 memory
+UI：无论是否过阈值，轻量显示最多 3 条候选；不展示 description
 位置：assistant output 后或下一 turn carryover
 去重：当前 turn 内去重
 ```

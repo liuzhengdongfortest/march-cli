@@ -135,20 +135,20 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   let recallCalls = 0;
   const memoryStore = {
     recallForAssistant(text, options) {
-      if (!text) return [];
+      if (!text) return { hints: [], report: null };
       recallCalls += 1;
       if (recallCalls === 1) assert.deepEqual([...options.excludedIds], []);
       if (recallCalls === 1) {
         assert.ok(text.includes("12345678"));
         assert.ok(!text.includes("draft text"));
         assert.ok(!text.includes("→ read"));
-        return [{ id: "mem_thinking", name: "Thinking memory", description: "Matched from thinking text." }];
+        return { hints: [{ id: "mem_thinking", name: "Thinking memory", description: "Matched from thinking text." }], report: { threshold: 0.3, candidates: [{ id: "mem_thinking", name: "Thinking memory", score: 0.9, recalled: true }] } };
       }
       if (recallCalls === 2) {
         assert.equal(text, "draft text");
-        return [{ id: "mem_draft", name: "Draft memory", description: "Matched from visible assistant text." }];
+        return { hints: [{ id: "mem_draft", name: "Draft memory", description: "Matched from visible assistant text." }], report: { threshold: 0.3, candidates: [{ id: "mem_draft", name: "Draft memory", score: 0.8, recalled: true }] } };
       }
-      return [];
+      return { hints: [], report: { threshold: 0.3, candidates: [] } };
     },
   };
   const ui = {
@@ -160,7 +160,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
     thinkingEnd: (tokens) => calls.push(["thinkingEnd", tokens]),
     toolStart: (name, args) => calls.push(["toolStart", name, args]),
     toolEnd: (name, isError, result) => calls.push(["toolEnd", name, isError, result]),
-    recall: ({ hints }) => calls.push(["recall", hints.map((hint) => hint.id)]),
+    recall: ({ hints, report, variant }) => calls.push(["recall", hints.map((hint) => hint.id), report?.candidates?.length ?? 0, variant]),
   };
   const runner = await createRunner({
     cwd: dir,

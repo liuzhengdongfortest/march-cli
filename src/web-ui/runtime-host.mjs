@@ -86,7 +86,10 @@ export async function createWebRuntimeHost({ args, config, cwd, stateRoot } = {}
         const input = await prepareTurnInput({ prompt, runner, memoryStore, currentProject });
         runner.runtimeUiEvents.emit({ type: "web_user_message", text: input.userMessage });
         runner.runtimeUiEvents.emit({ type: "recall", hints: input.userRecallHints, report: input.userRecallReport });
-        return await runner.runTurn(input.fullPrompt, input.userMessage, input.runOptions);
+        if (input.shouldRenderCarryoverRecall) runner.runtimeUiEvents.emit({ type: "recall", hints: input.carryoverRecallHints, report: input.carryoverRecallReport, variant: "assistant" });
+        const result = await runner.runTurn(input.fullPrompt, input.userMessage, input.runOptions);
+        emitPendingAssistantRecallPreview(runner);
+        return result;
       } finally {
         turnRunning = false;
         memoryStore.endTurn();
@@ -98,6 +101,15 @@ export async function createWebRuntimeHost({ args, config, cwd, stateRoot } = {}
       memoryStore.close?.();
     },
   };
+}
+
+function emitPendingAssistantRecallPreview(runner) {
+  if (runner.engine.hasRenderedPendingAssistantRecallHints?.()) return;
+  const hints = runner.engine.peekPendingAssistantRecallHints?.() ?? [];
+  const report = runner.engine.peekPendingAssistantRecallReport?.() ?? null;
+  if (hints.length === 0 && !report) return;
+  runner.runtimeUiEvents.emit({ type: "recall", hints, report, variant: "assistant" });
+  runner.engine.markPendingAssistantRecallHintsRendered?.();
 }
 
 export function createHeadlessWebUi() {

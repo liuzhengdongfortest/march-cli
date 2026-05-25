@@ -33,7 +33,7 @@ export async function runMemorySystemSmoke({ setupTmp, cleanup }) {
       const hints = await store.recallForUser("markdown files recall terms", { currentProject: "march-cli" });
       assert.equal(hints.length, 1);
       assert.equal(hints[0].id, entry.id);
-      assert.equal((await store.recallForAssistant("memory system smoke")).length, 0);
+      assert.equal((await store.recallForAssistant("memory system smoke")).hints.length, 0);
       store.endTurn();
     } finally {
       store.close();

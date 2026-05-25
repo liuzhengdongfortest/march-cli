@@ -17,6 +17,7 @@ export class ContextEngine {
     this.thinkingLevel = thinkingLevel;
     this.turns = [];
     this.pendingAssistantRecallHints = [];
+    this.pendingAssistantRecallReport = null;
     this.pendingAssistantRecallHintsRendered = false;
     this.sessionName = "";
     this.toolDefs = [];
@@ -96,8 +97,9 @@ export class ContextEngine {
     return ids;
   }
 
-  setPendingAssistantRecallHints(hints = []) {
+  setPendingAssistantRecallHints(hints = [], report = null) {
     this.pendingAssistantRecallHints = uniqueHints(hints);
+    this.pendingAssistantRecallReport = report;
     this.pendingAssistantRecallHintsRendered = false;
   }
 
@@ -105,19 +107,25 @@ export class ContextEngine {
     return this.pendingAssistantRecallHints;
   }
 
+  peekPendingAssistantRecallReport() {
+    return this.pendingAssistantRecallReport;
+  }
+
   hasRenderedPendingAssistantRecallHints() {
     return this.pendingAssistantRecallHintsRendered;
   }
 
   markPendingAssistantRecallHintsRendered() {
-    if (this.pendingAssistantRecallHints.length > 0) this.pendingAssistantRecallHintsRendered = true;
+    if (this.pendingAssistantRecallHints.length > 0 || this.pendingAssistantRecallReport) this.pendingAssistantRecallHintsRendered = true;
   }
 
   takePendingAssistantRecallHints() {
     const hints = this.pendingAssistantRecallHints;
+    const report = this.pendingAssistantRecallReport;
     this.pendingAssistantRecallHints = [];
+    this.pendingAssistantRecallReport = null;
     this.pendingAssistantRecallHintsRendered = false;
-    return hints;
+    return { hints, report };
   }
 
   resolvePath(raw) {
@@ -142,12 +150,14 @@ export class ContextEngine {
     if (replace) {
       this.turns = [];
       this.pendingAssistantRecallHints = [];
+      this.pendingAssistantRecallReport = null;
       this.pendingAssistantRecallHintsRendered = false;
       this.sessionName = "";
     }
     if (data.turns) this.turns = data.turns;
     if (Array.isArray(data.pendingAssistantRecallHints)) {
       this.pendingAssistantRecallHints = uniqueHints(data.pendingAssistantRecallHints);
+      this.pendingAssistantRecallReport = data.pendingAssistantRecallReport ?? null;
       this.pendingAssistantRecallHintsRendered = false;
     }
     if (typeof data.sessionName === "string") this.sessionName = data.sessionName;

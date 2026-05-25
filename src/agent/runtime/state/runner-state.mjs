@@ -13,6 +13,7 @@ export function createRunnerStateSnapshot(runner) {
       remoteMemorySources: engine.remoteMemorySources ?? [],
       turns: engine.turns ?? [],
       pendingAssistantRecallHints: engine.peekPendingAssistantRecallHints?.() ?? engine.pendingAssistantRecallHints ?? [],
+      pendingAssistantRecallReport: engine.peekPendingAssistantRecallReport?.() ?? engine.pendingAssistantRecallReport ?? null,
       pendingAssistantRecallHintsRendered: engine.hasRenderedPendingAssistantRecallHints?.() ?? engine.pendingAssistantRecallHintsRendered ?? false,
       recentRecallMemoryIds: [...(engine.getRecentRecallMemoryIds?.() ?? [])],
     },
@@ -41,23 +42,29 @@ export function createRunnerEngineStateFacade({ getState, setState }) {
     peekPendingAssistantRecallHints() {
       return engineState(getState()).pendingAssistantRecallHints ?? [];
     },
+    peekPendingAssistantRecallReport() {
+      return engineState(getState()).pendingAssistantRecallReport ?? null;
+    },
     hasRenderedPendingAssistantRecallHints() {
       return Boolean(engineState(getState()).pendingAssistantRecallHintsRendered);
     },
     markPendingAssistantRecallHintsRendered() {
       updateEngineState(getState, setState, (engine) => {
-        if ((engine.pendingAssistantRecallHints ?? []).length > 0) {
+        if ((engine.pendingAssistantRecallHints ?? []).length > 0 || engine.pendingAssistantRecallReport) {
           engine.pendingAssistantRecallHintsRendered = true;
         }
       });
     },
     takePendingAssistantRecallHints() {
-      const hints = engineState(getState()).pendingAssistantRecallHints ?? [];
+      const state = engineState(getState());
+      const hints = state.pendingAssistantRecallHints ?? [];
+      const report = state.pendingAssistantRecallReport ?? null;
       updateEngineState(getState, setState, (engine) => {
         engine.pendingAssistantRecallHints = [];
+        engine.pendingAssistantRecallReport = null;
         engine.pendingAssistantRecallHintsRendered = false;
       });
-      return hints;
+      return { hints, report };
     },
     getRecentRecallMemoryIds() {
       return engineState(getState()).recentRecallMemoryIds ?? [];
