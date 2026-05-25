@@ -75,6 +75,9 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
     assert.deepEqual(rendered, ["hidden-b", "visible-b"]);
     assert.equal(outputRouter.setActiveSession(projectA.projectId, "s-a"), 1);
     assert.deepEqual(rendered, ["visible-a"]);
+    // A cold disk hydrate must not overwrite a hot in-process timeline for a background session.
+    assert.equal(outputRouter.setActiveSession(projectB.projectId, "s-b", { renderTimeline: [{ method: "textDelta", args: ["stale-disk-b"] }] }), 2);
+    assert.deepEqual(rendered, ["hidden-b", "visible-b"]);
     uiA.clearOutput();
     assert.equal(outputRouter.getRenderEventCount(projectA.projectId, "s-a"), 0);
     assert.deepEqual(persistedRenderChanges.at(-1).events, []);

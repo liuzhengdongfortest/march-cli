@@ -31,7 +31,7 @@ export function createWorkspaceOutputRouter({ ui, activeProjectId, activeSession
     },
     setActiveSession(projectId, sessionId, { renderTimeline = null } = {}) {
       const next = routeKey(projectId, sessionId);
-      if (Array.isArray(renderTimeline)) setRenderEvents(next, renderTimeline);
+      if (Array.isArray(renderTimeline) && !timelines.has(next)) setRenderEvents(next, renderTimeline);
       if (next === active) return renderRoute(next);
       active = next;
       return renderRoute(next);
