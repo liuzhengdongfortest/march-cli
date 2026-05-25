@@ -5,15 +5,16 @@ import { createMarchLifecycleAdapter } from "../extensions/lifecycle-adapter.mjs
 import { syncMarchSessionState } from "../session/state/march-session-sync.mjs";
 import { LspService } from "../lsp/service.mjs";
 import { formatLspServiceEvent } from "../lsp/status-message.mjs";
-import { estimateProviderPayloadTokens, installModelPayloadDumper, replaceProviderContextMessages } from "./model-payload-dumper.mjs";
+import { estimateProviderPayloadTokens, installModelPayloadDumper } from "./model-payload-dumper.mjs";
 import { resolveInitialModel, resolveRunnerSessionManager } from "./runner/runner-init.mjs";
 import { runRunnerCleanup } from "./runner/runner-cleanup.mjs";
 import { createRunnerRuntimeHost } from "./runtime/runner-runtime-host.mjs";
+import { createMarchPiResourceLoader } from "./runtime/resource/context-resource-loader.mjs";
 import { createRuntimeUiBridge } from "./runtime/ui-event-bridge.mjs";
 import { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
 import { buildNotificationActivation, installRunnerProcessGuards, notifyTurnEndBestEffort, notifyTurnEndDetached, providerContextToPayload } from "./runner/runner-utils.mjs";
 import { dumpCodexTransportDebug, getCodexTransportDebugSnapshot } from "./runner/codex-transport-debug.mjs";
-import { applyCodexLargeContextGuardToPayload } from "./runner/codex-large-context-guard.mjs";
+import { createRunnerProviderPayloadTransform } from "./runner/payload/provider-payload-transform.mjs";
 import { resolveRunnerSessionOptions } from "./session/session-options.mjs";
 import { createSessionBinding } from "./session/session-binding.mjs";
 import { maybeAutoNameSession } from "./session/session-auto-name.mjs";
@@ -23,7 +24,6 @@ import { beginLoggedTurn } from "./turn/turn-logging.mjs";
 import { appendFastVariants, createFastModelEntry, fromFastEntryModel, isFastProvider } from "./runner/fast-model.mjs";
 import { registerSuperGrokProvider } from "../supergrok/provider.mjs";
 import { registerCustomProviders } from "../provider/custom-provider.mjs";
-import { injectHostedTools } from "../provider/hosted-tools.mjs";
 import { createRunnerLifecycle } from "./lifecycle/runner-lifecycle.mjs";
 import { createRunnerProviderQuotaRuntime } from "./runner/provider-quota-runtime.mjs";
 import { appendRunnerTurnHistory, createRunnerHistoryStore } from "../history/runner.mjs";
@@ -59,6 +59,12 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   let nextTurnContextMode = "rebuild";
   let lastNotificationResult = null, runtimeHost = null, lifecycleAdapter = null;
   let _currentFastEntry = null;
+  const providerPayloadTransform = createRunnerProviderPayloadTransform({
+    engine, sessionBinding, hostedTools,
+    getCurrentPrompt: () => currentPromptForContext,
+    getContextMode: () => currentTurnContextMode,
+    getFastEntry: () => _currentFastEntry,
+  });
   if (useRuntimeHost) {
     runtimeHost = await createRunnerRuntimeHost({
       cwd, stateRoot, provider, modelId,
@@ -69,7 +75,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       memoryTools, memoryStore, historyStore, shellRuntime, lspService, mcpTools, webTools,
       lifecycle, extensionPaths, hostedTools,
       onRebind: (session) => {
-        installModelPayloadDumper(session, modelContextDumper, () => currentModelCallKind, onLoggedModelPayload, injectMarchSystemContext);
+        installModelPayloadDumper(session, modelContextDumper, () => currentModelCallKind, onLoggedModelPayload, providerPayloadTransform.transform);
         syncEngineSessionState(engine, session);
       },
       createAgentSessionRuntimeImpl,
@@ -83,13 +89,18 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       authStorage: resolvedAuth, projectMarchDir,
       getCurrentModel: () => sessionBinding.get()?.model ?? selectedModel,
     });
+    const resourceLoader = await createMarchPiResourceLoader({
+      cwd,
+      agentDir: stateRoot,
+      settingsManager,
+    });
     const { session } = await createAgentSessionImpl({
       cwd, agentDir: stateRoot, ...sessionOptions,
       authStorage: resolvedAuth, modelRegistry,
-      sessionManager: resolvedSessionManager, settingsManager,
+      sessionManager: resolvedSessionManager, settingsManager, resourceLoader,
     });
     sessionBinding.set(session);
-    installModelPayloadDumper(session, modelContextDumper, () => currentModelCallKind, onLoggedModelPayload, injectMarchSystemContext);
+    installModelPayloadDumper(session, modelContextDumper, () => currentModelCallKind, onLoggedModelPayload, providerPayloadTransform.transform);
   }
   syncEngineSessionState(engine, sessionBinding.get());
   lifecycleAdapter = createMarchLifecycleAdapter({
@@ -113,6 +124,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       currentPromptForContext = prompt;
       const contextMode = nextTurnContextMode;
       currentTurnContextMode = contextMode;
+      providerPayloadTransform.resetTurn();
       nextTurnContextMode = "rebuild";
       lifecycle.clearPendingAction();
       const turnStartedAt = Date.now();
@@ -256,7 +268,6 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       ]);
     },
   };
-  return runner;
   function syncCurrentMarchSessionState() {
     return syncMarchSessionState({
       enabled: syncPiSidecar || syncMarchSessionStateEnabled, projectMarchDir, engine,
@@ -284,15 +295,5 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       turnId: currentTurnId,
     });
     onModelPayload?.(event);
-  }
-  function injectMarchSystemContext(payload, { kind, model } = {}) {
-    if (kind !== "user") return payload;
-    let nextPayload = currentTurnContextMode === "continueExistingPiTranscript"
-      ? payload
-      : replaceProviderContextMessages(payload, engine.buildProviderContext(currentPromptForContext));
-    nextPayload = injectHostedTools(nextPayload, model, hostedTools);
-    nextPayload = applyCodexLargeContextGuardToPayload(nextPayload, { model, session: sessionBinding.get() });
-    if (_currentFastEntry) nextPayload = { ...nextPayload, service_tier: "priority" };
-    return nextPayload;
   }
 }

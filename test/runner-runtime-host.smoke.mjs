@@ -30,7 +30,7 @@ export async function runRunnerRuntimeHostSmoke() {
     extensionPaths: ["D:/repo/ext.ts"],
     onRebind: (session) => rebound.push(session.id),
     createServices: async (options) => {
-      calls.push(["services", options.cwd, options.agentDir, options.authStorage.id, options.resourceLoaderOptions.additionalExtensionPaths.join(",")]);
+      calls.push(["services", options.cwd, options.agentDir, options.authStorage.id, options.resourceLoaderOptions.additionalExtensionPaths.join(","), options.resourceLoaderOptions.noContextFiles]);
       return { ...options, diagnostics: [{ type: "info", message: "ok" }] };
     },
     createFromServices: async (options) => {
@@ -68,7 +68,7 @@ export async function runRunnerRuntimeHostSmoke() {
   assert.deepEqual(rebound, ["initial"]);
   assert.deepEqual(calls, [
     ["runtime", "D:/repo", "D:/state", "manager"],
-    ["services", "D:/repo", "D:/state", "auth", "D:/repo/ext.ts"],
+    ["services", "D:/repo", "D:/state", "auth", "D:/repo/ext.ts", true],
     ["session", "D:/repo", "manager", true],
   ]);
 

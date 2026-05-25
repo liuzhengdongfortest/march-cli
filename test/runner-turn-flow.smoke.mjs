@@ -1,4 +1,5 @@
 import { strict as assert } from "node:assert";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
@@ -7,6 +8,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   const { loadPiSessionSidecar } = await import("../src/session/sidecar.mjs");
 
   const dir = setupTmp();
+  writeFileSync(join(dir, "AGENTS.md"), "Pi project context must not be loaded directly.");
   const projectMarchDir = join(dir, ".march");
   const previousKey = process.env.DEEPSEEK_API_KEY;
   process.env.DEEPSEEK_API_KEY = previousKey || "test-key";
@@ -172,7 +174,10 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
     memoryStore,
     projectMarchDir,
     syncPiSidecar: true,
-    createAgentSessionImpl: async () => ({ session }),
+    createAgentSessionImpl: async (options) => {
+      assert.deepEqual(options.resourceLoader.getAgentsFiles(), { agentsFiles: [] });
+      return { session };
+    },
   });
 
   const result = await runner.runTurn("hello", "hello");
@@ -194,6 +199,10 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.ok(providerPayloads[0].messages.at(-1).content.includes("[recent_chat]"));
   assert.ok(providerPayloads[0].messages.at(-1).content.includes("[current_user]\nhello"));
   assert.equal(countUserMessagesContaining(providerPayloads[0].messages, "hello"), 1);
+  assert.equal(providerPayloads[1].messages[0].role, "system");
+  assert.equal(providerPayloads[1].messages[0].content, "Pi system");
+  assert.ok(!providerPayloads[1].messages.some((message) => providerMessageText(message).includes("[system_core]")));
+  assert.ok(providerPayloads[1].messages.some((message) => providerMessageText(message).includes("[recall]")));
   assert.ok(customSteerMessages[0].includes("mem_thinking | Thinking memory | Matched from thinking text."));
   assert.equal(runner.engine.turns[0].assistantRecallHints.length, 2);
   assert.equal(runner.engine.turns[0].assistantRecallHints[0].id, "mem_thinking");
@@ -233,6 +242,8 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.ok(providerPayloads[3].messages.at(-1).content.includes("[current_user]\nthird"));
   assert.equal(countOccurrences(providerPayloads[3].messages[0].content, "[system_core]"), 1);
   assert.ok(!providerPayloads[3].messages.some((message, index) => index > 0 && message.content.includes("[system_core]")));
+  assert.equal(providerPayloads[4].messages[0].content, "Pi system");
+  assert.ok(!providerPayloads[4].messages.some((message) => providerMessageText(message).includes("[system_core]")));
   assert.equal(recallCalls, 2);
   const sidecar = loadPiSessionSidecar({ projectMarchDir, sessionRef: "turn-flow.jsonl" });
   assert.equal(sidecar.state.sessionName, "Manual Name");

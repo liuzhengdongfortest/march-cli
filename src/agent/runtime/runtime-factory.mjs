@@ -2,6 +2,7 @@ import {
   createAgentSessionFromServices,
   createAgentSessionServices,
 } from "@earendil-works/pi-coding-agent";
+import { MARCH_PI_RESOURCE_LOADER_OPTIONS } from "./resource/context-resource-loader.mjs";
 
 export function createMarchRuntimeFactory({
   agentDir,
@@ -24,7 +25,10 @@ export function createMarchRuntimeFactory({
       authStorage,
       settingsManager,
       modelRegistry,
-      resourceLoaderOptions,
+      resourceLoaderOptions: {
+        ...MARCH_PI_RESOURCE_LOADER_OPTIONS,
+        ...resourceLoaderOptions,
+      },
     });
     const sessionOptions = await resolveSessionOptions({ cwd, services });
     const result = await createFromServices({
