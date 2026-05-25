@@ -9,6 +9,7 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
   const { WORKSPACE_SLASH_COMMANDS, handleProjectCommand, parseProjectCommand } = await import("../src/cli/workspace/command.mjs");
   const { createWorkspaceSessionSupervisor } = await import("../src/workspace/supervisor.mjs");
   const { createWorkspaceOutputRouter } = await import("../src/cli/workspace/output-router.mjs");
+  const { createTuiTimelineInstance } = await import("../src/cli/workspace/tui-timeline.mjs");
   const { savePiSessionSidecarState } = await import("../src/session/sidecar.mjs");
 
   const stateRoot = setupTmp();
@@ -81,6 +82,14 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
     uiA.clearOutput();
     assert.equal(outputRouter.getRenderEventCount(projectA.projectId, "s-a"), 0);
     assert.deepEqual(persistedRenderChanges.at(-1).events, []);
+
+    const boundedTimeline = createTuiTimelineInstance({ key: "bounded", maxEvents: 2 });
+    boundedTimeline.apply("textDelta", ["one"], { at: 1 });
+    boundedTimeline.apply("textDelta", ["two"], { at: 2 });
+    boundedTimeline.apply("textDelta", ["three"], { at: 3 });
+    assert.deepEqual(boundedTimeline.getEvents().map((event) => event.args[0]), ["two", "three"]);
+    assert.equal(boundedTimeline.getMetadata().eventCount, 2);
+    assert.ok(boundedTimeline.getMetadata().estimatedBytes > 0);
 
     const viewSessionState = { sessionId: "s-a", sessionDir: "" };
     const disposed = [];
