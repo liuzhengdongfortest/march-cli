@@ -80,6 +80,23 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
     // A cold disk hydrate must not overwrite a hot in-process timeline for a background session.
     assert.equal(outputRouter.setActiveSession(projectB.projectId, "s-b", { renderTimeline: [{ method: "textDelta", args: ["stale-disk-b"] }] }), 2);
     assert.deepEqual(rendered, ["hidden-b", "visible-b"]);
+
+    const restoredBlocks = [];
+    const blockRouter = createWorkspaceOutputRouter({
+      ui: {
+        restoreTimelineBlocks: (blocks) => restoredBlocks.push(blocks),
+        clearOutput: () => { throw new Error("block restore should not replay raw events"); },
+        textDelta: () => { throw new Error("block restore should not call textDelta"); },
+      },
+      activeProjectId: projectA.projectId,
+      activeSessionId: "blocks-a",
+    });
+    const blockUi = blockRouter.createProjectUi(projectA.projectId, () => "blocks-b");
+    blockUi.textDelta("block stream");
+    assert.equal(blockRouter.setActiveSession(projectA.projectId, "blocks-b"), 1);
+    assert.equal(restoredBlocks.at(-1)[0].type, "assistant");
+    assert.equal(restoredBlocks.at(-1)[0].content, "block stream");
+
     uiA.clearOutput();
     assert.equal(outputRouter.getRenderEventCount(projectA.projectId, "s-a"), 0);
     assert.deepEqual(persistedRenderChanges.at(-1).events, []);

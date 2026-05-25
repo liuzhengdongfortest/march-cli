@@ -485,6 +485,18 @@ await runTuiAutocompleteEscSmoke({ setupTmp, cleanup });
   assert.equal(structuredBlock.segments[0].type, "tool");
   assert.ok(structuredBlock.render(80).join("\n").includes("tool line"));
 
+  const restoredTimeline = new OutputBuffer();
+  restoredTimeline.restoreTimelineBlocks([
+    { type: "assistant", content: "**answer**", closed: true },
+    { type: "thinking", content: "line one\nline two", tokens: 7, closed: true },
+    { type: "tool", name: "read", args: { path: "a.txt" }, result: "ok", isError: false, closed: true },
+  ]);
+  const restoredTimelinePlain = stripAnsi(restoredTimeline.render(80).join("\n"));
+  assert.ok(restoredTimelinePlain.includes("answer"));
+  assert.ok(restoredTimelinePlain.includes("thinking (7 tokens)"));
+  assert.ok(restoredTimelinePlain.includes("line two"));
+  assert.ok(restoredTimelinePlain.includes("read"));
+
   const multilineStatus = new OutputBuffer();
   multilineStatus.setOverlayStatus(["first\nsecond"]);
   assert.deepEqual(stripAnsi(multilineStatus.render(80).join("\n")).split("\n"), ["", "first", "second"]);

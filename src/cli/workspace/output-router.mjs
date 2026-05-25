@@ -110,8 +110,8 @@ export function createWorkspaceOutputRouter({
   };
 
   function renderRoute(key) {
-    ui.clearOutput?.();
     const timeline = timelineRegistry.ensure(key);
+    if (typeof ui.restoreTimelineBlocks !== "function") ui.clearOutput?.();
     return timeline.replayTo(ui);
   }
 

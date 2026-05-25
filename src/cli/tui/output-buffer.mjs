@@ -2,6 +2,7 @@ import { brightBlack, dim } from "./ui-theme.mjs";
 import { renderToolCardBlock } from "./output/tool-card-renderer.mjs";
 import { renderMarkdown, renderStreamingMarkdown } from "./markdown-renderer.mjs";
 import { renderEditDiffBlock } from "./tui-diff-rendering.mjs";
+import { restoreTimelineBlocksToOutputBuffer } from "./output/timeline-block-restore.mjs";
 import { OutputScrollState } from "./output/scroll-state.mjs";
 import { appendTextLines, wrapLine } from "./output/text-line-renderer.mjs";
 import { appendSelectableEntries, copySourceTextForRange, sliceEntriesWithTail } from "./output/selectable-copy.mjs";
@@ -87,6 +88,10 @@ export class OutputBuffer {
     this.scrollState.clear();
     this._baseLinesCache = new Map();
     this._baseEntriesCache = new Map();
+  }
+
+  restoreTimelineBlocks(blocks) {
+    restoreTimelineBlocksToOutputBuffer(this, blocks);
   }
 
   write(text) { this._writeText(text, false); }

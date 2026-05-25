@@ -217,10 +217,13 @@ export function createTuiUI({
     },
 
     clearOutput: () => {
-      ensureStarted(); flushStreamDeltas(); spinnerStatus.stop(); retryStatus.stop(); output.clear(); requestRender();
+      ensureStarted(); flushStreamDeltas(); spinnerStatus.stop(); retryStatus.stop(); activeToolBlocks.length = 0; output.clear(); requestRender();
+    },
+    restoreTimelineBlocks: (blocks) => {
+      ensureStarted(); flushStreamDeltas(); spinnerStatus.stop(); retryStatus.stop(); activeToolBlocks.length = 0; output.restoreTimelineBlocks(blocks); requestRender();
     },
     restoreTranscript: (turns) => {
-      ensureStarted(); flushStreamDeltas(); spinnerStatus.stop(); retryStatus.stop(); output.clear(); writeTranscriptToOutput(output, turns); requestRender();
+      ensureStarted(); flushStreamDeltas(); spinnerStatus.stop(); retryStatus.stop(); activeToolBlocks.length = 0; output.clear(); writeTranscriptToOutput(output, turns); requestRender();
     },
 
     setStatusBar: (text) => {

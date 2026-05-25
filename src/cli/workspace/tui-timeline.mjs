@@ -114,6 +114,11 @@ export function createTuiTimelineInstance({
     },
     replayTo(ui) {
       touch();
+      if (typeof ui.restoreTimelineBlocks === "function") {
+        const blocks = projection.getBlocks();
+        ui.restoreTimelineBlocks(blocks);
+        return blocks.length;
+      }
       for (const event of events) applyRenderEvent(ui, event);
       return events.length;
     },
