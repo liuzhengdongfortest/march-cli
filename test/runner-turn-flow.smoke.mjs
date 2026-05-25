@@ -85,7 +85,11 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
         emit({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "draft text" } });
       } else if (promptCalls.length === 3) {
         emit({ type: "tool_execution_start", toolName: "read", args: { path: "tool-only.txt" } });
+        emit({ type: "message_update", assistantMessageEvent: { type: "thinking_start" } });
+        emit({ type: "message_update", assistantMessageEvent: { type: "thinking_end", content: "late thinking memory text" } });
         emit({ type: "tool_execution_end", toolName: "read", isError: false, result: "tool only body" });
+        await new Promise((resolve) => setImmediate(resolve));
+        assert.equal(customSteerMessages.length, 2);
         providerPayloads.push(await this.agent.onPayload({
           messages: [
             { role: "system", content: "Pi system" },
@@ -148,6 +152,10 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
       if (recallCalls === 2) {
         assert.equal(text, "draft text");
         return { hints: [{ id: "mem_draft", name: "Draft memory", description: "Matched from visible assistant text." }], report: { threshold: 0.5, candidates: [{ id: "mem_draft", name: "Draft memory", score: 0.8, recalled: true }] } };
+      }
+      if (recallCalls === 3) {
+        assert.equal(text, "late thinking memory text");
+        return { hints: [{ id: "mem_late_thinking", name: "Late thinking memory", description: "Matched from thinking end content." }], report: { threshold: 0.5, candidates: [{ id: "mem_late_thinking", name: "Late thinking memory", score: 0.85, recalled: true }] } };
       }
       return { hints: [], report: { threshold: 0.5, candidates: [] } };
     },
@@ -243,7 +251,9 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.ok(!providerPayloads[3].messages.some((message, index) => index > 0 && message.content.includes("[system_core]")));
   assert.equal(providerPayloads[4].messages[0].content, "Pi system");
   assert.ok(!providerPayloads[4].messages.some((message) => providerMessageText(message).includes("[system_core]")));
-  assert.equal(recallCalls, 2);
+  assert.equal(providerPayloads[4].messages.filter((message) => providerMessageText(message).includes("[recall]")).length, 1);
+  assert.ok(providerMessageText(providerPayloads[4].messages.at(-1)).includes("mem_late_thinking"));
+  assert.equal(recallCalls, 3);
   const sidecar = loadPiSessionSidecar({ projectMarchDir, sessionRef: "turn-flow.jsonl" });
   assert.equal(sidecar.state.sessionName, "Manual Name");
   assert.equal(sidecar.state.turns[0].assistantMessage, "draft text");

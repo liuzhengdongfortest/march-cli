@@ -75,7 +75,9 @@ function handleAssistantMessageEvent(event, { ui, state }) {
     appendAssistantContextText(state, event.delta, "thinking");
     ui.thinkingDelta(event.delta);
   }
-  if (event.type === "thinking_end" && state.thinkingText) {
+  if (event.type === "thinking_end") {
+    mergeThinkingEndContent(state, event.content);
+    if (!state.thinkingText) return;
     const tokens = Math.round(state.thinkingText.length / 4);
     ui.thinkingEnd(tokens);
     state.thinkingAccumulator += state.thinkingText;
@@ -102,6 +104,16 @@ function appendAssistantContextText(state, text, type) {
   }
   if (last && !last.text.endsWith("\n")) last.text += "\n";
   parts.push({ type, text });
+}
+
+function mergeThinkingEndContent(state, content) {
+  const full = typeof content === "string" ? content : "";
+  if (!full || full === state.thinkingText) return;
+  if (full.startsWith(state.thinkingText)) {
+    const delta = full.slice(state.thinkingText.length);
+    state.thinkingText = full;
+    appendAssistantContextText(state, delta, "thinking");
+  }
 }
 
 function appendToolStartContext(state, name, args) {

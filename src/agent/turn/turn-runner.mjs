@@ -57,7 +57,7 @@ export async function runRunnerTurn({
       idleWatchdog.arm("message_update");
     }
     handleRunnerSessionEvent(event, { ui, engine, state: turnState });
-    if (event.type === "tool_execution_start") {
+    if (event.type === "tool_execution_start" || event.type === "tool_execution_end") {
       const task = flushMidTurnAssistantRecall({ memoryStore, engine, turnState, activeSession, ui, logger, midTurnRecallHints, trackMidTurnRecallInjection });
       trackMidTurnRecallInjection?.({ task });
       midTurnRecallTasks.push(task);
