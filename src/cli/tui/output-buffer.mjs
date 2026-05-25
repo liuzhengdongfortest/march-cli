@@ -206,6 +206,15 @@ export class OutputBuffer {
     return changed;
   }
 
+  toggleToolCardAtVisibleRow(row, width) {
+    const entry = this._visibleEntryAt(row, width);
+    const block = entry?.block;
+    if (block?.type !== "tool-card") return false;
+    block.expanded = !block.expanded;
+    this._invalidateBaseLines();
+    return true;
+  }
+
   invalidate() { this._invalidateBaseLines(); }
 
   _invalidateBaseLines() {
@@ -230,6 +239,15 @@ export class OutputBuffer {
 
   _spinnerLine() {
     return brightBlack(`${SPINNER_FRAMES[this.spinnerIdx]} ${this.spinnerText}`);
+  }
+
+  _visibleEntryAt(row, width) {
+    const visibleRow = Math.trunc(row);
+    if (visibleRow < 0) return null;
+    const baseEntries = this._renderBaseEntries(width);
+    const tailLine = this.spinning ? this._spinnerLine() : null;
+    const entries = sliceEntriesWithTail(baseEntries, tailLine, this.scrollState.sliceRange());
+    return entries[visibleRow] ?? null;
   }
 
   _renderBaseLines(width) {

@@ -1,8 +1,7 @@
 import { visibleWidth } from "@earendil-works/pi-tui";
+import { highlightAnsiLine, sliceColumns } from "./selection/ansi-range.mjs";
 
 const CONTROL_RE = /\x1b(?:\][^\x07]*(?:\x07|\x1b\\)|\[[0-?]*[ -/]*[@-~]|[@-Z\\-_])/g;
-const INVERSE = "\x1b[7m";
-const RESET = "\x1b[0m";
 
 export class ScreenSelection {
   constructor() {
@@ -118,6 +117,12 @@ export class ScreenSelection {
     });
   }
 
+  hitTest(point) {
+    const hit = hitRegion(point, this.regions);
+    if (!hit) return null;
+    return { regionId: hit.region.id, row: hit.localRow, col: hit.localCol };
+  }
+
   _plainLine(row) {
     if (!this._plainLines.has(row)) this._plainLines.set(row, stripAnsi(this.lines[row] ?? ""));
     return this._plainLines.get(row);
@@ -167,24 +172,19 @@ function localRange(range, region) {
 }
 
 function normalizePoint({ row, col }, regions, clamp) {
+  const hit = hitRegion({ row, col }, regions);
+  if (hit) {
+    const maxCol = Number.isFinite(hit.region.width) ? hit.region.width : Infinity;
+    return {
+      row: hit.region.docStart + hit.localRow,
+      col: clampNumber(hit.localCol, 0, maxCol),
+    };
+  }
+  if (!clamp) return null;
+
   const screenRow = Math.trunc(row) - 1;
-  const screenCol = Math.trunc(col) - 1;
   if (regions.length === 0) return null;
 
-  for (const region of regions) {
-    const localRow = screenRow - region.topRow;
-    const localCol = screenCol - region.leftCol;
-    const maxCol = Number.isFinite(region.width) ? region.width : Infinity;
-    if (localRow >= 0 && localRow < region.lines.length) {
-      if (!clamp && (localCol < 0 || localCol > maxCol)) return null;
-      return {
-        row: region.docStart + localRow,
-        col: clampNumber(localCol, 0, maxCol),
-      };
-    }
-  }
-
-  if (!clamp) return null;
   const first = regions[0];
   const last = regions.at(-1);
   if (screenRow < first.topRow) return { row: first.docStart, col: 0 };
@@ -205,94 +205,26 @@ function normalizePoint({ row, col }, regions, clamp) {
   return nearest ? { row: nearest.row, col: nearest.col } : null;
 }
 
+function hitRegion({ row, col }, regions) {
+  const screenRow = Math.trunc(row) - 1;
+  const screenCol = Math.trunc(col) - 1;
+  for (const region of regions) {
+    const localRow = screenRow - region.topRow;
+    const localCol = screenCol - region.leftCol;
+    const maxCol = Number.isFinite(region.width) ? region.width : Infinity;
+    if (localRow < 0 || localRow >= region.lines.length) continue;
+    if (localCol < 0 || localCol > maxCol) continue;
+    return { region, localRow, localCol };
+  }
+  return null;
+}
+
 function comparePoints(a, b) {
   if (a.row !== b.row) return a.row - b.row;
   return a.col - b.col;
 }
 
-function highlightAnsiLine(line, startCol, endCol) {
-  const { before, selected, after, activeAtStart, activeAtEnd } = splitAnsiColumns(line, startCol, endCol);
-  return `${before}${INVERSE}${activeAtStart}${keepInverseAfterReset(selected)}${RESET}${activeAtEnd}${after}`;
-}
 
-function keepInverseAfterReset(text) {
-  return String(text ?? "").replace(/\x1b\[([0-9;]*)m/g, (seq, body) => {
-    const params = body === "" ? ["0"] : body.split(";");
-    return params.includes("0") ? `${seq}${INVERSE}` : seq;
-  });
-}
-
-function sliceColumns(text, startCol, endCol) {
-  let col = 0;
-  let result = "";
-  for (const ch of String(text ?? "")) {
-    const next = col + visibleWidth(ch);
-    if (next > startCol && col < endCol) result += ch;
-    col = next;
-    if (col >= endCol) break;
-  }
-  return result;
-}
-
-function splitAnsiColumns(text, startCol, endCol) {
-  let col = 0;
-  let i = 0;
-  let before = "";
-  let selected = "";
-  let after = "";
-  let active = "";
-  let activeAtStart = "";
-  let activeAtEnd = "";
-  let capturedStart = false;
-  let capturedEnd = false;
-  const source = String(text ?? "");
-
-  while (i < source.length) {
-    const ansi = readAnsi(source, i);
-    if (ansi) {
-      active = updateActiveSgr(active, ansi);
-      if (col < startCol) before += ansi;
-      else if (col < endCol) selected += ansi;
-      else after += ansi;
-      i += ansi.length;
-      continue;
-    }
-
-    const ch = source[i];
-    if (!capturedStart && col >= startCol) {
-      activeAtStart = active;
-      capturedStart = true;
-    }
-    if (!capturedEnd && col >= endCol) {
-      activeAtEnd = active;
-      capturedEnd = true;
-    }
-
-    const next = col + visibleWidth(ch);
-    if (next <= startCol) before += ch;
-    else if (col >= endCol) after += ch;
-    else selected += ch;
-    col = next;
-    i += 1;
-  }
-
-  if (!capturedStart) activeAtStart = active;
-  if (!capturedEnd) activeAtEnd = active;
-  return { before, selected, after, activeAtStart, activeAtEnd };
-}
-
-function readAnsi(text, offset) {
-  if (text[offset] !== "\x1b") return null;
-  const match = text.slice(offset).match(/^\x1b(?:\][^\x07]*(?:\x07|\x1b\\)|\[[0-?]*[ -/]*[@-~]|[@-Z\\-_])/);
-  return match?.[0] ?? null;
-}
-
-function updateActiveSgr(active, seq) {
-  if (!seq.startsWith("\x1b[") || !seq.endsWith("m")) return active;
-  const body = seq.slice(2, -1);
-  if (body === "" || body.split(";").includes("0")) return "";
-  return seq;
-}
 
 function clampNumber(value, min, max) {
   return Math.min(max, Math.max(min, value));

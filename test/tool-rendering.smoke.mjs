@@ -108,6 +108,13 @@ export async function runToolRenderingSmoke() {
   assert.ok(renderedCard.includes("┃"));
   assert.ok(renderedCard.includes("2 matches"));
   assert.ok(!renderedCard.includes("a\nb"));
+  assert.equal(buffer.toggleToolCardAtVisibleRow(0, 80), true);
+  renderedCard = buffer.render(80).join("\n");
+  assert.ok(renderedCard.includes("a"));
+  assert.ok(renderedCard.includes("b"));
+  assert.equal(buffer.toggleToolCardAtVisibleRow(0, 80), true);
+  renderedCard = buffer.render(80).join("\n");
+  assert.ok(!renderedCard.includes("a\nb"));
   buffer.setToolCardsExpanded(true);
   renderedCard = buffer.render(80).join("\n");
   assert.ok(renderedCard.includes("a"));

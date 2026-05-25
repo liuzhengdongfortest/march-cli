@@ -34,6 +34,7 @@ export async function runTuiSelectionSmoke() {
   regionalSelection.update({ row: 5, col: 11 });
   assert.equal(regionalSelection.text(), "hello copy");
   assert.ok(regionalSelection.applyRegion("editor", ["hello copy"])[0].includes("\x1b[7m"));
+  assert.deepEqual(regionalSelection.hitTest({ row: 5, col: 1 }), { regionId: "editor", row: 0, col: 0 });
 
 
   const sourceSelection = new ScreenSelection();
@@ -150,6 +151,25 @@ export async function runTuiSelectionSmoke() {
   const plainStatus = stripAnsi(statusLines.at(-1)[0]);
   assert.ok(!plainStatus.includes("\n"));
   assert.ok(plainStatus.includes("ExternalException + FullyQualifiedErrorId"));
+
+  let toggled = false;
+  const clickController = createMouseSelectionController({
+    terminal: { columns: 40 },
+    output: { toggleToolCardAtVisibleRow: (row, width) => { toggled = row === 0 && width === 40; return toggled; } },
+    shellDrawer: { isVisible: () => false },
+    shellDrawerControls: { scroll: () => {} },
+    selection: {
+      start: () => true,
+      finish: () => "",
+      clear: () => true,
+      hitTest: () => ({ regionId: "output", row: 0, col: 0 }),
+    },
+    writeClipboard: () => ({ ok: true }),
+    requestRender: () => {},
+  });
+  clickController.handleMouseInput("\x1b[<0;1;1M");
+  clickController.handleMouseInput("\x1b[<0;1;1m");
+  assert.equal(toggled, true);
 
   let asyncResolved = false;
   let renderCount = 0;

@@ -12,6 +12,7 @@ export function createMouseSelectionController({
   writeClipboard,
   requestRender,
 }) {
+  let leftDown = null;
   function copySelectionText(text) {
     if (!text) return false;
     let result;
@@ -43,6 +44,12 @@ export function createMouseSelectionController({
     requestRender();
   }
 
+  function toggleOutputToolCard(mouse) {
+    const hit = selection.hitTest?.(mouse);
+    if (hit?.regionId !== "output") return false;
+    return output.toggleToolCardAtVisibleRow?.(hit.row, terminal.columns || 80) === true;
+  }
+
   return {
     handleMouseInput(data) {
       const mouse = parseMouseEvent(data);
@@ -56,6 +63,7 @@ export function createMouseSelectionController({
         return { consume: true };
       }
       if (mouse?.type === "down" && mouse.button === 0) {
+        leftDown = mouse;
         selection.start(mouse);
         requestRender();
         return { consume: true };
@@ -66,7 +74,14 @@ export function createMouseSelectionController({
         return { consume: true };
       }
       if (mouse?.type === "up") {
+        const wasClick = isSamePoint(leftDown, mouse);
+        leftDown = null;
         selection.finish(mouse, { clear: false });
+        if (wasClick && toggleOutputToolCard(mouse)) {
+          selection.clear();
+          requestRender();
+          return { consume: true };
+        }
         requestRender();
         return { consume: true };
       }
@@ -82,6 +97,10 @@ export function createMouseSelectionController({
       return { consume: true };
     },
   };
+}
+
+function isSamePoint(a, b) {
+  return Boolean(a && b && a.row === b.row && a.col === b.col && a.button === b.button);
 }
 
 function compactStatusMessage(message) {

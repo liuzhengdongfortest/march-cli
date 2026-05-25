@@ -4,7 +4,7 @@ import { renderMarkdown } from "../markdown-renderer.mjs";
 
 export function appendSelectableEntries(entries, block, lines, width) {
   if (block.type !== "markdown") {
-    for (const line of lines) entries.push({ line, source: null, codeSource: null, baseRow: entries.length });
+    for (const line of lines) entries.push({ line, source: null, codeSource: null, block, baseRow: entries.length });
     return;
   }
   const source = { kind: "markdown", text: block.text, startRow: entries.length, endRow: entries.length + lines.length - 1 };
@@ -18,10 +18,10 @@ export function appendSelectableEntries(entries, block, lines, width) {
 }
 
 export function sliceEntriesWithTail(baseEntries, tailLine, range) {
-  if (!range) return tailLine == null ? baseEntries : [...baseEntries, { line: tailLine, source: null, codeSource: null, baseRow: baseEntries.length }];
+  if (!range) return tailLine == null ? baseEntries : [...baseEntries, { line: tailLine, source: null, codeSource: null, block: null, baseRow: baseEntries.length }];
   const { start, end } = range;
   const visible = baseEntries.slice(start, Math.min(end, baseEntries.length));
-  if (tailLine != null && end > baseEntries.length) visible.push({ line: tailLine, source: null, codeSource: null, baseRow: baseEntries.length });
+  if (tailLine != null && end > baseEntries.length) visible.push({ line: tailLine, source: null, codeSource: null, block: null, baseRow: baseEntries.length });
   return visible;
 }
 
