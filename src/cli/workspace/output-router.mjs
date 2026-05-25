@@ -87,6 +87,9 @@ export function createWorkspaceOutputRouter({
     getRenderEvents(projectId, sessionId = null) {
       return timelineRegistry.getEvents(routeKey(projectId, sessionId));
     },
+    getRenderBlocks(projectId, sessionId = null) {
+      return timelineRegistry.getBlocks(routeKey(projectId, sessionId));
+    },
     setRenderEvents(projectId, sessionId = null, events = []) {
       const key = routeKey(projectId, sessionId);
       const timeline = timelineRegistry.clear(key);

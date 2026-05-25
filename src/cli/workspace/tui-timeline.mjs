@@ -1,3 +1,5 @@
+import { createTuiTimelineProjection } from "./tui-timeline-projection.mjs";
+
 export const DEFAULT_MAX_TIMELINE_EVENTS = 4000;
 export const DEFAULT_TIMELINE_PERSIST_DEBOUNCE_MS = 250;
 
@@ -47,6 +49,9 @@ export function createTuiTimelineRegistry({
     getEvents(key) {
       return this.get(key)?.getEvents() ?? [];
     },
+    getBlocks(key) {
+      return this.get(key)?.getBlocks() ?? [];
+    },
     getEventCount(key) {
       return this.get(key)?.getEventCount() ?? 0;
     },
@@ -63,6 +68,7 @@ export function createTuiTimelineInstance({
   onPersist = null,
 } = {}) {
   let events = [];
+  const projection = createTuiTimelineProjection();
   let hydrated = false;
   let dirty = false;
   let lastAccessedAt = Date.now();
@@ -77,6 +83,7 @@ export function createTuiTimelineInstance({
       touch();
       const event = { method, args, at };
       events.push(event);
+      projection.apply(event);
       trimToBudget();
       dirty = true;
       lastUpdatedAt = at;
@@ -88,15 +95,17 @@ export function createTuiTimelineInstance({
       if (events.length > 0) return false;
       events = normalizeTimelineEvents(nextEvents);
       trimToBudget();
+      rebuildProjection();
       hydrated = true;
       dirty = false;
       lastUpdatedAt = events.at(-1)?.at ?? null;
-      estimatedBytes = estimateEventsBytes(events);
+      updateEstimatedBytes();
       return true;
     },
     clear({ flush = true } = {}) {
       touch();
       events = [];
+      projection.clear();
       dirty = true;
       lastUpdatedAt = Date.now();
       estimatedBytes = 0;
@@ -118,7 +127,11 @@ export function createTuiTimelineInstance({
     },
     getEvents() {
       touch();
-      return events.map((event) => ({ method: event.method, args: event.args, at: event.at ?? null }));
+      return cloneEvents(events);
+    },
+    getBlocks() {
+      touch();
+      return projection.getBlocks();
     },
     getEventCount() {
       return events.length;
@@ -129,18 +142,7 @@ export function createTuiTimelineInstance({
       lastPersistedAt = Date.now();
     },
     getMetadata() {
-      return {
-        key,
-        eventCount: events.length,
-        maxEvents,
-        hydrated,
-        dirty,
-        lastAccessedAt,
-        lastUpdatedAt,
-        lastPersistedAt,
-        estimatedBytes,
-        persistScheduled: Boolean(persistTimer),
-      };
+      return buildMetadata();
     },
   };
 
@@ -150,7 +152,7 @@ export function createTuiTimelineInstance({
     persistTimer = setTimeout(() => {
       persistTimer = null;
       if (!dirty) return;
-      onPersist({ key, events: events.map((event) => ({ method: event.method, args: event.args, at: event.at ?? null })), reason, timeline: buildMetadata() });
+      onPersist({ key, events: cloneEvents(events), reason, timeline: buildMetadata() });
       dirty = false;
       lastPersistedAt = Date.now();
     }, Math.max(0, persistDebounceMs));
@@ -164,8 +166,19 @@ export function createTuiTimelineInstance({
   }
 
   function trimToBudget() {
-    if (events.length > maxEvents) events.splice(0, events.length - maxEvents);
-    estimatedBytes = estimateEventsBytes(events);
+    if (events.length > maxEvents) {
+      events.splice(0, events.length - maxEvents);
+      rebuildProjection();
+    }
+    updateEstimatedBytes();
+  }
+
+  function rebuildProjection() {
+    projection.rebuild(events);
+  }
+
+  function updateEstimatedBytes() {
+    estimatedBytes = estimateJsonBytes(events) + estimateJsonBytes(projection.getBlocks());
   }
 
   function touch() {
@@ -184,6 +197,7 @@ export function createTuiTimelineInstance({
       lastPersistedAt,
       estimatedBytes,
       persistScheduled: Boolean(persistTimer),
+      ...projection.getMetadata(),
     };
   }
 }
@@ -200,13 +214,13 @@ function applyRenderEvent(ui, { method, args }) {
   if (typeof value === "function") value.apply(ui, args);
 }
 
-function estimateEventsBytes(events) {
-  return events.reduce((total, event) => total + estimateEventBytes(event), 0);
+function cloneEvents(items) {
+  return items.map((event) => ({ method: event.method, args: event.args, at: event.at ?? null }));
 }
 
-function estimateEventBytes(event) {
+function estimateJsonBytes(value) {
   try {
-    return JSON.stringify(event).length;
+    return JSON.stringify(value).length;
   } catch {
     return 0;
   }

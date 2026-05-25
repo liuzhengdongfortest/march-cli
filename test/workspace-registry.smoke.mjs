@@ -89,9 +89,22 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
     boundedTimeline.apply("textDelta", ["two"], { at: 2 });
     boundedTimeline.apply("textDelta", ["three"], { at: 3 });
     assert.deepEqual(boundedTimeline.getEvents().map((event) => event.args[0]), ["two", "three"]);
+    assert.deepEqual(boundedTimeline.getBlocks().map((block) => block.content), ["twothree"]);
     assert.equal(boundedTimeline.getMetadata().eventCount, 2);
+    assert.equal(boundedTimeline.getMetadata().blockCount, 1);
+    assert.equal(boundedTimeline.getMetadata().openAssistant, true);
     assert.ok(boundedTimeline.getMetadata().estimatedBytes > 0);
 
+    const projectedTimeline = createTuiTimelineInstance({ key: "projected" });
+    projectedTimeline.apply("textDelta", ["hello "], { at: 1 });
+    projectedTimeline.apply("textDelta", ["world"], { at: 2 });
+    projectedTimeline.apply("assistantReplyEnd", [], { at: 3 });
+    projectedTimeline.apply("toolStart", ["read", { path: "a" }], { at: 4 });
+    projectedTimeline.apply("toolEnd", ["read", false, "ok"], { at: 5 });
+    assert.deepEqual(projectedTimeline.getBlocks().map((block) => block.type), ["assistant", "tool"]);
+    assert.deepEqual(projectedTimeline.getBlocks()[0], { id: "assistant-1", type: "assistant", createdAt: 1, updatedAt: 3, content: "hello world", closed: true });
+    assert.equal(projectedTimeline.getBlocks()[1].closed, true);
+    assert.equal(projectedTimeline.getBlocks()[1].result, "ok");
     const persistedTimelines = [];
     const persistRouter = createWorkspaceOutputRouter({
       ui: baseUi,
