@@ -38,6 +38,7 @@ export async function runInteractiveRepl({
   memoryStore,
   currentProject,
   currentProjectInfo = null,
+  workspaceSupervisor = null,
   stateRoot = null,
   sessionState,
   sessionsRoot,
@@ -60,7 +61,8 @@ export async function runInteractiveRepl({
     let trimmed = line.trim();
     if (!trimmed) continue;
 
-    const handledInline = handleInlineCommand(trimmed, { cwd, ui, lastInlineShellCommand });
+    const active = getActiveRuntime({ workspaceSupervisor, cwd, runner, memoryStore, currentProject, currentProjectInfo, sessionState, sessionsRoot, projectMarchDir, extensionPaths, keybindingConfig, promptTemplateConfig });
+    const handledInline = handleInlineCommand(trimmed, { cwd: active.cwd, ui, lastInlineShellCommand });
     if (handledInline.type === "handled") {
       lastInlineShellCommand = handledInline.lastInlineShellCommand;
       continue;
@@ -69,29 +71,32 @@ export async function runInteractiveRepl({
 
     const slashResult = await handleSlashCommand(trimmed, {
       ui,
-      runner,
-      sessionState,
-      sessionsRoot,
-      projectMarchDir,
+      runner: active.runner,
+      workspaceSupervisor,
+      sessionState: active.sessionState,
+      sessionsRoot: active.sessionsRoot,
+      projectMarchDir: active.projectMarchDir,
       sessionSource,
-      extensionPaths,
-      keybindings: keybindingConfig.keybindings,
-      keybindingDiagnostics: keybindingConfig.diagnostics,
-      promptTemplates: promptTemplateConfig.templates,
-      promptTemplateDiagnostics: promptTemplateConfig.diagnostics,
+      extensionPaths: active.extensionPaths,
+      keybindings: active.keybindingConfig.keybindings,
+      keybindingDiagnostics: active.keybindingConfig.diagnostics,
+      promptTemplates: active.promptTemplateConfig.templates,
+      promptTemplateDiagnostics: active.promptTemplateConfig.diagnostics,
       modeState,
       renderStartupBanner,
       configHomeDir,
       stateRoot,
-      currentProjectId: currentProjectInfo?.projectId ?? null,
+      currentProjectId: active.project?.projectId ?? null,
     });
     if (slashResult.exit) break;
     if (slashResult.handled) {
-      refreshStatusBar(contextTokenRefreshOptions(slashResult, runner));
+      const refreshedActive = getActiveRuntime({ workspaceSupervisor, cwd, runner, memoryStore, currentProject, currentProjectInfo, sessionState, sessionsRoot, projectMarchDir, extensionPaths, keybindingConfig, promptTemplateConfig });
+      refreshStatusBar(contextTokenRefreshOptions(slashResult, refreshedActive.runner));
       continue;
     }
 
-    const templateResult = expandPromptTemplate(trimmed, promptTemplateConfig.templates);
+    const turnActive = getActiveRuntime({ workspaceSupervisor, cwd, runner, memoryStore, currentProject, currentProjectInfo, sessionState, sessionsRoot, projectMarchDir, extensionPaths, keybindingConfig, promptTemplateConfig });
+    const templateResult = expandPromptTemplate(trimmed, turnActive.promptTemplateConfig.templates);
     if (templateResult.type === "template") {
       ui.writeln(brightBlack(`● template: ${templateResult.name}`));
       trimmed = templateResult.prompt;
@@ -99,9 +104,9 @@ export async function runInteractiveRepl({
 
     await runReplTurn({
       prompt: trimmed,
-      runner,
-      memoryStore,
-      currentProject,
+      runner: turnActive.runner,
+      memoryStore: turnActive.memoryStore,
+      currentProject: turnActive.currentProject,
       ui,
       refreshStatusBar,
       setTurnRunning,
@@ -110,6 +115,21 @@ export async function runInteractiveRepl({
   }
 }
 
+export function getActiveRuntime({ workspaceSupervisor, cwd, runner, memoryStore, currentProject, currentProjectInfo, sessionState, sessionsRoot, projectMarchDir, extensionPaths, keybindingConfig, promptTemplateConfig }) {
+  return workspaceSupervisor?.getActive?.() ?? {
+    project: currentProjectInfo,
+    cwd,
+    runner,
+    memoryStore,
+    currentProject,
+    sessionState,
+    sessionsRoot,
+    projectMarchDir,
+    extensionPaths,
+    keybindingConfig,
+    promptTemplateConfig,
+  };
+}
 export function contextTokenRefreshOptions(slashResult, runner) {
   if (!slashResult?.refreshContextTokens) return undefined;
   if (typeof runner.estimateContextTokens !== "function") return undefined;

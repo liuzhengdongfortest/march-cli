@@ -7,6 +7,8 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
   const { registerProject, listRegisteredProjects } = await import("../src/workspace/project-registry.mjs");
   const { buildWorkspaceSessionSelectItems, listWorkspaceSessions, workspaceSessionSearchText } = await import("../src/workspace/session-index.mjs");
   const { handleProjectCommand, parseProjectCommand } = await import("../src/cli/workspace/command.mjs");
+  const { createWorkspaceSessionSupervisor } = await import("../src/workspace/supervisor.mjs");
+  const { savePiSessionSidecarState } = await import("../src/session/sidecar.mjs");
 
   const stateRoot = setupTmp();
   const rootA = setupTmp();
@@ -47,10 +49,47 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
 
     const lines = await handleProjectCommand({ type: "add", path: rootB }, { stateRoot });
     assert.ok(lines.join("\n").includes("Registered project"));
+
+    const viewSessionState = { sessionId: "s-a", sessionDir: "" };
+    const disposed = [];
+    const supervisor = createWorkspaceSessionSupervisor({
+      initialRuntime: mockRuntime({ project: projectA, cwd: rootA, sessionId: "s-a", disposed }),
+      viewSessionState,
+      createProjectRuntime: async (project) => mockRuntime({ project, cwd: project.rootPath, sessionId: "new", disposed }),
+    });
+    const targetSession = { id: "s-b", path: join(rootB, ".march", "pi-sessions", "s-b.json") };
+    savePiSessionSidecarState({ projectMarchDir: join(rootB, ".march"), sessionRef: targetSession.path, state: { version: 1, cwd: resolve(rootB), turns: [] } });
+    assert.equal(supervisor.runner.engine.cwd, resolve(rootA));
+    await supervisor.activateWorkspaceSession({ project: projectB, session: targetSession });
+    assert.equal(supervisor.runner.engine.cwd, resolve(rootB));
+    assert.equal(viewSessionState.sessionId, "s-b");
+    await supervisor.dispose();
+    assert.deepEqual(disposed.sort(), [projectA.projectId, projectB.projectId].sort());
   } finally {
     cleanup(stateRoot);
     cleanup(rootA);
     cleanup(rootB);
   }
   console.log("  PASS");
+}
+
+function mockRuntime({ project, cwd, sessionId, disposed }) {
+  return {
+    project,
+    cwd: resolve(cwd),
+    currentProject: project.displayName,
+    sessionState: { sessionId, sessionDir: join(resolve(cwd), ".march", "sessions", sessionId) },
+    sessionsRoot: join(resolve(cwd), ".march", "sessions"),
+    projectMarchDir: join(resolve(cwd), ".march"),
+    runner: {
+      engine: { cwd: resolve(cwd) },
+      runtimeState: { engine: { cwd: resolve(cwd) } },
+      async switchPiSession(path) {
+        this.sessionPath = path;
+      },
+      async dispose() {
+        disposed.push(project.projectId);
+      },
+    },
+  };
 }

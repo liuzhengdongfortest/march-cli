@@ -78,6 +78,7 @@ export async function run(argv) {
       memoryStore: app.memoryStore,
       currentProject: app.currentProject,
       currentProjectInfo: app.currentProjectInfo,
+      workspaceSupervisor: app.workspaceSupervisor,
       stateRoot,
       sessionState: app.sessionState,
       sessionsRoot: app.sessionsRoot,

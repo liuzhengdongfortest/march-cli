@@ -45,7 +45,7 @@ export async function handleProjectCommand(command, { stateRoot }) {
   return ["Registered projects:", ...projects.map((project) => `- ${project.displayName}  ${brightBlack(project.rootPath)}`)];
 }
 
-export async function handleSwitchCommand({ stateRoot, currentProjectId, projectMarchDir, runner, ui }) {
+export async function handleSwitchCommand({ stateRoot, currentProjectId, projectMarchDir, runner, workspaceSupervisor, ui }) {
   if (!stateRoot) {
     ui.writeln("Session switcher is not available: workspace registry is missing.");
     return { handled: true };
@@ -74,13 +74,24 @@ export async function handleSwitchCommand({ stateRoot, currentProjectId, project
     ui.writeln("Session unchanged.");
     return { handled: true };
   }
-  if (!item.project.current) {
-    ui.writeln(`Project switch target indexed: ${item.project.displayName}`);
-    ui.writeln(brightBlack("Cross-project attach is not active yet; this establishes the global switcher data path."));
-    return { handled: true };
-  }
   if (!item.session) {
     ui.writeln("New session creation from switcher is not active yet.");
+    return { handled: true };
+  }
+  if (workspaceSupervisor) {
+    try {
+      await workspaceSupervisor.activateWorkspaceSession({ project: item.project, session: item.session });
+      restoreTranscriptFromSession(item.session, ui);
+      ui.writeln(`Switched to session: ${item.project.displayName} / ${item.session.name || item.session.id}`);
+      return { handled: true, refreshContextTokens: true, activeChanged: true };
+    } catch (err) {
+      ui.writeln(`Error: ${err.message}`);
+      return { handled: true };
+    }
+  }
+  if (!item.project.current) {
+    ui.writeln(`Project switch target indexed: ${item.project.displayName}`);
+    ui.writeln(brightBlack("Cross-project attach requires the workspace supervisor."));
     return { handled: true };
   }
   const sessions = projects.find((project) => project.current)?.sessions ?? [];

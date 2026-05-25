@@ -20,6 +20,8 @@ import { normalizeRemoteMemorySources } from "../../memory/remote/config.mjs";
 import { resolveMemoryRoot } from "../../memory/root.mjs";
 import { ensureBrowserDaemon } from "../../browser/client/lifecycle.mjs";
 import { registerProject } from "../../workspace/project-registry.mjs";
+import { createWorkspaceSessionSupervisor } from "../../workspace/supervisor.mjs";
+import { createWorkspaceProjectRuntime } from "../workspace/project-runtime.mjs";
 
 export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot } = {}) {
   if (!existsSync(stateRoot)) mkdirSync(stateRoot, { recursive: true });
@@ -123,6 +125,40 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
     return { ok: false, code: 1, logger };
   }
 
+  const initialRuntime = {
+    project: currentProjectInfo,
+    cwd,
+    currentProject,
+    runner,
+    memoryStore,
+    sessionState,
+    sessionsRoot,
+    projectMarchDir,
+    extensionPaths,
+    keybindingConfig,
+    promptTemplateConfig,
+  };
+  const workspaceSupervisor = createWorkspaceSessionSupervisor({
+    initialRuntime,
+    createProjectRuntime: (project) => createWorkspaceProjectRuntime({
+      project,
+      args,
+      config,
+      stateRoot,
+      memoryRoot,
+      profilePaths,
+      memoryStore,
+      provider,
+      serviceTier,
+      model,
+      permissionMode,
+      remoteMemorySources,
+      ui,
+      refreshStatusBar: (...args) => refreshStatusBar?.(...args),
+    }),
+  });
+  runner = workspaceSupervisor.runner;
+
   refreshStatusBar = createStatusLineUpdater({
     ui,
     runner,
@@ -160,6 +196,7 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
     cwd,
     ui,
     runner,
+    workspaceSupervisor,
     memoryStore,
     currentProject,
     currentProjectInfo,
