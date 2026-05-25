@@ -6,14 +6,14 @@ const RECALL_ICON = "✦";
 export function formatRecallLines(hints = [], report = null, { variant = "user" } = {}) {
   if (variant === "assistant") return formatAssistantRecallLines(hints, report);
   const candidates = report?.candidates ?? [];
-  if (!hints.length && !candidates.length) return [];
-  const noun = hints.length === 1 ? "note" : "notes";
+  const displayed = candidates.length ? candidates : hints.map((hint) => ({ ...hint, recalled: true }));
+  if (!hints.length && !displayed.length) return [];
   const threshold = Number.isFinite(report?.threshold) ? ` · threshold ${formatScore(report.threshold)}` : "";
   const fallback = report?.vectorizerStatus === "fallback" ? " · fallback" : "";
   return [
-    `${RECALL_ICON} Memory Recall · ${hints.length} ${noun}${threshold}${fallback}`,
+    `${RECALL_ICON} Memory Recall · ${recallSummary(hints, displayed)}${threshold}${fallback}`,
     ...(report?.warning ? [`    ! ${report.warning}`] : []),
-    ...(candidates.length ? candidates : hints.map((hint) => ({ ...hint, recalled: true }))).flatMap(formatHintLines),
+    ...displayed.flatMap(formatHintLines),
   ];
 }
 
@@ -27,14 +27,17 @@ export function writeRecall({ output, hints = [], report = null, variant = "user
 
 function formatAssistantRecallLines(hints, report) {
   const candidates = (report?.candidates?.length ? report.candidates : hints.map((hint) => ({ ...hint, recalled: true }))).slice(0, 3);
-  const noun = hints.length === 1 ? "note" : "notes";
   const threshold = Number.isFinite(report?.threshold) ? ` · threshold ${formatScore(report.threshold)}` : "";
   const fallback = report?.vectorizerStatus === "fallback" ? " · fallback" : "";
   return [
-    `${RECALL_ICON} Memory Recall · ${hints.length} ${noun}${threshold}${fallback}`,
+    `${RECALL_ICON} Memory Recall · ${recallSummary(hints, report?.candidates ?? candidates)}${threshold}${fallback}`,
     ...(report?.warning ? [`  ! ${report.warning}`] : []),
     ...(candidates.length ? candidates.map(formatCompactHintLine) : ["  no candidates"]),
   ];
+}
+
+function recallSummary(hints, candidates) {
+  return `${hints.length} recalled · ${candidates.length} ${candidates.length === 1 ? "candidate" : "candidates"}`;
 }
 
 function formatCompactHintLine(hint) {

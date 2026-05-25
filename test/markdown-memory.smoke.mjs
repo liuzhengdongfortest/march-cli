@@ -52,22 +52,46 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   assert.ok(formatRecallHints(userHints).includes("[recall]"));
   assert.ok(formatRecallHints(userHints).includes("score=1.00"));
   const userRecallReport = store.lastUserRecallReport;
-  assert.equal(userRecallReport.threshold, 0.3);
+  assert.equal(userRecallReport.threshold, 0.5);
   assert.equal(userRecallReport.candidates[0].recalled, true);
   assert.deepEqual(formatRecallLines(userHints, userRecallReport), [
-    "✦ Memory Recall · 1 note · threshold 0.30",
+    "✦ Memory Recall · 1 recalled · 1 candidate · threshold 0.50",
     "  ✓ 1.00 Recall hint dedup",
     "    User recall uses a rolling suppression window.",
   ]);
   assert.deepEqual(formatRecallLines([userHints[0], { id: "mem_other", name: "Other memory" }]), [
-    "✦ Memory Recall · 2 notes",
+    "✦ Memory Recall · 2 recalled · 2 candidates",
     "  ✓ 1.00 Recall hint dedup",
     "    User recall uses a rolling suppression window.",
     "  ✓ -- Other memory",
   ]);
+  assert.deepEqual(formatRecallLines(
+    [
+      { id: "mem_one", name: "One" },
+      { id: "mem_two", name: "Two" },
+      { id: "mem_three", name: "Three" },
+    ],
+    {
+      threshold: 0.5,
+      candidates: [
+        { id: "mem_one", name: "One", score: 0.9, recalled: true },
+        { id: "mem_two", name: "Two", score: 0.8, recalled: true },
+        { id: "mem_three", name: "Three", score: 0.7, recalled: true },
+        { id: "mem_four", name: "Four", score: 0.6, recalled: false },
+        { id: "mem_five", name: "Five", score: 0.55, recalled: false },
+      ],
+    },
+  ).slice(0, 6), [
+    "✦ Memory Recall · 3 recalled · 5 candidates · threshold 0.50",
+    "  ✓ 0.90 One",
+    "  ✓ 0.80 Two",
+    "  ✓ 0.70 Three",
+    "  × 0.60 Four",
+    "  × 0.55 Five",
+  ]);
   const renderedHints = [];
   writeRecall({ output: { writeln: (line) => renderedHints.push(line) }, hints: userHints, report: userRecallReport });
-  assert.equal(renderedHints[0], "✦ Memory Recall · 1 note · threshold 0.30");
+  assert.equal(renderedHints[0], "✦ Memory Recall · 1 recalled · 1 candidate · threshold 0.50");
   assert.match(renderedHints[2], /^\x1b\[90m    User recall/);
 
   const assistantMissAfterUserRecall = await store.recallForAssistant("rolling suppression window");
@@ -81,7 +105,7 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   assert.equal(assistantSemanticRecall.hints[0].id, entry.id);
   assert.ok(Math.abs(assistantSemanticRecall.hints[0].score - 1) < 1e-9);
   assert.deepEqual(formatRecallLines(assistantSemanticRecall.hints, assistantSemanticRecall.report, { variant: "assistant" }), [
-    "✦ Memory Recall · 1 note · threshold 0.30",
+    "✦ Memory Recall · 1 recalled · 1 candidate · threshold 0.50",
     "  ✓ 1.00 Recall hint dedup",
   ]);
   store.endTurn();
@@ -91,10 +115,10 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   assert.equal(belowThreshold.length, 0);
   assert.equal(store.lastUserRecallReport.candidates[0].recalled, false);
   assert.deepEqual(formatRecallLines(belowThreshold, store.lastUserRecallReport).slice(0, 2), [
-    "✦ Memory Recall · 0 notes · threshold 0.90",
+    "✦ Memory Recall · 0 recalled · 1 candidate · threshold 0.90",
     "  × 0.58 Recall hint dedup",
   ]);
-  store.semanticRecall.minScore = 0.3;
+  store.semanticRecall.minScore = 0.5;
   store.semanticRecall.vectorizer = new ResilientVectorizer({
     primary: new FailingVectorizer(),
     fallback: new KeywordVectorizer(["rolling", "suppression", "window"]),
@@ -117,7 +141,7 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   const miss = await store.recallForAssistant("completely unrelated text");
   assert.equal(miss.hints.length, 0);
   assert.deepEqual(formatRecallLines(miss.hints, miss.report, { variant: "assistant" }), [
-    "✦ Memory Recall · 0 notes · threshold 0.30",
+    "✦ Memory Recall · 0 recalled · 0 candidates · threshold 0.50",
     "  no candidates",
   ]);
 

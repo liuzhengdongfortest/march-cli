@@ -215,8 +215,9 @@ cosine similarity
 min score threshold
 ```
 
-查询策略：
+默认阈值是 `0.5`，可用 `MARCH_MEMORY_RECALL_MIN_SCORE` 覆盖。
 
+查询策略：
 ```text
 用户消息 / assistant output
   ↓
@@ -268,14 +269,14 @@ UI：无论是否过阈值，轻量显示最多 3 条候选；不展示 descript
 我们继续讨论 memory 召回。
 
 [recall]
-- mem_01hx_context_cache | score=0.42 | Context cache ordering | 高频变化层不能放在大块稳定上下文前面
-- mem_01hx_recall_dedup | score=0.39 | Passive recall dedup | 用户召回按最近 turn 做滚动抑制
+- mem_01hx_context_cache | score=0.62 | Context cache ordering | 高频变化层不能放在大块稳定上下文前面
+- mem_01hx_recall_dedup | score=0.57 | Passive recall dedup | 用户召回按最近 turn 做滚动抑制
 
 [assistant]
 这里的 user/assistant 只是触发时机，匹配方式统一走向量检索...
 
 [recall]
-- mem_01hx_turn_seen | score=0.41 | Turn seen set | 同一 turn 内 user/assistant recall 不重复
+- mem_01hx_turn_seen | score=0.59 | Turn seen set | 同一 turn 内 user/assistant recall 不重复
 ```
 
 ## 主动回忆工具

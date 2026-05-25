@@ -142,13 +142,13 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
         assert.ok(text.includes("12345678"));
         assert.ok(!text.includes("draft text"));
         assert.ok(!text.includes("→ read"));
-        return { hints: [{ id: "mem_thinking", name: "Thinking memory", description: "Matched from thinking text." }], report: { threshold: 0.3, candidates: [{ id: "mem_thinking", name: "Thinking memory", score: 0.9, recalled: true }] } };
+        return { hints: [{ id: "mem_thinking", name: "Thinking memory", description: "Matched from thinking text." }], report: { threshold: 0.5, candidates: [{ id: "mem_thinking", name: "Thinking memory", score: 0.9, recalled: true }] } };
       }
       if (recallCalls === 2) {
         assert.equal(text, "draft text");
-        return { hints: [{ id: "mem_draft", name: "Draft memory", description: "Matched from visible assistant text." }], report: { threshold: 0.3, candidates: [{ id: "mem_draft", name: "Draft memory", score: 0.8, recalled: true }] } };
+        return { hints: [{ id: "mem_draft", name: "Draft memory", description: "Matched from visible assistant text." }], report: { threshold: 0.5, candidates: [{ id: "mem_draft", name: "Draft memory", score: 0.8, recalled: true }] } };
       }
-      return { hints: [], report: { threshold: 0.3, candidates: [] } };
+      return { hints: [], report: { threshold: 0.5, candidates: [] } };
     },
   };
   const ui = {

@@ -7,7 +7,7 @@ import { parseMemoryMarkdown } from "./markdown-format.mjs";
 export const POTION_RETRIEVAL_MODEL_ID = "minishlab/potion-retrieval-32M";
 
 const MAX_CHUNK_CHARS = 1800;
-export const DEFAULT_MEMORY_RECALL_MIN_SCORE = 0.3;
+export const DEFAULT_MEMORY_RECALL_MIN_SCORE = 0.5;
 
 export class SemanticMemoryRecallIndex {
   constructor({ stateRoot = null, modelId = POTION_RETRIEVAL_MODEL_ID, modelDir = null, vectorizer = null, minScore = parseMemoryRecallMinScore() } = {}) {
@@ -56,13 +56,17 @@ export class SemanticMemoryRecallIndex {
       if (!prev || score > prev.score) bestByEntry.set(chunk.entry.id, { entry: chunk.entry, score });
     }
 
-    const candidates = [...bestByEntry.values()]
+    const ranked = [...bestByEntry.values()]
       .filter(({ score }) => Number.isFinite(score) && score > 0)
-      .sort((a, b) => b.score - a.score || a.entry.name.localeCompare(b.entry.name))
-      .map(({ entry, score }) => ({ entry, score, recalled: score >= this.minScore }));
+      .sort((a, b) => b.score - a.score || a.entry.name.localeCompare(b.entry.name));
+    const recalled = ranked.filter(({ score }) => score >= this.minScore).slice(0, limit);
+    const recalledIds = new Set(recalled.map(({ entry }) => entry.id));
+    const candidates = ranked
+      .slice(0, Math.max(limit, candidateLimit))
+      .map(({ entry, score }) => ({ entry, score, recalled: recalledIds.has(entry.id) }));
     return {
-      recalled: candidates.filter((candidate) => candidate.recalled).slice(0, limit),
-      candidates: candidates.slice(0, Math.max(limit, candidateLimit)),
+      recalled,
+      candidates,
       threshold: this.minScore,
       vectorizerStatus: this.status,
       warning: this.warning,
