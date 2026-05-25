@@ -1,5 +1,7 @@
 import { createTuiTimelineRegistry } from "./tui-timeline.mjs";
 
+const PERSIST_FLUSH_METHODS = new Set(["turnEnd", "assistantReplyEnd", "toolEnd"]);
+
 const RENDER_METHODS = new Set([
   "turnStart",
   "turnEnd",
@@ -21,9 +23,19 @@ const RENDER_METHODS = new Set([
   "clearOutput",
 ]);
 
-export function createWorkspaceOutputRouter({ ui, activeProjectId, activeSessionId = null, onRenderTimelineChange = null }) {
+export function createWorkspaceOutputRouter({
+  ui,
+  activeProjectId,
+  activeSessionId = null,
+  onPersistRenderTimeline = null,
+  onRenderTimelineChange = null,
+  persistDebounceMs,
+} = {}) {
   let active = routeKey(activeProjectId, activeSessionId);
-  const timelineRegistry = createTuiTimelineRegistry();
+  const timelineRegistry = createTuiTimelineRegistry({
+    persistDebounceMs,
+    onPersistTimeline: (change) => onPersistRenderTimeline?.({ ...parseRouteKey(change.key), ...change }),
+  });
 
   return {
     setActiveProject(projectId) {
@@ -33,6 +45,7 @@ export function createWorkspaceOutputRouter({ ui, activeProjectId, activeSession
       const next = routeKey(projectId, sessionId);
       timelineRegistry.ensure(next, { events: renderTimeline });
       if (next === active) return renderRoute(next);
+      timelineRegistry.flush(active, "session-switch");
       active = next;
       return renderRoute(next);
     },
@@ -85,6 +98,12 @@ export function createWorkspaceOutputRouter({ ui, activeProjectId, activeSession
     getRenderTimelineMetadata(projectId, sessionId = null) {
       return timelineRegistry.getMetadata(routeKey(projectId, sessionId));
     },
+    flushRenderTimeline(projectId, sessionId = null, reason = "manual") {
+      return timelineRegistry.flush(routeKey(projectId, sessionId), reason);
+    },
+    flushAllRenderTimelines(reason = "manual") {
+      return timelineRegistry.flushAll(reason);
+    },
   };
 
   function renderRoute(key) {
@@ -101,6 +120,7 @@ export function createWorkspaceOutputRouter({ ui, activeProjectId, activeSession
     }
     const timeline = timelineRegistry.ensure(key);
     timeline.apply(method, args);
+    if (PERSIST_FLUSH_METHODS.has(method)) timeline.flushPersist(method);
     onRenderTimelineChange?.({ ...parseRouteKey(key), events: timeline.getEvents(), event: { method, args }, timeline: timeline.getMetadata() });
   }
 }

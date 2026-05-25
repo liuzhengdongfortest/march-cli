@@ -94,7 +94,7 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
     ui,
     activeProjectId: currentProjectInfo.projectId,
     activeSessionId: sessionState.sessionId,
-    onRenderTimelineChange: persistRenderTimeline,
+    onPersistRenderTimeline: persistRenderTimeline,
   });
   const runtimeUi = outputRouter.createProjectUi(currentProjectInfo.projectId, () => sessionState.sessionId);
   let turnRunning = false;
@@ -213,8 +213,8 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
   outputRouter.setActiveSession(currentProjectInfo.projectId, sessionState.sessionId, { renderTimeline: loadStoredRenderTimeline(projectMarchDir, sessionState.sessionId) });
   refreshStatusBar();
 
-  function persistRenderTimeline({ projectId, sessionId, events, event }) {
-    if (!sessionId || !shouldPersistRenderEvent(event?.method)) return;
+  function persistRenderTimeline({ projectId, sessionId, events }) {
+    if (!sessionId) return;
     const routeProjectMarchDir = projectMarchDirs.get(projectId);
     if (!routeProjectMarchDir) return;
     try {
@@ -257,10 +257,6 @@ function loadStoredRenderTimeline(projectMarchDir, sessionId) {
   } catch {
     return null;
   }
-}
-
-function shouldPersistRenderEvent(method) {
-  return method === "turnEnd" || method === "assistantReplyEnd" || method === "toolEnd" || method === "writeln" || method === "clearOutput";
 }
 
 async function handleNotificationActivation({ activation, stateRoot, workspaceSupervisor, ui }) {

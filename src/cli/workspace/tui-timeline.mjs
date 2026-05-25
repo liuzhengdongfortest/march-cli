@@ -1,13 +1,23 @@
 export const DEFAULT_MAX_TIMELINE_EVENTS = 4000;
+export const DEFAULT_TIMELINE_PERSIST_DEBOUNCE_MS = 250;
 
-export function createTuiTimelineRegistry({ maxEventsPerTimeline = DEFAULT_MAX_TIMELINE_EVENTS } = {}) {
+export function createTuiTimelineRegistry({
+  maxEventsPerTimeline = DEFAULT_MAX_TIMELINE_EVENTS,
+  persistDebounceMs = DEFAULT_TIMELINE_PERSIST_DEBOUNCE_MS,
+  onPersistTimeline = null,
+} = {}) {
   const timelines = new Map();
 
   return {
     ensure(key, { events = null } = {}) {
       let timeline = timelines.get(key);
       if (!timeline) {
-        timeline = createTuiTimelineInstance({ key, maxEvents: maxEventsPerTimeline });
+        timeline = createTuiTimelineInstance({
+          key,
+          maxEvents: maxEventsPerTimeline,
+          persistDebounceMs,
+          onPersist: onPersistTimeline,
+        });
         timelines.set(key, timeline);
       }
       if (Array.isArray(events)) timeline.hydrateIfEmpty(events);
@@ -24,6 +34,16 @@ export function createTuiTimelineRegistry({ maxEventsPerTimeline = DEFAULT_MAX_T
       timeline.clear();
       return timeline;
     },
+    flush(key, reason = "manual") {
+      return this.get(key)?.flushPersist(reason) ?? false;
+    },
+    flushAll(reason = "manual") {
+      let flushed = 0;
+      for (const timeline of timelines.values()) {
+        if (timeline.flushPersist(reason)) flushed += 1;
+      }
+      return flushed;
+    },
     getEvents(key) {
       return this.get(key)?.getEvents() ?? [];
     },
@@ -36,23 +56,31 @@ export function createTuiTimelineRegistry({ maxEventsPerTimeline = DEFAULT_MAX_T
   };
 }
 
-export function createTuiTimelineInstance({ key, maxEvents = DEFAULT_MAX_TIMELINE_EVENTS } = {}) {
+export function createTuiTimelineInstance({
+  key,
+  maxEvents = DEFAULT_MAX_TIMELINE_EVENTS,
+  persistDebounceMs = DEFAULT_TIMELINE_PERSIST_DEBOUNCE_MS,
+  onPersist = null,
+} = {}) {
   let events = [];
   let hydrated = false;
   let dirty = false;
   let lastAccessedAt = Date.now();
   let lastUpdatedAt = null;
+  let lastPersistedAt = null;
   let estimatedBytes = 0;
+  let persistTimer = null;
 
   return {
     key,
-    apply(method, args, { at = Date.now() } = {}) {
+    apply(method, args, { at = Date.now(), persist = true } = {}) {
       touch();
       const event = { method, args, at };
       events.push(event);
       trimToBudget();
       dirty = true;
       lastUpdatedAt = at;
+      if (persist) schedulePersist("debounce");
       return event;
     },
     hydrateIfEmpty(nextEvents) {
@@ -66,17 +94,27 @@ export function createTuiTimelineInstance({ key, maxEvents = DEFAULT_MAX_TIMELIN
       estimatedBytes = estimateEventsBytes(events);
       return true;
     },
-    clear() {
+    clear({ flush = true } = {}) {
       touch();
       events = [];
       dirty = true;
       lastUpdatedAt = Date.now();
       estimatedBytes = 0;
+      if (flush) this.flushPersist("clear");
+      else schedulePersist("debounce");
     },
     replayTo(ui) {
       touch();
       for (const event of events) applyRenderEvent(ui, event);
       return events.length;
+    },
+    flushPersist(reason = "manual") {
+      clearPersistTimer();
+      if (!dirty || typeof onPersist !== "function") return false;
+      onPersist({ key, events: this.getEvents(), reason, timeline: this.getMetadata() });
+      dirty = false;
+      lastPersistedAt = Date.now();
+      return true;
     },
     getEvents() {
       touch();
@@ -86,7 +124,9 @@ export function createTuiTimelineInstance({ key, maxEvents = DEFAULT_MAX_TIMELIN
       return events.length;
     },
     markPersisted() {
+      clearPersistTimer();
       dirty = false;
+      lastPersistedAt = Date.now();
     },
     getMetadata() {
       return {
@@ -97,10 +137,31 @@ export function createTuiTimelineInstance({ key, maxEvents = DEFAULT_MAX_TIMELIN
         dirty,
         lastAccessedAt,
         lastUpdatedAt,
+        lastPersistedAt,
         estimatedBytes,
+        persistScheduled: Boolean(persistTimer),
       };
     },
   };
+
+  function schedulePersist(reason) {
+    if (typeof onPersist !== "function") return;
+    clearPersistTimer();
+    persistTimer = setTimeout(() => {
+      persistTimer = null;
+      if (!dirty) return;
+      onPersist({ key, events: events.map((event) => ({ method: event.method, args: event.args, at: event.at ?? null })), reason, timeline: buildMetadata() });
+      dirty = false;
+      lastPersistedAt = Date.now();
+    }, Math.max(0, persistDebounceMs));
+    persistTimer.unref?.();
+  }
+
+  function clearPersistTimer() {
+    if (!persistTimer) return;
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
 
   function trimToBudget() {
     if (events.length > maxEvents) events.splice(0, events.length - maxEvents);
@@ -109,6 +170,21 @@ export function createTuiTimelineInstance({ key, maxEvents = DEFAULT_MAX_TIMELIN
 
   function touch() {
     lastAccessedAt = Date.now();
+  }
+
+  function buildMetadata() {
+    return {
+      key,
+      eventCount: events.length,
+      maxEvents,
+      hydrated,
+      dirty,
+      lastAccessedAt,
+      lastUpdatedAt,
+      lastPersistedAt,
+      estimatedBytes,
+      persistScheduled: Boolean(persistTimer),
+    };
   }
 }
 

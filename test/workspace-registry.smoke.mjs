@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 
 export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: workspace project registry and session selector model ---");
@@ -55,7 +56,7 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
     assert.ok(lines.join("\n").includes("Registered project"));
 
     const rendered = [];
-    const baseUi = { clearOutput: () => { rendered.length = 0; }, textDelta: (text) => rendered.push(text), writeln: (text) => rendered.push(text) };
+    const baseUi = { clearOutput: () => { rendered.length = 0; }, textDelta: (text) => rendered.push(text), writeln: (text) => rendered.push(text), assistantReplyEnd: () => {} };
     const persistedRenderChanges = [];
     const outputRouter = createWorkspaceOutputRouter({ ui: baseUi, activeProjectId: projectA.projectId, activeSessionId: "s-a", onRenderTimelineChange: (change) => persistedRenderChanges.push(change) });
     const uiA = outputRouter.createProjectUi(projectA.projectId, () => "s-a");
@@ -90,6 +91,32 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
     assert.deepEqual(boundedTimeline.getEvents().map((event) => event.args[0]), ["two", "three"]);
     assert.equal(boundedTimeline.getMetadata().eventCount, 2);
     assert.ok(boundedTimeline.getMetadata().estimatedBytes > 0);
+
+    const persistedTimelines = [];
+    const persistRouter = createWorkspaceOutputRouter({
+      ui: baseUi,
+      activeProjectId: projectA.projectId,
+      activeSessionId: "persist-a",
+      persistDebounceMs: 10,
+      onPersistRenderTimeline: (change) => persistedTimelines.push(change),
+    });
+    const persistUiA = persistRouter.createProjectUi(projectA.projectId, () => "persist-a");
+    const persistUiB = persistRouter.createProjectUi(projectA.projectId, () => "persist-b");
+    persistUiA.textDelta("debounced-a");
+    assert.equal(persistedTimelines.length, 0);
+    await delay(20);
+    assert.equal(persistedTimelines.length, 1);
+    assert.equal(persistedTimelines[0].sessionId, "persist-a");
+    assert.equal(persistedTimelines[0].reason, "debounce");
+    persistUiA.textDelta("flush-a");
+    persistUiA.assistantReplyEnd?.();
+    assert.equal(persistedTimelines.at(-1).reason, "assistantReplyEnd");
+    persistUiA.textDelta("switch-a");
+    persistRouter.setActiveSession(projectA.projectId, "persist-b");
+    assert.equal(persistedTimelines.at(-1).reason, "session-switch");
+    persistUiB.clearOutput();
+    assert.equal(persistedTimelines.at(-1).reason, "clear");
+    assert.deepEqual(persistedTimelines.at(-1).events, []);
 
     const viewSessionState = { sessionId: "s-a", sessionDir: "" };
     const disposed = [];
