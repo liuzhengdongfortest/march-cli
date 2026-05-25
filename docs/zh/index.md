@@ -12,7 +12,7 @@ outline: false
     </p>
     <div class="actions">
       <a class="primary" href="./start/install">安装 March</a>
-      <a class="secondary" href="./concepts/context">阅读文档</a>
+      <a class="secondary" href="./features/cli">阅读文档</a>
       <a class="secondary" href="https://github.com/decolua/march-cli">GitHub</a>
     </div>
     <p class="note">开源、源码优先，没有隐藏的项目数据库。</p>
@@ -65,9 +65,9 @@ outline: false
     </div>
     <div class="docs-links">
       <a href="./start/install">从安装开始</a>
-      <a href="./start/configuration">配置 Provider</a>
-      <a href="./concepts/context">理解上下文</a>
-      <a href="./concepts/memory">使用 Markdown 记忆</a>
+      <a href="./features/cli">使用 CLI 工作流</a>
+      <a href="./philosophy/token-efficiency">理解 Token 效率</a>
+      <a href="./reference/commands">浏览 CLI 命令</a>
     </div>
   </section>
 </div>

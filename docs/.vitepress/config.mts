@@ -13,8 +13,17 @@ const englishSidebar = [
     ],
   },
   {
+    text: 'Features',
+    items: [
+      { text: 'CLI Workflow', link: '/features/cli' },
+      { text: 'Tools', link: '/features/tools' },
+      { text: 'Web UI', link: '/features/web' },
+    ],
+  },
+  {
     text: 'Concepts',
     items: [
+      { text: 'Token Efficiency', link: '/philosophy/token-efficiency' },
       { text: 'Context Model', link: '/concepts/context' },
       { text: 'Memory System', link: '/concepts/memory' },
     ],
@@ -22,6 +31,7 @@ const englishSidebar = [
   {
     text: 'Reference',
     items: [
+      { text: 'CLI Commands', link: '/reference/commands' },
       { text: 'Custom Providers', link: '/reference/providers' },
     ],
   },
@@ -43,8 +53,17 @@ const chineseSidebar = [
     ],
   },
   {
+    text: '功能',
+    items: [
+      { text: 'CLI 工作流', link: '/zh/features/cli' },
+      { text: '工具', link: '/zh/features/tools' },
+      { text: 'Web UI', link: '/zh/features/web' },
+    ],
+  },
+  {
     text: '概念',
     items: [
+      { text: 'Token 效率', link: '/zh/philosophy/token-efficiency' },
       { text: '上下文模型', link: '/zh/concepts/context' },
       { text: '记忆系统', link: '/zh/concepts/memory' },
     ],
@@ -52,6 +71,7 @@ const chineseSidebar = [
   {
     text: '参考',
     items: [
+      { text: 'CLI 命令', link: '/zh/reference/commands' },
       { text: '自定义 Provider', link: '/zh/reference/providers' },
     ],
   },
@@ -79,8 +99,9 @@ export default defineConfig({
     search: sharedSearch,
     nav: [
       { text: 'Start', link: '/start/install' },
-      { text: 'Concepts', link: '/concepts/context' },
-      { text: 'Reference', link: '/reference/providers' },
+      { text: 'Features', link: '/features/cli' },
+      { text: 'Concepts', link: '/philosophy/token-efficiency' },
+      { text: 'Reference', link: '/reference/commands' },
       { text: '中文', link: '/zh/' },
     ],
     sidebar: englishSidebar,
@@ -107,8 +128,9 @@ export default defineConfig({
       themeConfig: {
         nav: [
           { text: '开始', link: '/zh/start/install' },
-          { text: '概念', link: '/zh/concepts/context' },
-          { text: '参考', link: '/zh/reference/providers' },
+          { text: '功能', link: '/zh/features/cli' },
+          { text: '概念', link: '/zh/philosophy/token-efficiency' },
+          { text: '参考', link: '/zh/reference/commands' },
           { text: 'English', link: '/' },
         ],
         sidebar: chineseSidebar,

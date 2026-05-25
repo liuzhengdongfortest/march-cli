@@ -12,7 +12,7 @@ outline: false
     </p>
     <div class="actions">
       <a class="primary" href="./start/install">Install March</a>
-      <a class="secondary" href="./concepts/context">Read the docs</a>
+      <a class="secondary" href="./features/cli">Read the docs</a>
       <a class="secondary" href="https://github.com/decolua/march-cli">GitHub</a>
     </div>
     <p class="note">Open source, source-first, no hidden project database.</p>
@@ -65,9 +65,9 @@ outline: false
     </div>
     <div class="docs-links">
       <a href="./start/install">Start with installation</a>
-      <a href="./start/configuration">Configure providers</a>
-      <a href="./concepts/context">Understand context</a>
-      <a href="./concepts/memory">Use Markdown memory</a>
+      <a href="./features/cli">Use the CLI workflow</a>
+      <a href="./philosophy/token-efficiency">Understand token efficiency</a>
+      <a href="./reference/commands">Browse CLI commands</a>
     </div>
   </section>
 </div>
