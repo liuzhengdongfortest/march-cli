@@ -39,6 +39,8 @@ function AuxBlock({ item }: { item: Exclude<TimelineItem, { kind: "message" }> }
       return <DiffBlock item={item} />;
     case "terminal":
       return <TerminalBlock item={item} />;
+    case "memoryRecall":
+      return <MemoryRecallBlock item={item} />;
 
     case "error":
       return <ErrorBlock item={item} />;
@@ -89,7 +91,23 @@ function TerminalBlock({ item }: { item: Extract<TimelineItem, { kind: "terminal
   );
 }
 
-
+function MemoryRecallBlock({ item }: { item: Extract<TimelineItem, { kind: "memoryRecall" }> }) {
+  const candidates = item.report?.candidates?.length ? item.report.candidates : item.hints.map((hint) => ({ ...hint, recalled: true }));
+  const threshold = typeof item.report?.threshold === "number" ? `threshold ${item.report.threshold.toFixed(2)}` : "semantic recall";
+  return (
+    <div className="timeline-aux memory-recall-block">
+      <div className="aux-title"><span>memory</span><strong>{item.source} recall · {threshold}</strong></div>
+      <ul>
+        {candidates.map((hint) => (
+          <li key={hint.id} className={hint.recalled === false ? "skipped" : "recalled"}>
+            <span>{hint.recalled === false ? "×" : "✓"}</span>
+            <strong>{typeof hint.score === "number" ? `${hint.score.toFixed(2)} ` : ""}{hint.name ?? hint.id}</strong>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 function ErrorBlock({ item }: { item: Extract<TimelineItem, { kind: "error" }> }) {
   return (

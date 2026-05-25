@@ -55,6 +55,7 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(runtimeHost, /createRuntimeRunner/);
   assert.match(runtimeHost, /prepareTurnInput/);
   assert.match(runtimeHost, /runtimeUiEvents\.emit\(\{ type: "web_user_message"/);
+  assert.match(runtimeHost, /type: "recall", source: "user"/);
   assert.match(server, /\/api\/snapshot/);
   assert.match(server, /\/api\/sessions/);
   assert.match(server, /\/api\/fs\/roots/);
@@ -72,6 +73,7 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(model, /activeSessionId\?: string \| null/);
   assert.match(model, /workspacePath\?: string/);
   assert.match(model, /ProviderQuotaSnapshot/);
+  assert.match(model, /MemoryRecallReport/);
   assert.match(model, /export type WebUiModel/);
   assert.match(model, /MarchTimelineEvent/);
   assert.match(model, /TimelineItem/);
@@ -87,8 +89,10 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(timeline, /<TimelineList items=\{items\}/);
   assert.match(timelineList, /aria-label="Session events"/);
   assert.match(timelineBlocks, /className="timeline-aux tool-block"/);
+  assert.match(timelineBlocks, /MemoryRecallBlock/);
   assert.doesNotMatch(timelineBlocks, /permission-block/);
   assert.match(timelineAdapter, /tool_result/);
+  assert.match(timelineAdapter, /memoryRecall/);
   assert.match(right, /Workspace picker/);
   assert.match(right, /onCreateSession/);
   assert.match(right, /onBrowsePath/);
@@ -112,6 +116,7 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(runtimeHook, /submitRuntimeTurn\(activeSessionId/);
   assert.match(runtimeTimeline, /applyRuntimeEvent/);
   assert.match(runtimeTimeline, /text_delta/);
+  assert.match(runtimeTimeline, /memory_recall/);
   assert.match(css, /grid-template-areas: "sidebar main right" "sidebar footer right"/);
   assert.match(css, /height: var\(--header-height\)/);
   assert.match(css, /border-right: 1px solid var\(--color-border-subtle\)/);
@@ -123,6 +128,7 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(css, /\.message-body[\s\S]*font-weight: var\(--font-weight-content-normal\)/);
   assert.match(css, /\.composer textarea[\s\S]*font-weight: var\(--font-weight-content-normal\)/);
   assert.match(css, /\.terminal-block pre/);
+  assert.match(css, /\.memory-recall-block/);
   assert.match(css, /max-width: 920px/);
   assert.match(css, /data-left-open="true"/);
   assert.match(tokens, /@layer theme\.palette, theme\.semantic, theme\.component, base/);

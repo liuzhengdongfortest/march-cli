@@ -23,12 +23,13 @@ export { normalizeTags } from "./markdown/markdown-format.mjs";
 const DEFAULT_SCAN_INTERVAL_MS = 5000;
 
 export class MarkdownMemoryStore {
-  constructor({ root, now = () => new Date(), indexPath = null, stateRoot = null, semanticRecall = true, semanticVectorizer = null, semanticModelId = undefined, semanticModelDir = null } = {}) {
+  constructor({ root, now = () => new Date(), indexPath = null, stateRoot = null, semanticRecall = true, semanticVectorizer = null, semanticModelId = undefined, semanticModelDir = null, semanticMinScore = undefined } = {}) {
     if (!root) throw new Error("MarkdownMemoryStore requires a root path");
     this.root = resolve(root);
     this.now = now;
-    this.semanticRecall = semanticRecall ? new SemanticMemoryRecallIndex({ stateRoot, modelId: semanticModelId, modelDir: semanticModelDir, vectorizer: semanticVectorizer }) : null;
+    this.semanticRecall = semanticRecall ? new SemanticMemoryRecallIndex({ stateRoot, modelId: semanticModelId, modelDir: semanticModelDir, vectorizer: semanticVectorizer, minScore: semanticMinScore }) : null;
     this.semanticRecallWarning = null;
+    this.lastUserRecallReport = null;
     this.indexPath = indexPath ? resolve(indexPath) : join(this.root, ".march-memory-index.sqlite");
     this.db = openMarkdownMemoryIndex(this.indexPath);
     this.entries = new Map();
@@ -127,9 +128,7 @@ export class MarkdownMemoryStore {
   async recallForUser(text, { limit = 3, excludedIds = [] } = {}) {
     const excluded = new Set([...excludedIds, ...this.turnSeenMemoryIds]);
     const hints = await this.#recallSemantic(text, { limit, excluded });
-    for (const hint of hints) {
-      this.turnSeenMemoryIds.add(hint.id);
-    }
+    for (const hint of hints) this.turnSeenMemoryIds.add(hint.id);
     return hints;
   }
 
@@ -210,10 +209,13 @@ export class MarkdownMemoryStore {
 
   async #recallSemantic(text, { limit, excluded }) {
     this.ensureFresh();
+    this.lastUserRecallReport = null;
     if (!this.semanticRecall?.enabled) return [];
     try {
-      const entries = await this.semanticRecall.search(text, { entries: this.entries, excluded, limit });
-      return entries.map((entry) => toHint(entry));
+      const result = await this.semanticRecall.search(text, { entries: this.entries, excluded, limit });
+      const hints = result.recalled.map(({ entry, score }) => toHint(entry, { score }));
+      this.lastUserRecallReport = { threshold: result.threshold, hints, candidates: result.candidates.map(({ entry, score, recalled }) => ({ ...toHint(entry, { score }), recalled })) };
+      return hints;
     } catch (err) {
       this.semanticRecallWarning = err?.message ?? String(err);
       return [];

@@ -9,6 +9,20 @@ export type FileNode = {
   children?: FileNode[];
 };
 
+export type MemoryRecallHint = {
+  id: string;
+  name?: string;
+  description?: string;
+  score?: number;
+  recalled?: boolean;
+};
+
+export type MemoryRecallReport = {
+  threshold?: number;
+  hints?: MemoryRecallHint[];
+  candidates?: MemoryRecallHint[];
+};
+
 export type MarchTimelineEvent =
   | { id: string; type: "user_message"; text: string; time?: string }
   | { id: string; type: "assistant_message"; text: string; time?: string }
@@ -17,6 +31,7 @@ export type MarchTimelineEvent =
   | { id: string; type: "tool_result"; tool: string; summary: string; status: "done" | "failed" }
   | { id: string; type: "file_diff"; path: string; lines: Array<{ kind: "add" | "remove" | "keep"; text: string }> }
   | { id: string; type: "terminal_output"; command: string; output: string; status: "running" | "done" | "failed" }
+  | { id: string; type: "memory_recall"; source: string; hints: MemoryRecallHint[]; report?: MemoryRecallReport | null }
   | { id: string; type: "error"; message: string; detail?: string };
 
 export type TimelineItem =
@@ -25,6 +40,7 @@ export type TimelineItem =
   | { id: string; kind: "tool"; tool: string; target: string; status: "running" | "done" | "failed"; summary?: string }
   | { id: string; kind: "diff"; path: string; lines: Array<{ kind: "add" | "remove" | "keep"; text: string }> }
   | { id: string; kind: "terminal"; command: string; output: string; status: "running" | "done" | "failed" }
+  | { id: string; kind: "memoryRecall"; source: string; hints: MemoryRecallHint[]; report?: MemoryRecallReport | null }
   | { id: string; kind: "error"; message: string; detail?: string };
 
 export type SessionSummary = {

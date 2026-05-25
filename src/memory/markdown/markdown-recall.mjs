@@ -4,7 +4,7 @@ export function formatRecallHints(source, hints = []) {
   if (!hints.length) return "";
   const lines = [`[recall source="${source}"]`];
   for (const hint of hints) {
-    lines.push(`- ${hint.id} | ${hint.name} | ${hint.description}`);
+    lines.push(`- ${hint.id}${formatScoreForPrompt(hint.score)} | ${hint.name} | ${hint.description}`);
   }
   return lines.join("\n");
 }
@@ -23,6 +23,14 @@ export function scoreEntry(entry, terms, currentProject) {
   return score;
 }
 
-export function toHint(entry) {
-  return { id: entry.id, name: entry.name, description: entry.description };
+export function toHint(entry, metadata = {}) {
+  return { id: entry.id, name: entry.name, description: entry.description, ...metadata };
+}
+
+function formatScoreForPrompt(score) {
+  return Number.isFinite(score) ? ` | score=${formatScore(score)}` : "";
+}
+
+export function formatScore(score) {
+  return Number.isFinite(score) ? score.toFixed(2) : "--";
 }

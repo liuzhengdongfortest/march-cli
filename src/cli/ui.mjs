@@ -212,8 +212,8 @@ export function createTuiUI({
     status: (text) => {
       ensureStarted(); flushStreamDeltas(); retryStatus.stop(); spinnerStatus.stop(); output.setOverlayStatus([brightBlack(`● ${text}`)]); requestRender();
     },
-    recall: ({ hints }) => {
-      ensureStarted(); flushStreamDeltas(); retryStatus.stop(); spinnerStatus.stop(); output.ensureNewline(); writeRecall({ output, hints }); requestRender();
+    recall: ({ hints, report }) => {
+      ensureStarted(); flushStreamDeltas(); retryStatus.stop(); spinnerStatus.stop(); output.ensureNewline(); writeRecall({ output, hints, report }); requestRender();
     },
 
     clearOutput: () => {

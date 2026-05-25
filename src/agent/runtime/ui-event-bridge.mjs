@@ -50,7 +50,7 @@ export function createRuntimeUiClient(eventBus) {
     retryEnd: (event) => eventBus.emit({ type: "retry_end", ...event }),
     status: (text) => eventBus.emit({ type: "status", text }),
     debugLines: (lines) => eventBus.emit({ type: "debug_lines", lines }),
-    recall: ({ source, hints }) => eventBus.emit({ type: "recall", source, hints }),
+    recall: ({ source, hints, report }) => eventBus.emit({ type: "recall", source, hints, report }),
     providerQuotaSnapshot: (snapshot) => eventBus.emit({ type: "provider_quota_snapshot", snapshot }),
     editDiff: (path, diffLines) => eventBus.emit({ type: "edit_diff", path, diffLines }),
   };
@@ -71,7 +71,7 @@ export function dispatchRuntimeUiEvent(ui, event) {
     case "retry_end": return ui.retryEnd?.(pickRetryEnd(event));
     case "status": return ui.status?.(event.text);
     case "debug_lines": return writeDebugLines(ui, event.lines);
-    case "recall": return ui.recall?.({ source: event.source, hints: event.hints });
+    case "recall": return ui.recall?.({ source: event.source, hints: event.hints, report: event.report });
     case "provider_quota_snapshot": return ui.providerQuotaSnapshot?.(event.snapshot);
     case "edit_diff": return ui.editDiff?.(event.path, event.diffLines);
     default: return undefined;

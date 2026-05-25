@@ -41,25 +41,39 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   assert.equal(userHints.length, 1);
   assert.equal(userHints[0].id, entry.id);
   assert.ok(formatRecallHints("user", userHints).includes("[recall source=\"user\"]"));
-  assert.deepEqual(formatRecallLines(userHints), [
-    "✦ Memory Recall · 1 note",
-    "  • Recall hint dedup",
+  assert.ok(formatRecallHints("user", userHints).includes("score=1.00"));
+  const userRecallReport = store.lastUserRecallReport;
+  assert.equal(userRecallReport.threshold, 0.3);
+  assert.equal(userRecallReport.candidates[0].recalled, true);
+  assert.deepEqual(formatRecallLines(userHints, userRecallReport), [
+    "✦ Memory Recall · 1 note · threshold 0.30",
+    "  ✓ 1.00 Recall hint dedup",
     "    User recall uses a rolling suppression window.",
   ]);
   assert.deepEqual(formatRecallLines([userHints[0], { id: "mem_other", name: "Other memory" }]), [
     "✦ Memory Recall · 2 notes",
-    "  • Recall hint dedup",
+    "  ✓ 1.00 Recall hint dedup",
     "    User recall uses a rolling suppression window.",
-    "  • Other memory",
+    "  ✓ Other memory",
   ]);
   const renderedHints = [];
-  writeRecall({ output: { writeln: (line) => renderedHints.push(line) }, hints: userHints });
-  assert.equal(renderedHints[0], "✦ Memory Recall · 1 note");
+  writeRecall({ output: { writeln: (line) => renderedHints.push(line) }, hints: userHints, report: userRecallReport });
+  assert.equal(renderedHints[0], "✦ Memory Recall · 1 note · threshold 0.30");
   assert.match(renderedHints[2], /^\x1b\[90m    User recall/);
 
   const assistantHints = store.recallForAssistant("recall hint dedup again", { currentProject: "march-cli" });
   assert.equal(assistantHints.length, 0);
   store.endTurn();
+
+  store.semanticRecall.minScore = 0.9;
+  const belowThreshold = await store.recallForUser("rolling", { currentProject: "march-cli" });
+  assert.equal(belowThreshold.length, 0);
+  assert.equal(store.lastUserRecallReport.candidates[0].recalled, false);
+  assert.deepEqual(formatRecallLines(belowThreshold, store.lastUserRecallReport).slice(0, 2), [
+    "✦ Memory Recall · 0 notes · threshold 0.90",
+    "  × 0.58 Recall hint dedup",
+  ]);
+  store.semanticRecall.minScore = 0.3;
 
   store.beginTurn();
   const suppressed = await store.recallForUser("rolling suppression", { currentProject: "march-cli", excludedIds: [entry.id] });

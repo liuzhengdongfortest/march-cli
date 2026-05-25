@@ -30,7 +30,7 @@ function appendTimelineBlock(output, block) {
       output.addBlock({ type: "status", lines: [String(block.content ?? "")] });
       break;
     case "recall":
-      output.addBlock({ type: "plain", lines: formatRecallLines(block.hints ?? []) });
+      output.addBlock({ type: "plain", lines: formatRecallLines(block.hints ?? [], block.report ?? null) });
       break;
     case "editDiff":
       output.addBlock({ type: "diff", path: block.path, diffLines: block.diffLines ?? [] });

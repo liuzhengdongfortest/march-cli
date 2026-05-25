@@ -109,9 +109,9 @@ export function createPlainUI() {
     },
     textDelta: writeText,
     status: (text) => { ensureNewline(); stdout.write(`${brightBlack(`● ${text}`)}\n`); },
-    recall: ({ hints }) => {
+    recall: ({ hints, report }) => {
       ensureNewline();
-      for (const line of formatRecallLines(hints)) stdout.write(`${brightBlack(line)}\n`);
+      for (const line of formatRecallLines(hints, report)) stdout.write(`${brightBlack(line)}\n`);
     },
     clearOutput: () => {},
     restoreTranscript: () => {},

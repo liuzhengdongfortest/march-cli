@@ -94,7 +94,7 @@ export function createTuiTimelineProjection() {
         blocks.push(createBlock("status", event.at, { content: String(first ?? "") }));
         break;
       case "recall":
-        blocks.push(createBlock("recall", event.at, { hints: first?.hints ?? [] }));
+        blocks.push(createBlock("recall", event.at, { hints: first?.hints ?? [], report: first?.report ?? null }));
         break;
       case "editDiff":
         closeAssistantBlock(event.at);

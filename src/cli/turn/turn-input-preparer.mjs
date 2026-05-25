@@ -12,6 +12,7 @@ export async function prepareTurnInput({ prompt, runner, memoryStore, currentPro
     currentProject,
     excludedIds: engine.getRecentRecallMemoryIds?.() ?? [],
   });
+  const userRecallReport = memoryStore.lastUserRecallReport ?? null;
   const modePrompt = appendModeReminder(prompt, modeState?.get?.());
   const fullPrompt = appendPromptBlocks(
     modePrompt,
@@ -26,6 +27,7 @@ export async function prepareTurnInput({ prompt, runner, memoryStore, currentPro
     runOptions: { userRecallHints, currentProject },
     displayMessage: formatUserDisplayMessage(prompt),
     userRecallHints,
+    userRecallReport,
     carryoverRecallHints,
     shouldRenderCarryoverRecall: carryoverRecallHints.length > 0 && !carryoverAlreadyRendered,
   };

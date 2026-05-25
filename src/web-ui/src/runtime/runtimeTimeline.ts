@@ -26,6 +26,11 @@ export function applyRuntimeEvent(events: MarchTimelineEvent[], event: RuntimeUi
     case "edit_diff":
       next.push({ id, type: "file_diff", path: event.path, lines: toDiffLines(event.diffLines) });
       return next;
+    case "recall":
+      if ((event.hints?.length ?? 0) || (event.report?.candidates?.length ?? 0)) {
+        next.push({ id, type: "memory_recall", source: event.source, hints: event.hints ?? [], report: event.report ?? null });
+      }
+      return next;
 
     case "status":
       next.push({ id, type: "terminal_output", command: "status", output: event.text, status: "done" });
