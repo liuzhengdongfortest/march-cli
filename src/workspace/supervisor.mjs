@@ -55,7 +55,7 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
   function getRuntimeSummaries() {
     return Array.from(runtimes.values()).map((runtime) => ({
       projectId: runtime.project.projectId,
-      sessionId: runtime.runner.getSessionStats?.()?.sessionId ?? runtime.sessionState?.sessionId ?? null,
+      sessionId: getRuntimeSessionId(runtime),
       running: Boolean(runtime.turnTask),
       active: runtime === active,
     }));
@@ -74,6 +74,7 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
     const result = await active.runner.startNewSession();
     if (!result?.cancelled && result?.sessionId) syncSessionState(active, result.sessionId);
     mirrorSessionState(viewSessionState, active.sessionState);
+    onActivate?.({ projectId: active.project.projectId, sessionId: getRuntimeSessionId(active), runtime: active });
     return { runtime: active, result };
   }
 
@@ -87,23 +88,28 @@ export function createWorkspaceSessionSupervisor({ initialRuntime, createProject
       runtimes.set(project.projectId, runtime);
     }
 
-    active = runtime;
     if (session?.path) {
+      const currentSessionId = getRuntimeSessionId(runtime);
+      if (runtime.turnTask && currentSessionId !== session.id) {
+        throw new Error("this project already has a running session; same-project concurrent sessions are not enabled yet");
+      }
       const restoreState = loadWorkspacePiSessionState({ runtime, session });
       await runtime.runner.switchPiSession(session.path, restoreState);
       syncSessionState(runtime, session.id);
     }
+
+    active = runtime;
     mirrorSessionState(viewSessionState, runtime.sessionState);
-    onActivate?.({ projectId: runtime.project.projectId, runtime });
+    onActivate?.({ projectId: runtime.project.projectId, sessionId: getRuntimeSessionId(runtime), runtime });
     return active;
   }
-
   async function dispose() {
     if (disposed) return;
     disposed = true;
     const uniqueRuntimes = new Set(runtimes.values());
     await Promise.all(Array.from(uniqueRuntimes, async (runtime) => {
       await runtime.runner.dispose?.();
+      runtime.memoryStore?.close?.();
     }));
   }
 }
@@ -115,6 +121,10 @@ function loadWorkspacePiSessionState({ runtime, session }) {
     throw new Error(`pi session sidecar cwd mismatch for ${session.id}: ${sidecar.state.cwd}`);
   }
   return { ...sidecar.state };
+}
+
+function getRuntimeSessionId(runtime) {
+  return runtime.runner.getSessionStats?.()?.sessionId ?? runtime.sessionState?.sessionId ?? null;
 }
 
 function syncSessionState(runtime, sessionId) {

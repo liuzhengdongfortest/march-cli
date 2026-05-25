@@ -53,17 +53,20 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
 
     const rendered = [];
     const baseUi = { textDelta: (text) => rendered.push(text), writeln: (text) => rendered.push(text), requestPermission: async () => true };
-    const outputRouter = createWorkspaceOutputRouter({ ui: baseUi, activeProjectId: projectA.projectId });
-    const uiA = outputRouter.createProjectUi(projectA.projectId);
-    const uiB = outputRouter.createProjectUi(projectB.projectId);
+    const outputRouter = createWorkspaceOutputRouter({ ui: baseUi, activeProjectId: projectA.projectId, activeSessionId: "s-a" });
+    const uiA = outputRouter.createProjectUi(projectA.projectId, () => "s-a");
+    const uiB = outputRouter.createProjectUi(projectB.projectId, () => "s-b");
+    const uiB2 = outputRouter.createProjectUi(projectB.projectId, () => "s-b2");
     uiA.textDelta("visible-a");
     uiB.textDelta("hidden-b");
+    uiB2.textDelta("hidden-b2");
     assert.deepEqual(rendered, ["visible-a"]);
-    assert.equal(outputRouter.getBufferedCalls(projectB.projectId)[0].method, "textDelta");
-    assert.equal(outputRouter.getBufferedCallCount(projectB.projectId), 1);
+    assert.equal(outputRouter.getBufferedCalls(projectB.projectId, "s-b")[0].method, "textDelta");
+    assert.equal(outputRouter.getBufferedCallCount(projectB.projectId, "s-b"), 1);
+    assert.equal(outputRouter.getBufferedCallCount(projectB.projectId, "s-b2"), 1);
     assert.equal(await uiB.requestPermission({ toolName: "edit" }), false);
-    outputRouter.setActiveProject(projectB.projectId);
-    assert.equal(outputRouter.replayBufferedCalls(projectB.projectId), 2);
+    outputRouter.setActiveSession(projectB.projectId, "s-b");
+    assert.equal(outputRouter.replayBufferedCalls(projectB.projectId, "s-b"), 2);
     uiB.textDelta("visible-b");
     assert.deepEqual(rendered, ["visible-a", "hidden-b", "visible-b"]);
 
@@ -92,8 +95,13 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
     assert.ok(summaries.some((runtime) => runtime.projectId === projectB.projectId && runtime.sessionId === "s-b"));
     await supervisor.startNewWorkspaceSession(projectB);
     assert.equal(viewSessionState.sessionId, "created-1");
+    const sameProjectOtherSession = { id: "s-b2", path: join(rootB, ".march", "pi-sessions", "s-b2.json") };
+    savePiSessionSidecarState({ projectMarchDir: join(rootB, ".march"), sessionRef: sameProjectOtherSession.path, state: { version: 1, cwd: resolve(rootB), turns: [] } });
+    supervisor.getActive().turnTask = Promise.resolve();
+    await assert.rejects(() => supervisor.activateWorkspaceSession({ project: projectB, session: sameProjectOtherSession }), /same-project concurrent sessions/);
+    supervisor.getActive().turnTask = null;
     await supervisor.dispose();
-    assert.deepEqual(disposed.sort(), [projectA.projectId, projectB.projectId].sort());
+    assert.deepEqual(disposed.sort(), [projectA.projectId, projectB.projectId, `memory:${projectA.projectId}`, `memory:${projectB.projectId}`].sort());
   } finally {
     cleanup(stateRoot);
     cleanup(rootA);
@@ -110,16 +118,30 @@ function mockRuntime({ project, cwd, sessionId, disposed, startNewSession = asyn
     sessionState: { sessionId, sessionDir: join(resolve(cwd), ".march", "sessions", sessionId) },
     sessionsRoot: join(resolve(cwd), ".march", "sessions"),
     projectMarchDir: join(resolve(cwd), ".march"),
-    runner: {
-      engine: { cwd: resolve(cwd) },
-      runtimeState: { engine: { cwd: resolve(cwd) } },
-      async switchPiSession(path) {
-        this.sessionPath = path;
-      },
-      startNewSession,
-      async dispose() {
-        disposed.push(project.projectId);
-      },
+    memoryStore: { close: () => disposed.push(`memory:${project.projectId}`) },
+    runner: mockRunner({ project, cwd, sessionId, disposed, startNewSession }),
+  };
+}
+
+function mockRunner({ project, cwd, sessionId, disposed, startNewSession }) {
+  let activeSessionId = sessionId;
+  return {
+    engine: { cwd: resolve(cwd) },
+    runtimeState: { engine: { cwd: resolve(cwd) } },
+    getSessionStats() {
+      return { sessionId: activeSessionId };
+    },
+    async switchPiSession(path) {
+      this.sessionPath = path;
+      activeSessionId = "s-b";
+    },
+    async startNewSession() {
+      const result = await startNewSession();
+      activeSessionId = result.sessionId;
+      return result;
+    },
+    async dispose() {
+      disposed.push(project.projectId);
     },
   };
 }

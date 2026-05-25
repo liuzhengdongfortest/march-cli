@@ -94,7 +94,7 @@ export async function handleSwitchCommand({ stateRoot, currentProjectId, project
     try {
       await workspaceSupervisor.activateWorkspaceSession({ project: item.project, session: item.session });
       restoreTranscriptFromSession(item.session, ui);
-      const replayed = ctxReplayBufferedOutput({ workspaceOutputRouter, projectId: item.project.projectId });
+      const replayed = ctxReplayBufferedOutput({ workspaceOutputRouter, projectId: item.project.projectId, sessionId: item.session.id });
       ui.writeln(`Switched to session: ${item.project.displayName} / ${item.session.name || item.session.id}${replayed ? ` (${replayed} buffered events replayed)` : ""}`);
       return { handled: true, refreshContextTokens: true, activeChanged: true };
     } catch (err) {
@@ -124,8 +124,8 @@ function annotateWorkspaceItems(items, runtimeSummaries) {
   });
 }
 
-function ctxReplayBufferedOutput({ workspaceOutputRouter, projectId }) {
-  return workspaceOutputRouter?.replayBufferedCalls?.(projectId) ?? 0;
+function ctxReplayBufferedOutput({ workspaceOutputRouter, projectId, sessionId }) {
+  return workspaceOutputRouter?.replayBufferedCalls?.(projectId, sessionId) ?? 0;
 }
 
 function restoreTranscriptFromSession(session, ui) {

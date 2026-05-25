@@ -19,26 +19,36 @@ const BACKGROUND_METHODS_TO_BUFFER = new Set([
   "writeln",
 ]);
 
-export function createWorkspaceOutputRouter({ ui, activeProjectId }) {
-  let active = activeProjectId ?? null;
+export function createWorkspaceOutputRouter({ ui, activeProjectId, activeSessionId = null }) {
+  let active = routeKey(activeProjectId, activeSessionId);
   const buffers = new Map();
 
   return {
     setActiveProject(projectId) {
-      active = projectId ?? null;
+      active = routeKey(projectId, null);
     },
-    getActiveProject() {
+    setActiveSession(projectId, sessionId) {
+      active = routeKey(projectId, sessionId);
+    },
+    getActiveRouteKey() {
       return active;
     },
-    createProjectUi(projectId) {
+    getActiveProject() {
+      return parseRouteKey(active).projectId;
+    },
+    createProjectUi(projectId, getSessionId = null) {
+      return this.createSessionUi({ projectId, getSessionId });
+    },
+    createSessionUi({ projectId, sessionId = null, getSessionId = null }) {
       return new Proxy({}, {
         get(_target, prop) {
           if (prop === "__projectId") return projectId;
           const value = ui[prop];
           if (typeof value !== "function") return value;
           return (...args) => {
-            if (projectId === active || !BACKGROUND_METHODS_TO_BUFFER.has(prop)) return value.apply(ui, args);
-            bufferBackgroundCall(projectId, prop, args);
+            const key = routeKey(projectId, typeof getSessionId === "function" ? getSessionId() : sessionId);
+            if (isActiveRoute(key) || !BACKGROUND_METHODS_TO_BUFFER.has(prop)) return value.apply(ui, args);
+            bufferBackgroundCall(key, prop, args);
             if (prop === "requestPermission") return false;
             return undefined;
           };
@@ -52,22 +62,30 @@ export function createWorkspaceOutputRouter({ ui, activeProjectId }) {
         },
       });
     },
-    getBufferedCalls(projectId) {
-      return [...(buffers.get(projectId) ?? [])];
+    getBufferedCalls(projectId, sessionId = null) {
+      return [...(buffers.get(routeKey(projectId, sessionId)) ?? [])];
     },
-    getBufferedCallCount(projectId) {
-      return buffers.get(projectId)?.length ?? 0;
+    getBufferedCallCount(projectId, sessionId = null) {
+      return buffers.get(routeKey(projectId, sessionId))?.length ?? 0;
     },
-    replayBufferedCalls(projectId) {
-      const calls = buffers.get(projectId) ?? [];
-      buffers.delete(projectId);
+    replayBufferedCalls(projectId, sessionId = null) {
+      const key = routeKey(projectId, sessionId);
+      const calls = buffers.get(key) ?? [];
+      buffers.delete(key);
       for (const call of calls) replayBufferedCall(call);
       return calls.length;
     },
-    clearBufferedCalls(projectId) {
-      buffers.delete(projectId);
+    clearBufferedCalls(projectId, sessionId = null) {
+      buffers.delete(routeKey(projectId, sessionId));
     },
   };
+
+  function isActiveRoute(key) {
+    if (key === active) return true;
+    const current = parseRouteKey(active);
+    const candidate = parseRouteKey(key);
+    return current.sessionId == null && current.projectId === candidate.projectId;
+  }
 
   function replayBufferedCall({ method, args }) {
     if (method === "requestPermission") return;
@@ -75,10 +93,19 @@ export function createWorkspaceOutputRouter({ ui, activeProjectId }) {
     if (typeof value === "function") value.apply(ui, args);
   }
 
-  function bufferBackgroundCall(projectId, method, args) {
-    const calls = buffers.get(projectId) ?? [];
+  function bufferBackgroundCall(key, method, args) {
+    const calls = buffers.get(key) ?? [];
     calls.push({ method, args, at: Date.now() });
     if (calls.length > 2000) calls.splice(0, calls.length - 2000);
-    buffers.set(projectId, calls);
+    buffers.set(key, calls);
   }
+}
+
+export function routeKey(projectId, sessionId = null) {
+  return `${projectId ?? ""}:${sessionId ?? ""}`;
+}
+
+function parseRouteKey(key) {
+  const [projectId, sessionId = ""] = String(key ?? "").split(":", 2);
+  return { projectId: projectId || null, sessionId: sessionId || null };
 }

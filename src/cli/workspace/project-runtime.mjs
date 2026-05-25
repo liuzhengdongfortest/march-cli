@@ -16,13 +16,13 @@ export async function createWorkspaceProjectRuntime({
   stateRoot,
   memoryRoot,
   profilePaths,
-  memoryStore,
+  createMemoryStore,
   provider,
   serviceTier,
   model,
   permissionMode,
   remoteMemorySources,
-  ui,
+  createUi,
   refreshStatusBar,
   onNotificationActivation = null,
 }) {
@@ -46,6 +46,8 @@ export async function createWorkspaceProjectRuntime({
   const sessionState = { sessionId: Date.now().toString(36), sessionDir: null };
   sessionState.sessionDir = join(sessionsRoot, sessionState.sessionId);
   const contextDumpRoot = resolve(projectMarchDir, "context-dumps", sessionState.sessionId);
+  const memoryStore = createMemoryStore();
+  const ui = createUi(sessionState);
   const runner = await createRuntimeRunner({
     runnerOptions: {
       cwd,

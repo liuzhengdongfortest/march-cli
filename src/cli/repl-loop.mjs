@@ -104,8 +104,8 @@ export async function runInteractiveRepl({
       trimmed = templateResult.prompt;
     }
 
-    if (workspaceSupervisor?.hasRunningTurn?.()) {
-      ui.writeln("A session is still running. Use /switch to inspect sessions; starting another turn while one is running is not enabled yet.");
+    if (turnActive.turnTask) {
+      ui.writeln("This session is still running. Use /switch to start or inspect another session.");
       continue;
     }
 
@@ -115,6 +115,7 @@ export async function runInteractiveRepl({
       ui,
       refreshStatusBar,
       setTurnRunning,
+      workspaceSupervisor,
       modeState,
     });
   }
@@ -156,7 +157,7 @@ function handleInlineCommand(trimmed, { cwd, ui, lastInlineShellCommand }) {
   return { type: "none" };
 }
 
-function startReplTurn({ runtime, prompt, ui, refreshStatusBar, setTurnRunning, modeState = null }) {
+function startReplTurn({ runtime, prompt, ui, refreshStatusBar, setTurnRunning, workspaceSupervisor = null, modeState = null }) {
   const turnUi = runtime.ui ?? ui;
   const task = runReplTurn({
     prompt,
@@ -169,6 +170,7 @@ function startReplTurn({ runtime, prompt, ui, refreshStatusBar, setTurnRunning, 
     modeState,
   }).finally(() => {
     if (runtime.turnTask === task) runtime.turnTask = null;
+    setTurnRunning(Boolean(workspaceSupervisor?.hasRunningTurn?.()));
   });
   runtime.turnTask = task;
 }

@@ -88,8 +88,8 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
     shellRuntime,
     historyStore: inputHistoryStore,
   });
-  const outputRouter = createWorkspaceOutputRouter({ ui, activeProjectId: currentProjectInfo.projectId });
-  const runtimeUi = outputRouter.createProjectUi(currentProjectInfo.projectId);
+  const outputRouter = createWorkspaceOutputRouter({ ui, activeProjectId: currentProjectInfo.projectId, activeSessionId: sessionState.sessionId });
+  const runtimeUi = outputRouter.createProjectUi(currentProjectInfo.projectId, () => sessionState.sessionId);
   let turnRunning = false;
   let refreshStatusBar = null;
   const runnerOptions = {
@@ -157,17 +157,17 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
       stateRoot,
       memoryRoot,
       profilePaths,
-      memoryStore,
+      createMemoryStore: () => new MarkdownMemoryStore({ root: memoryRoot }),
       provider,
       serviceTier,
       model,
       permissionMode,
       remoteMemorySources,
-      ui: outputRouter.createProjectUi(project.projectId),
+      createUi: (runtimeSessionState) => outputRouter.createProjectUi(project.projectId, () => runtimeSessionState.sessionId),
       refreshStatusBar: (...args) => refreshStatusBar?.(...args),
       onNotificationActivation,
     }),
-    onActivate: ({ projectId }) => outputRouter.setActiveProject(projectId),
+    onActivate: ({ projectId, sessionId }) => outputRouter.setActiveSession(projectId, sessionId),
   });
   runner = workspaceSupervisor.runner;
 
@@ -200,6 +200,7 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
     projectMarchDir,
     ui,
   });
+  outputRouter.setActiveSession(currentProjectInfo.projectId, sessionState.sessionId);
   refreshStatusBar();
 
   return {
@@ -238,6 +239,6 @@ async function handleNotificationActivation({ activation, stateRoot, workspaceSu
     projectId: activation.projectId,
     sessionId: activation.sessionId,
   });
-  outputRouter?.replayBufferedCalls?.(activation.projectId);
+  outputRouter?.replayBufferedCalls?.(activation.projectId, activation.sessionId);
   ui.writeln(`Activated session from notification: ${runtime.project.displayName}`);
 }
