@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,6 +14,8 @@ import { installNetworkEnvironment } from "./network/environment.mjs";
 import { runEarlyCliCommand } from "./cli/startup/early-command.mjs";
 import { maybeRunGatewayDaemonCommand } from "./cli/startup/gateway-daemon-command.mjs";
 
+const { version: packageVersion } = createRequire(import.meta.url)("../package.json");
+
 export async function run(argv) {
   const cwd = process.cwd();
   loadDotEnv(cwd);
@@ -21,6 +24,10 @@ export async function run(argv) {
   const args = parseCliArgs(argv);
   if (args.help) {
     showHelp();
+    return 0;
+  }
+  if (args.version) {
+    process.stdout.write(`${packageVersion}\n`);
     return 0;
   }
 

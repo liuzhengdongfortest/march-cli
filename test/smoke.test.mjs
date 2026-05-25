@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
+import { createRequire } from "node:module";
 import { runAuthStorageSmoke } from "./auth-storage.smoke.mjs";
 import { runCliCommandSuiteSmoke } from "./cli-command-suite.smoke.mjs";
 import { runContextSessionStatusSmoke } from "./context-session-status.smoke.mjs";
@@ -69,6 +70,8 @@ import { runWebToolsSmoke } from "./web-tools.smoke.mjs";
 import { runWorkspaceRegistrySmoke } from "./workspace-registry.smoke.mjs";
 import { FakeTerminal } from "./helpers/fake-terminal.mjs";
 
+const { version: packageVersion } = createRequire(import.meta.url)("../package.json");
+
 // Minimal mocks for smoke testing without DEEPSEEK_API_KEY
 
 const verboseSmoke = process.env.MARCH_SMOKE_VERBOSE === "1";
@@ -127,8 +130,13 @@ function stripTerminalControls(text) {
   assert.equal(args.prompt, "hello world");
   assert.equal(args.command, null);
   assert.equal(args.help, false);
+  assert.equal(args.version, false);
   assert.equal(args.piSessions, false);
   assert.equal(args.piRuntimeHost, false);
+
+  const versionArgs = parseCliArgs(["--version"]);
+  assert.equal(versionArgs.version, true);
+  assert.equal(parseCliArgs(["-v"]).version, true);
 
   const piSessions = parseCliArgs(["--pi-sessions", "--pi-runtime-host", "--shell-runtime"]);
   assert.equal(piSessions.piSessions, true);
@@ -141,6 +149,20 @@ function stripTerminalControls(text) {
   assert.equal(defaults.command, null);
 
   assert.throws(() => parseCliArgs(["--permission-mode", "default"]), /Unknown option/);
+
+  const { run } = await import("../src/main.mjs");
+  const originalWrite = process.stdout.write;
+  let versionOutput = "";
+  process.stdout.write = (chunk) => {
+    versionOutput += String(chunk);
+    return true;
+  };
+  try {
+    assert.equal(await run(["--version"]), 0);
+  } finally {
+    process.stdout.write = originalWrite;
+  }
+  assert.equal(versionOutput, `${packageVersion}\n`);
 
   const noShellRuntime = parseCliArgs(["--no-shell-runtime"]);
   assert.equal(noShellRuntime.shellRuntime, false);

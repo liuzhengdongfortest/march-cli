@@ -26,6 +26,7 @@ export function parseCliArgs(argv) {
       workspace: { type: "string" },
       dev: { type: "boolean" },
       help: { type: "boolean", short: "h" },
+      version: { type: "boolean", short: "v" },
     },
     allowPositionals: true,
   });
@@ -55,6 +56,7 @@ export function parseCliArgs(argv) {
     workspace: values.workspace ?? null,
     dev: values.dev ?? false,
     help: values.help ?? false,
+    version: values.version ?? false,
     prompt: commandName ? "" : positionals.join(" "),
   };
 }
@@ -105,5 +107,6 @@ Options:
   --name <name>        With memory serve/add, remote memory source name
   --foreground         With memory serve, run server in current process
   -h, --help           Show this help
+  -v, --version        Show the March CLI version
 `);
 }
