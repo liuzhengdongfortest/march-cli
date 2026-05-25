@@ -23,7 +23,7 @@ export function formatPiSessionList(sessions) {
     const savedAt = session.savedAt?.slice(0, 19) ?? "?";
     return `  ${session.id}  ${session.turnCount}m  ${savedAt}  ${label}`;
   });
-  lines.push("(pi JSONL session files; use /session to restore a previous session)");
+  lines.push("(pi JSONL session files)");
   return lines;
 }
 

@@ -3,10 +3,10 @@ import { mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
-  console.log("--- smoke: workspace project registry and switcher model ---");
+  console.log("--- smoke: workspace project registry and session selector model ---");
   const { registerProject, listRegisteredProjects } = await import("../src/workspace/project-registry.mjs");
   const { buildWorkspaceSessionSelectItems, listWorkspaceSessions, workspaceSessionSearchText } = await import("../src/workspace/session-index.mjs");
-  const { handleProjectCommand, parseProjectCommand } = await import("../src/cli/workspace/command.mjs");
+  const { WORKSPACE_SLASH_COMMANDS, handleProjectCommand, parseProjectCommand } = await import("../src/cli/workspace/command.mjs");
   const { createWorkspaceSessionSupervisor } = await import("../src/workspace/supervisor.mjs");
   const { createWorkspaceOutputRouter } = await import("../src/cli/workspace/output-router.mjs");
   const { savePiSessionSidecarState } = await import("../src/session/sidecar.mjs");
@@ -47,6 +47,8 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
     assert.deepEqual(parseProjectCommand("/project"), { type: "list" });
     assert.deepEqual(parseProjectCommand("/project add C:/repo/demo"), { type: "add", path: "C:/repo/demo" });
     assert.deepEqual(parseProjectCommand("/project remove x"), { type: "none" });
+    assert.equal(WORKSPACE_SLASH_COMMANDS.some((command) => command.match("/session")), true);
+    assert.equal(WORKSPACE_SLASH_COMMANDS.some((command) => command.match("/switch")), false);
 
     const lines = await handleProjectCommand({ type: "add", path: rootB }, { stateRoot });
     assert.ok(lines.join("\n").includes("Registered project"));

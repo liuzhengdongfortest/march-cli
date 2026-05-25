@@ -105,7 +105,7 @@ export async function runInteractiveRepl({
     }
 
     if (turnActive.turnTask) {
-      ui.writeln("This session is still running. Use /switch to start or inspect another session.");
+      ui.writeln("This session is still running. Use /session to start or inspect another session.");
       continue;
     }
 

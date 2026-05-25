@@ -227,10 +227,9 @@ function parsedCommand({ names, metadata, parse, run }) {
 function sessionSourceCommand() {
   return {
     metadata: [
-      { name: "session", description: "Open previous session selector" },
       { name: "save", description: "Show auto-save status" },
     ],
-    match: (trimmed) => (trimmed === "/session" || trimmed === "/save") ? { parsed: { trimmed } } : null,
+    match: (trimmed) => trimmed === "/save" ? { parsed: { trimmed } } : null,
     run: async (ctx, { trimmed }) => handleSessionSourceCommand(trimmed, ctx),
   };
 }
@@ -284,7 +283,7 @@ function writeLines(ui, lines) {
 export function formatHelpLines() {
   return [
     `Commands: ${getHelpCommandSyntaxes().join(", ")}`,
-    "Sessions: /session opens previous sessions and restores the selected one.",
+    "Sessions: /session opens the workspace session selector.",
     "Shortcuts: Tab = toggle Do/Discuss, Esc = abort turn, Ctrl+C = abort turn / press twice to exit when idle, Ctrl+O = toggle tool output, Alt+S = shell pane, Alt+N = next shell, Alt+K/J = shell scroll, PageUp/PageDown = output scroll, Ctrl+G = external editor, Shift+Tab = thinking selector, Ctrl+T = thinking selector, Ctrl+L = model selector",
   ];
 }

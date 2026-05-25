@@ -12,7 +12,7 @@ export async function runHelpCommandSmoke() {
   assert.ok(text.includes("/do"));
   assert.ok(text.includes("/discuss"));
   assert.ok(text.includes("/mode"));
-  assert.ok(text.includes("restores the selected one"));
+  assert.ok(text.includes("opens the workspace session selector"));
   assert.ok(!text.includes("/resume-pi"));
   assert.ok(!text.includes("/clone-pi"));
   assert.ok(!text.includes("/fork-pi"));

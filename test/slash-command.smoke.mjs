@@ -30,7 +30,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
       turns: [{ index: 1, userMessage: "slash pi", assistantMessage: "ok" }],
     },
   });
-  let restored = null;
+
   let providerQuotaRefreshCount = 0;
   const providerQuota = { limits: [{ windows: [{ label: "5h", remainingPercent: 58 }] }] };
   const runner = {
@@ -42,7 +42,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
       turns: [{ assistantMessage: "previous answer" }],
       sessionName: "",
       setSessionName(name) { this.sessionName = name; },
-      restoreSession(state) { restored = state; },
+      restoreSession() {},
     },
     getAvailableThinkingLevels: () => ["off", "medium", "high"],
     getThinkingLevel: () => "high",
@@ -237,8 +237,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.ok(output.join("\n").includes("Use /model without arguments"));
   const session = await handleSlashCommand("/session", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(session.handled, true);
-  assert.ok(output.join("\n").includes("Resumed pi session: pi-slash"));
-  assert.equal(restored.turns[0].assistantMessage, "ok");
+  assert.ok(output.join("\n").includes("Session selector is not available: workspace registry is missing."));
   const shellList = await handleSlashCommand("/shell", { ui, runner, sessionState, sessionsRoot, projectMarchDir });
   assert.equal(shellList.handled, true);
   assert.ok(output.join("\n").includes("Shells:"));
@@ -273,6 +272,7 @@ export async function runSlashCommandSmoke({ setupTmp, cleanup }) {
   assert.equal((await handleSlashCommand("/compact", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
   assert.equal((await handleSlashCommand("/mouse", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, true);
   assert.equal(output.at(-1), "Mouse selection is always enabled.");
+  assert.equal((await handleSlashCommand("/switch", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
   assert.equal((await handleSlashCommand("/sessions", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
   assert.equal((await handleSlashCommand("/resume pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);
   assert.equal((await handleSlashCommand("/fork-pi", { ui, runner, sessionState, sessionsRoot, projectMarchDir })).handled, false);

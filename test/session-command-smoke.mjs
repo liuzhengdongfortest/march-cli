@@ -80,7 +80,7 @@ export async function runSessionListCommandSmoke() {
     savedAt: "2026-05-10T00:00:00.000Z",
     turnCount: 2,
     firstMessage: "hello pi",
-  }]).some((line) => line.includes("/session") && line.includes("restore a previous session")));
+  }]).some((line) => line.includes("pi JSONL session files")));
   const piTree = formatPiSessionTree([
     {
       id: "parent",

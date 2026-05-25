@@ -3,7 +3,6 @@ import { resolve } from "node:path";
 import { brightBlack } from "../tui/ui-theme.mjs";
 import { registerProject, listRegisteredProjects } from "../../workspace/project-registry.mjs";
 import { buildWorkspaceSessionSelectItems, listWorkspaceSessions, workspaceSessionSearchText } from "../../workspace/session-index.mjs";
-import { resumePiSessionById } from "../session/pi-session-switch-command.mjs";
 import { loadPiSessionTranscriptTurns } from "../../session/transcript.mjs";
 
 export const WORKSPACE_SLASH_COMMANDS = [
@@ -19,9 +18,9 @@ export const WORKSPACE_SLASH_COMMANDS = [
     run: async (ctx, command) => writeLines(ctx.ui, await handleProjectCommand(command, ctx)),
   },
   {
-    metadata: [{ name: "switch", description: "Open cross-project session switcher" }],
-    match: (trimmed) => trimmed === "/switch" ? { parsed: { type: "switch" } } : null,
-    run: handleSwitchCommand,
+    metadata: [{ name: "session", description: "Open workspace session selector" }],
+    match: (trimmed) => trimmed === "/session" ? { parsed: { type: "session" } } : null,
+    run: handleSessionCommand,
   },
 ];
 
@@ -45,9 +44,9 @@ export async function handleProjectCommand(command, { stateRoot }) {
   return ["Registered projects:", ...projects.map((project) => `- ${project.displayName}  ${brightBlack(project.rootPath)}`)];
 }
 
-export async function handleSwitchCommand({ stateRoot, currentProjectId, projectMarchDir, runner, workspaceSupervisor, workspaceOutputRouter, ui }) {
+export async function handleSessionCommand({ stateRoot, currentProjectId, runner, workspaceSupervisor, workspaceOutputRouter, ui }) {
   if (!stateRoot) {
-    ui.writeln("Session switcher is not available: workspace registry is missing.");
+    ui.writeln("Session selector is not available: workspace registry is missing.");
     return { handled: true };
   }
   const projects = await listWorkspaceSessions({ stateRoot, currentProjectId });
@@ -59,7 +58,7 @@ export async function handleSwitchCommand({ stateRoot, currentProjectId, project
     return { handled: true };
   }
   if (!ui.selectList) {
-    ui.writeln("Session switcher is only available in TUI.");
+    ui.writeln("Session selector is only available in TUI.");
     return { handled: true };
   }
   const selectedIndex = Math.max(0, items.findIndex((item) => item.project.current && item.session?.id === currentSessionId));
@@ -102,16 +101,8 @@ export async function handleSwitchCommand({ stateRoot, currentProjectId, project
       return { handled: true };
     }
   }
-  if (!item.project.current) {
-    ui.writeln(`Project switch target indexed: ${item.project.displayName}`);
-    ui.writeln(brightBlack("Cross-project attach requires the workspace supervisor."));
-    return { handled: true };
-  }
-  const sessions = projects.find((project) => project.current)?.sessions ?? [];
-  const lines = await resumePiSessionById(item.session.id, { runner, sessions, projectMarchDir });
-  if (isResumeSuccess(lines)) restoreTranscriptFromSession(item.session, ui);
-  for (const line of lines) ui.writeln(line);
-  return { handled: true, refreshContextTokens: isResumeSuccess(lines) };
+  ui.writeln("Workspace session activation requires the workspace supervisor.");
+  return { handled: true };
 }
 
 function annotateWorkspaceItems(items, runtimeSummaries) {
@@ -140,8 +131,4 @@ function restoreTranscriptFromSession(session, ui) {
 function writeLines(ui, lines) {
   for (const line of lines) ui.writeln(line);
   return { handled: true };
-}
-
-function isResumeSuccess(lines) {
-  return Array.isArray(lines) && lines.some((line) => String(line).startsWith("Resumed pi session:"));
 }
