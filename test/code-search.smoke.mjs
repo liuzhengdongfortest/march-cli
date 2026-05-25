@@ -48,6 +48,11 @@ export async function runCodeSearchSmoke({ setupTmp, cleanup }) {
     assert.equal(python.results[0].kind, "class");
     assert.deepEqual(python.results[0].symbols, ["TokenIssuer"]);
 
+    const lexicalOnlyCache = new CodeSearchIndexCache({ vectorizer: new FailingVectorizer() });
+    const lexicalOnly = await searchCode({ root, query: "issueSessionToken", top_k: 1, mode: "lexical", cache: lexicalOnlyCache });
+    assert.equal(lexicalOnly.results[0].file_path, "src/auth-service.mjs");
+    assert.equal(lexicalOnly.stats.vectorizer_status, "primary");
+
     assert.ok(result.stats.indexed_files >= 1);
     assert.equal(result.stats.reused_index, false);
 

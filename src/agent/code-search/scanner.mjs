@@ -26,19 +26,18 @@ export async function scanCodeFiles({ root, path = ".", maxFiles = DEFAULT_MAX_F
     let info;
     try { info = await stat(absPath); } catch { continue; }
     if (!info.isFile() || info.size > maxFileBytes) continue;
-    const content = await readUtf8Text(absPath);
-    if (content === null) continue;
+    if (await isSymlink(absPath)) continue;
     files.push({
       absPath,
       relPath: relPath.replace(/\\/g, "/"),
       language: languageForPath(relPath),
-      content,
       size: info.size,
       mtimeMs: info.mtimeMs,
     });
   }
   return files;
 }
+
 
 async function listCandidateFiles(root, base) {
   const fromRipgrep = await listRipgrepFiles(root, base);
@@ -72,13 +71,20 @@ async function listFilesRecursively(root, dir) {
   return files;
 }
 
-async function readUtf8Text(path) {
+export async function readCodeFileContent(path) {
   try {
-    if ((await lstat(path)).isSymbolicLink()) return null;
     const buffer = await readFile(path);
     if (buffer.includes(0)) return null;
     return buffer.toString("utf8");
   } catch {
     return null;
+  }
+}
+
+async function isSymlink(path) {
+  try {
+    return (await lstat(path)).isSymbolicLink();
+  } catch {
+    return true;
   }
 }

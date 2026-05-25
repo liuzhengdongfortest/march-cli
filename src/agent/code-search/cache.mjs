@@ -1,12 +1,13 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { chunkFile } from "./chunker.mjs";
+import { readCodeFileContent } from "./scanner.mjs";
 import { Bm25Index } from "./retrieval/bm25.mjs";
 import { describeVectorizer } from "./retrieval/resilient-vectorizer.mjs";
 import { LocalVectorIndex, defaultVectorizer } from "./retrieval/vector.mjs";
 
 const DEFAULT_MAX_FILE_ENTRIES = 8_000;
-const DEFAULT_MAX_INDEX_ENTRIES = 24;
+const DEFAULT_MAX_INDEX_ENTRIES = 6;
 
 export class CodeSearchIndexCache {
   constructor({
@@ -25,7 +26,7 @@ export class CodeSearchIndexCache {
     this.dirty = false;
   }
 
-  async build(files) {
+  async build(files, { includeVector = true } = {}) {
     await this.load();
     const chunks = [];
     let reusedFiles = 0;
@@ -39,7 +40,9 @@ export class CodeSearchIndexCache {
         reusedFiles += 1;
         continue;
       }
-      const fileChunks = await chunkFile(file);
+      const content = await readCodeFileContent(file.absPath);
+      if (content === null) continue;
+      const fileChunks = await chunkFile({ ...file, content });
       this.fileChunks.set(key, { signature, chunks: fileChunks });
       this.dirty = true;
       chunks.push(...fileChunks);
@@ -49,7 +52,7 @@ export class CodeSearchIndexCache {
     this.pruneFileCache();
     await this.persist();
 
-    const indexSignature = [this.vectorizer.id, ...files.map(fileSignature)].join("\n");
+    const indexSignature = this.indexSignature(files, { includeVector });
     const cachedIndex = this.indices.get(indexSignature);
     if (cachedIndex) {
       this.indices.delete(indexSignature);
@@ -59,11 +62,16 @@ export class CodeSearchIndexCache {
 
     const index = {
       lexical: new Bm25Index(chunks),
-      vector: await LocalVectorIndex.create(chunks, { vectorizer: this.vectorizer }),
+      vector: includeVector ? await LocalVectorIndex.create(chunks, { vectorizer: this.vectorizer }) : null,
     };
     this.indices.set(indexSignature, index);
     this.pruneIndexCache();
     return { chunks, index, reusedFiles, indexedFiles, reusedIndex: false, ...describeVectorizer(this.vectorizer) };
+  }
+
+  indexSignature(files, { includeVector }) {
+    const vectorKey = includeVector ? this.vectorizer.id : "lexical";
+    return [vectorKey, ...files.map(fileSignature)].join("\n");
   }
 
   clear() {

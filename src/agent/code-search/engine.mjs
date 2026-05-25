@@ -22,7 +22,7 @@ export async function searchCode(options = {}) {
   if (!normalizedQuery && !related_to) return { results: [], stats: { files: 0, chunks: 0 } };
 
   const files = await scanCodeFiles({ root, path });
-  const built = await activeCache.build(files);
+  const built = await activeCache.build(files, { includeVector: needsVectorIndex({ mode, related_to }) });
   const related = related_to ? relatedQuery(built.chunks, related_to, normalizedQuery) : null;
   const queryText = related?.query ?? normalizedQuery;
   const retrieved = await retrieveChunks(built.index, queryText, mode);
@@ -38,12 +38,17 @@ export async function searchCode(options = {}) {
 async function retrieveChunks(index, queryText, mode) {
   const lexical = index.lexical.search(queryText, { limit: RETRIEVAL_LIMIT });
   if (mode === "lexical" || mode === "symbol") return lexical;
-  const semantic = await index.vector.search(queryText, { limit: RETRIEVAL_LIMIT });
+  const semantic = index.vector ? await index.vector.search(queryText, { limit: RETRIEVAL_LIMIT }) : [];
   if (mode === "semantic") return semantic;
   return rrfFuse([
     { results: lexical, weight: 1.2 },
     { results: semantic, weight: 1 },
   ], { limit: RETRIEVAL_LIMIT });
+}
+
+function needsVectorIndex({ mode, related_to }) {
+  if (related_to) return true;
+  return mode !== "lexical" && mode !== "symbol";
 }
 
 function resultMode({ related_to, mode }) {
