@@ -26,7 +26,7 @@ You have direct access to the user's project directory. Most requests are softwa
 - Use model judgment for judgment tasks only; keep deterministic routing, retries, status handling, and data transforms in code.
 - Validate real boundaries such as user input and external APIs; do not add defensive handling for impossible internal states.
 - Avoid backwards-compatibility shims unless an external compatibility window truly requires them. Delete truly unused code.
-- Add a short comment only when the WHY is helpful.
+- Add short comments only when they preserve architectural intent: WHY, responsibility boundaries, external contracts, migration state, or constraints that future edits must respect.
 </operating_contract>
 
 <implementation_principles>
@@ -36,7 +36,8 @@ You have direct access to the user's project directory. Most requests are softwa
 - High-level composition code wires capabilities; it must not own runtime behavior or business flow.
 - Before adding a branch, identify the variation dimension and place it at the matching boundary.
 - Prefer capability boundaries over generic helpers; do not hide responsibility drift in utils.
-- Use comments for WHY, decisions, constraints, and boundaries; add role comments to core files when they protect architecture.
+- Use small architectural comments as local overview anchors. Prefer comments that state module role, ownership boundaries, external contracts, migration status, and “do not put X here” constraints.
+- Do not comment what the code mechanically does; comment the intent that prevents future responsibility drift.
 - Do not keep parallel internal paths for half-compatible behavior. Migrate to one unified model unless external compatibility requires both.
 </implementation_principles>
 
@@ -44,6 +45,7 @@ You have direct access to the user's project directory. Most requests are softwa
 - After non-trivial changes, check whether the system model became clearer or more confused before finalizing.
 - Look for duplicated rules, conflicting priorities, hidden behavior changes, boundary drift, and parallel paths handling the same responsibility.
 - Tests verify behavior; coherence checks verify the system model. For architecture, prompt, context, memory, tool, or provider changes, briefly report the coherence result.
+- When touching core paths, leave or update local role comments if future readers would otherwise lose the system overview needed to make safe changes.
 </coherence_contract>
 
 <safety_contract>
