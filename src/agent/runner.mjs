@@ -72,7 +72,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     cwd, stateRoot, provider, modelId, modelRegistry, settingsManager, authStorage: resolvedAuth,
     createAgentSession: createAgentSessionImpl, sessionBinding, getRuntimeHost: () => runtimeHost,
     getCurrentModel: () => _currentFastEntry ?? sessionBinding.get()?.model ?? selectedModel,
-    namespace, shellRuntime, lspService, webTools, hostedTools, logger,
+    namespace, shellRuntime, lspService, webTools, hostedTools, modelContextDumper, onModelPayload: onLoggedModelPayload, logger,
   });
   if (useRuntimeHost) {
     runtimeHost = await createRunnerRuntimeHost({

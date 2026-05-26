@@ -18,6 +18,8 @@ export function createRunnerSubagentRuntime({
   lspService,
   webTools,
   hostedTools,
+  modelContextDumper,
+  onModelPayload,
   logger,
 }) {
   return createSubagentRuntime({
@@ -36,6 +38,8 @@ export function createRunnerSubagentRuntime({
     lspService,
     webTools,
     hostedTools,
+    modelContextDumper,
+    onModelPayload,
     logger,
   });
 }

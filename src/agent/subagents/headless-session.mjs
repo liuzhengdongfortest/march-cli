@@ -2,6 +2,7 @@ import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { ContextEngine } from "../../context/engine.mjs";
 import { createSessionBinding } from "../session/session-binding.mjs";
 import { resolveRunnerSessionOptions } from "../session/session-options.mjs";
+import { installModelPayloadDumper } from "../model-payload-dumper.mjs";
 import { createMarchPiContextExtension } from "../runner/context/pi-context-extension.mjs";
 import { createMarchPiResourceLoader } from "../runtime/resource/context-resource-loader.mjs";
 import { buildInitialPiPrompt, resetPiMessageHistory } from "../turn/pi-turn-context.mjs";
@@ -19,11 +20,14 @@ export async function runHeadlessSubagentSession({
   definition,
   prompt,
   parentSessionId = null,
+  jobId = null,
   namespace = "subagent",
   shellRuntime = null,
   lspService = null,
   webTools = [],
   hostedTools = {},
+  modelContextDumper = null,
+  onModelPayload = null,
   logger = null,
   signal = null,
 }) {
@@ -80,6 +84,14 @@ export async function runHeadlessSubagentSession({
     sessionManager: SessionManager.inMemory(cwd),
   });
   childBinding.set(session);
+  installModelPayloadDumper(
+    session,
+    modelContextDumper,
+    () => `subagent-${definition.name}`,
+    onModelPayload,
+    null,
+    () => ({ subagent_type: definition.name, subagent_job_id: jobId, parent_session_id: parentSessionId })
+  );
 
   const turnState = createTurnEventState();
   const silentUi = createSilentUi();

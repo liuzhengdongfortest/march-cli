@@ -1,13 +1,19 @@
 import { strict as assert } from "node:assert";
+import { mkdirSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { SettingsManager } from "@earendil-works/pi-coding-agent";
 
 export async function runSubagentsSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: subagent runtime and tools ---");
   const { createSubagentRuntime } = await import("../src/agent/subagents/runtime.mjs");
   const { createSubagentTools } = await import("../src/agent/subagents/tools.mjs");
+  const { createModelContextDumper } = await import("../src/debug/model-context-dumper.mjs");
 
   const dir = setupTmp();
   const created = [];
+  const payloadEvents = [];
+  const dumpRoot = join(dir, "dumps");
+  mkdirSync(dumpRoot, { recursive: true });
   try {
     const runtime = createSubagentRuntime({
       cwd: dir,
@@ -18,6 +24,9 @@ export async function runSubagentsSmoke({ setupTmp, cleanup }) {
       settingsManager: SettingsManager.inMemory({ compaction: { enabled: false } }),
       authStorage: {},
       getCurrentModel: () => ({ id: "model", provider: "test" }),
+      getParentSessionId: () => "parent-session",
+      modelContextDumper: createModelContextDumper({ enabled: true, rootDir: dumpRoot }),
+      onModelPayload: (event) => payloadEvents.push(event),
       createAgentSession: async (options) => {
         created.push(options);
         assert.ok(options.tools.includes("read"));
@@ -55,6 +64,13 @@ export async function runSubagentsSmoke({ setupTmp, cleanup }) {
 
     const status = await tools[1].execute("call", {});
     assert.equal(status.details.length, 2);
+    assert.equal(payloadEvents[0].metadata.subagent_type, "explore");
+    assert.equal(payloadEvents[0].metadata.parent_session_id, "parent-session");
+    const dumpFiles = readdirSync(dumpRoot);
+    assert.ok(dumpFiles.some((file) => file.includes("subagent-explore") && file.endsWith(".md")));
+    const payloadFile = dumpFiles.find((file) => file.includes("subagent-explore") && file.endsWith("-payload.json"));
+    assert.ok(payloadFile);
+    assert.match(readFileSync(join(dumpRoot, payloadFile), "utf8"), /subagent payload/);
     runtime.dispose();
   } finally {
     cleanup(dir);
@@ -78,6 +94,7 @@ function createFakeSubagentSession(reply) {
     },
     async prompt(prompt) {
       assert.match(prompt, /\[delegated_task\]/);
+      await this.agent.onPayload({ messages: [{ role: "user", content: "subagent payload" }], tools: [{ name: "read" }] }, this.model);
       subscriber?.({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: reply } });
       subscriber?.({ type: "message_end", message: { role: "assistant", stopReason: "end_turn" } });
     },

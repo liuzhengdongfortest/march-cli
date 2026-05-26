@@ -4,7 +4,7 @@ export { appendProviderUserMessage, replaceProviderContextMessages, replaceProvi
 
 const MODEL_PAYLOAD_DUMPER_INSTALLED = Symbol("march.modelPayloadDumperInstalled");
 
-export function installModelPayloadDumper(session, modelContextDumper, getKind = () => "model", onModelPayload = null, transformPayload = null) {
+export function installModelPayloadDumper(session, modelContextDumper, getKind = () => "model", onModelPayload = null, transformPayload = null, getMetadata = null) {
   if ((!modelContextDumper?.enabled && typeof onModelPayload !== "function" && typeof transformPayload !== "function") || !session?.agent) return;
   const agent = session.agent;
   if (agent[MODEL_PAYLOAD_DUMPER_INSTALLED]) return;
@@ -16,20 +16,22 @@ export function installModelPayloadDumper(session, modelContextDumper, getKind =
     const effectivePayload = typeof transformPayload === "function"
       ? await transformPayload(originalEffectivePayload, { kind, model })
       : originalEffectivePayload;
+    const metadata = {
+      provider: model?.provider,
+      model: model?.id,
+      payload: "provider_request",
+      ...(typeof getMetadata === "function" ? getMetadata({ kind, model, payload: effectivePayload }) : null),
+    };
     onModelPayload?.({
       payload: effectivePayload,
       model,
       kind,
+      metadata,
       estimatedTokens: estimateProviderPayloadTokens(effectivePayload),
     });
     if (!modelContextDumper?.enabled) {
       return effectivePayload !== originalEffectivePayload ? effectivePayload : replacement;
     }
-    const metadata = {
-      provider: model?.provider,
-      model: model?.id,
-      payload: "provider_request",
-    };
     const requestPath = modelContextDumper.dump({
       kind,
       prompt: formatHumanPayload(effectivePayload),
