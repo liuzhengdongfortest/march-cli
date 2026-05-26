@@ -45,6 +45,13 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   store.scan({ force: true });
   assert.equal(store.open("mem_legacytitle").path, legacyPath);
 
+  const releaseEntry = store.save({
+    name: "March CLI release flow",
+    description: "When the user says 发布一个版本, recall the March CLI npm and GitHub Release publishing checklist.",
+    body: "Run tests, pack dry-run, publish, and verify the registry.",
+    tags: ["march-cli", "release"],
+  });
+
   store.beginTurn();
   const userHints = await store.recallForUser("我们继续讨论 rolling suppression window", { currentProject: "march-cli" });
   assert.equal(userHints.length, 1);
@@ -130,6 +137,12 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   assert.match(store.lastUserRecallReport.warning, /using local hashing fallback|fixture download failed/);
   assert.ok(formatRecallLines(fallbackHints, store.lastUserRecallReport)[0].includes("fallback"));
   store.semanticRecall.vectorizer = warmupVectorizer;
+
+  store.beginTurn();
+  const lexicalHints = await store.recallForUser("帮我发布一个版本", { currentProject: "march-cli" });
+  assert.equal(lexicalHints[0].id, releaseEntry.id);
+  assert.equal(store.lastUserRecallReport.candidates[0].recalled, true);
+  store.endTurn();
 
   store.beginTurn();
   const suppressed = await store.recallForUser("rolling suppression", { currentProject: "march-cli", excludedIds: [entry.id] });

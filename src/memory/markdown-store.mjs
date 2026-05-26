@@ -8,6 +8,7 @@ import {
   walkMarkdownFiles,
 } from "./markdown/markdown-format.mjs";
 import { toHint } from "./markdown/markdown-recall.mjs";
+import { lexicalRecall, mergeRecallRankings, toRecallCandidates } from "./markdown/lexical-recall.mjs";
 import { SemanticMemoryRecallIndex } from "./markdown/semantic-recall.mjs";
 import { clearMarkdownMemoryIndex, loadMarkdownMemoryIndex, openMarkdownMemoryIndex, replaceMarkdownMemoryIndex } from "./markdown/sqlite-index.mjs";
 import { softDeleteMemoryFile } from "./markdown/markdown-delete.mjs";
@@ -202,20 +203,24 @@ export class MarkdownMemoryStore {
     return result;
   }
 
-  async #recallSemantic(text, { limit, excluded, candidateLimit, recordReport = true, returnReport = false }) {
+  async #recallSemantic(text, { limit, excluded, candidateLimit = 5, recordReport = true, returnReport = false }) {
     this.ensureFresh();
     if (recordReport) this.lastUserRecallReport = null;
     const empty = { hints: [], report: null };
     if (!this.semanticRecall?.enabled) return returnReport ? empty : [];
     try {
       const result = await this.semanticRecall.search(text, { entries: this.entries, excluded, limit, candidateLimit });
-      const hints = result.recalled.map(({ entry, score }) => toHint(entry, { score }));
+      const lexical = lexicalRecall(text, { entries: this.entries, excluded, minScore: this.semanticRecall.minScore });
+      const ranked = mergeRecallRankings(result.recalled, lexical, limit);
+      const hints = ranked.map(({ entry, score }) => toHint(entry, { score }));
+      const recalledIds = new Set(ranked.map(({ entry }) => entry.id));
+      const candidates = toRecallCandidates(mergeRecallRankings(result.candidates, lexical, Math.max(limit, candidateLimit)), recalledIds);
       const report = {
         threshold: result.threshold,
         vectorizerStatus: result.vectorizerStatus,
         warning: result.warning,
         hints,
-        candidates: result.candidates.map(({ entry, score, recalled }) => ({ ...toHint(entry, { score }), recalled })),
+        candidates,
       };
       if (recordReport) this.lastUserRecallReport = report;
       return returnReport ? { hints, report } : hints;
