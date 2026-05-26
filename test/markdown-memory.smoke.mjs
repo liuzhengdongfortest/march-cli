@@ -160,6 +160,9 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
 
   const tools = createMarkdownMemoryTools(store);
   const search = tools.find((tool) => tool.name === "memory_search");
+  assert.ok(search.description.includes("not semantic search"));
+  assert.ok(search.description.includes("regex OR"));
+  assert.ok(search.parameters.properties.query.description.includes("long natural-language queries"));
   const open = tools.find((tool) => tool.name === "memory_open");
   const save = tools.find((tool) => tool.name === "memory_save");
   const del = tools.find((tool) => tool.name === "memory_delete");

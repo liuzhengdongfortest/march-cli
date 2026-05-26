@@ -12,9 +12,9 @@ export function createMarkdownMemoryTools(store, { remoteSources = [] } = {}) {
       name: "memory_search",
       label: "Memory Search",
       description:
-        "Search Markdown memory sources. By default searches local memory. Use source='all' for local plus all remote memories, source='local' for local memory, or source='<remote-name>' for a configured remote memory. Supports ripgrep regex syntax; use syntax='literal' for exact text search.",
+        "Search Markdown memory sources with ripgrep. This is not semantic search: a natural-language query with spaces is treated as one regex pattern, not independent keywords. By default searches local memory. Use source='all' for local plus all remote memories, source='local' for local memory, or source='<remote-name>' for a configured remote memory. Use short stable terms, regex OR like 'march-cli|publish:env|gh release', or multiple searches; use syntax='literal' for exact text search.",
       parameters: Type.Object({
-        query: Type.String({ description: "Ripgrep query/pattern to search in Markdown memory files" }),
+        query: Type.String({ description: "Ripgrep pattern to search in Markdown memory files. Not semantic search; prefer short exact terms or regex OR instead of long natural-language queries." }),
         source: Type.Optional(Type.String({ description: "Memory source: omitted/local, all, or a remote memory name" })),
         syntax: Type.Optional(Type.Union([Type.Literal("regex"), Type.Literal("literal")], { description: "Pattern syntax. Default: regex" })),
         case: Type.Optional(Type.Union([Type.Literal("smart"), Type.Literal("sensitive"), Type.Literal("insensitive")], { description: "Case matching mode. Default: smart" })),
