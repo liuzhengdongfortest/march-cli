@@ -9,7 +9,9 @@ export function createMarchPiContextExtension({
   getCurrentPrompt,
   getContextMode,
   getFastEntry,
-  flushAssistantRecall = null,
+  getAssistantRecallCursor = null,
+  setAssistantRecallCursor = null,
+  recallForAssistantText = null,
   onAssistantRecall = null,
   logger = null,
 }) {
@@ -20,7 +22,14 @@ export function createMarchPiContextExtension({
     });
 
     pi.on("context", async (event) => {
-      const recallContent = await flushAssistantRecallMessage({ flushAssistantRecall, onAssistantRecall, logger });
+      const recallContent = await recallAssistantDeltaFromMessages({
+        messages: event.messages,
+        getAssistantRecallCursor,
+        setAssistantRecallCursor,
+        recallForAssistantText,
+        onAssistantRecall,
+        logger,
+      });
       return { messages: appendRecallMessage(event.messages, recallContent) };
     });
 
@@ -33,10 +42,16 @@ export function createMarchPiContextExtension({
   };
 }
 
-async function flushAssistantRecallMessage({ flushAssistantRecall, onAssistantRecall, logger }) {
-  if (!flushAssistantRecall) return "";
+async function recallAssistantDeltaFromMessages({ messages, getAssistantRecallCursor, setAssistantRecallCursor, recallForAssistantText, onAssistantRecall, logger }) {
+  if (!recallForAssistantText) return "";
   try {
-    const { hints = [], report = null } = await flushAssistantRecall();
+    const fullText = extractAssistantRecallText(messages);
+    const previous = getAssistantRecallCursor?.();
+    setAssistantRecallCursor?.(fullText.length);
+    if (previous == null) return "";
+    const text = fullText.slice(previous).trim();
+    if (!text) return "";
+    const { hints = [], report = null } = await recallForAssistantText(text);
     if (hints.length === 0) {
       if (report) onAssistantRecall?.({ hints, report });
       return "";
@@ -47,6 +62,27 @@ async function flushAssistantRecallMessage({ flushAssistantRecall, onAssistantRe
     logger?.debug?.("memory.mid_turn_recall.failed", { errorMessage: err?.message ?? String(err) });
     return "";
   }
+}
+
+export function extractAssistantRecallText(messages = []) {
+  return messages
+    .filter((message) => message?.role === "assistant")
+    .flatMap((message) => extractContentText(message.content))
+    .filter(Boolean)
+    .join("\n");
+}
+
+function extractContentText(content) {
+  if (typeof content === "string") return [content];
+  if (!Array.isArray(content)) return [];
+  return content.flatMap((part) => {
+    if (!part || typeof part !== "object") return [];
+    if (part.type === "toolCall") return [];
+    if (typeof part.text === "string") return [part.text];
+    if (typeof part.thinking === "string") return [part.thinking];
+    if (Array.isArray(part.thinking)) return part.thinking.map((item) => item?.text ?? "").filter(Boolean);
+    return [];
+  });
 }
 
 function appendRecallMessage(messages, content) {

@@ -21,6 +21,7 @@ export async function runRunnerTurn({
   contextMode = "rebuild",
   recordHistory = null,
   setCurrentTurnState = null,
+  flushFinalAssistantRecall = null,
 }) {
   const {
     userRecallHints = [],
@@ -96,6 +97,7 @@ export async function runRunnerTurn({
       syncCurrentMarchSessionState,
       autoNameSession,
       recordHistory,
+      flushFinalAssistantRecall,
     });
     return { draft: turnState.draft };
   } finally {
@@ -189,9 +191,9 @@ function logSessionEvent(logger, event) {
   });
 }
 
-async function finalizeTurn({ prompt, userMessage, userRecallHints, memoryStore, engine, ui, turnState, syncCurrentMarchSessionState, autoNameSession, recordHistory }) {
+async function finalizeTurn({ prompt, userMessage, userRecallHints, memoryStore, engine, ui, turnState, syncCurrentMarchSessionState, autoNameSession, recordHistory, flushFinalAssistantRecall }) {
   closeAssistantReply({ ui, state: turnState });
-  const assistantRecall = await flushAssistantRecall({ memoryStore, engine, turnState });
+  const assistantRecall = await (flushFinalAssistantRecall?.(turnState) ?? flushAssistantRecall({ memoryStore, engine, turnState }));
   if (assistantRecall.report) ui.recall?.({ hints: assistantRecall.hints, report: assistantRecall.report, variant: "assistant" });
   const recordedAssistantRecallHints = uniqueHints([...(turnState.midTurnRecallHints ?? []), ...assistantRecall.hints]);
 
