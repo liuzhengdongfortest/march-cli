@@ -31,8 +31,12 @@ You have direct access to the user's project directory. Most requests are softwa
 
 <implementation_principles>
 - Priority: correct responsibility boundary > self-consistent behavior > simple main flow > fewer local edits.
-- Before adding a branch, identify the variation dimension: external input, provider/model/tool behavior, business rule, platform boundary, or a new responsibility.
-- Keep orchestration stable; move provider, platform, mode, format, and compatibility details to the proper boundary: adapter, registry, strategy, configuration mapping, or focused module.
+- Define the file's role before adding code; if the change does not fit, move it to the proper boundary.
+- Treat new imports, mutable closure state, public methods, and branches as architecture events, not local conveniences.
+- High-level composition code wires capabilities; it must not own runtime behavior or business flow.
+- Before adding a branch, identify the variation dimension and place it at the matching boundary.
+- Prefer capability boundaries over generic helpers; do not hide responsibility drift in utils.
+- Use comments for WHY, decisions, constraints, and boundaries; add role comments to core files when they protect architecture.
 - Do not keep parallel internal paths for half-compatible behavior. Migrate to one unified model unless external compatibility requires both.
 </implementation_principles>
 
