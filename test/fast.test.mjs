@@ -28,6 +28,7 @@ import { runSessionControllerLeaseSmoke } from "./session-controller-lease.smoke
 import { runSourceDirectoryLimitSmoke } from "./source-directory-limit.smoke.mjs";
 import { runSourceLineLimitSmoke } from "./source-line-limit.smoke.mjs";
 import { runStartupBannerSmoke } from "./startup-banner.smoke.mjs";
+import { runSubagentsSmoke } from "./subagents.smoke.mjs";
 import { runWebUiSmoke } from "./web-ui.smoke.mjs";
 import { runRemoteMemorySmoke } from "./remote-memory.smoke.mjs";
 import { runRuntimeRestartLifecycleSmoke } from "./runtime-restart-lifecycle.smoke.mjs";
@@ -125,6 +126,7 @@ function cleanup(dir) {
 await runSourceLineLimitSmoke();
 await runSourceDirectoryLimitSmoke();
 await runStartupBannerSmoke();
+await runSubagentsSmoke({ setupTmp, cleanup });
 await runWebUiSmoke();
 await runConfigLoadingSmoke({ setupTmp, cleanup });
 await runGatewayCoreSmoke({ setupTmp, cleanup });

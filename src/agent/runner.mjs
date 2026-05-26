@@ -28,6 +28,7 @@ import { registerCustomProviders } from "../provider/custom-provider.mjs";
 import { createRunnerLifecycle } from "./lifecycle/runner-lifecycle.mjs";
 import { createRunnerProviderQuotaRuntime } from "./runner/provider-quota-runtime.mjs";
 import { appendRunnerTurnHistory, createRunnerHistoryStore } from "../history/runner.mjs";
+import { createRunnerSubagentRuntime } from "./runner/subagents/factory.mjs";
 export { MARCH_BASE_TOOL_NAMES, installModelPayloadDumper };
 export { createDefaultSessionManager, resolveRunnerSessionManager } from "./runner/runner-init.mjs"; export { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
 export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, memoryRoot = null, profilePaths = null, memoryStore = null, memoryTools = [], remoteMemorySources = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncMarchSessionState: syncMarchSessionStateEnabled = false, syncPiSidecar = syncMarchSessionStateEnabled, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, modelContextDumper = null, turnNotifier = null, logger = null, onModelPayload = null, onLspStatusChange = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices, maxTurns, trimBatch, serviceTier = null, hostedTools = {}, notificationContext = null }) {
@@ -50,7 +51,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   const historyStore = createRunnerHistoryStore({ stateRoot, cwd });
   const resolvedSessionManager = resolveRunnerSessionManager(cwd, sessionManager);
   const sessionBinding = createSessionBinding(null);
-  let currentModelCallKind = "model", currentTurnId = null, currentPromptForContext = "", currentTurnState = null;
+  let currentModelCallKind = "model", currentTurnId = null, currentPromptForContext = "";
   const assistantRecallRuntime = createAssistantRecallRuntime({ memoryStore, engine });
   const lifecycle = createRunnerLifecycle();
   let currentTurnContextMode = "rebuild", nextTurnContextMode = "rebuild";
@@ -67,6 +68,12 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     },
     logger,
   });
+  const subagentRuntime = createRunnerSubagentRuntime({
+    cwd, stateRoot, provider, modelId, modelRegistry, settingsManager, authStorage: resolvedAuth,
+    createAgentSession: createAgentSessionImpl, sessionBinding, getRuntimeHost: () => runtimeHost,
+    getCurrentModel: () => _currentFastEntry ?? sessionBinding.get()?.model ?? selectedModel,
+    namespace, shellRuntime, lspService, webTools, hostedTools, logger,
+  });
   if (useRuntimeHost) {
     runtimeHost = await createRunnerRuntimeHost({
       cwd, stateRoot, provider, modelId,
@@ -75,7 +82,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       sessionManager: resolvedSessionManager, sessionBinding, engine, ui: runtimeUi,
       projectMarchDir,
       memoryTools, memoryStore, historyStore, shellRuntime, lspService, mcpTools, webTools,
-      lifecycle, extensionPaths, hostedTools, extensionFactories: [marchPiContextExtension],
+      lifecycle, extensionPaths, hostedTools, subagentRuntime, extensionFactories: [marchPiContextExtension],
       onRebind: (session) => {
         installModelPayloadDumper(session, modelContextDumper, () => currentModelCallKind, onLoggedModelPayload);
         syncEngineSessionState(engine, session);
@@ -90,6 +97,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       memoryTools, historyStore, shellRuntime, lspService, mcpTools, webTools, lifecycle,
       authStorage: resolvedAuth, projectMarchDir,
       getCurrentModel: () => sessionBinding.get()?.model ?? selectedModel,
+      subagentRuntime,
     });
     const resourceLoader = await createMarchPiResourceLoader({ cwd, agentDir: stateRoot, settingsManager, extraOptions: { extensionFactories: [marchPiContextExtension] } });
     const { session } = await createAgentSessionImpl({
@@ -139,7 +147,6 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
           autoNameSession,
           contextMode,
           recordHistory: (turn) => appendRunnerTurnHistory({ store: historyStore, turn, sessionStats: getRunnerSessionStats(sessionBinding.get(), runtimeHost), modelId: engine.modelId, provider: engine.provider }),
-          setCurrentTurnState: (state) => { currentTurnState = state; },
           flushFinalAssistantRecall: () => assistantRecallRuntime.flushFinal(),
         });
         notifyTurnEndDetached(turnNotifier, {
@@ -259,7 +266,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     async dispose() {
       await runRunnerCleanup([
         () => runtimeHost?.dispose() ?? sessionBinding.get().dispose(),
-        () => shellRuntime?.dispose?.() ?? shellRuntime?.killAll?.(),
+        () => { subagentRuntime.dispose(); return shellRuntime?.dispose?.() ?? shellRuntime?.killAll?.(); },
         () => lspService.dispose(),
         () => mcpClientManager?.disconnectAll?.(),
         () => providerQuotaRuntime.disposeProviderQuotaRuntime(),

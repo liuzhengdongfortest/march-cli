@@ -13,8 +13,9 @@ import { createSuperGrokTool } from "../supergrok/tool.mjs";
 import { createBrowserTools } from "../browser/tools/index.mjs";
 import { createRuntimeRestartTool } from "./lifecycle/runtime-restart-tool.mjs";
 import { createHistorySearchTool } from "../history/tool.mjs";
+import { createSubagentTools } from "./subagents/tools.mjs";
 
-export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], historyStore = null, shellRuntime = null, lspService = null, mcpTools = [], webTools = [], lifecycle = null, authStorage = null, projectMarchDir = null, stateRoot = null, getCurrentModel = null }) {
+export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], historyStore = null, shellRuntime = null, lspService = null, mcpTools = [], webTools = [], lifecycle = null, authStorage = null, projectMarchDir = null, stateRoot = null, getCurrentModel = null, subagentRuntime = null }) {
   const commandExecTool = createCommandExecTool({ cwd });
   const codeSearchTool = createCodeSearchTool({ engine, stateRoot });
   const contextStatsTool = createContextStatsTool({ engine });
@@ -45,6 +46,7 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], hist
     ...createBrowserTools({ stateRoot }),
     ...(authStorage ? [createSuperGrokTool({ authStorage, projectMarchDir })] : []),
     ...(authStorage ? initImageGen({ authStorage, projectMarchDir }) : []),
+    ...(subagentRuntime ? createSubagentTools({ runtime: subagentRuntime }) : []),
   ];
   return tools;
 }

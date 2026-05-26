@@ -20,6 +20,8 @@ export function resolveRunnerSessionOptions({
   projectMarchDir = null,
   stateRoot = null,
   getCurrentModel = null,
+  subagentRuntime = null,
+  allowedToolNames = null,
 }) {
   if (engine.cwd !== cwd) {
     throw new Error(`Runtime session cwd mismatch: engine=${engine.cwd}, session=${cwd}`);
@@ -31,11 +33,13 @@ export function resolveRunnerSessionOptions({
     ?? (provider && modelId ? getModel(provider, modelId) : null);
   if (!model) throw new Error(`Model not found: ${provider}/${modelId}`);
 
-  const customTools = createMarchCustomTools({ cwd, engine, ui, memoryTools, historyStore, shellRuntime, lspService, mcpTools, webTools, lifecycle, authStorage, projectMarchDir, stateRoot, getCurrentModel: () => getCurrentModel?.() ?? model });
+  const allCustomTools = createMarchCustomTools({ cwd, engine, ui, memoryTools, historyStore, shellRuntime, lspService, mcpTools, webTools, lifecycle, authStorage, projectMarchDir, stateRoot, getCurrentModel: () => getCurrentModel?.() ?? model, subagentRuntime });
+  const allowed = allowedToolNames ? new Set(allowedToolNames) : null;
+  const customTools = allowed ? allCustomTools.filter((tool) => allowed.has(tool.name)) : allCustomTools;
   const customToolNames = customTools.map((tool) => tool.name);
   const tools = [
     ...customToolNames.filter((name) => name === "read"),
-    ...MARCH_BASE_TOOL_NAMES,
+    ...MARCH_BASE_TOOL_NAMES.filter((name) => !allowed || allowed.has(name)),
     ...customToolNames.filter((name) => name !== "read"),
   ];
 
