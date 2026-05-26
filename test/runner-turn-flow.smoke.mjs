@@ -301,6 +301,17 @@ async function assertContextHookRecallsFromMessagesOnly() {
   assert.equal(recalledText, "message thinking");
   assert.equal(result.messages.at(-1).customType, "march.recall");
   assert.ok(result.messages.at(-1).content.includes("mem_from_messages"));
+
+  cursor = null;
+  recalledText = "";
+  const firstNonEmpty = await context({
+    type: "context",
+    messages: [
+      { role: "assistant", content: [{ type: "output_text", text: "first assistant already exists" }] },
+    ],
+  });
+  assert.equal(recalledText, "first assistant already exists");
+  assert.equal(firstNonEmpty.messages.at(-1).customType, "march.recall");
 }
 
 function countOccurrences(text, needle) {

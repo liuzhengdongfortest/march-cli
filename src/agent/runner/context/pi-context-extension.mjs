@@ -48,8 +48,7 @@ async function recallAssistantDeltaFromMessages({ messages, getAssistantRecallCu
     const fullText = extractAssistantRecallText(messages);
     const previous = getAssistantRecallCursor?.();
     setAssistantRecallCursor?.(fullText.length);
-    if (previous == null) return "";
-    const text = fullText.slice(previous).trim();
+    const text = fullText.slice(previous ?? 0).trim();
     if (!text) return "";
     const { hints = [], report = null } = await recallForAssistantText(text);
     if (hints.length === 0) {
