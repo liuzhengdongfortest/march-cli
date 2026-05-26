@@ -78,7 +78,7 @@ function createAvatarCancelTool(runtime) {
 
 function buildDispatchAvatarDescription(runtime) {
   const list = runtime.listDefinitions()
-    .map((avatar) => `- ${avatar.name}: ${avatar.description} Tools: ${avatar.tools.join(", ")}. Max turns: ${avatar.maxTurns}.`)
+    .map((avatar) => `- ${avatar.name}: ${avatar.description} Tools: ${avatar.tools.join(", ")}. Max model calls: ${avatar.maxModelCalls}.`)
     .join("\n");
   return `Dispatch a context-inheriting avatar session branched from the current March context. Use this for context offload, independent exploration, or adversarial review. Avatars inherit the parent context snapshot plus the dispatch message, but not the raw parent in-turn transcript. Available avatars:\n${list}`;
 }

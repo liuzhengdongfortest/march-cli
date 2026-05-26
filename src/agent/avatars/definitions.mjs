@@ -2,7 +2,7 @@ export const DEFAULT_AVATAR_DEFINITIONS = Object.freeze({
   explore: Object.freeze({
     name: "explore",
     description: "Read-only codebase exploration for call flows, relevant files, module boundaries, and evidence gathering.",
-    maxTurns: 4,
+    maxModelCalls: 100,
     tools: ["read", "grep", "find", "ls", "code_search"],
     prompt: `You are a read-only exploration avatar for March.
 
@@ -23,7 +23,7 @@ Return:
   reviewer: Object.freeze({
     name: "reviewer",
     description: "Read-only adversarial review of a plan, patch, diagnosis, or claim. Looks for correctness, architecture, and test gaps.",
-    maxTurns: 4,
+    maxModelCalls: 100,
     tools: ["read", "grep", "find", "ls", "code_search"],
     prompt: `You are an adversarial reviewer avatar for March.
 
@@ -44,7 +44,7 @@ Return:
   general: Object.freeze({
     name: "general",
     description: "General-purpose avatar for bounded multi-step investigation. Defaults to no avatar recursion.",
-    maxTurns: 6,
+    maxModelCalls: 100,
     tools: ["read", "grep", "find", "ls", "code_search"],
     prompt: `You are a bounded general-purpose avatar for March.
 
@@ -59,10 +59,10 @@ Return:
 });
 
 export function listAvatarDefinitions(definitions = DEFAULT_AVATAR_DEFINITIONS) {
-  return Object.values(definitions).map(({ name, description, maxTurns, tools }) => ({
+  return Object.values(definitions).map(({ name, description, maxModelCalls, tools }) => ({
     name,
     description,
-    maxTurns,
+    maxModelCalls,
     tools: [...tools],
   }));
 }

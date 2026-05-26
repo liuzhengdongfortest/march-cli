@@ -47,6 +47,7 @@ export async function runAvatarsSmoke({ setupTmp, cleanup }) {
 
     const tools = createAvatarTools({ runtime });
     assert.deepEqual(tools.map((tool) => tool.name), ["DispatchAvatar", "AvatarStatus", "AvatarResult", "AvatarCancel"]);
+    assert.match(tools[0].description, /Max model calls: 100/);
 
     const background = await tools[0].execute("call", {
       description: "inspect code",
@@ -111,6 +112,7 @@ function createFakeAvatarSession(reply, prompts) {
       assert.match(prompt, /\[parent_current_state\]/);
       assert.match(prompt, /\[dispatch_message\]/);
       assert.match(prompt, /\[delegated_task\]/);
+      assert.match(prompt, /max_model_calls=100/);
       await this.agent.onPayload({ messages: [{ role: "user", content: "avatar payload" }], tools: [{ name: "read" }] }, this.model);
       subscriber?.({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: reply } });
       subscriber?.({ type: "message_end", message: { role: "assistant", stopReason: "end_turn" } });

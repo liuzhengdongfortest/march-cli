@@ -40,7 +40,6 @@ export async function runAvatarSession({
     namespace: `${namespace}:${definition.name}`,
     shellRuntime,
     lspService,
-    maxTurns: definition.maxTurns,
     ...createInheritedContextEngineOptions(contextSnapshot),
   });
   restoreInheritedContext(childEngine, contextSnapshot);
@@ -56,7 +55,7 @@ export async function runAvatarSession({
     getFastEntry: () => null,
     logger,
   });
-  const budget = createAvatarBudget(definition.maxTurns);
+  const budget = createAvatarBudget(definition.maxModelCalls);
   const sessionOptions = resolveRunnerSessionOptions({
     cwd,
     stateRoot,
@@ -110,7 +109,7 @@ export async function runAvatarSession({
     currentPrompt = buildAvatarPrompt({ definition, say, task, contextSnapshot });
     resetPiMessageHistory(session);
     await session.prompt(buildInitialPiPrompt(childEngine, currentPrompt));
-    if (budget.exceeded) throw new Error(`Avatar exceeded max_turns=${definition.maxTurns}`);
+    if (budget.exceeded) throw new Error(`Avatar exceeded max_model_calls=${definition.maxModelCalls}`);
     if (turnState.lastAssistantStopReason === "error") {
       throw new Error(turnState.lastAssistantErrorMessage || "Avatar model provider returned an error");
     }
@@ -130,21 +129,21 @@ export async function runAvatarSession({
 function buildAvatarPrompt({ definition, say, task, contextSnapshot }) {
   return [
     `[avatar_identity]\nname: ${definition.name}\ndescription: ${definition.description}\nparent_session_id: ${contextSnapshot?.parent_session_id ?? "unknown"}`,
-    `[avatar_instructions]\n${definition.prompt}\n\nBudget: stop within max_turns=${definition.maxTurns} model turns.`,
+    `[avatar_instructions]\n${definition.prompt}\n\nBudget: stop within max_model_calls=${definition.maxModelCalls} provider requests.`,
     `[parent_current_state]\n${formatParentCurrentState(contextSnapshot)}`,
     `[dispatch_message]\n${String(say ?? "").trim() || "(no separate dispatch message)"}`,
     `[delegated_task]\n${String(task ?? "").trim()}`,
   ].join("\n\n");
 }
 
-function createAvatarBudget(maxTurns) {
+function createAvatarBudget(maxModelCalls) {
   let providerRequests = 0;
   const budget = {
     exceeded: false,
     extension(pi) {
       pi.on("before_provider_request", (_event, ctx) => {
         providerRequests += 1;
-        if (Number.isFinite(maxTurns) && providerRequests > maxTurns) {
+        if (Number.isFinite(maxModelCalls) && providerRequests > maxModelCalls) {
           budget.exceeded = true;
           ctx.abort?.();
         }
