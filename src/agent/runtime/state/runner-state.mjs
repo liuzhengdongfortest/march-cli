@@ -12,9 +12,6 @@ export function createRunnerStateSnapshot(runner) {
       sessionName: engine.sessionName ?? "",
       remoteMemorySources: engine.remoteMemorySources ?? [],
       turns: engine.turns ?? [],
-      pendingAssistantRecallHints: engine.peekPendingAssistantRecallHints?.() ?? engine.pendingAssistantRecallHints ?? [],
-      pendingAssistantRecallReport: engine.peekPendingAssistantRecallReport?.() ?? engine.pendingAssistantRecallReport ?? null,
-      pendingAssistantRecallHintsRendered: engine.hasRenderedPendingAssistantRecallHints?.() ?? engine.pendingAssistantRecallHintsRendered ?? false,
       recentRecallMemoryIds: [...(engine.getRecentRecallMemoryIds?.() ?? [])],
     },
     currentModel,
@@ -30,7 +27,7 @@ export function createRunnerStateSnapshot(runner) {
   };
 }
 
-export function createRunnerEngineStateFacade({ getState, setState }) {
+export function createRunnerEngineStateFacade({ getState }) {
   return {
     get cwd() { return engineState(getState()).cwd ?? null; },
     get modelId() { return engineState(getState()).modelId ?? null; },
@@ -39,33 +36,6 @@ export function createRunnerEngineStateFacade({ getState, setState }) {
     get sessionName() { return engineState(getState()).sessionName ?? ""; },
     get remoteMemorySources() { return engineState(getState()).remoteMemorySources ?? []; },
     get turns() { return engineState(getState()).turns ?? []; },
-    peekPendingAssistantRecallHints() {
-      return engineState(getState()).pendingAssistantRecallHints ?? [];
-    },
-    peekPendingAssistantRecallReport() {
-      return engineState(getState()).pendingAssistantRecallReport ?? null;
-    },
-    hasRenderedPendingAssistantRecallHints() {
-      return Boolean(engineState(getState()).pendingAssistantRecallHintsRendered);
-    },
-    markPendingAssistantRecallHintsRendered() {
-      updateEngineState(getState, setState, (engine) => {
-        if ((engine.pendingAssistantRecallHints ?? []).length > 0 || engine.pendingAssistantRecallReport) {
-          engine.pendingAssistantRecallHintsRendered = true;
-        }
-      });
-    },
-    takePendingAssistantRecallHints() {
-      const state = engineState(getState());
-      const hints = state.pendingAssistantRecallHints ?? [];
-      const report = state.pendingAssistantRecallReport ?? null;
-      updateEngineState(getState, setState, (engine) => {
-        engine.pendingAssistantRecallHints = [];
-        engine.pendingAssistantRecallReport = null;
-        engine.pendingAssistantRecallHintsRendered = false;
-      });
-      return { hints, report };
-    },
     getRecentRecallMemoryIds() {
       return engineState(getState()).recentRecallMemoryIds ?? [];
     },
@@ -77,12 +47,4 @@ export function createRunnerEngineStateFacade({ getState, setState }) {
 
 function engineState(state) {
   return state?.engine ?? {};
-}
-
-function updateEngineState(getState, setState, update) {
-  const state = getState();
-  if (!state) return;
-  const engine = { ...(state.engine ?? {}) };
-  update(engine);
-  setState({ ...state, engine });
 }

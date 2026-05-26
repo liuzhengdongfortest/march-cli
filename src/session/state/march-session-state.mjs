@@ -29,7 +29,6 @@ export function captureMarchSessionState(engine, { sessionId, backend = null, me
     sessionName: engine.sessionName ?? "",
     thinkingLevel: engine.thinkingLevel,
     namespace: engine.namespace,
-    pendingAssistantRecallHints: engine.pendingAssistantRecallHints ?? [],
     turns: engine.turns,
   };
 }

@@ -16,9 +16,6 @@ export async function runModeStateSmoke() {
   const prompts = [];
   const userMessages = [];
   const uiLines = [];
-  let carryoverTaken = false;
-  let pendingAfterTurn = [];
-  let pendingRendered = false;
   let memoryBeginCount = 0;
   let memoryEndCount = 0;
   await runSingleShotPrompt({
@@ -26,13 +23,6 @@ export async function runModeStateSmoke() {
     runner: {
       engine: {
         buildContext: () => "[system]\nctx",
-        takePendingAssistantRecallHints: () => {
-          carryoverTaken = true;
-          return [{ id: "mem_carry", name: "Carryover", description: "Matched after the previous final answer." }];
-        },
-        peekPendingAssistantRecallHints: () => pendingAfterTurn,
-        hasRenderedPendingAssistantRecallHints: () => pendingRendered,
-        markPendingAssistantRecallHintsRendered: () => { pendingRendered = true; },
       },
       shellRuntime: {
         listShells: () => [{
@@ -48,8 +38,6 @@ export async function runModeStateSmoke() {
       runTurn: async (fullPrompt, userMessage) => {
         prompts.push(fullPrompt);
         userMessages.push(userMessage);
-        pendingAfterTurn = [{ id: "mem_final", name: "Final", description: "Queued between turns." }];
-        pendingRendered = false;
       },
     },
     memoryStore: {
@@ -72,16 +60,11 @@ export async function runModeStateSmoke() {
   assert.ok(prompts[0].startsWith("please inspect\n\n<mode>"));
   assert.ok(!prompts[0].includes("[system]"));
   assert.ok(prompts[0].includes("You are in discuss mode"));
-  assert.ok(carryoverTaken);
-  assert.ok(prompts[0].includes("[recall]"));
-  assert.ok(prompts[0].includes("mem_carry | Carryover | Matched after the previous final answer."));
   assert.ok(prompts[0].includes("[shell_hints]"));
   assert.ok(prompts[0].includes("sh1 dev running command: npm run dev cwd: D:/repo lines: 42"));
   assert.ok(prompts[0].includes("Use terminal_read or terminal_snapshot"));
   assert.ok(!userMessages[0].includes("<mode>"));
   assert.ok(uiLines.join("\n").includes("please inspect"));
-  assert.ok(uiLines.includes("recall:mem_final"));
-  assert.equal(pendingRendered, true);
   assert.equal(memoryBeginCount, 1);
   assert.equal(memoryEndCount, 1);
   console.log("  PASS");

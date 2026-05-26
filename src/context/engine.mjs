@@ -16,9 +16,6 @@ export class ContextEngine {
     this.provider = provider;
     this.thinkingLevel = thinkingLevel;
     this.turns = [];
-    this.pendingAssistantRecallHints = [];
-    this.pendingAssistantRecallReport = null;
-    this.pendingAssistantRecallHintsRendered = false;
     this.sessionName = "";
     this.toolDefs = [];
     this.namespace = namespace;
@@ -97,37 +94,6 @@ export class ContextEngine {
     return ids;
   }
 
-  setPendingAssistantRecallHints(hints = [], report = null) {
-    this.pendingAssistantRecallHints = uniqueHints(hints);
-    this.pendingAssistantRecallReport = report;
-    this.pendingAssistantRecallHintsRendered = false;
-  }
-
-  peekPendingAssistantRecallHints() {
-    return this.pendingAssistantRecallHints;
-  }
-
-  peekPendingAssistantRecallReport() {
-    return this.pendingAssistantRecallReport;
-  }
-
-  hasRenderedPendingAssistantRecallHints() {
-    return this.pendingAssistantRecallHintsRendered;
-  }
-
-  markPendingAssistantRecallHintsRendered() {
-    if (this.pendingAssistantRecallHints.length > 0 || this.pendingAssistantRecallReport) this.pendingAssistantRecallHintsRendered = true;
-  }
-
-  takePendingAssistantRecallHints() {
-    const hints = this.pendingAssistantRecallHints;
-    const report = this.pendingAssistantRecallReport;
-    this.pendingAssistantRecallHints = [];
-    this.pendingAssistantRecallReport = null;
-    this.pendingAssistantRecallHintsRendered = false;
-    return { hints, report };
-  }
-
   resolvePath(raw) {
     return resolve(this.cwd, raw);
   }
@@ -149,17 +115,9 @@ export class ContextEngine {
   restoreSession(data, _pool, { replace = false } = {}) {
     if (replace) {
       this.turns = [];
-      this.pendingAssistantRecallHints = [];
-      this.pendingAssistantRecallReport = null;
-      this.pendingAssistantRecallHintsRendered = false;
       this.sessionName = "";
     }
     if (data.turns) this.turns = data.turns;
-    if (Array.isArray(data.pendingAssistantRecallHints)) {
-      this.pendingAssistantRecallHints = uniqueHints(data.pendingAssistantRecallHints);
-      this.pendingAssistantRecallReport = data.pendingAssistantRecallReport ?? null;
-      this.pendingAssistantRecallHintsRendered = false;
-    }
     if (typeof data.sessionName === "string") this.sessionName = data.sessionName;
     this.setRuntimeState(data);
   }
@@ -197,15 +155,4 @@ export class ContextEngine {
 function appendCurrentUser(recentChat, userMessage) {
   const currentUser = String(userMessage ?? "").trimEnd();
   return `${recentChat}\n\n[current_user]\n${currentUser}`;
-}
-
-function uniqueHints(hints = []) {
-  const seen = new Set();
-  const unique = [];
-  for (const hint of hints) {
-    if (!hint?.id || seen.has(hint.id)) continue;
-    seen.add(hint.id);
-    unique.push(hint);
-  }
-  return unique;
 }

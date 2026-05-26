@@ -4,7 +4,6 @@ export function createRemoteRunnerClient(peer, { initialState = null } = {}) {
   let state = initialState;
   const engineFacade = createRunnerEngineStateFacade({
     getState: () => state,
-    setState: (nextState) => { state = nextState; },
   });
 
   const client = {

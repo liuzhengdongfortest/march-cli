@@ -256,7 +256,7 @@ assistant 输出触发：
 搜索：semantic vector index
 注入：最多 2 条过阈值 memory
 UI：无论是否过阈值，轻量显示最多 3 条候选；不展示 description
-位置：assistant output 后或下一 turn carryover
+位置：turn 内下一次 model call 的 messages 末尾；turn 结束后的结果只进入下一轮 rebuild 的 recent_chat
 去重：当前 turn 内去重
 ```
 

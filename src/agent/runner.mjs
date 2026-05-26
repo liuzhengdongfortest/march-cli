@@ -15,12 +15,11 @@ import { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-s
 import { buildNotificationActivation, installRunnerProcessGuards, notifyTurnEndBestEffort, notifyTurnEndDetached, providerContextToPayload } from "./runner/runner-utils.mjs";
 import { dumpCodexTransportDebug, getCodexTransportDebugSnapshot } from "./runner/codex-transport-debug.mjs";
 import { createMarchPiContextExtension } from "./runner/context/pi-context-extension.mjs";
-import { createMidTurnRecallBridge } from "./runner/recall/mid-turn-recall-bridge.mjs";
 import { resolveRunnerSessionOptions } from "./session/session-options.mjs";
 import { createSessionBinding } from "./session/session-binding.mjs";
 import { maybeAutoNameSession } from "./session/session-auto-name.mjs";
 import { MARCH_BASE_TOOL_NAMES } from "./tool-names.mjs";
-import { MODEL_STREAM_IDLE_TIMEOUT_CODE, runRunnerTurn } from "./turn/turn-runner.mjs";
+import { MODEL_STREAM_IDLE_TIMEOUT_CODE, flushAssistantRecall, runRunnerTurn } from "./turn/turn-runner.mjs";
 import { beginLoggedTurn } from "./turn/turn-logging.mjs";
 import { appendFastVariants, createFastModelEntry, fromFastEntryModel, isFastProvider } from "./runner/fast-model.mjs";
 import { registerSuperGrokProvider } from "../supergrok/provider.mjs";
@@ -50,8 +49,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   const historyStore = createRunnerHistoryStore({ stateRoot, cwd });
   const resolvedSessionManager = resolveRunnerSessionManager(cwd, sessionManager);
   const sessionBinding = createSessionBinding(null);
-  let currentModelCallKind = "model", currentTurnId = null, currentPromptForContext = "";
-  const midTurnRecallBridge = createMidTurnRecallBridge();
+  let currentModelCallKind = "model", currentTurnId = null, currentPromptForContext = "", currentTurnState = null;
   const lifecycle = createRunnerLifecycle();
   let currentTurnContextMode = "rebuild", nextTurnContextMode = "rebuild";
   let lastNotificationResult = null, runtimeHost = null, lifecycleAdapter = null, _currentFastEntry = null;
@@ -60,8 +58,14 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     getCurrentPrompt: () => currentPromptForContext,
     getContextMode: () => currentTurnContextMode,
     getFastEntry: () => _currentFastEntry,
-    waitForMidTurnRecall: () => midTurnRecallBridge.wait(),
-    getMidTurnRecallMessages: () => midTurnRecallBridge.messages(),
+    flushAssistantRecall: async () => currentTurnState
+      ? flushAssistantRecall({ memoryStore, engine, turnState: currentTurnState })
+      : { hints: [], report: null },
+    onAssistantRecall: ({ hints = [], report = null } = {}) => {
+      if (hints.length > 0 && currentTurnState) currentTurnState.midTurnRecallHints.push(...hints);
+      if (report) runtimeUi.recall?.({ hints, report, variant: "assistant" });
+    },
+    logger,
   });
   if (useRuntimeHost) {
     runtimeHost = await createRunnerRuntimeHost({
@@ -118,7 +122,6 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       currentPromptForContext = prompt;
       const contextMode = nextTurnContextMode;
       currentTurnContextMode = contextMode;
-      midTurnRecallBridge.reset();
       nextTurnContextMode = "rebuild";
       lifecycle.clearPendingAction();
       const turnStartedAt = Date.now();
@@ -135,7 +138,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
           autoNameSession,
           contextMode,
           recordHistory: (turn) => appendRunnerTurnHistory({ store: historyStore, turn, sessionStats: getRunnerSessionStats(sessionBinding.get(), runtimeHost), modelId: engine.modelId, provider: engine.provider }),
-          trackMidTurnRecallInjection: (injection) => midTurnRecallBridge.track(injection),
+          setCurrentTurnState: (state) => { currentTurnState = state; },
         });
         notifyTurnEndDetached(turnNotifier, {
           status: "success",

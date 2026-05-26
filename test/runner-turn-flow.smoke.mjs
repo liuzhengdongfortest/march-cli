@@ -20,7 +20,6 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   const sessionNameCalls = [];
   const promptCalls = [];
   const providerPayloads = [];
-  const customSteerMessages = [];
   const session = {
     agent: {
       state: { messages: [{ role: "user", content: "stale context" }] },
@@ -66,9 +65,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
         emit({ type: "message_update", assistantMessageEvent: { type: "thinking_end" } });
         emit({ type: "tool_execution_start", toolName: "read", args: { path: "a.txt" } });
         await new Promise((resolve) => setImmediate(resolve));
-        assert.equal(recallCalls, 1);
-        assert.equal(customSteerMessages.length, 1);
-        assert.ok(customSteerMessages[0].includes("[recall]"));
+        assert.equal(recallCalls, 0);
         emit({ type: "tool_execution_end", toolName: "read", isError: false, result: "file body" });
         providerPayloads.push(await buildProviderPayload(this, prompt, [
           { role: "assistant", content: null, tool_calls: [{ id: "call_1", type: "function", function: { name: "read", arguments: '{"path":"a.txt"}' } }] },
@@ -81,7 +78,6 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
         emit({ type: "message_update", assistantMessageEvent: { type: "thinking_end", content: "late thinking memory text" } });
         emit({ type: "tool_execution_end", toolName: "read", isError: false, result: "tool only body" });
         await new Promise((resolve) => setImmediate(resolve));
-        assert.equal(customSteerMessages.length, 2);
         providerPayloads.push(await buildProviderPayload(this, prompt, [
           { role: "assistant", content: null, tool_calls: [{ id: "call_2", type: "function", function: { name: "read", arguments: '{"path":"tool-only.txt"}' } }] },
           { role: "toolResult", content: "tool only body", toolCallId: "call_2" },
@@ -112,12 +108,8 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
       tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
       cost: 0,
     }),
-    sendCustomMessage(message, options) {
-      assert.equal(message.customType, "march.recall");
-      assert.equal(message.display, false);
-      assert.equal(options.deliverAs, "steer");
-      customSteerMessages.push(message.content);
-      return Promise.resolve();
+    sendCustomMessage() {
+      throw new Error("mid-turn recall should be injected by the context hook");
     },
     dispose: () => {},
   };
@@ -204,7 +196,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.ok(providerPayloads[1].messages.some((message) => providerMessageText(message).includes("[current_user]\nhello")));
   assert.ok(providerPayloads[1].messages.some((message) => message.role === "tool" && providerMessageText(message).includes("file body")));
   assert.equal(providerPayloads[1].messages.filter((message) => providerMessageText(message).includes("mem_thinking")).length, 1);
-  assert.ok(customSteerMessages[0].includes("mem_thinking | Thinking memory | Matched from thinking text."));
+  assert.ok(providerMessageText(providerPayloads[1].messages.at(-1)).includes("mem_thinking | Thinking memory | Matched from thinking text."));
   assert.equal(runner.engine.turns[0].assistantRecallHints.length, 2);
   assert.equal(runner.engine.turns[0].assistantRecallHints[0].id, "mem_thinking");
   assert.equal(runner.engine.turns[0].assistantRecallHints[1].id, "mem_draft");

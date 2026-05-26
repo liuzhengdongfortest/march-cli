@@ -19,10 +19,8 @@ export async function runSingleShotPrompt({
     const turnInput = await prepareTurnInput({ prompt, runner, memoryStore, currentProject, modeState });
     ui.writeln(turnInput.displayMessage);
     ui.recall?.({ hints: turnInput.userRecallHints, report: turnInput.userRecallReport });
-    if (turnInput.shouldRenderCarryoverRecall) ui.recall?.({ hints: turnInput.carryoverRecallHints, report: turnInput.carryoverRecallReport, variant: "assistant" });
     refreshStatusBar.startWorking?.();
     const result = await runner.runTurn(turnInput.fullPrompt, turnInput.userMessage, turnInput.runOptions);
-    renderPendingAssistantRecallPreview({ runner, ui });
     await handleTurnLifecycleAction(result?.lifecycleAction, { runner, ui });
   } finally {
     refreshStatusBar.stopWorking?.();
@@ -188,11 +186,9 @@ async function runReplTurn({ prompt, runner, memoryStore, currentProject, ui, re
     const turnInput = await prepareTurnInput({ prompt, runner, memoryStore, currentProject, modeState });
     ui.writeln(turnInput.displayMessage);
     ui.recall?.({ hints: turnInput.userRecallHints, report: turnInput.userRecallReport });
-    if (turnInput.shouldRenderCarryoverRecall) ui.recall?.({ hints: turnInput.carryoverRecallHints, report: turnInput.carryoverRecallReport, variant: "assistant" });
     setTurnRunning(true);
     refreshStatusBar.startWorking?.();
     const result = await runner.runTurn(turnInput.fullPrompt, turnInput.userMessage, turnInput.runOptions);
-    renderPendingAssistantRecallPreview({ runner, ui });
     await handleTurnLifecycleAction(result?.lifecycleAction, { runner, ui });
     ui.writeln("");
   } catch (err) {
@@ -210,13 +206,4 @@ async function handleTurnLifecycleAction(action, { runner, ui }) {
   }
   await runner.restartRuntime();
   ui.writeln("● March runtime 已重启，下一轮将使用磁盘上的最新代码");
-}
-
-function renderPendingAssistantRecallPreview({ runner, ui }) {
-  if (runner.engine.hasRenderedPendingAssistantRecallHints?.()) return;
-  const hints = runner.engine.peekPendingAssistantRecallHints?.() ?? [];
-  const report = runner.engine.peekPendingAssistantRecallReport?.() ?? null;
-  if (hints.length === 0 && !report) return;
-  ui.recall?.({ hints, report, variant: "assistant" });
-  runner.engine.markPendingAssistantRecallHintsRendered?.();
 }

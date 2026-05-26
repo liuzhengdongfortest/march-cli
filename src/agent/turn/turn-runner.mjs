@@ -1,4 +1,3 @@
-import { formatRecallHints } from "../../memory/markdown-store.mjs";
 import { resolveImageAttachmentReferences } from "../../session/attachment-references.mjs";
 import { closeAssistantReply, compactAssistantContext, createTurnEventState, handleRunnerSessionEvent } from "./turn-events.mjs";
 import { buildInitialPiPrompt, resetPiMessageHistory } from "./pi-turn-context.mjs";
@@ -21,16 +20,15 @@ export async function runRunnerTurn({
   autoNameSession,
   contextMode = "rebuild",
   recordHistory = null,
-  trackMidTurnRecallInjection = null,
+  setCurrentTurnState = null,
 }) {
   const {
     userRecallHints = [],
   } = options;
   const activeSession = sessionBinding.get();
   const turnState = createTurnEventState();
-  const midTurnRecallHints = [];
-  const midTurnRecallTasks = [];
   const idleWatchdog = createModelStreamIdleWatchdog({ session: activeSession, logger, setPhase });
+  setCurrentTurnState?.(turnState);
   ui.turnStart();
   setPhase?.("subscribed");
   logger?.event("turn.ui.start");
@@ -58,11 +56,6 @@ export async function runRunnerTurn({
       idleWatchdog.arm("message_update");
     }
     handleRunnerSessionEvent(event, { ui, engine, state: turnState });
-    if (event.type === "tool_execution_start" || event.type === "tool_execution_end") {
-      const task = flushMidTurnAssistantRecall({ memoryStore, engine, turnState, activeSession, ui, logger, midTurnRecallHints, trackMidTurnRecallInjection });
-      trackMidTurnRecallInjection?.({ task });
-      midTurnRecallTasks.push(task);
-    }
   });
 
   try {
@@ -92,7 +85,6 @@ export async function runRunnerTurn({
     }
 
     setPhase?.("finalizing");
-    await Promise.allSettled(midTurnRecallTasks);
     await finalizeTurn({
       prompt,
       userMessage,
@@ -101,7 +93,6 @@ export async function runRunnerTurn({
       engine,
       ui,
       turnState,
-      midTurnRecallHints,
       syncCurrentMarchSessionState,
       autoNameSession,
       recordHistory,
@@ -110,6 +101,7 @@ export async function runRunnerTurn({
   } finally {
     logger?.event("turn.ui.end");
     idleWatchdog.clear();
+    setCurrentTurnState?.(null);
     ui.turnEnd();
     unsubscribe();
   }
@@ -173,20 +165,6 @@ function throwIfAssistantEndedWithError(turnState) {
   throw error;
 }
 
-function queueMidTurnRecallHints(session, hints, logger) {
-  const content = formatRecallHints(hints);
-  if (!content) return null;
-  const task = Promise.resolve(session.sendCustomMessage?.({
-    customType: "march.recall",
-    content,
-    display: false,
-    details: { type: "recall" },
-  }, { deliverAs: "steer" })).catch((err) => {
-    logger?.debug("memory.mid_turn_recall.inject_failed", { errorMessage: err?.message ?? String(err) });
-  });
-  return { content, task };
-}
-
 function logSessionEvent(logger, event) {
   if (!logger) return;
   if (event.type === "message_update") {
@@ -211,11 +189,11 @@ function logSessionEvent(logger, event) {
   });
 }
 
-async function finalizeTurn({ prompt, userMessage, userRecallHints, memoryStore, engine, ui, turnState, midTurnRecallHints, syncCurrentMarchSessionState, autoNameSession, recordHistory }) {
+async function finalizeTurn({ prompt, userMessage, userRecallHints, memoryStore, engine, ui, turnState, syncCurrentMarchSessionState, autoNameSession, recordHistory }) {
   closeAssistantReply({ ui, state: turnState });
   const assistantRecall = await flushAssistantRecall({ memoryStore, engine, turnState });
-  engine.setPendingAssistantRecallHints?.(assistantRecall.hints, assistantRecall.report);
-  const recordedAssistantRecallHints = uniqueHints([...midTurnRecallHints, ...assistantRecall.hints]);
+  if (assistantRecall.report) ui.recall?.({ hints: assistantRecall.hints, report: assistantRecall.report, variant: "assistant" });
+  const recordedAssistantRecallHints = uniqueHints([...(turnState.midTurnRecallHints ?? []), ...assistantRecall.hints]);
 
   const turn = engine.recordTurn({
     userMessage: userMessage ?? prompt.slice(0, 300),
@@ -230,7 +208,7 @@ async function finalizeTurn({ prompt, userMessage, userRecallHints, memoryStore,
   syncCurrentMarchSessionState();
 }
 
-async function flushAssistantRecall({ memoryStore, engine, turnState }) {
+export async function flushAssistantRecall({ memoryStore, engine, turnState }) {
   if (!memoryStore) return { hints: [], report: null };
   const text = assistantRecallDeltaText(turnState);
   advanceAssistantRecallCursor(turnState);
@@ -238,20 +216,6 @@ async function flushAssistantRecall({ memoryStore, engine, turnState }) {
   return await memoryStore.recallForAssistant(text, {
     excludedIds: engine.getRecentRecallMemoryIds?.() ?? [],
   });
-}
-
-async function flushMidTurnAssistantRecall({ memoryStore, engine, turnState, activeSession, ui, logger, midTurnRecallHints, trackMidTurnRecallInjection }) {
-  try {
-    const { hints, report } = await flushAssistantRecall({ memoryStore, engine, turnState });
-    if (hints.length > 0) {
-      midTurnRecallHints.push(...hints);
-      const injection = queueMidTurnRecallHints(activeSession, hints, logger);
-      if (injection) trackMidTurnRecallInjection?.(injection);
-    }
-    if (report) ui.recall?.({ hints, report, variant: "assistant" });
-  } catch (err) {
-    logger?.debug("memory.mid_turn_recall.failed", { errorMessage: err?.message ?? String(err) });
-  }
 }
 
 function assistantRecallDeltaText(turnState) {

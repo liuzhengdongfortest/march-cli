@@ -11,6 +11,7 @@ export function createTurnEventState() {
     assistantReplyOpen: false,
     assistantContextParts: [],
     activeToolContextPart: null,
+    midTurnRecallHints: [],
     toolCalls: [],
     lastAssistantStopReason: null,
     lastAssistantErrorMessage: null,

@@ -21,12 +21,6 @@ export async function runRuntimeRunnerIpcSmoke() {
   assert.deepEqual(remote.getScopedModels(), [{ model: { id: "model-a" } }]);
   assert.equal(remote.canSwitchPiSession(), true);
   assert.deepEqual(remote.getLspStatus(), { ready: true });
-  assert.deepEqual(remote.engine.peekPendingAssistantRecallHints(), [{ id: "mem_pending" }]);
-  assert.equal(remote.engine.hasRenderedPendingAssistantRecallHints(), false);
-  remote.engine.markPendingAssistantRecallHintsRendered();
-  assert.equal(remote.engine.hasRenderedPendingAssistantRecallHints(), true);
-  assert.deepEqual(remote.engine.takePendingAssistantRecallHints(), { hints: [{ id: "mem_pending" }], report: null });
-  assert.deepEqual(remote.engine.peekPendingAssistantRecallHints(), []);
   assert.deepEqual(remote.engine.getRecentRecallMemoryIds(), ["mem_recent"]);
   assert.deepEqual(calls, [["create", "D:/repo"]]);
   assert.deepEqual(await remote.switchPiSession("session.jsonl", { turns: [{ assistantMessage: "restored" }] }), { sessionPath: "session.jsonl" });
@@ -86,10 +80,6 @@ function createFakeRunner({ calls, options }) {
     thinkingLevel: "medium",
     sessionName: "initial",
     turns: [{ userRecallHints: [{ id: "mem_recent" }] }],
-    pendingAssistantRecallHints: [{ id: "mem_pending" }],
-    pendingAssistantRecallHintsRendered: false,
-    peekPendingAssistantRecallHints() { return this.pendingAssistantRecallHints; },
-    hasRenderedPendingAssistantRecallHints() { return this.pendingAssistantRecallHintsRendered; },
     getRecentRecallMemoryIds() { return new Set(this.turns.flatMap((turn) => (turn.userRecallHints ?? []).map((hint) => hint.id))); },
   };
   return {

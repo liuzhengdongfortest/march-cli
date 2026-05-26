@@ -1,4 +1,5 @@
 import { injectHostedTools } from "../../../provider/hosted-tools.mjs";
+import { formatRecallHints } from "../../../memory/markdown-store.mjs";
 import { applyCodexLargeContextGuardToPayload } from "../codex-large-context-guard.mjs";
 
 export function createMarchPiContextExtension({
@@ -8,8 +9,9 @@ export function createMarchPiContextExtension({
   getCurrentPrompt,
   getContextMode,
   getFastEntry,
-  waitForMidTurnRecall = null,
-  getMidTurnRecallMessages = null,
+  flushAssistantRecall = null,
+  onAssistantRecall = null,
+  logger = null,
 }) {
   return async function marchPiContextExtension(pi) {
     pi.on("before_agent_start", () => {
@@ -18,8 +20,8 @@ export function createMarchPiContextExtension({
     });
 
     pi.on("context", async (event) => {
-      await waitForMidTurnRecall?.();
-      return { messages: appendMissingRecallMessages(event.messages, getMidTurnRecallMessages?.() ?? []) };
+      const recallContent = await flushAssistantRecallMessage({ flushAssistantRecall, onAssistantRecall, logger });
+      return { messages: appendRecallMessage(event.messages, recallContent) };
     });
 
     pi.on("before_provider_request", (event, ctx) => {
@@ -31,26 +33,33 @@ export function createMarchPiContextExtension({
   };
 }
 
-function appendMissingRecallMessages(messages, recallMessages) {
-  if (recallMessages.length === 0) return messages;
-  const existingText = messages.map(agentMessageText).join("\n");
-  const missing = recallMessages.filter((content) => content && !existingText.includes(content));
-  if (missing.length === 0) return messages;
+async function flushAssistantRecallMessage({ flushAssistantRecall, onAssistantRecall, logger }) {
+  if (!flushAssistantRecall) return "";
+  try {
+    const { hints = [], report = null } = await flushAssistantRecall();
+    if (hints.length === 0) {
+      if (report) onAssistantRecall?.({ hints, report });
+      return "";
+    }
+    onAssistantRecall?.({ hints, report });
+    return formatRecallHints(hints);
+  } catch (err) {
+    logger?.debug?.("memory.mid_turn_recall.failed", { errorMessage: err?.message ?? String(err) });
+    return "";
+  }
+}
+
+function appendRecallMessage(messages, content) {
+  if (!content) return messages;
   return [
     ...messages,
-    ...missing.map((content) => ({
+    {
       role: "custom",
       customType: "march.recall",
       content,
       display: false,
       details: { type: "recall" },
       timestamp: Date.now(),
-    })),
+    },
   ];
-}
-
-function agentMessageText(message) {
-  if (typeof message?.content === "string") return message.content;
-  if (Array.isArray(message?.content)) return message.content.map((part) => part?.text ?? "").join("");
-  return "";
 }
