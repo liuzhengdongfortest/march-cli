@@ -36,7 +36,7 @@ export async function createIsolatedRunner(options = {}, deps = {}) {
   d.installNetworkEnvironment(options.config?.network);
 
   const ui = d.createRemoteRuntimeUiClient(d.peer);
-  const memoryStore = new d.MarkdownMemoryStore({ root: options.memoryRoot });
+  const memoryStore = new d.MarkdownMemoryStore({ root: options.memoryRoot, stateRoot: options.stateRoot });
   const remoteMemorySources = normalizeRemoteMemorySources({ remoteMemories: options.remoteMemorySources ?? options.config?.remoteMemories ?? [] });
   const memoryTools = d.createMarkdownMemoryTools(memoryStore, { remoteSources: remoteMemorySources });
   const shellRuntime = options.shellRuntime ? d.createCliShellRuntime({ cwd: options.cwd }) : null;

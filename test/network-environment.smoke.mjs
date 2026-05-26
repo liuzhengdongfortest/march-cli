@@ -27,13 +27,15 @@ export async function runNetworkEnvironmentSmoke() {
   const calls = [];
   const runner = await createIsolatedRunner({
     cwd: "D:/repo",
+    stateRoot: "D:/state",
+    memoryRoot: "D:/memory",
     provider: "deepseek",
     config: { network: { proxy: "http://proxy.example:8080", ca: "system" }, notifications: {} },
   }, createFakeRuntimeDeps(calls));
   assert.deepEqual(calls.slice(0, 4), [
     ["network", { proxy: "http://proxy.example:8080", ca: "system" }],
     ["ui"],
-    ["memory", undefined],
+    ["memory", { root: "D:/memory", stateRoot: "D:/state" }],
     ["mcp", "D:/repo"],
   ]);
   assert.equal(calls.findIndex(([name]) => name === "network") < calls.findIndex(([name]) => name === "runner"), true);
@@ -49,7 +51,7 @@ function createFakeRuntimeDeps(calls) {
     installNetworkEnvironment: (network) => calls.push(["network", network]),
     createRemoteRuntimeUiClient: () => (calls.push(["ui"]), {}),
     MarkdownMemoryStore: class {
-      constructor({ root }) { calls.push(["memory", root]); }
+      constructor(options) { calls.push(["memory", options]); }
       close() { calls.push(["memory-close"]); }
     },
     createMarkdownMemoryTools: () => ({}),
