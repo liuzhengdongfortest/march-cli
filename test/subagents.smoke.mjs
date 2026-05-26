@@ -24,6 +24,7 @@ export async function runSubagentsSmoke({ setupTmp, cleanup }) {
         assert.ok(options.tools.includes("code_search"));
         assert.ok(!options.tools.includes("Agent"));
         assert.ok(!options.tools.includes("edit_file"));
+        assert.equal(options.sessionManager?.isPersisted?.(), false);
         return { session: createFakeSubagentSession(`reply ${created.length}`) };
       },
       maxConcurrent: 2,

@@ -22,7 +22,7 @@ function createAgentTool(runtime) {
       prompt: Type.String({ description: "Complete task prompt for the fresh child session. Include all necessary context; it does not inherit conversation history." }),
       mode: Type.Optional(Type.Union([Type.Literal("foreground"), Type.Literal("background")], { description: "foreground waits for completion; background returns a job id immediately. Default foreground." })),
     }),
-    execute: async (_toolCallId, params) => {
+    execute: async (_toolCallId, params = {}) => {
       const result = await runtime.start({ ...params, mode: params.mode ?? "foreground" });
       return toolText(formatJob(result), result);
     },
@@ -37,7 +37,7 @@ function createAgentStatusTool(runtime) {
     parameters: Type.Object({
       job_id: Type.Optional(Type.String({ description: "Optional job id. If omitted, all current subagent jobs are listed." })),
     }),
-    execute: async (_toolCallId, params) => {
+    execute: async (_toolCallId, params = {}) => {
       const result = runtime.status(params.job_id ?? null);
       return toolText(Array.isArray(result) ? formatJobList(result) : formatJob(result), result);
     },
@@ -53,7 +53,7 @@ function createAgentResultTool(runtime) {
       job_id: Type.String({ description: "Subagent job id returned by Agent." }),
       wait: Type.Optional(Type.Boolean({ description: "Wait until queued/running job completes before returning. Default false." })),
     }),
-    execute: async (_toolCallId, params) => {
+    execute: async (_toolCallId, params = {}) => {
       const result = await runtime.result(params.job_id, { wait: Boolean(params.wait) });
       return toolText(formatJob(result), result);
     },
@@ -68,7 +68,7 @@ function createAgentCancelTool(runtime) {
     parameters: Type.Object({
       job_id: Type.String({ description: "Subagent job id returned by Agent." }),
     }),
-    execute: async (_toolCallId, params) => {
+    execute: async (_toolCallId, params = {}) => {
       const result = runtime.cancel(params.job_id);
       return toolText(formatJob(result), result);
     },

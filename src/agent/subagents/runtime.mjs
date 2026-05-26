@@ -27,9 +27,12 @@ export function createSubagentRuntime({
 }) {
   const jobs = new Map();
   const queue = [];
+  const concurrencyLimit = normalizeConcurrency(maxConcurrent);
   let running = 0;
 
   async function start({ subagent_type, prompt, description = "", mode = "foreground" } = {}) {
+    if (!["foreground", "background"].includes(mode)) throw new Error(`Invalid Agent mode '${mode}'`);
+    if (!String(prompt ?? "").trim()) throw new Error("Agent prompt is required");
     const definition = resolveSubagentDefinition(subagent_type, definitions);
     const job = createJob({ definition, prompt, description, mode });
     jobs.set(job.id, job);
@@ -47,7 +50,7 @@ export function createSubagentRuntime({
   }
 
   function pump() {
-    while (running < maxConcurrent && queue.length > 0) {
+    while (running < concurrencyLimit && queue.length > 0) {
       const job = queue.shift();
       if (!job || job.status === "cancelled") continue;
       runJob(job);
@@ -108,11 +111,7 @@ export function createSubagentRuntime({
     const job = requireJob(jobId);
     if (["completed", "failed", "cancelled"].includes(job.status)) return snapshot(job);
     job.abortController.abort();
-    if (job.status === "queued") {
-      job.status = "cancelled";
-      job.completedAt = new Date().toISOString();
-      job._resolve?.(snapshot(job));
-    }
+    if (job.status === "queued") settleCancelledJob(job);
     return snapshot(job);
   }
 
@@ -130,10 +129,22 @@ export function createSubagentRuntime({
     listDefinitions: () => listSubagentDefinitions(definitions),
     dispose() {
       for (const job of jobs.values()) {
-        if (["queued", "running"].includes(job.status)) job.abortController.abort();
+        if (job.status === "queued") settleCancelledJob(job);
+        else if (job.status === "running") job.abortController.abort();
       }
     },
   };
+}
+
+function normalizeConcurrency(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : DEFAULT_MAX_CONCURRENT;
+}
+
+function settleCancelledJob(job) {
+  job.status = "cancelled";
+  job.completedAt = new Date().toISOString();
+  job._resolve?.(snapshot(job));
 }
 
 function createJob({ definition, prompt, description, mode }) {

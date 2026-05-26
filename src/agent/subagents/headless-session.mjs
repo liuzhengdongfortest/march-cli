@@ -1,3 +1,4 @@
+import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { ContextEngine } from "../../context/engine.mjs";
 import { createSessionBinding } from "../session/session-binding.mjs";
 import { resolveRunnerSessionOptions } from "../session/session-options.mjs";
@@ -33,6 +34,7 @@ export async function runHeadlessSubagentSession({
     namespace: `${namespace}:${definition.name}`,
     shellRuntime,
     lspService,
+    maxTurns: definition.maxTurns,
   });
   const childBinding = createSessionBinding(null);
   let currentPrompt = "";
@@ -45,6 +47,7 @@ export async function runHeadlessSubagentSession({
     getFastEntry: () => null,
     logger,
   });
+  const budget = createSubagentBudget(definition.maxTurns);
   const sessionOptions = resolveRunnerSessionOptions({
     cwd,
     stateRoot,
@@ -64,7 +67,7 @@ export async function runHeadlessSubagentSession({
     cwd,
     agentDir: stateRoot,
     settingsManager,
-    extraOptions: { extensionFactories: [extension] },
+    extraOptions: { extensionFactories: [extension, budget.extension] },
   });
   const { session } = await createAgentSession({
     cwd,
@@ -74,12 +77,14 @@ export async function runHeadlessSubagentSession({
     modelRegistry,
     settingsManager,
     resourceLoader,
+    sessionManager: SessionManager.inMemory(cwd),
   });
   childBinding.set(session);
 
   const turnState = createTurnEventState();
+  const silentUi = createSilentUi();
   const unsubscribe = session.subscribe?.((event) => {
-    handleRunnerSessionEvent(event, { ui: createSilentUi(), engine: childEngine, state: turnState });
+    handleRunnerSessionEvent(event, { ui: silentUi, engine: childEngine, state: turnState });
   }) ?? (() => {});
   const abortOnSignal = () => session.abort?.();
   try {
@@ -88,6 +93,7 @@ export async function runHeadlessSubagentSession({
     currentPrompt = buildSubagentPrompt({ definition, prompt, parentSessionId });
     resetPiMessageHistory(session);
     await session.prompt(buildInitialPiPrompt(childEngine, currentPrompt));
+    if (budget.exceeded) throw new Error(`Subagent exceeded max_turns=${definition.maxTurns}`);
     if (turnState.lastAssistantStopReason === "error") {
       throw new Error(turnState.lastAssistantErrorMessage || "Subagent model provider returned an error");
     }
@@ -107,9 +113,27 @@ export async function runHeadlessSubagentSession({
 function buildSubagentPrompt({ definition, prompt, parentSessionId }) {
   return [
     `[subagent_identity]\nname: ${definition.name}\ndescription: ${definition.description}\nparent_session_id: ${parentSessionId ?? "unknown"}`,
-    `[subagent_instructions]\n${definition.prompt}`,
+    `[subagent_instructions]\n${definition.prompt}\n\nBudget: stop within max_turns=${definition.maxTurns} model turns.`,
     `[delegated_task]\n${String(prompt ?? "").trim()}`,
   ].join("\n\n");
+}
+
+function createSubagentBudget(maxTurns) {
+  let providerRequests = 0;
+  const budget = {
+    exceeded: false,
+    extension(pi) {
+      pi.on("before_provider_request", (_event, ctx) => {
+        providerRequests += 1;
+        if (Number.isFinite(maxTurns) && providerRequests > maxTurns) {
+          budget.exceeded = true;
+          ctx.abort?.();
+        }
+        return undefined;
+      });
+    },
+  };
+  return budget;
 }
 
 function createSilentUi() {
