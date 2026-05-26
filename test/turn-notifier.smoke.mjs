@@ -254,7 +254,7 @@ function createFakeSession() {
       return () => { listener = () => {}; };
     },
     async prompt(prompt) {
-      if (prompt === "fail") throw new Error("boom");
+      if (String(prompt).includes("fail")) throw new Error("boom");
       listener({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "assistant reply" } });
     },
     abort: () => true,
