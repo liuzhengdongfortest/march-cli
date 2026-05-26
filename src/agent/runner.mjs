@@ -28,7 +28,7 @@ import { registerCustomProviders } from "../provider/custom-provider.mjs";
 import { createRunnerLifecycle } from "./lifecycle/runner-lifecycle.mjs";
 import { createRunnerProviderQuotaRuntime } from "./runner/provider-quota-runtime.mjs";
 import { appendRunnerTurnHistory, createRunnerHistoryStore } from "../history/runner.mjs";
-import { createRunnerSubagentRuntime } from "./runner/subagents/factory.mjs";
+import { createRunnerAvatarRuntime } from "./runner/avatars/factory.mjs";
 export { MARCH_BASE_TOOL_NAMES, installModelPayloadDumper };
 export { createDefaultSessionManager, resolveRunnerSessionManager } from "./runner/runner-init.mjs"; export { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
 export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, memoryRoot = null, profilePaths = null, memoryStore = null, memoryTools = [], remoteMemorySources = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncMarchSessionState: syncMarchSessionStateEnabled = false, syncPiSidecar = syncMarchSessionStateEnabled, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, modelContextDumper = null, turnNotifier = null, logger = null, onModelPayload = null, onLspStatusChange = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices, maxTurns, trimBatch, serviceTier = null, hostedTools = {}, notificationContext = null }) {
@@ -68,10 +68,10 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     },
     logger,
   });
-  const subagentRuntime = createRunnerSubagentRuntime({
+  const avatarRuntime = createRunnerAvatarRuntime({
     cwd, stateRoot, provider, modelId, modelRegistry, settingsManager, authStorage: resolvedAuth,
-    createAgentSession: createAgentSessionImpl, sessionBinding, getRuntimeHost: () => runtimeHost,
-    getCurrentModel: () => _currentFastEntry ?? sessionBinding.get()?.model ?? selectedModel,
+    createAgentSession: createAgentSessionImpl, engine, sessionBinding, getRuntimeHost: () => runtimeHost,
+    getCurrentUserRequest: () => currentPromptForContext, getCurrentModel: () => _currentFastEntry ?? sessionBinding.get()?.model ?? selectedModel,
     namespace, shellRuntime, lspService, webTools, hostedTools, modelContextDumper, onModelPayload: onLoggedModelPayload, logger,
   });
   if (useRuntimeHost) {
@@ -82,7 +82,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       sessionManager: resolvedSessionManager, sessionBinding, engine, ui: runtimeUi,
       projectMarchDir,
       memoryTools, memoryStore, historyStore, shellRuntime, lspService, mcpTools, webTools,
-      lifecycle, extensionPaths, hostedTools, subagentRuntime, extensionFactories: [marchPiContextExtension],
+      lifecycle, extensionPaths, hostedTools, avatarRuntime, extensionFactories: [marchPiContextExtension],
       onRebind: (session) => {
         installModelPayloadDumper(session, modelContextDumper, () => currentModelCallKind, onLoggedModelPayload);
         syncEngineSessionState(engine, session);
@@ -97,7 +97,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       memoryTools, historyStore, shellRuntime, lspService, mcpTools, webTools, lifecycle,
       authStorage: resolvedAuth, projectMarchDir,
       getCurrentModel: () => sessionBinding.get()?.model ?? selectedModel,
-      subagentRuntime,
+      avatarRuntime,
     });
     const resourceLoader = await createMarchPiResourceLoader({ cwd, agentDir: stateRoot, settingsManager, extraOptions: { extensionFactories: [marchPiContextExtension] } });
     const { session } = await createAgentSessionImpl({
@@ -266,7 +266,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     async dispose() {
       await runRunnerCleanup([
         () => runtimeHost?.dispose() ?? sessionBinding.get().dispose(),
-        () => { subagentRuntime.dispose(); return shellRuntime?.dispose?.() ?? shellRuntime?.killAll?.(); },
+        () => { avatarRuntime.dispose(); return shellRuntime?.dispose?.() ?? shellRuntime?.killAll?.(); },
         () => lspService.dispose(),
         () => mcpClientManager?.disconnectAll?.(),
         () => providerQuotaRuntime.disposeProviderQuotaRuntime(),

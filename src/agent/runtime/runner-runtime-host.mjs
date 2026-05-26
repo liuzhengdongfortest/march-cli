@@ -26,7 +26,7 @@ export async function createRunnerRuntimeHost({
   mcpTools = [],
   webTools = [],
   lifecycle = null,
-  subagentRuntime = null,
+  avatarRuntime = null,
   extensionPaths = [],
   hostedTools = {},
   extensionFactories = [],
@@ -68,7 +68,7 @@ export async function createRunnerRuntimeHost({
         authStorage,
         projectMarchDir,
         hostedTools,
-        subagentRuntime,
+        avatarRuntime,
         getCurrentModel: () => sessionBinding.get()?.model ?? null,
       });
     },

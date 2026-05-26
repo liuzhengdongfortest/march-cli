@@ -1,12 +1,12 @@
-export const DEFAULT_SUBAGENT_DEFINITIONS = Object.freeze({
+export const DEFAULT_AVATAR_DEFINITIONS = Object.freeze({
   explore: Object.freeze({
     name: "explore",
     description: "Read-only codebase exploration for call flows, relevant files, module boundaries, and evidence gathering.",
     maxTurns: 4,
     tools: ["read", "grep", "find", "ls", "code_search"],
-    prompt: `You are a read-only exploration subagent for March.
+    prompt: `You are a read-only exploration avatar for March.
 
-Your job is to inspect the workspace with fresh context and return a compact, evidence-backed summary to the main agent.
+Your job is to inspect the workspace from the inherited parent context and return a compact, evidence-backed summary to the main agent.
 
 Rules:
 - Do not modify files or run write-capable commands.
@@ -25,9 +25,9 @@ Return:
     description: "Read-only adversarial review of a plan, patch, diagnosis, or claim. Looks for correctness, architecture, and test gaps.",
     maxTurns: 4,
     tools: ["read", "grep", "find", "ls", "code_search"],
-    prompt: `You are an adversarial reviewer subagent for March.
+    prompt: `You are an adversarial reviewer avatar for March.
 
-Your job is to challenge the main agent's plan, patch, diagnosis, or claim from an independent fresh context.
+Your job is to challenge the main agent's plan, patch, diagnosis, or claim from an independent branch of the parent context.
 
 Rules:
 - Be skeptical but evidence-based.
@@ -43,12 +43,12 @@ Return:
   }),
   general: Object.freeze({
     name: "general",
-    description: "General-purpose subagent for bounded multi-step investigation. Defaults to no subagent recursion.",
+    description: "General-purpose avatar for bounded multi-step investigation. Defaults to no avatar recursion.",
     maxTurns: 6,
     tools: ["read", "grep", "find", "ls", "code_search"],
-    prompt: `You are a bounded general-purpose subagent for March.
+    prompt: `You are a bounded general-purpose avatar for March.
 
-Your job is to solve the delegated task in a fresh context and return a compact result. Do not spawn other agents. Do not modify files in the first version.
+Your job is to solve the delegated task from the inherited parent context and return a compact result. Do not spawn other avatars. Do not modify files in the first version.
 
 Return:
 - summary
@@ -58,7 +58,7 @@ Return:
   }),
 });
 
-export function listSubagentDefinitions(definitions = DEFAULT_SUBAGENT_DEFINITIONS) {
+export function listAvatarDefinitions(definitions = DEFAULT_AVATAR_DEFINITIONS) {
   return Object.values(definitions).map(({ name, description, maxTurns, tools }) => ({
     name,
     description,
@@ -67,12 +67,12 @@ export function listSubagentDefinitions(definitions = DEFAULT_SUBAGENT_DEFINITIO
   }));
 }
 
-export function resolveSubagentDefinition(type, definitions = DEFAULT_SUBAGENT_DEFINITIONS) {
+export function resolveAvatarDefinition(type, definitions = DEFAULT_AVATAR_DEFINITIONS) {
   const key = String(type ?? "").trim();
   const definition = definitions[key];
   if (!definition) {
     const available = Object.keys(definitions).sort().join(", ");
-    throw new Error(`Unknown subagent_type '${key}'. Available subagents: ${available}`);
+    throw new Error(`Unknown avatar '${key}'. Available avatars: ${available}`);
   }
   return definition;
 }

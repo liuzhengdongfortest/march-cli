@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { DEFAULT_SUBAGENT_DEFINITIONS, listSubagentDefinitions, resolveSubagentDefinition } from "./definitions.mjs";
-import { runHeadlessSubagentSession } from "./headless-session.mjs";
+import { DEFAULT_AVATAR_DEFINITIONS, listAvatarDefinitions, resolveAvatarDefinition } from "./definitions.mjs";
+import { runAvatarSession } from "./session.mjs";
+import { captureAvatarContextSnapshot } from "./snapshot.mjs";
 
 const DEFAULT_MAX_CONCURRENT = 3;
 const RESULT_EXCERPT_LIMIT = 16000;
 
-export function createSubagentRuntime({
+export function createAvatarRuntime({
   cwd,
   stateRoot,
   provider,
@@ -15,8 +16,10 @@ export function createSubagentRuntime({
   authStorage,
   createAgentSession,
   getParentSessionId = () => null,
+  getCurrentUserRequest = () => "",
+  getParentEngine = () => null,
   getCurrentModel = () => null,
-  namespace = "subagent",
+  namespace = "avatar",
   shellRuntime = null,
   lspService = null,
   webTools = [],
@@ -24,7 +27,7 @@ export function createSubagentRuntime({
   modelContextDumper = null,
   onModelPayload = null,
   logger = null,
-  definitions = DEFAULT_SUBAGENT_DEFINITIONS,
+  definitions = DEFAULT_AVATAR_DEFINITIONS,
   maxConcurrent = DEFAULT_MAX_CONCURRENT,
 }) {
   const jobs = new Map();
@@ -32,15 +35,20 @@ export function createSubagentRuntime({
   const concurrencyLimit = normalizeConcurrency(maxConcurrent);
   let running = 0;
 
-  async function start({ subagent_type, prompt, description = "", mode = "foreground" } = {}) {
-    if (!["foreground", "background"].includes(mode)) throw new Error(`Invalid Agent mode '${mode}'`);
-    if (!String(prompt ?? "").trim()) throw new Error("Agent prompt is required");
-    const definition = resolveSubagentDefinition(subagent_type, definitions);
-    const job = createJob({ definition, prompt, description, mode });
+  async function start({ avatar, say = "", task, description = "", mode = "foreground" } = {}) {
+    if (!["foreground", "background"].includes(mode)) throw new Error(`Invalid DispatchAvatar mode '${mode}'`);
+    if (!String(task ?? "").trim()) throw new Error("DispatchAvatar task is required");
+    const definition = resolveAvatarDefinition(avatar, definitions);
+    const snapshot = captureAvatarContextSnapshot({
+      engine: getParentEngine?.(),
+      parentSessionId: getParentSessionId?.(),
+      currentUserRequest: getCurrentUserRequest?.(),
+    });
+    const job = createJob({ definition, say, task, description, mode, contextSnapshot: snapshot });
     jobs.set(job.id, job);
     enqueue(job);
     if (mode === "foreground") await job.promise;
-    return snapshot(job);
+    return snapshotJob(job);
   }
 
   function enqueue(job) {
@@ -65,7 +73,7 @@ export function createSubagentRuntime({
     job.startedAt = new Date().toISOString();
     try {
       const currentModel = getCurrentModel?.();
-      const result = await runHeadlessSubagentSession({
+      const result = await runAvatarSession({
         cwd,
         stateRoot,
         provider: currentModel?.provider ?? provider,
@@ -75,8 +83,9 @@ export function createSubagentRuntime({
         authStorage,
         createAgentSession,
         definition: job.definition,
-        prompt: job.prompt,
-        parentSessionId: getParentSessionId?.(),
+        say: job.say,
+        task: job.task,
+        contextSnapshot: job.contextSnapshot,
         jobId: job.id,
         namespace,
         shellRuntime,
@@ -96,33 +105,33 @@ export function createSubagentRuntime({
     } finally {
       running -= 1;
       job.completedAt = new Date().toISOString();
-      job._resolve?.(snapshot(job));
+      job._resolve?.(snapshotJob(job));
       pump();
     }
   }
 
   function status(jobId = null) {
-    if (jobId) return snapshot(requireJob(jobId));
-    return [...jobs.values()].map(snapshot);
+    if (jobId) return snapshotJob(requireJob(jobId));
+    return [...jobs.values()].map(snapshotJob);
   }
 
   async function result(jobId, { wait = false } = {}) {
     const job = requireJob(jobId);
     if (wait && ["queued", "running"].includes(job.status)) await job.promise;
-    return snapshot(job);
+    return snapshotJob(job);
   }
 
   function cancel(jobId) {
     const job = requireJob(jobId);
-    if (["completed", "failed", "cancelled"].includes(job.status)) return snapshot(job);
+    if (["completed", "failed", "cancelled"].includes(job.status)) return snapshotJob(job);
     job.abortController.abort();
     if (job.status === "queued") settleCancelledJob(job);
-    return snapshot(job);
+    return snapshotJob(job);
   }
 
   function requireJob(jobId) {
     const job = jobs.get(String(jobId ?? ""));
-    if (!job) throw new Error(`Unknown subagent job '${jobId}'`);
+    if (!job) throw new Error(`Unknown avatar job '${jobId}'`);
     return job;
   }
 
@@ -131,7 +140,7 @@ export function createSubagentRuntime({
     status,
     result,
     cancel,
-    listDefinitions: () => listSubagentDefinitions(definitions),
+    listDefinitions: () => listAvatarDefinitions(definitions),
     dispose() {
       for (const job of jobs.values()) {
         if (job.status === "queued") settleCancelledJob(job);
@@ -149,22 +158,24 @@ function normalizeConcurrency(value) {
 function settleCancelledJob(job) {
   job.status = "cancelled";
   job.completedAt = new Date().toISOString();
-  job._resolve?.(snapshot(job));
+  job._resolve?.(snapshotJob(job));
 }
 
-function createJob({ definition, prompt, description, mode }) {
+function createJob({ definition, say, task, description, mode, contextSnapshot }) {
   const now = new Date().toISOString();
   return {
-    id: `subagent_${randomUUID().slice(0, 8)}`,
+    id: `avatar_${randomUUID().slice(0, 8)}`,
     definition,
-    subagentType: definition.name,
+    avatar: definition.name,
     description: String(description ?? "").trim(),
-    prompt: String(prompt ?? ""),
+    say: String(say ?? ""),
+    task: String(task ?? ""),
     mode,
     status: "queued",
     createdAt: now,
     startedAt: null,
     completedAt: null,
+    contextSnapshot,
     result: null,
     error: null,
     abortController: new AbortController(),
@@ -173,22 +184,23 @@ function createJob({ definition, prompt, description, mode }) {
   };
 }
 
-function snapshot(job) {
+function snapshotJob(job) {
   return {
     job_id: job.id,
-    subagent_type: job.subagentType,
+    avatar: job.avatar,
     description: job.description,
     status: job.status,
     created_at: job.createdAt,
     started_at: job.startedAt,
     completed_at: job.completedAt,
+    context_snapshot: summarizeContextSnapshot(job.contextSnapshot),
     result: job.result,
     error: job.error,
   };
 }
 
 function normalizeResult(result) {
-  const summary = truncate(String(result?.draft ?? "").trim() || "(subagent completed without text output)");
+  const summary = truncate(String(result?.draft ?? "").trim() || "(avatar completed without text output)");
   return {
     summary,
     tool_calls: result?.toolCalls ?? [],
@@ -197,7 +209,17 @@ function normalizeResult(result) {
   };
 }
 
+function summarizeContextSnapshot(snapshot) {
+  if (!snapshot) return null;
+  return {
+    created_at: snapshot.created_at,
+    parent_session_id: snapshot.parent_session_id,
+    current_user_request: snapshot.current_user_request,
+    inherited_turns: snapshot.inherited_context?.turns?.length ?? 0,
+  };
+}
+
 function truncate(text) {
   if (text.length <= RESULT_EXCERPT_LIMIT) return text;
-  return `${text.slice(0, RESULT_EXCERPT_LIMIT)}\n\n[truncated ${text.length - RESULT_EXCERPT_LIMIT} chars from subagent result]`;
+  return `${text.slice(0, RESULT_EXCERPT_LIMIT)}\n\n[truncated ${text.length - RESULT_EXCERPT_LIMIT} chars from avatar result]`;
 }

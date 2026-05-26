@@ -3,19 +3,23 @@ import { mkdirSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { SettingsManager } from "@earendil-works/pi-coding-agent";
 
-export async function runSubagentsSmoke({ setupTmp, cleanup }) {
-  console.log("--- smoke: subagent runtime and tools ---");
-  const { createSubagentRuntime } = await import("../src/agent/subagents/runtime.mjs");
-  const { createSubagentTools } = await import("../src/agent/subagents/tools.mjs");
+export async function runAvatarsSmoke({ setupTmp, cleanup }) {
+  console.log("--- smoke: avatar runtime and tools ---");
+  const { createAvatarRuntime } = await import("../src/agent/avatars/runtime.mjs");
+  const { createAvatarTools } = await import("../src/agent/avatars/tools.mjs");
+  const { ContextEngine } = await import("../src/context/engine.mjs");
   const { createModelContextDumper } = await import("../src/debug/model-context-dumper.mjs");
 
   const dir = setupTmp();
   const created = [];
+  const prompts = [];
   const payloadEvents = [];
   const dumpRoot = join(dir, "dumps");
   mkdirSync(dumpRoot, { recursive: true });
   try {
-    const runtime = createSubagentRuntime({
+    const parentEngine = new ContextEngine({ cwd: dir, modelId: "model", provider: "test", injections: ["[test_injection]\ninherited"] });
+    parentEngine.recordTurn({ userMessage: "previous user", assistantMessage: "previous assistant" });
+    const runtime = createAvatarRuntime({
       cwd: dir,
       stateRoot: dir,
       provider: "test",
@@ -25,30 +29,36 @@ export async function runSubagentsSmoke({ setupTmp, cleanup }) {
       authStorage: {},
       getCurrentModel: () => ({ id: "model", provider: "test" }),
       getParentSessionId: () => "parent-session",
+      getCurrentUserRequest: () => "current user request",
+      getParentEngine: () => parentEngine,
       modelContextDumper: createModelContextDumper({ enabled: true, rootDir: dumpRoot }),
       onModelPayload: (event) => payloadEvents.push(event),
       createAgentSession: async (options) => {
         created.push(options);
         assert.ok(options.tools.includes("read"));
         assert.ok(options.tools.includes("code_search"));
-        assert.ok(!options.tools.includes("Agent"));
+        assert.ok(!options.tools.includes("DispatchAvatar"));
         assert.ok(!options.tools.includes("edit_file"));
         assert.equal(options.sessionManager?.isPersisted?.(), false);
-        return { session: createFakeSubagentSession(`reply ${created.length}`) };
+        return { session: createFakeAvatarSession(`reply ${created.length}`, prompts) };
       },
       maxConcurrent: 2,
     });
 
-    const tools = createSubagentTools({ runtime });
-    assert.deepEqual(tools.map((tool) => tool.name), ["Agent", "AgentStatus", "AgentResult", "AgentCancel"]);
+    const tools = createAvatarTools({ runtime });
+    assert.deepEqual(tools.map((tool) => tool.name), ["DispatchAvatar", "AvatarStatus", "AvatarResult", "AvatarCancel"]);
 
     const background = await tools[0].execute("call", {
       description: "inspect code",
-      subagent_type: "explore",
-      prompt: "Find the relevant files.",
+      avatar: "explore",
+      say: "Use the inherited parent state and focus on relevant files.",
+      task: "Find the relevant files.",
       mode: "background",
     });
     assert.ok(["queued", "running", "completed"].includes(background.details.status));
+    assert.equal(background.details.avatar, "explore");
+    assert.equal(background.details.context_snapshot.parent_session_id, "parent-session");
+    assert.equal(background.details.context_snapshot.inherited_turns, 1);
 
     const fetched = await tools[2].execute("call", { job_id: background.details.job_id, wait: true });
     assert.equal(fetched.details.status, "completed");
@@ -56,21 +66,24 @@ export async function runSubagentsSmoke({ setupTmp, cleanup }) {
 
     const foreground = await tools[0].execute("call", {
       description: "review plan",
-      subagent_type: "reviewer",
-      prompt: "Review this plan.",
+      avatar: "reviewer",
+      say: "Review the current plan skeptically.",
+      task: "Review this plan.",
     });
     assert.equal(foreground.details.status, "completed");
     assert.match(foreground.content[0].text, /reply 2/);
 
     const status = await tools[1].execute("call", {});
     assert.equal(status.details.length, 2);
-    assert.equal(payloadEvents[0].metadata.subagent_type, "explore");
+    assert.equal(payloadEvents[0].metadata.avatar, "explore");
     assert.equal(payloadEvents[0].metadata.parent_session_id, "parent-session");
+    assert.match(prompts[0], /\[parent_current_state\][\s\S]*current user request/);
+    assert.match(prompts[0], /\[recent_chat\][\s\S]*previous user/);
     const dumpFiles = readdirSync(dumpRoot);
-    assert.ok(dumpFiles.some((file) => file.includes("subagent-explore") && file.endsWith(".md")));
-    const payloadFile = dumpFiles.find((file) => file.includes("subagent-explore") && file.endsWith("-payload.json"));
+    assert.ok(dumpFiles.some((file) => file.includes("avatar-explore") && file.endsWith(".md")));
+    const payloadFile = dumpFiles.find((file) => file.includes("avatar-explore") && file.endsWith("-payload.json"));
     assert.ok(payloadFile);
-    assert.match(readFileSync(join(dumpRoot, payloadFile), "utf8"), /subagent payload/);
+    assert.match(readFileSync(join(dumpRoot, payloadFile), "utf8"), /avatar payload/);
     runtime.dispose();
   } finally {
     cleanup(dir);
@@ -78,7 +91,7 @@ export async function runSubagentsSmoke({ setupTmp, cleanup }) {
   console.log("  PASS");
 }
 
-function createFakeSubagentSession(reply) {
+function createFakeAvatarSession(reply, prompts) {
   let subscriber = null;
   return {
     agent: {
@@ -93,8 +106,12 @@ function createFakeSubagentSession(reply) {
       return () => { subscriber = null; };
     },
     async prompt(prompt) {
+      prompts.push(prompt);
+      assert.match(prompt, /\[avatar_identity\]/);
+      assert.match(prompt, /\[parent_current_state\]/);
+      assert.match(prompt, /\[dispatch_message\]/);
       assert.match(prompt, /\[delegated_task\]/);
-      await this.agent.onPayload({ messages: [{ role: "user", content: "subagent payload" }], tools: [{ name: "read" }] }, this.model);
+      await this.agent.onPayload({ messages: [{ role: "user", content: "avatar payload" }], tools: [{ name: "read" }] }, this.model);
       subscriber?.({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: reply } });
       subscriber?.({ type: "message_end", message: { role: "assistant", stopReason: "end_turn" } });
     },
@@ -102,7 +119,7 @@ function createFakeSubagentSession(reply) {
     getActiveToolNames: () => [],
     setActiveToolsByName: () => {},
     getToolDefinition: () => null,
-    getSessionStats: () => ({ sessionId: "subagent-test-session" }),
+    getSessionStats: () => ({ sessionId: "avatar-test-session" }),
     dispose: async () => {},
   };
 }

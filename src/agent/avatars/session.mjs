@@ -7,8 +7,9 @@ import { createMarchPiContextExtension } from "../runner/context/pi-context-exte
 import { createMarchPiResourceLoader } from "../runtime/resource/context-resource-loader.mjs";
 import { buildInitialPiPrompt, resetPiMessageHistory } from "../turn/pi-turn-context.mjs";
 import { createTurnEventState, handleRunnerSessionEvent } from "../turn/turn-events.mjs";
+import { createInheritedContextEngineOptions, formatParentCurrentState, restoreInheritedContext } from "./snapshot.mjs";
 
-export async function runHeadlessSubagentSession({
+export async function runAvatarSession({
   cwd,
   stateRoot,
   provider,
@@ -18,10 +19,11 @@ export async function runHeadlessSubagentSession({
   authStorage,
   createAgentSession,
   definition,
-  prompt,
-  parentSessionId = null,
+  say = "",
+  task,
+  contextSnapshot = null,
   jobId = null,
-  namespace = "subagent",
+  namespace = "avatar",
   shellRuntime = null,
   lspService = null,
   webTools = [],
@@ -39,7 +41,10 @@ export async function runHeadlessSubagentSession({
     shellRuntime,
     lspService,
     maxTurns: definition.maxTurns,
+    ...createInheritedContextEngineOptions(contextSnapshot),
   });
+  restoreInheritedContext(childEngine, contextSnapshot);
+
   const childBinding = createSessionBinding(null);
   let currentPrompt = "";
   const extension = createMarchPiContextExtension({
@@ -51,7 +56,7 @@ export async function runHeadlessSubagentSession({
     getFastEntry: () => null,
     logger,
   });
-  const budget = createSubagentBudget(definition.maxTurns);
+  const budget = createAvatarBudget(definition.maxTurns);
   const sessionOptions = resolveRunnerSessionOptions({
     cwd,
     stateRoot,
@@ -87,10 +92,10 @@ export async function runHeadlessSubagentSession({
   installModelPayloadDumper(
     session,
     modelContextDumper,
-    () => `subagent-${definition.name}`,
+    () => `avatar-${definition.name}`,
     onModelPayload,
     null,
-    () => ({ subagent_type: definition.name, subagent_job_id: jobId, parent_session_id: parentSessionId })
+    () => ({ avatar: definition.name, avatar_job_id: jobId, parent_session_id: contextSnapshot?.parent_session_id ?? null })
   );
 
   const turnState = createTurnEventState();
@@ -102,12 +107,12 @@ export async function runHeadlessSubagentSession({
   try {
     if (signal?.aborted) abortOnSignal();
     else signal?.addEventListener?.("abort", abortOnSignal, { once: true });
-    currentPrompt = buildSubagentPrompt({ definition, prompt, parentSessionId });
+    currentPrompt = buildAvatarPrompt({ definition, say, task, contextSnapshot });
     resetPiMessageHistory(session);
     await session.prompt(buildInitialPiPrompt(childEngine, currentPrompt));
-    if (budget.exceeded) throw new Error(`Subagent exceeded max_turns=${definition.maxTurns}`);
+    if (budget.exceeded) throw new Error(`Avatar exceeded max_turns=${definition.maxTurns}`);
     if (turnState.lastAssistantStopReason === "error") {
-      throw new Error(turnState.lastAssistantErrorMessage || "Subagent model provider returned an error");
+      throw new Error(turnState.lastAssistantErrorMessage || "Avatar model provider returned an error");
     }
     return {
       draft: turnState.draft.trim(),
@@ -122,15 +127,17 @@ export async function runHeadlessSubagentSession({
   }
 }
 
-function buildSubagentPrompt({ definition, prompt, parentSessionId }) {
+function buildAvatarPrompt({ definition, say, task, contextSnapshot }) {
   return [
-    `[subagent_identity]\nname: ${definition.name}\ndescription: ${definition.description}\nparent_session_id: ${parentSessionId ?? "unknown"}`,
-    `[subagent_instructions]\n${definition.prompt}\n\nBudget: stop within max_turns=${definition.maxTurns} model turns.`,
-    `[delegated_task]\n${String(prompt ?? "").trim()}`,
+    `[avatar_identity]\nname: ${definition.name}\ndescription: ${definition.description}\nparent_session_id: ${contextSnapshot?.parent_session_id ?? "unknown"}`,
+    `[avatar_instructions]\n${definition.prompt}\n\nBudget: stop within max_turns=${definition.maxTurns} model turns.`,
+    `[parent_current_state]\n${formatParentCurrentState(contextSnapshot)}`,
+    `[dispatch_message]\n${String(say ?? "").trim() || "(no separate dispatch message)"}`,
+    `[delegated_task]\n${String(task ?? "").trim()}`,
   ].join("\n\n");
 }
 
-function createSubagentBudget(maxTurns) {
+function createAvatarBudget(maxTurns) {
   let providerRequests = 0;
   const budget = {
     exceeded: false,

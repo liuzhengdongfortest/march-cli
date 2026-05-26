@@ -1,7 +1,7 @@
-import { createSubagentRuntime } from "../../subagents/runtime.mjs";
+import { createAvatarRuntime } from "../../avatars/runtime.mjs";
 import { getRunnerSessionStats } from "../runner-session-state.mjs";
 
-export function createRunnerSubagentRuntime({
+export function createRunnerAvatarRuntime({
   cwd,
   stateRoot,
   provider,
@@ -10,8 +10,10 @@ export function createRunnerSubagentRuntime({
   settingsManager,
   authStorage,
   createAgentSession,
+  engine,
   sessionBinding,
   getRuntimeHost,
+  getCurrentUserRequest,
   getCurrentModel,
   namespace,
   shellRuntime,
@@ -22,7 +24,7 @@ export function createRunnerSubagentRuntime({
   onModelPayload,
   logger,
 }) {
-  return createSubagentRuntime({
+  return createAvatarRuntime({
     cwd,
     stateRoot,
     provider,
@@ -31,7 +33,9 @@ export function createRunnerSubagentRuntime({
     settingsManager,
     authStorage,
     createAgentSession,
+    getParentEngine: () => engine,
     getParentSessionId: () => getRunnerSessionStats(sessionBinding.get(), getRuntimeHost?.()).sessionId ?? null,
+    getCurrentUserRequest,
     getCurrentModel,
     namespace,
     shellRuntime,
