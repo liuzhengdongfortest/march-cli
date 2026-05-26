@@ -19,7 +19,6 @@ export async function runHistorySearchSmoke({ setupTmp, cleanup }) {
         assistantMessage: "implemented rg-backed history search",
         thinking: "visible planning summary",
         userRecallHints: [{ id: "mem_user", name: "User Pref", description: "prefers concise design" }],
-        assistantRecallHints: [{ id: "mem_agent", name: "Agent Note", description: "reuse ripgrep" }],
         toolCalls: [
           { name: "read", args: { path: "src/a.mjs" }, status: "success" },
           { name: "command_exec", args: { command: "npm run test:fast" }, status: "failed", error: { message: "line limit failed", details: { status: 1 }, excerpt: "runner.mjs has 304 lines" } },

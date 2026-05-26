@@ -195,14 +195,12 @@ async function finalizeTurn({ prompt, userMessage, userRecallHints, memoryStore,
   closeAssistantReply({ ui, state: turnState });
   const assistantRecall = await (flushFinalAssistantRecall?.(turnState) ?? flushAssistantRecall({ memoryStore, engine, turnState }));
   if (assistantRecall.report) ui.recall?.({ hints: assistantRecall.hints, report: assistantRecall.report, variant: "assistant" });
-  const recordedAssistantRecallHints = uniqueHints([...(turnState.midTurnRecallHints ?? []), ...assistantRecall.hints]);
 
   const turn = engine.recordTurn({
     userMessage: userMessage ?? prompt.slice(0, 300),
     assistantMessage: turnState.draft,
     assistantContext: compactAssistantContext(turnState),
     userRecallHints,
-    assistantRecallHints: recordedAssistantRecallHints,
   });
   recordHistory?.({ ...turn, thinking: assistantThinkingText(turnState), toolCalls: turnState.toolCalls });
 
@@ -240,15 +238,4 @@ function advanceAssistantRecallCursor(turnState) {
 
 function assistantThinkingText(turnState) {
   return `${turnState.thinkingAccumulator}${turnState.thinkingText}`;
-}
-
-function uniqueHints(hints) {
-  const seen = new Set();
-  const unique = [];
-  for (const hint of hints) {
-    if (!hint?.id || seen.has(hint.id)) continue;
-    seen.add(hint.id);
-    unique.push(hint);
-  }
-  return unique;
 }

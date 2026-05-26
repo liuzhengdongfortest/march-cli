@@ -73,7 +73,6 @@ export class HistoryStore {
       turn.thinking ? ["### Thinking", safeBlock(turn.thinking)].join("\n") : null,
       "### Tool calls",
       formatToolCalls(turn.toolCalls),
-      formatRecallSection("Assistant memory recall", turn.assistantRecallHints),
       "",
     ].filter(Boolean).join("\n");
   }

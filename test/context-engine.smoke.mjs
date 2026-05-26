@@ -139,11 +139,10 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
     assistantMessage: "tested the engine",
     assistantContext: "looked around\n→ read · src\\context\\engine.mjs\nfinal context answer",
     userRecallHints: [{ id: "mem_user", name: "User hint", description: "User recall hint" }],
-    assistantRecallHints: [{ id: "mem_assistant", name: "Assistant hint", description: "Assistant recall hint" }],
   });
   assert.equal(engine.turns.length, 1);
   assert.equal(engine.turns[0].index, 1);
-  assert.deepEqual([...engine.getRecentRecallMemoryIds()].sort(), ["mem_assistant", "mem_user"]);
+  assert.deepEqual([...engine.getRecentRecallMemoryIds()].sort(), ["mem_user"]);
 
   const ctx2 = engine.buildContext("装備を確認する");
   assert.ok(ctx2.includes("[assistant]"));
@@ -152,7 +151,7 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   assert.ok(!ctx2.includes("WorkSummary"));
   assert.ok(ctx2.includes("[recall]"));
   assert.ok(ctx2.includes("mem_user | User hint | User recall hint"));
-  assert.ok(ctx2.includes("mem_assistant | Assistant hint | Assistant recall hint"));
+  assert.ok(!ctx2.includes("Assistant hint"));
 
   const longUserTail = "user-tail-keep";
   const longMarchTail = "march-tail-keep";

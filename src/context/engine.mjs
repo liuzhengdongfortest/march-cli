@@ -68,14 +68,13 @@ export class ContextEngine {
     return layers;
   }
 
-  recordTurn({ userMessage, assistantMessage, assistantContext = "", userRecallHints = [], assistantRecallHints = [] }) {
+  recordTurn({ userMessage, assistantMessage, assistantContext = "", userRecallHints = [] }) {
     const turn = {
       index: this.turns.length + 1,
       userMessage,
       assistantMessage: assistantMessage ?? "",
       assistantContext: assistantContext ?? "",
       userRecallHints,
-      assistantRecallHints,
     };
     this.turns.push(turn);
     if (this.turns.length > this.maxTurns) {
@@ -89,7 +88,6 @@ export class ContextEngine {
     const ids = new Set();
     for (const turn of this.turns) {
       for (const hint of turn.userRecallHints ?? []) if (hint?.id) ids.add(hint.id);
-      for (const hint of turn.assistantRecallHints ?? []) if (hint?.id) ids.add(hint.id);
     }
     return ids;
   }
@@ -143,8 +141,6 @@ export class ContextEngine {
       if (assistantText) {
         block += `\n${String(assistantText ?? "")}\n`;
       }
-      const assistantRecall = formatRecallHints(turn.assistantRecallHints ?? []);
-      if (assistantRecall) block += `\n${assistantRecall}\n`;
       entries.push(block);
     }
     return `[recent_chat]\n${entries.join("\n\n")}`;

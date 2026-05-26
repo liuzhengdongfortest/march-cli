@@ -63,7 +63,6 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     observeAssistantMessageEvent: (event) => assistantRecallRuntime.observe(event),
     flushAssistantRecall: () => assistantRecallRuntime.flushForContext(),
     onAssistantRecall: ({ hints = [], report = null } = {}) => {
-      if (hints.length > 0 && currentTurnState) currentTurnState.midTurnRecallHints.push(...hints);
       if (report) runtimeUi.recall?.({ hints, report, variant: "assistant" });
     },
     logger,

@@ -202,9 +202,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.ok(providerPayloads[1].messages.some((message) => message.role === "tool" && providerMessageText(message).includes("file body")));
   assert.equal(providerPayloads[1].messages.filter((message) => providerMessageText(message).includes("mem_thinking")).length, 1);
   assert.ok(providerMessageText(providerPayloads[1].messages.at(-1)).includes("mem_thinking | Thinking memory | Matched from thinking text."));
-  assert.equal(runner.engine.turns[0].assistantRecallHints.length, 2);
-  assert.equal(runner.engine.turns[0].assistantRecallHints[0].id, "mem_thinking");
-  assert.equal(runner.engine.turns[0].assistantRecallHints[1].id, "mem_draft");
+  assert.ok(!("assistantRecallHints" in runner.engine.turns[0]));
   assert.ok(calls.some((call) => call[0] === "recall" && call[1].includes("mem_thinking") && !call[1].includes("mem_draft")));
   assert.equal(runner.engine.turns[0].assistantMessage, "draft text");
   assert.equal(runner.engine.turns[0].assistantContext, "12345678\n→ read · a.txt\ndraft text");
@@ -240,6 +238,8 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.ok(providerMessageText(providerPayloads[3].messages.at(-1)).includes("[recent_chat]"));
   assert.ok(providerMessageText(providerPayloads[3].messages.at(-1)).includes("draft text"));
   assert.ok(providerMessageText(providerPayloads[3].messages.at(-1)).includes("→ read · a.txt"));
+  assert.ok(!providerMessageText(providerPayloads[3].messages.at(-1)).includes("mem_thinking"));
+  assert.ok(!providerMessageText(providerPayloads[3].messages.at(-1)).includes("mem_draft"));
   assert.ok(!providerMessageText(providerPayloads[3].messages.at(-1)).includes("file body"));
   assert.ok(providerMessageText(providerPayloads[3].messages.at(-1)).includes("[current_user]\nthird"));
   assert.equal(countOccurrences(providerPayloads[3].messages[0].content, "[system_core]"), 1);
