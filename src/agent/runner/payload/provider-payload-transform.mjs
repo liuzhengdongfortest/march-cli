@@ -1,5 +1,5 @@
 import { injectHostedTools } from "../../../provider/hosted-tools.mjs";
-import { replaceProviderContextMessages } from "../../model-payload-dumper.mjs";
+import { appendProviderUserMessage, replaceProviderContextMessages } from "../../model-payload-dumper.mjs";
 import { applyCodexLargeContextGuardToPayload } from "../codex-large-context-guard.mjs";
 
 export function createRunnerProviderPayloadTransform({
@@ -20,12 +20,13 @@ export function createRunnerProviderPayloadTransform({
     },
     async transform(payload, { kind, model } = {}) {
       if (kind !== "user") return payload;
-      const shouldReplaceProviderContext = getContextMode() !== "continueExistingPiTranscript"
-        && !didReplaceProviderContext;
+      const shouldReplaceProviderContext = getContextMode() !== "continueExistingPiTranscript";
       let nextPayload = payload;
       if (shouldReplaceProviderContext) {
+        if (didReplaceProviderContext) await waitForMidTurnRecall?.();
         nextPayload = replaceProviderContextMessages(payload, engine.buildProviderContext(getCurrentPrompt()));
         didReplaceProviderContext = true;
+        nextPayload = appendMissingMidTurnRecallMessages(nextPayload, getMidTurnRecallMessages?.() ?? []);
       } else {
         await waitForMidTurnRecall?.();
         nextPayload = appendMissingMidTurnRecallMessages(nextPayload, getMidTurnRecallMessages?.() ?? []);
@@ -39,17 +40,20 @@ export function createRunnerProviderPayloadTransform({
 }
 
 function appendMissingMidTurnRecallMessages(payload, recallMessages) {
-  if (!Array.isArray(payload?.messages) || recallMessages.length === 0) return payload;
-  const existingText = payload.messages.map((message) => providerMessageText(message)).join("\n");
+  if (recallMessages.length === 0) return payload;
+  const existingText = providerPayloadText(payload);
   const missing = recallMessages.filter((content) => content && !existingText.includes(content));
-  if (missing.length === 0) return payload;
-  return {
-    ...payload,
-    messages: [
-      ...payload.messages,
-      ...missing.map((content) => ({ role: "user", content })),
-    ],
-  };
+  return missing.reduce((next, content) => appendProviderUserMessage(next, content), payload);
+}
+
+function providerPayloadText(payload) {
+  if (Array.isArray(payload?.messages)) return payload.messages.map((message) => providerMessageText(message)).join("\n");
+  if (Array.isArray(payload?.input)) return payload.input.map((item) => providerMessageText(item)).join("\n");
+  if (payload?.body && typeof payload.body === "object") return providerPayloadText(payload.body);
+  if (typeof payload?.body === "string") {
+    try { return providerPayloadText(JSON.parse(payload.body)); } catch {}
+  }
+  return "";
 }
 
 function providerMessageText(message) {

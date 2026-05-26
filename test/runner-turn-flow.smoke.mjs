@@ -207,9 +207,11 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.ok(providerPayloads[0].messages.at(-1).content.includes("[current_user]\nhello"));
   assert.equal(countUserMessagesContaining(providerPayloads[0].messages, "hello"), 1);
   assert.equal(providerPayloads[1].messages[0].role, "system");
-  assert.equal(providerPayloads[1].messages[0].content, "Pi system");
-  assert.ok(!providerPayloads[1].messages.some((message) => providerMessageText(message).includes("[system_core]")));
-  assert.equal(providerPayloads[1].messages.filter((message) => providerMessageText(message).includes("[recall]")).length, 1);
+  assert.ok(providerPayloads[1].messages[0].content.includes("[system_core]"));
+  assert.ok(providerPayloads[1].messages.some((message) => providerMessageText(message).includes("[session_identity]")));
+  assert.ok(providerPayloads[1].messages.some((message) => providerMessageText(message).includes("[current_user]\nhello")));
+  assert.ok(providerPayloads[1].messages.some((message) => message.role === "tool" && providerMessageText(message).includes("file body")));
+  assert.equal(providerPayloads[1].messages.filter((message) => providerMessageText(message).includes("mem_thinking")).length, 1);
   assert.ok(customSteerMessages[0].includes("mem_thinking | Thinking memory | Matched from thinking text."));
   assert.equal(runner.engine.turns[0].assistantRecallHints.length, 2);
   assert.equal(runner.engine.turns[0].assistantRecallHints[0].id, "mem_thinking");
@@ -249,9 +251,10 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.ok(providerPayloads[3].messages.at(-1).content.includes("[current_user]\nthird"));
   assert.equal(countOccurrences(providerPayloads[3].messages[0].content, "[system_core]"), 1);
   assert.ok(!providerPayloads[3].messages.some((message, index) => index > 0 && message.content.includes("[system_core]")));
-  assert.equal(providerPayloads[4].messages[0].content, "Pi system");
-  assert.ok(!providerPayloads[4].messages.some((message) => providerMessageText(message).includes("[system_core]")));
-  assert.equal(providerPayloads[4].messages.filter((message) => providerMessageText(message).includes("[recall]")).length, 1);
+  assert.ok(providerPayloads[4].messages[0].content.includes("[system_core]"));
+  assert.ok(providerPayloads[4].messages.some((message) => providerMessageText(message).includes("[current_user]\nthird")));
+  assert.ok(providerPayloads[4].messages.some((message) => message.role === "tool" && providerMessageText(message).includes("tool only body")));
+  assert.equal(providerPayloads[4].messages.filter((message) => providerMessageText(message).includes("mem_late_thinking")).length, 1);
   assert.ok(providerMessageText(providerPayloads[4].messages.at(-1)).includes("mem_late_thinking"));
   assert.equal(recallCalls, 3);
   const sidecar = loadPiSessionSidecar({ projectMarchDir, sessionRef: "turn-flow.jsonl" });
