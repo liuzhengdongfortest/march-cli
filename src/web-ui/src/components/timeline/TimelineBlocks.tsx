@@ -94,8 +94,9 @@ function TerminalBlock({ item }: { item: Extract<TimelineItem, { kind: "terminal
 function MemoryRecallBlock({ item }: { item: Extract<TimelineItem, { kind: "memoryRecall" }> }) {
   const isAssistant = item.variant === "assistant";
   const reportCandidates = item.report?.candidates ?? [];
-  const candidates = (reportCandidates.length ? reportCandidates : item.hints.map((hint) => ({ ...hint, recalled: true }))).slice(0, isAssistant ? 3 : undefined);
-  const summary = `${item.hints.length} recalled · ${reportCandidates.length || candidates.length} ${(reportCandidates.length || candidates.length) === 1 ? "candidate" : "candidates"}`;
+  const rawCandidates = reportCandidates.length ? reportCandidates : item.hints.map((hint) => ({ ...hint, recalled: true }));
+  const candidates = isAssistant ? rawCandidates.slice(0, 3) : selectDisplayedRecallCandidates(rawCandidates);
+  const summary = `${item.hints.length} recalled · ${candidates.length} ${candidates.length === 1 ? "candidate" : "candidates"}`;
   const threshold = typeof item.report?.threshold === "number" ? ` · threshold ${item.report.threshold.toFixed(2)}` : "";
   const fallback = item.report?.vectorizerStatus === "fallback" ? " · fallback" : "";
   return (
@@ -116,6 +117,12 @@ function MemoryRecallBlock({ item }: { item: Extract<TimelineItem, { kind: "memo
 
 function formatRecallScore(score?: number) {
   return typeof score === "number" && Number.isFinite(score) ? score.toFixed(2) : "--";
+}
+
+function selectDisplayedRecallCandidates<T extends { recalled?: boolean }>(candidates: T[], skippedLimit = 2) {
+  const recalled = candidates.filter((candidate) => candidate.recalled !== false);
+  const skipped = candidates.filter((candidate) => candidate.recalled === false).slice(0, skippedLimit);
+  return [...recalled, ...skipped];
 }
 
 function ErrorBlock({ item }: { item: Extract<TimelineItem, { kind: "error" }> }) {

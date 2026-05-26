@@ -43,6 +43,24 @@ function cleanup(dir) {
 }
 
 {
+  console.log("--- fast smoke: memory recall candidate display ---");
+  const { selectDisplayedRecallCandidates } = await import("../src/cli/tui/recall-rendering.mjs");
+  const recalled = (id) => ({ id, recalled: true });
+  const skipped = (id) => ({ id, recalled: false });
+
+  assert.deepEqual(selectDisplayedRecallCandidates([
+    recalled("r1"), recalled("r2"), recalled("r3"), skipped("s1"), skipped("s2"), skipped("s3"),
+  ]).map((candidate) => candidate.id), ["r1", "r2", "r3", "s1", "s2"]);
+  assert.deepEqual(selectDisplayedRecallCandidates([
+    recalled("r1"), skipped("s1"), skipped("s2"), skipped("s3"),
+  ]).map((candidate) => candidate.id), ["r1", "s1", "s2"]);
+  assert.deepEqual(selectDisplayedRecallCandidates([
+    skipped("s1"), skipped("s2"), skipped("s3"),
+  ]).map((candidate) => candidate.id), ["s1", "s2"]);
+  console.log("  PASS");
+}
+
+{
   console.log("--- fast smoke: CLI args parsing ---");
   const { parseCliArgs } = await import("../src/cli/args.mjs");
 

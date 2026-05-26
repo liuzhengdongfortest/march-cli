@@ -6,7 +6,7 @@ const RECALL_ICON = "✦";
 export function formatRecallLines(hints = [], report = null, { variant = "user" } = {}) {
   if (variant === "assistant") return formatAssistantRecallLines(hints, report);
   const candidates = report?.candidates ?? [];
-  const displayed = candidates.length ? candidates : hints.map((hint) => ({ ...hint, recalled: true }));
+  const displayed = selectDisplayedRecallCandidates(candidates.length ? candidates : hints.map((hint) => ({ ...hint, recalled: true })));
   if (!hints.length && !displayed.length) return [];
   const threshold = Number.isFinite(report?.threshold) ? ` · threshold ${formatScore(report.threshold)}` : "";
   const fallback = report?.vectorizerStatus === "fallback" ? " · fallback" : "";
@@ -38,6 +38,12 @@ function formatAssistantRecallLines(hints, report) {
 
 function recallSummary(hints, candidates) {
   return `${hints.length} recalled · ${candidates.length} ${candidates.length === 1 ? "candidate" : "candidates"}`;
+}
+
+export function selectDisplayedRecallCandidates(candidates = [], { skippedLimit = 2 } = {}) {
+  const recalled = candidates.filter((candidate) => candidate.recalled !== false);
+  const skipped = candidates.filter((candidate) => candidate.recalled === false).slice(0, skippedLimit);
+  return [...recalled, ...skipped];
 }
 
 function formatCompactHintLine(hint) {
