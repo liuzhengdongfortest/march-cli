@@ -16,6 +16,7 @@ export async function runModeStateSmoke() {
   const prompts = [];
   const userMessages = [];
   const uiLines = [];
+  const userHints = [{ id: "mem_user", name: "User memory", description: "Matched from current user prompt." }];
   let memoryBeginCount = 0;
   let memoryEndCount = 0;
   await runSingleShotPrompt({
@@ -42,7 +43,8 @@ export async function runModeStateSmoke() {
     },
     memoryStore: {
       beginTurn() { memoryBeginCount += 1; },
-      recallForUser: () => [],
+      recallForUser: () => userHints,
+      lastUserRecallReport: { candidates: userHints },
       endTurn() { memoryEndCount += 1; },
     },
     currentProject: "project",
@@ -60,11 +62,14 @@ export async function runModeStateSmoke() {
   assert.ok(prompts[0].startsWith("please inspect\n\n<mode>"));
   assert.ok(!prompts[0].includes("[system]"));
   assert.ok(prompts[0].includes("You are in discuss mode"));
+  assert.ok(prompts[0].includes("[recall]"));
+  assert.ok(prompts[0].includes("mem_user | User memory | Matched from current user prompt."));
   assert.ok(prompts[0].includes("[shell_hints]"));
   assert.ok(prompts[0].includes("sh1 dev running command: npm run dev cwd: D:/repo lines: 42"));
   assert.ok(prompts[0].includes("Use terminal_read or terminal_snapshot"));
   assert.ok(!userMessages[0].includes("<mode>"));
   assert.ok(uiLines.join("\n").includes("please inspect"));
+  assert.ok(uiLines.includes("recall:mem_user"));
   assert.equal(memoryBeginCount, 1);
   assert.equal(memoryEndCount, 1);
   console.log("  PASS");

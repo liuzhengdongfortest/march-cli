@@ -60,9 +60,8 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     getCurrentPrompt: () => currentPromptForContext,
     getContextMode: () => currentTurnContextMode,
     getFastEntry: () => _currentFastEntry,
-    getAssistantRecallCursor: () => assistantRecallRuntime.getCursor(),
-    setAssistantRecallCursor: (cursor) => assistantRecallRuntime.setCursor(cursor),
-    recallForAssistantText: (text) => assistantRecallRuntime.recallText(text),
+    observeAssistantMessageEvent: (event) => assistantRecallRuntime.observe(event),
+    flushAssistantRecall: () => assistantRecallRuntime.flushForContext(),
     onAssistantRecall: ({ hints = [], report = null } = {}) => {
       if (hints.length > 0 && currentTurnState) currentTurnState.midTurnRecallHints.push(...hints);
       if (report) runtimeUi.recall?.({ hints, report, variant: "assistant" });
@@ -142,7 +141,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
           contextMode,
           recordHistory: (turn) => appendRunnerTurnHistory({ store: historyStore, turn, sessionStats: getRunnerSessionStats(sessionBinding.get(), runtimeHost), modelId: engine.modelId, provider: engine.provider }),
           setCurrentTurnState: (state) => { currentTurnState = state; },
-          flushFinalAssistantRecall: (turnState) => assistantRecallRuntime.flushFinal(turnState),
+          flushFinalAssistantRecall: () => assistantRecallRuntime.flushFinal(),
         });
         notifyTurnEndDetached(turnNotifier, {
           status: "success",

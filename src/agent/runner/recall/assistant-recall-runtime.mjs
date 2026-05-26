@@ -1,18 +1,42 @@
 export function createAssistantRecallRuntime({ memoryStore, engine }) {
-  let cursor = null;
+  let buffer = "";
+  let thinkingText = "";
   return {
-    reset() { cursor = null; },
-    getCursor() { return cursor; },
-    setCursor(value) { cursor = value; },
-    recallText(text) { return recallForAssistantText({ memoryStore, engine, text }); },
-    flushFinal(turnState) {
-      const fullText = [assistantThinkingText(turnState), turnState?.draft ?? ""].filter(Boolean).join("\n");
-      const previous = cursor;
-      cursor = fullText.length;
-      const text = previous == null ? fullText.trim() : fullText.slice(previous).trim();
-      return recallForAssistantText({ memoryStore, engine, text });
+    reset() {
+      buffer = "";
+      thinkingText = "";
+    },
+    observe(event) {
+      if (!event) return;
+      if (event.type === "text_delta") append(event.delta);
+      if (event.type === "thinking_start") thinkingText = "";
+      if (event.type === "thinking_delta") {
+        thinkingText += event.delta ?? "";
+        append(event.delta);
+      }
+      if (event.type === "thinking_end") {
+        const full = typeof event.content === "string" ? event.content : "";
+        if (full && full !== thinkingText) append(full.startsWith(thinkingText) ? full.slice(thinkingText.length) : full);
+        thinkingText = "";
+      }
+    },
+    flushForContext() {
+      return recallForAssistantText({ memoryStore, engine, text: consume() });
+    },
+    flushFinal() {
+      return recallForAssistantText({ memoryStore, engine, text: consume() });
     },
   };
+
+  function append(text) {
+    if (text) buffer += text;
+  }
+
+  function consume() {
+    const text = buffer.trim();
+    buffer = "";
+    return text;
+  }
 }
 
 async function recallForAssistantText({ memoryStore, engine, text }) {
@@ -20,8 +44,4 @@ async function recallForAssistantText({ memoryStore, engine, text }) {
   return await memoryStore.recallForAssistant(String(text), {
     excludedIds: engine.getRecentRecallMemoryIds?.() ?? [],
   });
-}
-
-function assistantThinkingText(turnState) {
-  return `${turnState?.thinkingAccumulator ?? ""}${turnState?.thinkingText ?? ""}`;
 }

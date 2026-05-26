@@ -60,9 +60,9 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
       }
       providerPayloads.push(await buildProviderPayload(this, prompt));
       if (promptCalls.length === 1) {
-        emit({ type: "message_update", assistantMessageEvent: { type: "thinking_start" } });
-        emit({ type: "message_update", assistantMessageEvent: { type: "thinking_delta", delta: "12345678" } });
-        emit({ type: "message_update", assistantMessageEvent: { type: "thinking_end" } });
+        await emitAssistantUpdate({ type: "thinking_start" });
+        await emitAssistantUpdate({ type: "thinking_delta", delta: "12345678" });
+        await emitAssistantUpdate({ type: "thinking_end" });
         emit({ type: "tool_execution_start", toolName: "read", args: { path: "a.txt" } });
         await new Promise((resolve) => setImmediate(resolve));
         assert.equal(recallCalls, 0);
@@ -71,11 +71,11 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
           { role: "assistant", content: [{ type: "thinking", thinking: "12345678" }, { type: "toolCall", id: "call_1", name: "read", arguments: { path: "a.txt" } }] },
           { role: "toolResult", content: "file body", toolCallId: "call_1" },
         ]));
-        emit({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "draft text" } });
+        await emitAssistantUpdate({ type: "text_delta", delta: "draft text" });
       } else if (promptCalls.length === 3) {
         emit({ type: "tool_execution_start", toolName: "read", args: { path: "tool-only.txt" } });
-        emit({ type: "message_update", assistantMessageEvent: { type: "thinking_start" } });
-        emit({ type: "message_update", assistantMessageEvent: { type: "thinking_end", content: "late thinking memory text" } });
+        await emitAssistantUpdate({ type: "thinking_start" });
+        await emitAssistantUpdate({ type: "thinking_end", content: "late thinking memory text" });
         emit({ type: "tool_execution_end", toolName: "read", isError: false, result: "tool only body" });
         await new Promise((resolve) => setImmediate(resolve));
         providerPayloads.push(await buildProviderPayload(this, prompt, [
@@ -115,6 +115,11 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   };
   function emit(event) {
     subscriber?.(event);
+  }
+  async function emitAssistantUpdate(assistantMessageEvent) {
+    const event = { type: "message_update", message: { role: "assistant", content: [] }, assistantMessageEvent };
+    for (const handler of extensionHandlers("message_update")) await handler(event, { model: session.model });
+    emit(event);
   }
 
   const calls = [];
@@ -253,7 +258,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.deepEqual(sessionNameCalls, ["hello", "Manual Name"]);
   assert.ok(calls.some((call) => call[0] === "toolStart" && call[1] === "read"));
   assert.deepEqual(calls.at(-1), ["turnEnd"]);
-  await assertContextHookRecallsFromMessagesOnly();
+  await assertContextHookRecallsFromMessageUpdateOnly();
 
   if (previousKey === undefined) {
     delete process.env.DEEPSEEK_API_KEY;
@@ -265,20 +270,24 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   console.log("  PASS");
 }
 
-async function assertContextHookRecallsFromMessagesOnly() {
+async function assertContextHookRecallsFromMessageUpdateOnly() {
   const { createMarchPiContextExtension } = await import("../src/agent/runner/context/pi-context-extension.mjs");
   const handlers = new Map();
-  let cursor = null;
   let recalledText = "";
+  let buffer = "";
   const extension = createMarchPiContextExtension({
     engine: { buildProviderContext: () => ({ system: "system" }) },
     sessionBinding: { get: () => ({}) },
     getCurrentPrompt: () => "prompt",
     getContextMode: () => "rebuild",
     getFastEntry: () => null,
-    getAssistantRecallCursor: () => cursor,
-    setAssistantRecallCursor: (value) => { cursor = value; },
-    recallForAssistantText: async (text) => {
+    observeAssistantMessageEvent: (event) => {
+      if (event.type === "thinking_delta" || event.type === "text_delta") buffer += event.delta;
+      if (event.type === "thinking_end" && event.content) buffer += event.content;
+    },
+    flushAssistantRecall: async () => {
+      const text = buffer;
+      buffer = "";
       recalledText = text;
       return { hints: [{ id: "mem_from_messages", name: "From messages", description: "Read directly from context messages." }], report: null };
     },
@@ -289,7 +298,8 @@ async function assertContextHookRecallsFromMessagesOnly() {
     },
   });
   const context = handlers.get("context");
-  await context({ type: "context", messages: [{ role: "user", content: "first call" }] });
+  const messageUpdate = handlers.get("message_update");
+  messageUpdate({ type: "message_update", assistantMessageEvent: { type: "thinking_delta", delta: "message thinking" }, message: { role: "assistant", content: [] } });
   const result = await context({
     type: "context",
     messages: [
@@ -301,17 +311,6 @@ async function assertContextHookRecallsFromMessagesOnly() {
   assert.equal(recalledText, "message thinking");
   assert.equal(result.messages.at(-1).customType, "march.recall");
   assert.ok(result.messages.at(-1).content.includes("mem_from_messages"));
-
-  cursor = null;
-  recalledText = "";
-  const firstNonEmpty = await context({
-    type: "context",
-    messages: [
-      { role: "assistant", content: [{ type: "output_text", text: "first assistant already exists" }] },
-    ],
-  });
-  assert.equal(recalledText, "first assistant already exists");
-  assert.equal(firstNonEmpty.messages.at(-1).customType, "march.recall");
 }
 
 function countOccurrences(text, needle) {
