@@ -51,7 +51,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   const historyStore = createRunnerHistoryStore({ stateRoot, cwd });
   const resolvedSessionManager = resolveRunnerSessionManager(cwd, sessionManager);
   const sessionBinding = createSessionBinding(null);
-  let currentModelCallKind = "model", currentTurnId = null, currentPromptForContext = "";
+  let currentModelCallKind = "model", currentTurnId = null, currentPromptForContext = "", currentUserRequestForContext = "";
   const assistantRecallRuntime = createAssistantRecallRuntime({ memoryStore, engine });
   const lifecycle = createRunnerLifecycle();
   let currentTurnContextMode = "rebuild", nextTurnContextMode = "rebuild";
@@ -71,7 +71,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   const avatarRuntime = createRunnerAvatarRuntime({
     cwd, stateRoot, provider, modelId, modelRegistry, settingsManager, authStorage: resolvedAuth,
     createAgentSession: createAgentSessionImpl, engine, sessionBinding, getRuntimeHost: () => runtimeHost,
-    getCurrentUserRequest: () => currentPromptForContext, getCurrentModel: () => _currentFastEntry ?? sessionBinding.get()?.model ?? selectedModel,
+    getCurrentUserRequest: () => currentUserRequestForContext, getCurrentModel: () => _currentFastEntry ?? sessionBinding.get()?.model ?? selectedModel,
     namespace, shellRuntime, lspService, webTools, hostedTools, modelContextDumper, onModelPayload: onLoggedModelPayload, logger,
   });
   if (useRuntimeHost) {
@@ -127,7 +127,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     shellRuntime,
     runtimeUiEvents,
     async runTurn(prompt, userMessage, { userRecallHints = [], currentProject = "" } = {}) {
-      currentPromptForContext = prompt;
+      currentPromptForContext = prompt; currentUserRequestForContext = userMessage ?? prompt;
       const contextMode = nextTurnContextMode;
       currentTurnContextMode = contextMode;
       assistantRecallRuntime.reset();
