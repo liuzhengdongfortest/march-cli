@@ -38,6 +38,7 @@ export function writeToolEnd({
   const card = formatToolEndCard({ name, isError, result, extractToolOutputImpl });
   if (toolBlock?.type === "tool-card") {
     Object.assign(toolBlock, card, { expanded: toolsExpanded });
+    output?.invalidateBlock?.(toolBlock);
     return true;
   }
 
