@@ -28,6 +28,7 @@ export async function createRunnerRuntimeHost({
   lifecycle = null,
   extensionPaths = [],
   hostedTools = {},
+  extensionFactories = [],
   onRebind = null,
   createAgentSessionRuntimeImpl = createAgentSessionRuntime,
   createServices,
@@ -42,6 +43,7 @@ export async function createRunnerRuntimeHost({
     createFromServices,
     resourceLoaderOptions: {
       additionalExtensionPaths: extensionPaths,
+      extensionFactories,
     },
     resolveSessionOptions: ({ cwd: sessionCwd, services }) => {
       const activeModelRegistry = services.modelRegistry ?? modelRegistry;

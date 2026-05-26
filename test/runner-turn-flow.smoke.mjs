@@ -2,6 +2,8 @@ import { strict as assert } from "node:assert";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+let currentPiExtensions = [];
+
 export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: runner turn flow event integration ---");
   const { createRunner } = await import("../src/agent/runner.mjs");
@@ -23,6 +25,9 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
     agent: {
       state: { messages: [{ role: "user", content: "stale context" }] },
       onPayload: async (payload) => payload,
+      reset() {
+        this.state.messages = [];
+      },
     },
     model: { id: "deepseek-v4-pro", provider: "deepseek" },
     get sessionName() {
@@ -54,17 +59,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
       } else {
         assert.deepEqual(this.agent.state.messages, []);
       }
-      providerPayloads.push(await this.agent.onPayload({
-        messages: isContinuation
-          ? [
-              ...this.agent.state.messages,
-              { role: "user", content: [{ type: "text", text: prompt }] },
-            ]
-          : [
-              { role: "system", content: "Pi system" },
-              { role: "user", content: [{ type: "text", text: prompt }] },
-            ],
-      }, this.model));
+      providerPayloads.push(await buildProviderPayload(this, prompt));
       if (promptCalls.length === 1) {
         emit({ type: "message_update", assistantMessageEvent: { type: "thinking_start" } });
         emit({ type: "message_update", assistantMessageEvent: { type: "thinking_delta", delta: "12345678" } });
@@ -75,13 +70,10 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
         assert.equal(customSteerMessages.length, 1);
         assert.ok(customSteerMessages[0].includes("[recall]"));
         emit({ type: "tool_execution_end", toolName: "read", isError: false, result: "file body" });
-        providerPayloads.push(await this.agent.onPayload({
-          messages: [
-            { role: "system", content: "Pi system" },
-            { role: "assistant", content: null, tool_calls: [{ id: "call_1", type: "function", function: { name: "read", arguments: '{"path":"a.txt"}' } }] },
-            { role: "tool", content: "file body", tool_call_id: "call_1" },
-          ],
-        }, this.model));
+        providerPayloads.push(await buildProviderPayload(this, prompt, [
+          { role: "assistant", content: null, tool_calls: [{ id: "call_1", type: "function", function: { name: "read", arguments: '{"path":"a.txt"}' } }] },
+          { role: "toolResult", content: "file body", toolCallId: "call_1" },
+        ]));
         emit({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "draft text" } });
       } else if (promptCalls.length === 3) {
         emit({ type: "tool_execution_start", toolName: "read", args: { path: "tool-only.txt" } });
@@ -90,13 +82,10 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
         emit({ type: "tool_execution_end", toolName: "read", isError: false, result: "tool only body" });
         await new Promise((resolve) => setImmediate(resolve));
         assert.equal(customSteerMessages.length, 2);
-        providerPayloads.push(await this.agent.onPayload({
-          messages: [
-            { role: "system", content: "Pi system" },
-            { role: "assistant", content: null, tool_calls: [{ id: "call_2", type: "function", function: { name: "read", arguments: '{"path":"tool-only.txt"}' } }] },
-            { role: "tool", content: "tool only body", tool_call_id: "call_2" },
-          ],
-        }, this.model));
+        providerPayloads.push(await buildProviderPayload(this, prompt, [
+          { role: "assistant", content: null, tool_calls: [{ id: "call_2", type: "function", function: { name: "read", arguments: '{"path":"tool-only.txt"}' } }] },
+          { role: "toolResult", content: "tool only body", toolCallId: "call_2" },
+        ]));
       }
     },
     abort() {
@@ -183,6 +172,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
     syncPiSidecar: true,
     createAgentSessionImpl: async (options) => {
       assert.deepEqual(options.resourceLoader.getAgentsFiles(), { agentsFiles: [] });
+      currentPiExtensions = options.resourceLoader.getExtensions().extensions;
       return { session };
     },
   });
@@ -192,19 +182,21 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.equal(promptCalls.length, 1);
   assert.equal(providerPayloads.length, 2);
   assert.ok(!promptCalls[0].includes("[system_core]"));
+  assert.ok(promptCalls[0].includes("[session_identity]"));
+  assert.ok(promptCalls[0].includes("[current_user]\nhello"));
   assert.equal(providerPayloads[0].messages[0].role, "system");
   assert.ok(providerPayloads[0].messages[0].content.includes("[system_core]"));
   assert.ok(!providerPayloads[0].messages[0].content.includes("[workspace_status]"));
   assert.ok(!providerPayloads[0].messages[0].content.includes("[recent_chat]"));
   assert.equal(providerPayloads[0].messages[1].role, "user");
   assert.ok(!providerPayloads[0].messages.some((message) => message.role === "user" && message.content.includes("[workspace_status]")));
-  assert.ok(providerPayloads[0].messages.some((message) => message.role === "user" && message.content.includes("[session_identity]")));
-  assert.ok(providerPayloads[0].messages.some((message) => message.role === "user" && message.content.includes(`memory_root: ${join(projectMarchDir, "memories")}`)));
-  assert.ok(!providerPayloads[0].messages.some((message) => message.role === "user" && message.content.includes("[runtime_status]")));
+  assert.ok(providerPayloads[0].messages.some((message) => message.role === "user" && providerMessageText(message).includes("[session_identity]")));
+  assert.ok(providerPayloads[0].messages.some((message) => message.role === "user" && providerMessageText(message).includes(`memory_root: ${join(projectMarchDir, "memories")}`)));
+  assert.ok(!providerPayloads[0].messages.some((message) => message.role === "user" && providerMessageText(message).includes("[runtime_status]")));
   assert.ok(!providerPayloads[0].messages.some((message, index) => index > 0 && message.content.includes("[system_core]")));
   assert.ok(!providerPayloads[0].messages.some((message, index) => index > 0 && message.role === "system"));
-  assert.ok(providerPayloads[0].messages.at(-1).content.includes("[recent_chat]"));
-  assert.ok(providerPayloads[0].messages.at(-1).content.includes("[current_user]\nhello"));
+  assert.ok(providerMessageText(providerPayloads[0].messages.at(-1)).includes("[recent_chat]"));
+  assert.ok(providerMessageText(providerPayloads[0].messages.at(-1)).includes("[current_user]\nhello"));
   assert.equal(countUserMessagesContaining(providerPayloads[0].messages, "hello"), 1);
   assert.equal(providerPayloads[1].messages[0].role, "system");
   assert.ok(providerPayloads[1].messages[0].content.includes("[system_core]"));
@@ -230,9 +222,11 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   await runner.runTurn("second", "second");
   assert.equal(promptCalls.length, 2);
   assert.ok(!promptCalls[1].includes("[system_core]"));
-  assert.equal(providerPayloads[2].messages[0].role, "user");
-  assert.equal(providerPayloads[2].messages[0].content, "aborted question");
-  assert.equal(providerPayloads[2].messages[1].stopReason, "aborted");
+  assert.equal(providerPayloads[2].messages[0].role, "system");
+  assert.ok(!providerPayloads[2].messages[0].content.includes("[system_core]"));
+  assert.equal(providerPayloads[2].messages[1].role, "user");
+  assert.equal(providerPayloads[2].messages[1].content, "aborted question");
+  assert.equal(providerPayloads[2].messages[2].stopReason, "aborted");
   assert.equal(providerPayloads[2].messages.at(-1).role, "user");
   assert.equal(providerMessageText(providerPayloads[2].messages.at(-1)), "second");
   assert.ok(!providerPayloads[2].messages.some((message) => providerMessageText(message).includes("[system_core]")));
@@ -242,13 +236,15 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   await runner.runTurn("third", "third");
   assert.equal(promptCalls.length, 3);
   assert.ok(!promptCalls[2].includes("[system_core]"));
+  assert.ok(promptCalls[2].includes("[session_identity]"));
+  assert.ok(promptCalls[2].includes("[current_user]\nthird"));
   assert.ok(providerPayloads[3].messages[0].content.includes("[system_core]"));
   assert.ok(!providerPayloads[3].messages[0].content.includes("[recent_chat]"));
-  assert.ok(providerPayloads[3].messages.at(-1).content.includes("[recent_chat]"));
-  assert.ok(providerPayloads[3].messages.at(-1).content.includes("draft text"));
-  assert.ok(providerPayloads[3].messages.at(-1).content.includes("→ read · a.txt"));
-  assert.ok(!providerPayloads[3].messages.at(-1).content.includes("file body"));
-  assert.ok(providerPayloads[3].messages.at(-1).content.includes("[current_user]\nthird"));
+  assert.ok(providerMessageText(providerPayloads[3].messages.at(-1)).includes("[recent_chat]"));
+  assert.ok(providerMessageText(providerPayloads[3].messages.at(-1)).includes("draft text"));
+  assert.ok(providerMessageText(providerPayloads[3].messages.at(-1)).includes("→ read · a.txt"));
+  assert.ok(!providerMessageText(providerPayloads[3].messages.at(-1)).includes("file body"));
+  assert.ok(providerMessageText(providerPayloads[3].messages.at(-1)).includes("[current_user]\nthird"));
   assert.equal(countOccurrences(providerPayloads[3].messages[0].content, "[system_core]"), 1);
   assert.ok(!providerPayloads[3].messages.some((message, index) => index > 0 && message.content.includes("[system_core]")));
   assert.ok(providerPayloads[4].messages[0].content.includes("[system_core]"));
@@ -271,6 +267,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   } else {
     process.env.DEEPSEEK_API_KEY = previousKey;
   }
+  currentPiExtensions = [];
   cleanup(dir);
   console.log("  PASS");
 }
@@ -280,7 +277,7 @@ function countOccurrences(text, needle) {
 }
 
 function countUserMessagesContaining(messages, text) {
-  return messages.filter((message) => message.role === "user" && String(message.content).includes(text)).length;
+  return messages.filter((message) => message.role === "user" && providerMessageText(message).includes(text)).length;
 }
 
 function providerMessageText(message) {
@@ -289,4 +286,37 @@ function providerMessageText(message) {
     return message.content.map((part) => part?.text ?? "").join("");
   }
   return "";
+}
+
+async function buildProviderPayload(session, prompt, operationalMessages = []) {
+  let systemPrompt = "Pi system";
+  for (const handler of extensionHandlers("before_agent_start")) {
+    const result = await handler({ type: "before_agent_start", prompt, images: undefined, systemPrompt, systemPromptOptions: {} }, { model: session.model });
+    if (result?.systemPrompt) systemPrompt = result.systemPrompt;
+  }
+  let messages = [
+    ...session.agent.state.messages,
+    { role: "user", content: [{ type: "text", text: prompt }] },
+    ...operationalMessages,
+  ];
+  for (const handler of extensionHandlers("context")) {
+    const result = await handler({ type: "context", messages }, { model: session.model });
+    if (result?.messages) messages = result.messages;
+  }
+  let payload = { messages: [{ role: "system", content: systemPrompt }, ...messages.map(toProviderMessage)] };
+  for (const handler of extensionHandlers("before_provider_request")) {
+    const result = await handler({ type: "before_provider_request", payload }, { model: session.model });
+    if (result !== undefined) payload = result;
+  }
+  return await session.agent.onPayload(payload, session.model);
+}
+
+function extensionHandlers(kind) {
+  return currentPiExtensions.flatMap((extension) => extension.handlers.get(kind) ?? []);
+}
+
+function toProviderMessage(message) {
+  if (message.role === "custom") return { role: "user", content: message.content };
+  if (message.role === "toolResult") return { role: "tool", content: message.content, tool_call_id: message.toolCallId };
+  return message;
 }

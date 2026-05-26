@@ -14,7 +14,7 @@ import { createRuntimeUiBridge } from "./runtime/ui-event-bridge.mjs";
 import { getRunnerSessionStats, syncEngineSessionState } from "./runner/runner-session-state.mjs";
 import { buildNotificationActivation, installRunnerProcessGuards, notifyTurnEndBestEffort, notifyTurnEndDetached, providerContextToPayload } from "./runner/runner-utils.mjs";
 import { dumpCodexTransportDebug, getCodexTransportDebugSnapshot } from "./runner/codex-transport-debug.mjs";
-import { createRunnerProviderPayloadTransform } from "./runner/payload/provider-payload-transform.mjs";
+import { createMarchPiContextExtension } from "./runner/context/pi-context-extension.mjs";
 import { createMidTurnRecallBridge } from "./runner/recall/mid-turn-recall-bridge.mjs";
 import { resolveRunnerSessionOptions } from "./session/session-options.mjs";
 import { createSessionBinding } from "./session/session-binding.mjs";
@@ -55,7 +55,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   const lifecycle = createRunnerLifecycle();
   let currentTurnContextMode = "rebuild", nextTurnContextMode = "rebuild";
   let lastNotificationResult = null, runtimeHost = null, lifecycleAdapter = null, _currentFastEntry = null;
-  const providerPayloadTransform = createRunnerProviderPayloadTransform({
+  const marchPiContextExtension = createMarchPiContextExtension({
     engine, sessionBinding, hostedTools,
     getCurrentPrompt: () => currentPromptForContext,
     getContextMode: () => currentTurnContextMode,
@@ -71,9 +71,9 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       sessionManager: resolvedSessionManager, sessionBinding, engine, ui: runtimeUi,
       projectMarchDir,
       memoryTools, memoryStore, historyStore, shellRuntime, lspService, mcpTools, webTools,
-      lifecycle, extensionPaths, hostedTools,
+      lifecycle, extensionPaths, hostedTools, extensionFactories: [marchPiContextExtension],
       onRebind: (session) => {
-        installModelPayloadDumper(session, modelContextDumper, () => currentModelCallKind, onLoggedModelPayload, providerPayloadTransform.transform);
+        installModelPayloadDumper(session, modelContextDumper, () => currentModelCallKind, onLoggedModelPayload);
         syncEngineSessionState(engine, session);
       },
       createAgentSessionRuntimeImpl,
@@ -87,18 +87,14 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       authStorage: resolvedAuth, projectMarchDir,
       getCurrentModel: () => sessionBinding.get()?.model ?? selectedModel,
     });
-    const resourceLoader = await createMarchPiResourceLoader({
-      cwd,
-      agentDir: stateRoot,
-      settingsManager,
-    });
+    const resourceLoader = await createMarchPiResourceLoader({ cwd, agentDir: stateRoot, settingsManager, extraOptions: { extensionFactories: [marchPiContextExtension] } });
     const { session } = await createAgentSessionImpl({
       cwd, agentDir: stateRoot, ...sessionOptions,
       authStorage: resolvedAuth, modelRegistry,
       sessionManager: resolvedSessionManager, settingsManager, resourceLoader,
     });
     sessionBinding.set(session);
-    installModelPayloadDumper(session, modelContextDumper, () => currentModelCallKind, onLoggedModelPayload, providerPayloadTransform.transform);
+    installModelPayloadDumper(session, modelContextDumper, () => currentModelCallKind, onLoggedModelPayload);
   }
   syncEngineSessionState(engine, sessionBinding.get());
   lifecycleAdapter = createMarchLifecycleAdapter({
@@ -122,7 +118,6 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       currentPromptForContext = prompt;
       const contextMode = nextTurnContextMode;
       currentTurnContextMode = contextMode;
-      providerPayloadTransform.resetTurn();
       midTurnRecallBridge.reset();
       nextTurnContextMode = "rebuild";
       lifecycle.clearPendingAction();

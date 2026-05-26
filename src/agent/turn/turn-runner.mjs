@@ -1,6 +1,7 @@
 import { formatRecallHints } from "../../memory/markdown-store.mjs";
 import { resolveImageAttachmentReferences } from "../../session/attachment-references.mjs";
 import { closeAssistantReply, compactAssistantContext, createTurnEventState, handleRunnerSessionEvent } from "./turn-events.mjs";
+import { buildInitialPiPrompt, resetPiMessageHistory } from "./pi-turn-context.mjs";
 
 export const MODEL_STREAM_IDLE_TIMEOUT_CODE = "MODEL_STREAM_IDLE_TIMEOUT";
 
@@ -76,8 +77,11 @@ export async function runRunnerTurn({
     try {
       if (contextMode === "rebuild") resetPiMessageHistory(activeSession);
       idleWatchdog.arm("model_request");
+      const piPrompt = contextMode === "continueExistingPiTranscript"
+        ? (userMessage ?? prompt)
+        : buildInitialPiPrompt(engine, prompt);
       await idleWatchdog.watch(activeSession.prompt(
-        contextMode === "continueExistingPiTranscript" ? (userMessage ?? prompt) : prompt,
+        piPrompt,
         attachmentReferences.images.length > 0 ? { images: attachmentReferences.images } : undefined,
       ));
       throwIfAssistantEndedWithError(turnState);
@@ -281,10 +285,4 @@ function uniqueHints(hints) {
     unique.push(hint);
   }
   return unique;
-}
-
-function resetPiMessageHistory(session) {
-  if (Array.isArray(session?.agent?.state?.messages)) {
-    session.agent.state.messages = [];
-  }
 }
