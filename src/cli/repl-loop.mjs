@@ -15,11 +15,11 @@ export async function runSingleShotPrompt({
   modeState = null,
 }) {
   memoryStore.beginTurn();
+  refreshStatusBar.startWorking?.();
   try {
     const turnInput = await prepareTurnInput({ prompt, runner, memoryStore, currentProject, modeState });
     ui.writeln(turnInput.displayMessage);
     ui.recall?.({ hints: turnInput.userRecallHints, report: turnInput.userRecallReport });
-    refreshStatusBar.startWorking?.();
     const result = await runner.runTurn(turnInput.fullPrompt, turnInput.userMessage, turnInput.runOptions);
     await handleTurnLifecycleAction(result?.lifecycleAction, { runner, ui });
   } finally {
@@ -182,12 +182,12 @@ function startReplTurn({ runtime, prompt, ui, refreshStatusBar, setTurnRunning, 
 
 async function runReplTurn({ prompt, runner, memoryStore, currentProject, ui, refreshStatusBar, setTurnRunning, modeState = null }) {
   memoryStore.beginTurn();
+  setTurnRunning(true);
+  refreshStatusBar.startWorking?.();
   try {
     const turnInput = await prepareTurnInput({ prompt, runner, memoryStore, currentProject, modeState });
     ui.writeln(turnInput.displayMessage);
     ui.recall?.({ hints: turnInput.userRecallHints, report: turnInput.userRecallReport });
-    setTurnRunning(true);
-    refreshStatusBar.startWorking?.();
     const result = await runner.runTurn(turnInput.fullPrompt, turnInput.userMessage, turnInput.runOptions);
     await handleTurnLifecycleAction(result?.lifecycleAction, { runner, ui });
     ui.writeln("");
