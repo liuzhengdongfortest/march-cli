@@ -19,6 +19,7 @@ export async function runModeStateSmoke() {
   const userHints = [{ id: "mem_user", name: "User memory", description: "Matched from current user prompt." }];
   let memoryBeginCount = 0;
   let memoryEndCount = 0;
+  const runOptions = [];
   await runSingleShotPrompt({
     prompt: "please inspect",
     runner: {
@@ -36,9 +37,10 @@ export async function runModeStateSmoke() {
           scrollbackLineCount: 42,
         }],
       },
-      runTurn: async (fullPrompt, userMessage) => {
+      runTurn: async (fullPrompt, userMessage, options) => {
         prompts.push(fullPrompt);
         userMessages.push(userMessage);
+        runOptions.push(options);
       },
     },
     memoryStore: {
@@ -62,8 +64,8 @@ export async function runModeStateSmoke() {
   assert.ok(prompts[0].startsWith("please inspect\n\n<mode>"));
   assert.ok(!prompts[0].includes("[system]"));
   assert.ok(prompts[0].includes("You are in discuss mode"));
-  assert.ok(prompts[0].includes("[recall]"));
-  assert.ok(prompts[0].includes("mem_user | User memory | Matched from current user prompt."));
+  assert.ok(!prompts[0].includes("[recall]"));
+  assert.deepEqual(runOptions[0].userRecallHints, userHints);
   assert.ok(prompts[0].includes("[shell_hints]"));
   assert.ok(prompts[0].includes("sh1 dev running command: npm run dev cwd: D:/repo lines: 42"));
   assert.ok(prompts[0].includes("Use terminal_read or terminal_snapshot"));

@@ -1,6 +1,5 @@
 import { appendModeReminder } from "../input/mode-state.mjs";
 import { inverse } from "../tui/ui-theme.mjs";
-import { formatRecallHints } from "../../memory/markdown-store.mjs";
 import { formatMessageAttachmentsForDisplay } from "../../session/attachment-display.mjs";
 import { formatShellHints } from "../../shell/hints.mjs";
 
@@ -14,7 +13,6 @@ export async function prepareTurnInput({ prompt, runner, memoryStore, currentPro
   const modePrompt = appendModeReminder(prompt, modeState?.get?.());
   const fullPrompt = appendPromptBlocks(
     modePrompt,
-    formatRecallHints(userRecallHints),
     formatShellHints(runner.shellRuntime),
   );
 

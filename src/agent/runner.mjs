@@ -51,7 +51,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   const historyStore = createRunnerHistoryStore({ stateRoot, cwd });
   const resolvedSessionManager = resolveRunnerSessionManager(cwd, sessionManager);
   const sessionBinding = createSessionBinding(null);
-  let currentModelCallKind = "model", currentTurnId = null, currentPromptForContext = "", currentUserRequestForContext = "";
+  let currentModelCallKind = "model", currentTurnId = null, currentPromptForContext = "", currentUserRequestForContext = "", currentUserRecallHints = [];
   const assistantRecallRuntime = createAssistantRecallRuntime({ memoryStore, engine });
   const lifecycle = createRunnerLifecycle();
   let currentTurnContextMode = "rebuild", nextTurnContextMode = "rebuild";
@@ -61,6 +61,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     getCurrentPrompt: () => currentPromptForContext,
     getContextMode: () => currentTurnContextMode,
     getFastEntry: () => _currentFastEntry,
+    getUserRecallHints: () => currentUserRecallHints, sendAssistantRecallMessage: (message) => sessionBinding.get()?.sendCustomMessage?.(message, { deliverAs: "steer" }),
     observeAssistantMessageEvent: (event) => assistantRecallRuntime.observe(event),
     flushAssistantRecall: () => assistantRecallRuntime.flushForContext(),
     onAssistantRecall: ({ hints = [], report = null } = {}) => {
@@ -127,7 +128,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     shellRuntime,
     runtimeUiEvents,
     async runTurn(prompt, userMessage, { userRecallHints = [], currentProject = "" } = {}) {
-      currentPromptForContext = prompt; currentUserRequestForContext = userMessage ?? prompt;
+      currentPromptForContext = prompt; currentUserRequestForContext = userMessage ?? prompt; currentUserRecallHints = userRecallHints;
       const contextMode = nextTurnContextMode;
       currentTurnContextMode = contextMode;
       assistantRecallRuntime.reset();
@@ -172,8 +173,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
         throw err;
       } finally {
         dumpCodexTransportDebug({ before: codexTransportStatsBefore, session: sessionBinding.get(), ui: runtimeUi, logger });
-        currentTurnId = null;
-        currentTurnContextMode = "rebuild";
+        currentTurnId = null; currentUserRecallHints = []; currentTurnContextMode = "rebuild";
       }
     },
     abort() {

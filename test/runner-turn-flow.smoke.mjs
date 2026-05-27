@@ -20,6 +20,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   const sessionNameCalls = [];
   const promptCalls = [];
   const providerPayloads = [];
+  const steeringMessages = [];
   const session = {
     agent: {
       state: { messages: [{ role: "user", content: "stale context" }] },
@@ -67,9 +68,13 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
         await new Promise((resolve) => setImmediate(resolve));
         assert.equal(recallCalls, 0);
         emit({ type: "tool_execution_end", toolName: "read", isError: false, result: "file body" });
+        const assistantMessage = { role: "assistant", content: [{ type: "thinking", thinking: "12345678" }, { type: "toolCall", id: "call_1", name: "read", arguments: { path: "a.txt" } }] };
+        const toolResult = { role: "toolResult", content: "file body", toolCallId: "call_1" };
+        await emitExtensionTurnEnd({ message: assistantMessage, toolResults: [toolResult] });
         providerPayloads.push(await buildProviderPayload(this, prompt, [
-          { role: "assistant", content: [{ type: "thinking", thinking: "12345678" }, { type: "toolCall", id: "call_1", name: "read", arguments: { path: "a.txt" } }] },
-          { role: "toolResult", content: "file body", toolCallId: "call_1" },
+          assistantMessage,
+          toolResult,
+          ...drainSteeringMessages(),
         ]));
         await emitAssistantUpdate({ type: "text_delta", delta: "draft text" });
       } else if (promptCalls.length === 3) {
@@ -78,9 +83,13 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
         await emitAssistantUpdate({ type: "thinking_end", content: "late thinking memory text" });
         emit({ type: "tool_execution_end", toolName: "read", isError: false, result: "tool only body" });
         await new Promise((resolve) => setImmediate(resolve));
+        const assistantMessage = { role: "assistant", content: [{ type: "thinking", thinking: "late thinking memory text" }, { type: "toolCall", id: "call_2", name: "read", arguments: { path: "tool-only.txt" } }] };
+        const toolResult = { role: "toolResult", content: "tool only body", toolCallId: "call_2" };
+        await emitExtensionTurnEnd({ message: assistantMessage, toolResults: [toolResult] });
         providerPayloads.push(await buildProviderPayload(this, prompt, [
-          { role: "assistant", content: [{ type: "thinking", thinking: "late thinking memory text" }, { type: "toolCall", id: "call_2", name: "read", arguments: { path: "tool-only.txt" } }] },
-          { role: "toolResult", content: "tool only body", toolCallId: "call_2" },
+          assistantMessage,
+          toolResult,
+          ...drainSteeringMessages(),
         ]));
       }
     },
@@ -108,8 +117,8 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
       tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
       cost: 0,
     }),
-    sendCustomMessage() {
-      throw new Error("mid-turn recall should be injected by the context hook");
+    sendCustomMessage(message, options) {
+      if (options?.deliverAs === "steer") steeringMessages.push({ role: "custom", ...message });
     },
     dispose: () => {},
   };
@@ -120,6 +129,13 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
     const event = { type: "message_update", message: { role: "assistant", content: [] }, assistantMessageEvent };
     for (const handler of extensionHandlers("message_update")) await handler(event, { model: session.model });
     emit(event);
+  }
+  async function emitExtensionTurnEnd({ message, toolResults }) {
+    const event = { type: "turn_end", turnIndex: 1, message, toolResults };
+    for (const handler of extensionHandlers("turn_end")) await handler(event, { model: session.model });
+  }
+  function drainSteeringMessages() {
+    return steeringMessages.splice(0);
   }
 
   const calls = [];
@@ -258,7 +274,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.deepEqual(sessionNameCalls, ["hello", "Manual Name"]);
   assert.ok(calls.some((call) => call[0] === "toolStart" && call[1] === "read"));
   assert.deepEqual(calls.at(-1), ["turnEnd"]);
-  await assertContextHookRecallsFromMessageUpdateOnly();
+  await assertSteerRecallsFromMessageUpdateOnly();
 
   if (previousKey === undefined) {
     delete process.env.DEEPSEEK_API_KEY;
@@ -270,7 +286,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   console.log("  PASS");
 }
 
-async function assertContextHookRecallsFromMessageUpdateOnly() {
+async function assertSteerRecallsFromMessageUpdateOnly() {
   const { createMarchPiContextExtension } = await import("../src/agent/runner/context/pi-context-extension.mjs");
   const handlers = new Map();
   let recalledText = "";
@@ -292,25 +308,29 @@ async function assertContextHookRecallsFromMessageUpdateOnly() {
       return { hints: [{ id: "mem_from_messages", name: "From messages", description: "Read directly from context messages." }], report: null };
     },
   });
+  const sentMessages = [];
   await extension({
     on(type, handler) {
       handlers.set(type, handler);
     },
+    sendMessage(message, options) {
+      sentMessages.push({ message, options });
+    },
   });
-  const context = handlers.get("context");
   const messageUpdate = handlers.get("message_update");
+  const turnEnd = handlers.get("turn_end");
   messageUpdate({ type: "message_update", assistantMessageEvent: { type: "thinking_delta", delta: "message thinking" }, message: { role: "assistant", content: [] } });
-  const result = await context({
-    type: "context",
-    messages: [
-      { role: "user", content: "first call" },
-      { role: "assistant", content: [{ type: "thinking", thinking: "message thinking" }, { type: "toolCall", id: "call_x", name: "read", arguments: {} }] },
-      { role: "toolResult", content: "tool result", toolCallId: "call_x" },
-    ],
+  await turnEnd({
+    type: "turn_end",
+    turnIndex: 1,
+    message: { role: "assistant", content: [{ type: "thinking", thinking: "message thinking" }, { type: "toolCall", id: "call_x", name: "read", arguments: {} }] },
+    toolResults: [{ role: "toolResult", content: "tool result", toolCallId: "call_x" }],
   });
   assert.equal(recalledText, "message thinking");
-  assert.equal(result.messages.at(-1).customType, "march.recall");
-  assert.ok(result.messages.at(-1).content.includes("mem_from_messages"));
+  assert.equal(sentMessages.length, 1);
+  assert.deepEqual(sentMessages[0].options, { deliverAs: "steer" });
+  assert.equal(sentMessages[0].message.customType, "march.recall");
+  assert.ok(sentMessages[0].message.content.includes("mem_from_messages"));
 }
 
 function countOccurrences(text, needle) {
@@ -331,13 +351,16 @@ function providerMessageText(message) {
 
 async function buildProviderPayload(session, prompt, operationalMessages = []) {
   let systemPrompt = "Pi system";
+  const startMessages = [];
   for (const handler of extensionHandlers("before_agent_start")) {
     const result = await handler({ type: "before_agent_start", prompt, images: undefined, systemPrompt, systemPromptOptions: {} }, { model: session.model });
     if (result?.systemPrompt) systemPrompt = result.systemPrompt;
+    if (result?.messages) startMessages.push(...result.messages.map((message) => ({ role: "custom", ...message })));
   }
   let messages = [
     ...session.agent.state.messages,
     { role: "user", content: [{ type: "text", text: prompt }] },
+    ...startMessages,
     ...operationalMessages,
   ];
   for (const handler of extensionHandlers("context")) {
