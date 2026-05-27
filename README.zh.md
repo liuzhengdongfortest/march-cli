@@ -66,7 +66,7 @@ March 通过 `~/.march/config.json`（全局）或 `<project>/.march/config.json
 }
 ```
 
-自定义 provider、多模型切换等详细配置见 [文档](docs/custom-provider.md)。
+网络代理、自定义 provider、多模型切换等详细配置见 [配置文档](docs/zh/start/configuration.md)。
 
 ### FAQ
 

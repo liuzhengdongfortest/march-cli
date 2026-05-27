@@ -66,7 +66,7 @@ March uses `~/.march/config.json` (global) or `<project>/.march/config.json` (pr
 }
 ```
 
-See the [docs](docs/custom-provider.md) for custom providers, multi-model setup, and more.
+See the [configuration docs](docs/start/configuration.md) for network proxy setup, custom providers, multi-model setup, and more.
 
 ### FAQ
 
