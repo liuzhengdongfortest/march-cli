@@ -45,6 +45,7 @@ export async function runStatusBarSmoke() {
   const inputLine = statusBar.renderInputLine("hello", 80);
   assert.equal(visibleWidth(inputLine), 79);
   assert.equal(inputLine.includes("\x1b[48;2;32;34;38m"), false);
+  assert.match(inputLine, /\x1b\[48;5;(?:236|255)m/);
   assert.ok(stripAnsi(inputLine).startsWith("▌hello"));
   const edgeInput = `${"x".repeat(statusBar.inputContentWidth(80) - 2)}YZ`;
   assert.ok(stripAnsi(statusBar.renderInputLine(edgeInput, 80)).includes(edgeInput));
@@ -54,6 +55,7 @@ export async function runStatusBarSmoke() {
   const inputLines = statusBar.renderInputLines(["\x1b[38;5;238m────────\x1b[0m", "hello", "\x1b[38;5;238m────────\x1b[0m"], 80);
   assert.deepEqual(inputLines.map((l) => stripAnsi(l).trimEnd()), ["", "▌hello", ""]);
   assert.equal(inputLines.some((l) => l.includes("\x1b[48;2;32;34;38m")), false);
+  assert.equal(inputLines.every((l) => /\x1b\[48;5;(?:236|255)m/.test(l)), true);
   assert.equal(statusBar.setText("Discuss | gpt-5.4·medium"), true);
   assert.ok(statusBar.renderBottom(64).at(-1).includes("\x1b[32mDiscuss\x1b[0m"));
   assert.equal(statusBar.setText("Discuss | gpt-5.4·medium"), false);
@@ -81,12 +83,15 @@ export async function runStatusBarSmoke() {
   assert.ok(stripAnsi(layoutLines.at(-7)).indexOf("11.3K") < 32);
   assert.equal(stripAnsi(layoutLines.at(-6)), "");
   assert.equal(layoutLines.at(-5).includes("\x1b[48;2;32;34;38m"), false);
+  assert.match(layoutLines.at(-5), /\x1b\[48;5;(?:236|255)m/);
   assert.equal(stripAnsi(layoutLines.at(-5)).trim(), "");
   assert.equal(layoutLines.at(-4).includes("\x1b[48;2;32;34;38m"), false);
+  assert.match(layoutLines.at(-4), /\x1b\[48;5;(?:236|255)m/);
   assert.equal(visibleWidth(layoutLines.at(-4)), 79);
   assert.ok(stripAnsi(layoutLines.at(-4)).startsWith("▌hello"));
   assert.equal(stripAnsi(layoutLines.at(-3)).trim(), "");
   assert.equal(layoutLines.at(-3).includes("\x1b[48;2;32;34;38m"), false);
+  assert.match(layoutLines.at(-3), /\x1b\[48;5;(?:236|255)m/);
   assert.equal(stripAnsi(layoutLines.at(-2)), "");
   assert.equal(layoutLines.at(-1).includes("\x1b[48;2;32;34;38m"), false);
   assert.equal(visibleWidth(layoutLines.at(-1)), 79);

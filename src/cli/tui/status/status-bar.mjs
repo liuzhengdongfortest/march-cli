@@ -54,7 +54,7 @@ export class StatusBar {
     const contentLines = lines.filter((line) => !isEditorChromeLine(line));
     const visibleLines = contentLines.length > 0 ? contentLines : [""];
     const paintWidth = inputPaintWidth(innerWidth);
-    const inputPadding = `${left}${renderInputPaddingLine(paintWidth)}${right}`;
+    const inputPadding = `${left}${statusBar.inputSurface(renderInputPaddingLine(paintWidth))}${right}`;
     const inputContent = visibleLines.map((line, index) =>
       `${left}${this.renderInputLine(line, innerWidth, { isFirst: index === 0 })}${right}`,
     );
@@ -64,9 +64,11 @@ export class StatusBar {
   renderInputLine(line, width, { isFirst = true } = {}) {
     if (width <= 0) return "";
     const paintWidth = inputPaintWidth(width);
-    const prompt = isFirst ? statusBar.prompt(INPUT_PROMPT) : "  ";
+    const promptText = isFirst ? INPUT_PROMPT : "  ";
+    const prompt = isFirst ? statusBar.inputPrompt(promptText) : statusBar.inputSurface(promptText);
     const content = clipToWidth(line, maxInputContentWidth(width));
-    return padToWidth(`${prompt}${content}`, paintWidth);
+    const contentWidth = Math.max(0, paintWidth - visibleWidth(promptText));
+    return `${prompt}${statusBar.inputSurface(padToWidth(content, contentWidth))}`;
   }
 
   renderBottom(width) {

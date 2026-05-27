@@ -2,6 +2,7 @@
 const R = "\x1b[0m";
 const B = "\x1b[1m";
 const D = "\x1b[2m";
+const BG = (n) => `\x1b[48;5;${n}m`;
 
 // Standard 16 colors
 const black = (s) => `\x1b[30m${s}${R}`;
@@ -26,7 +27,7 @@ const inverse = (s) => `\x1b[7m${s}${R}`;
 
 // ── 256-color helpers ────────────────────────────────────────────────
 const fg256 = (n) => (s) => `\x1b[38;5;${n}m${s}${R}`;
-const bg256 = (n) => (s) => `\x1b[48;5;${n}m${s}${R}`;
+const bg256 = (n) => (s) => `${BG(n)}${s}${R}`;
 
 // ── Semantic tokens ──────────────────────────────────────────────────
 const text = {
@@ -79,10 +80,15 @@ const message = {
   separator: brightBlack,
 };
 
+const inputSurfaceColor = terminalBackgroundTone(process.env) === "light" ? 255 : 236;
+const inputSurfacePrefix = BG(inputSurfaceColor);
+
 const statusBar = {
   muted: brightBlack,
   cwd: (s) => `${D}\x1b[38;5;244m${s}${R}`,
   prompt: fg256(250),
+  inputPrompt: (s) => `${inputSurfacePrefix}\x1b[38;5;250m${s}${R}`,
+  inputSurface: (s) => `${inputSurfacePrefix}${s}${R}`,
   accent: violet,
 };
 
@@ -110,6 +116,13 @@ const selectList = {
   scrollInfo: brightBlack,
   noMatch: brightBlack,
 };
+
+function terminalBackgroundTone(env = {}) {
+  const colorFgBg = String(env.COLORFGBG || "").trim();
+  const bgCode = Number(colorFgBg.split(/[;:]/).filter(Boolean).at(-1));
+  if (!Number.isFinite(bgCode)) return "dark";
+  return bgCode >= 7 && bgCode !== 8 ? "light" : "dark";
+}
 
 // ── Editor theme (consumed by pi-tui Editor component) ──────────────
 const EDITOR_THEME = {
