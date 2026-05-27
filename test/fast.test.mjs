@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
+import { visibleWidth } from "@earendil-works/pi-tui";
 import { runBrowserExtensionErrorsSmoke } from "./browser-extension-errors.smoke.mjs";
 import { runBrowserExtensionInstallSmoke } from "./browser-extension-install.smoke.mjs";
 import { runCodeSearchSmoke } from "./code-search.smoke.mjs";
@@ -43,6 +44,10 @@ function cleanup(dir) {
   try { rmSync(dir, { recursive: true, force: true }); } catch {}
 }
 
+function stripAnsi(text) {
+  return String(text).replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "");
+}
+
 {
   console.log("--- fast smoke: memory recall candidate display ---");
   const { selectDisplayedRecallCandidates } = await import("../src/cli/tui/recall-rendering.mjs");
@@ -58,6 +63,21 @@ function cleanup(dir) {
   assert.deepEqual(selectDisplayedRecallCandidates([
     skipped("s1"), skipped("s2"), skipped("s3"),
   ]).map((candidate) => candidate.id), ["s1", "s2"]);
+  console.log("  PASS");
+}
+
+{
+  console.log("--- fast smoke: TUI output content width ---");
+  const { OutputBuffer } = await import("../src/cli/tui/output-buffer.mjs");
+  const output = new OutputBuffer();
+  output.addThinkingBlock(12, ["x".repeat(78)]);
+  const wideLines = output.render(80);
+  assert.equal(visibleWidth(wideLines[1]), 80);
+  assert.ok(stripAnsi(wideLines[1]).startsWith(`  ${"x".repeat(78)}`));
+
+  const narrow = new OutputBuffer();
+  narrow.addThinkingBlock(1, ["abcd"]);
+  assert.equal(narrow.render(4).slice(1).every((line) => visibleWidth(line) <= 4), true);
   console.log("  PASS");
 }
 

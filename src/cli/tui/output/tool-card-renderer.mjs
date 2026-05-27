@@ -1,4 +1,5 @@
 import { visibleWidth } from "@earendil-works/pi-tui";
+import { contentWidthAfterPrefix } from "./content-width.mjs";
 import { R, brightBlack, dim, red, warmAmber } from "../ui-theme.mjs";
 
 export function renderToolCardBlock(block, width) {
@@ -24,7 +25,7 @@ function colorToolHead(block) {
 
 function appendCardWrapped(lines, border, text, width, indent = "") {
   const prefix = `${border} ${indent}`;
-  const contentWidth = Math.max(8, width - visibleWidth(prefix));
+  const contentWidth = contentWidthAfterPrefix(width, prefix);
   for (const part of wrapLine(text, contentWidth)) lines.push(`${prefix}${part}`);
 }
 

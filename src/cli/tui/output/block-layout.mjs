@@ -3,6 +3,7 @@ import { appendTextLines, wrapLine } from "./text-line-renderer.mjs";
 import { renderMarkdown, renderStreamingMarkdown } from "../markdown-renderer.mjs";
 import { renderEditDiffBlock } from "../tui-diff-rendering.mjs";
 import { appendSelectableEntries } from "./selectable-copy.mjs";
+import { contentWidthAfterPrefix } from "./content-width.mjs";
 import { dim } from "../ui-theme.mjs";
 
 export class OutputLayoutCache {
@@ -82,10 +83,10 @@ function renderMarkdownBlock(block, width) {
 
 function renderThinkingBlock(block, width) {
   const lines = [dim(`· thinking (${block.tokens} tokens)`)];
-  const indent = width > 40 ? width - 40 : width - 2;
-  const maxContentWidth = Math.max(20, indent);
+  const prefix = "  ";
+  const maxContentWidth = contentWidthAfterPrefix(width, prefix);
   for (const line of block.content) {
-    for (const w of wrapLine(line, maxContentWidth)) lines.push(dim(`  ${w}`));
+    for (const w of wrapLine(line, maxContentWidth)) lines.push(dim(`${prefix}${w}`));
   }
   return lines;
 }
