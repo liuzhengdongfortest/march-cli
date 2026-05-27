@@ -13,7 +13,7 @@ outline: false
     <div class="actions">
       <a class="primary" href="./start/install">Install March</a>
       <a class="secondary" href="./features/cli">Read the docs</a>
-      <a class="secondary" href="https://github.com/decolua/march-cli">GitHub</a>
+      <a class="secondary" href="https://github.com/liuzhengdongfortest/march-cli">GitHub</a>
     </div>
     <p class="note">Open source, source-first, no hidden project database.</p>
   </section>

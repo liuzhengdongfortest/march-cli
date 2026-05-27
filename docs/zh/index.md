@@ -13,7 +13,7 @@ outline: false
     <div class="actions">
       <a class="primary" href="./start/install">安装 March</a>
       <a class="secondary" href="./features/cli">阅读文档</a>
-      <a class="secondary" href="https://github.com/decolua/march-cli">GitHub</a>
+      <a class="secondary" href="https://github.com/liuzhengdongfortest/march-cli">GitHub</a>
     </div>
     <p class="note">开源、源码优先，没有隐藏的项目数据库。</p>
   </section>
