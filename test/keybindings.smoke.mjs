@@ -55,6 +55,10 @@ export async function runKeybindingsSmoke({ setupTmp, cleanup }) {
   });
   assert.deepEqual(defaultDispatcher.dispatch(TERMINAL_KEY_SEQUENCES.Tab), { consume: true });
   assert.equal(modeToggles, 1);
+  assert.deepEqual(defaultDispatcher.dispatch("\x1b[9;1:1u"), { consume: true });
+  assert.equal(modeToggles, 2);
+  assert.equal(defaultDispatcher.dispatch("\x1b[9;1:3u"), undefined);
+  assert.equal(modeToggles, 2);
   assert.deepEqual(defaultDispatcher.dispatch(TERMINAL_KEY_SEQUENCES["Ctrl+O"]), { consume: true });
   assert.equal(toggles, 1);
   assert.deepEqual(defaultDispatcher.dispatch(TERMINAL_KEY_SEQUENCES["Ctrl+U"]), { consume: true });
@@ -66,6 +70,7 @@ export async function runKeybindingsSmoke({ setupTmp, cleanup }) {
   });
   assert.deepEqual(interruptDispatcher.dispatch(TERMINAL_KEY_SEQUENCES["Ctrl+C"]), { consume: true });
   assert.deepEqual(interruptDispatcher.dispatch("\x1b[99;5u"), { consume: true });
+  assert.equal(interruptDispatcher.dispatch("\x1b[99;5:3u"), undefined);
   assert.equal(interrupts, 2);
 
   let escapeAborts = 0;
@@ -132,7 +137,7 @@ export async function runKeybindingsSmoke({ setupTmp, cleanup }) {
   });
   assert.equal(autocompleteDispatcher.dispatch(TERMINAL_KEY_SEQUENCES.Esc), undefined);
   assert.equal(autocompleteDispatcher.dispatch(TERMINAL_KEY_SEQUENCES.Tab), undefined);
-  assert.equal(modeToggles, 1);
+  assert.equal(modeToggles, 2);
   assert.equal(aborts, 0);
   assert.deepEqual(autocompleteDispatcher.dispatch(TERMINAL_KEY_SEQUENCES["Ctrl+C"]), { consume: true });
   assert.equal(interrupts, 4);

@@ -1,4 +1,4 @@
-import { matchesKey } from "@earendil-works/pi-tui";
+import { isKeyRelease, matchesKey } from "@earendil-works/pi-tui";
 import { DEFAULT_KEYBINDINGS, KEYBINDING_ACTIONS } from "./keybindings.mjs";
 
 export const TERMINAL_KEY_SEQUENCES = Object.freeze({
@@ -29,6 +29,8 @@ export function createKeybindingDispatcher({
 
   return {
     dispatch(data) {
+      if (isKeyRelease(data)) return undefined;
+
       const action = findMatchingAction(data, bindings);
       if (!action) return undefined;
 
