@@ -31,9 +31,9 @@ export class SemanticMemoryRecallIndex {
     return this.vectorizer?.status ?? "primary";
   }
 
-  async preload() {
+  async preload(options = {}) {
     if (!this.vectorizer) return false;
-    if (typeof this.vectorizer.load === "function") await this.vectorizer.load();
+    if (typeof this.vectorizer.load === "function") await this.vectorizer.load(options);
     else await this.vectorizer.encode(["memory recall warmup"]);
     return true;
   }

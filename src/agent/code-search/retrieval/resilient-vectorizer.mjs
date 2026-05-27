@@ -20,10 +20,10 @@ export class ResilientVectorizer {
     return this.active.id;
   }
 
-  async load() {
+  async load(options = {}) {
     if (this.status === "fallback") return false;
     try {
-      if (typeof this.primary.load === "function") await this.primary.load();
+      if (typeof this.primary.load === "function") await this.primary.load(options);
       else await this.primary.encode([`${this.label} warmup`]);
       return true;
     } catch (err) {

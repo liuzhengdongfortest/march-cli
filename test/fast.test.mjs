@@ -82,6 +82,22 @@ function stripAnsi(text) {
 }
 
 {
+  console.log("--- fast smoke: status bar model download activity ---");
+  const { createStatusLineUpdater } = await import("../src/cli/status-line-updater.mjs");
+  let line = "";
+  const updater = createStatusLineUpdater({
+    ui: { setStatusBar: (value) => { line = value; } },
+    runner: { engine: { modelId: "test-model", thinkingLevel: "auto" } },
+    sessionState: { sessionId: "s1" },
+  });
+  updater.updateModelDownload({ phase: "downloading", percent: 42 });
+  assert.match(stripAnsi(line), /Downloading Model 42%/);
+  updater.stopModelDownload();
+  assert.doesNotMatch(stripAnsi(line), /Downloading Model/);
+  console.log("  PASS");
+}
+
+{
   console.log("--- fast smoke: CLI args parsing ---");
   const { parseCliArgs } = await import("../src/cli/args.mjs");
 

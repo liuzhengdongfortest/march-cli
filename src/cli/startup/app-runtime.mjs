@@ -11,6 +11,7 @@ import { createMarchAuthStorage } from "../../auth/storage.mjs";
 import { createRuntimeRunner } from "./create-runtime-runner.mjs";
 import { createCliShellRuntime } from "../../shell/cli-runtime.mjs";
 import { MarkdownMemoryStore } from "../../memory/markdown-store.mjs";
+import { startSemanticMemoryRecallPreload } from "../../memory/markdown/semantic-preload.mjs";
 import { discoverProjectExtensionPaths } from "../../extensions/discovery.mjs";
 import { loadProjectLifecycleHookManifests } from "../../extensions/lifecycle-manifest.mjs";
 import { loadOrCreateProjectId, resumeStartupSession } from "./startup-session.mjs";
@@ -194,6 +195,11 @@ export async function createCliAppRuntime({ args, config, cwd, argv, stateRoot }
     ? await runner.estimateContextTokens("")
     : null;
   refreshStatusBar(initialContextTokens ? { contextTokens: initialContextTokens } : undefined);
+  startSemanticMemoryRecallPreload({
+    memoryStore,
+    logger,
+    onStatus: (status) => refreshStatusBar.updateModelDownload?.(status),
+  });
 
   wireTuiHandlers({
     ui,
