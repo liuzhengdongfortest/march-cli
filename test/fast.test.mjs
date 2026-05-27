@@ -82,6 +82,18 @@ function stripAnsi(text) {
 }
 
 {
+  console.log("--- fast smoke: input surface preserves background through styled text ---");
+  const { StatusBar } = await import("../src/cli/tui/status/status-bar.mjs");
+  const line = new StatusBar().renderInputLine("\x1b[37mhello\x1b[0m", 20);
+  const bgPrefix = line.match(/\x1b\[48;5;\d+m/)?.[0];
+  assert.ok(bgPrefix);
+  const resetAfterText = line.indexOf("\x1b[0m", line.indexOf("hello") + "hello".length);
+  assert.notEqual(resetAfterText, -1);
+  assert.equal(line.slice(resetAfterText + "\x1b[0m".length, resetAfterText + "\x1b[0m".length + bgPrefix.length), bgPrefix);
+  console.log("  PASS");
+}
+
+{
   console.log("--- fast smoke: status bar model download activity ---");
   const { createStatusLineUpdater } = await import("../src/cli/status-line-updater.mjs");
   let line = "";

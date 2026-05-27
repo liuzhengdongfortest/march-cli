@@ -82,13 +82,19 @@ const message = {
 
 const inputSurfaceColor = terminalBackgroundTone(process.env) === "light" ? 255 : 236;
 const inputSurfacePrefix = BG(inputSurfaceColor);
+const SGR_RE = /\x1b\[[0-?]*[ -/]*m/g;
+
+function inputSurface(s) {
+  // The input background owns the full surface, even when editor text resets ANSI styles.
+  return `${inputSurfacePrefix}${String(s).replace(SGR_RE, `$&${inputSurfacePrefix}`)}${R}`;
+}
 
 const statusBar = {
   muted: brightBlack,
   cwd: (s) => `${D}\x1b[38;5;244m${s}${R}`,
   prompt: fg256(250),
   inputPrompt: (s) => `${inputSurfacePrefix}\x1b[38;5;250m${s}${R}`,
-  inputSurface: (s) => `${inputSurfacePrefix}${s}${R}`,
+  inputSurface,
   accent: violet,
 };
 
