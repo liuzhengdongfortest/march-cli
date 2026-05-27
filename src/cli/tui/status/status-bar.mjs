@@ -4,7 +4,6 @@ import { modeLabel, statusBar, R } from "../ui-theme.mjs";
 const ANSI_RE = /\x1b\[[0-?]*[ -/]*[@-~]/g;
 const DEFAULT_STATUS_TEXT = "March";
 const DEFAULT_HELP_TEXT = "/ commands · ? help";
-const INPUT_BG = "\x1b[48;2;32;34;38m";
 const INPUT_PROMPT = "▌";
 
 export class StatusBar {
@@ -67,7 +66,7 @@ export class StatusBar {
     const paintWidth = inputPaintWidth(width);
     const prompt = isFirst ? statusBar.prompt(INPUT_PROMPT) : "  ";
     const content = clipToWidth(line, maxInputContentWidth(width));
-    return applyInputBackground(padToWidth(`${prompt}${content}`, paintWidth));
+    return padToWidth(`${prompt}${content}`, paintWidth);
   }
 
   renderBottom(width) {
@@ -102,7 +101,7 @@ function composeMetaLine({ left, right, width, muteLeft = true }) {
 }
 
 function renderInputPaddingLine(width) {
-  return applyInputBackground(" ".repeat(Math.max(1, Math.trunc(width))));
+  return " ".repeat(Math.max(1, Math.trunc(width)));
 }
 
 function inputPaintWidth(width) {
@@ -116,9 +115,6 @@ function maxInputContentWidth(width) {
   return Math.max(0, paintWidth - promptWidth - 2);
 }
 
-function applyInputBackground(line) {
-  return `${INPUT_BG}${String(line).replaceAll(R, `${R}${INPUT_BG}`)}${R}`;
-}
 
 function isEditorChromeLine(line) {
   const plain = stripAnsi(line).trim();
