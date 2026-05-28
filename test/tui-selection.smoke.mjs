@@ -6,12 +6,15 @@ export async function runTuiSelectionSmoke() {
   const { createTuiUI } = await import("../src/cli/ui.mjs");
   const { parseMouseEvent } = await import("../src/cli/tui/input/mouse-tracking.mjs");
   const { createMouseSelectionController } = await import("../src/cli/tui/input/mouse-selection-controller.mjs");
+  const { createAlternateScrollController, parseAlternateScrollKey } = await import("../src/cli/tui/input/alternate-scroll-controller.mjs");
   const { ScreenSelection } = await import("../src/cli/tui/selection-screen.mjs");
 
   assert.deepEqual(parseMouseEvent("\x1b[<64;10;2M"), { type: "scroll", delta: -1, col: 10, row: 2 });
   assert.deepEqual(parseMouseEvent("\x1b[<0;1;2M"), { type: "down", button: 0, col: 1, row: 2 });
   assert.deepEqual(parseMouseEvent("\x1b[<32;3;4M"), { type: "drag", button: 0, col: 3, row: 4 });
   assert.deepEqual(parseMouseEvent("\x1b[<0;5;6m"), { type: "up", button: 0, col: 5, row: 6 });
+  assert.equal(parseAlternateScrollKey("\x1b[A"), -1);
+  assert.equal(parseAlternateScrollKey("\x1b[B"), 1);
 
   const selection = new ScreenSelection();
   selection.setLines(["alpha", "beta", "gamma"]);
@@ -117,7 +120,7 @@ export async function runTuiSelectionSmoke() {
   ui.writeln("alpha");
   ui.writeln("beta");
   await delay(50);
-  assert.ok(terminal.writes.join("").includes("\x1b[?1002h\x1b[?1006h"));
+  assert.ok(terminal.writes.join("").includes("\x1b[?1002h\x1b[?1006h\x1b[?1007h"));
 
   terminal.input("\x1b[<0;1;1M");
   terminal.input("\x1b[<32;40;12M");
@@ -135,7 +138,7 @@ export async function runTuiSelectionSmoke() {
   terminal.input("\x03");
   assert.ok(copied.includes("hello copy"));
   await ui.close();
-  assert.ok(terminal.writes.join("").includes("\x1b[?1002l\x1b[?1006l"));
+  assert.ok(terminal.writes.join("").includes("\x1b[?1007l\x1b[?1002l\x1b[?1006l"));
 
   const statusLines = [];
   const controller = createMouseSelectionController({
@@ -170,6 +173,23 @@ export async function runTuiSelectionSmoke() {
   clickController.handleMouseInput("\x1b[<0;1;1M");
   clickController.handleMouseInput("\x1b[<0;1;1m");
   assert.equal(toggled, true);
+
+  let alternateScrollDelta = null;
+  let alternateScrollRenderCount = 0;
+  const alternateScrollController = createAlternateScrollController({
+    editor: { getText: () => "" },
+    output: { scroll: (delta, options) => { alternateScrollDelta = [delta, options]; } },
+    requestRender: () => { alternateScrollRenderCount += 1; },
+  });
+  assert.deepEqual(alternateScrollController.handleInput("\x1b[A"), { consume: true });
+  assert.deepEqual(alternateScrollDelta, [-1, { step: 3 }]);
+  assert.equal(alternateScrollRenderCount, 1);
+
+  const blockedAlternateScrollController = createAlternateScrollController({
+    editor: { getText: () => "draft" },
+    output: { scroll: () => { throw new Error("should not scroll while editing"); } },
+  });
+  assert.equal(blockedAlternateScrollController.handleInput("\x1b[B"), undefined);
 
   let asyncResolved = false;
   let renderCount = 0;

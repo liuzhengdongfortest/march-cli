@@ -16,6 +16,7 @@ import { StatusBar } from "./tui/status/status-bar.mjs";
 import { MainPaneLayout } from "./tui/layout/main-pane-layout.mjs";
 import { SafeRenderBoundary } from "./tui/layout/safe-render-boundary.mjs";
 import { createHistoryNavigationController } from "./tui/input/history-navigation-controller.mjs";
+import { createAlternateScrollController } from "./tui/input/alternate-scroll-controller.mjs";
 import { createMouseSelectionController } from "./tui/input/mouse-selection-controller.mjs";
 import { ScreenSelection } from "./tui/selection-screen.mjs";
 import { writeEditDiff } from "./tui/tui-diff-rendering.mjs";
@@ -25,6 +26,7 @@ import { writeToolEnd, writeToolStart } from "./tui/tool-rendering.mjs";
 import { EDITOR_THEME, brightBlack } from "./tui/ui-theme.mjs";
 import { createRenderScheduler } from "./tui/render/render-scheduler.mjs";
 import { createStreamDeltaBuffer } from "./tui/render/stream-delta-buffer.mjs";
+import { enterTuiTerminalModes, leaveTuiTerminalModes } from "./tui/terminal-modes.mjs";
 import { writeTranscriptToOutput } from "../session/transcript.mjs";
 
 export { buildMarchCommands, MarchAutocompleteProvider } from "./input/autocomplete.mjs";
@@ -74,6 +76,13 @@ export function createTuiUI({
     isAutocompleteOpen: () => editor.isShowingAutocomplete(),
     hasOverlay: () => tui.hasOverlay(),
   });
+  const alternateScrollController = createAlternateScrollController({
+    editor,
+    output,
+    requestRender,
+    isAutocompleteOpen: () => editor.isShowingAutocomplete(),
+    hasOverlay: () => tui.hasOverlay(),
+  });
 
   let onEscapeHandler = null, onCtrlCHandler = null, onShiftTabHandler = null;
   let onCtrlTHandler = null, onCtrlLHandler = null, onPasteImageHandler = null, onToggleModeHandler = null;
@@ -117,9 +126,10 @@ export function createTuiUI({
         }
         const historyNavigationResult = historyNavigationController.handleInput(data);
         if (historyNavigationResult) return historyNavigationResult;
+        const alternateScrollResult = alternateScrollController.handleInput(data);
+        if (alternateScrollResult) return alternateScrollResult;
       });
-      terminal.write("\x1b[?1049h");
-      terminal.write("\x1b[?1002h\x1b[?1006h");
+      enterTuiTerminalModes(terminal);
       tui.start();
       started = true;
     }
@@ -275,9 +285,8 @@ export function createTuiUI({
       retryStatus.stop();
       if (started) {
         await terminal.drainInput?.();
-        terminal.write("\x1b[?1002l\x1b[?1006l");
+        leaveTuiTerminalModes(terminal);
         tui.stop();
-        terminal.write("\x1b[?1049l");
       }
     },
   };

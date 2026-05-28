@@ -1,4 +1,5 @@
 import { getExternalEditorCommand, openTextInExternalEditor } from "../../input/external-editor.mjs";
+import { enterTuiTerminalModes, leaveTuiTerminalModes } from "../terminal-modes.mjs";
 import { yellow } from "../ui-theme.mjs";
 
 export function runTuiExternalEditor({ terminal, tui, editor, output, requestRender, mouseOn }) {
@@ -9,16 +10,14 @@ export function runTuiExternalEditor({ terminal, tui, editor, output, requestRen
     return;
   }
   try {
-    terminal.write("\x1b[?1049l");
+    leaveTuiTerminalModes(terminal, { mouse: mouseOn() });
     tui.stop();
-    if (mouseOn()) terminal.write("\x1b[?1002l\x1b[?1006l");
     const result = openTextInExternalEditor({ text: editor.getText(), editorCommand });
     if (result.ok) editor.setText(result.text);
     else output.writeln(yellow(`● ${result.error}`));
   } finally {
     tui.start();
-    terminal.write("\x1b[?1049h");
-    if (mouseOn()) terminal.write("\x1b[?1002h\x1b[?1006h");
+    enterTuiTerminalModes(terminal, { mouse: mouseOn() });
     tui.requestRender(true);
   }
 }
