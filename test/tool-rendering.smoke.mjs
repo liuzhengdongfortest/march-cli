@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runToolRenderingSmoke() {
   console.log("--- smoke: tool rendering ---");
-  const { formatToolStartLine, formatToolSuccessSummary, writeToolEnd, writeToolStart } = await import("../src/cli/tui/tool-rendering.mjs");
+  const { formatToolStartLine, formatToolSuccessSummary, formatToolSuccessTitle, writeToolEnd, writeToolStart } = await import("../src/cli/tui/tool-rendering.mjs");
   const { renderToolCardBlock } = await import("../src/cli/tui/output/tool-card-renderer.mjs");
 
   const lines = [];
@@ -46,6 +46,7 @@ export async function runToolRenderingSmoke() {
   assert.equal(findSummary, true);
   assert.ok(lines.some((line) => line.includes("12 files")));
 
+  assert.equal(formatToolSuccessTitle("memory_open", { details: { entry: { name: "Project Overview" } } }), "◆ memory_open · Project Overview");
   assert.equal(formatToolSuccessSummary("memory_open", { details: { entry: { name: "Project Overview" } } }), "Project Overview");
   assert.equal(formatToolSuccessSummary("memory_open", { details: { path: "D:\\memories\\2026\\05\\project-overview.md" } }), "memories\\2026\\05\\project-overview.md");
 
@@ -98,8 +99,11 @@ export async function runToolRenderingSmoke() {
     extractToolOutputImpl: () => "path: D:\\memories\\project-overview.md",
   });
   assert.equal(memoryBlocks.length, 1);
-  assert.equal(memoryBlocks[0].summary, "Project Overview");
-  assert.match(renderToolCardBlock(memoryBlocks[0], 80).join("\n"), /\x1b\[38;2;214;162;58m▸ ◆ memory_open/);
+  assert.equal(memoryBlocks[0].title, "◆ memory_open · Project Overview");
+  assert.equal(memoryBlocks[0].summary, "");
+  const memoryRendered = renderToolCardBlock(memoryBlocks[0], 80).join("\n");
+  assert.match(memoryRendered, /\x1b\[38;2;214;162;58m▸ ◆ memory_open · Project Overview/);
+  assert.ok(!memoryRendered.includes("mem_123"));
   const { OutputBuffer } = await import("../src/cli/tui/output-buffer.mjs");
   const buffer = new OutputBuffer();
   const block = writeToolStart({ output: buffer, name: "grep", args: { pattern: "needle", path: "src" } });

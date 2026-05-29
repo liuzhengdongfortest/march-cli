@@ -1,8 +1,8 @@
 import { extractToolOutput } from "../tool-output.mjs";
-import { formatToolStartLine, formatToolSuccessSummary } from "../../agent/tool-summary.mjs";
+import { formatToolStartLine, formatToolSuccessSummary, formatToolSuccessTitle } from "../../agent/tool-summary.mjs";
 import { dim, red } from "./ui-theme.mjs";
 
-export { formatToolStartLine, formatToolSuccessSummary } from "../../agent/tool-summary.mjs";
+export { formatToolStartLine, formatToolSuccessSummary, formatToolSuccessTitle } from "../../agent/tool-summary.mjs";
 
 const TOOL_BODY_LIMIT = 40;
 const TOOL_ERROR_LIMIT = 6;
@@ -59,10 +59,13 @@ function formatToolEndCard({ name, isError, result, extractToolOutputImpl }) {
     };
   }
 
-  const summary = formatToolSuccessSummary(name, result, out) || "done";
+  const title = formatToolSuccessTitle(name, result);
+  const rawSummary = formatToolSuccessSummary(name, result, out) || "done";
+  const summary = title.endsWith(` · ${rawSummary}`) ? "" : rawSummary;
   return {
     state: "done",
     isError: false,
+    ...(title ? { title } : {}),
     summary,
     bodyLines: out ? out.split("\n").slice(0, TOOL_BODY_LIMIT).map((line) => line.slice(0, 120)) : [],
   };

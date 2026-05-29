@@ -31,6 +31,14 @@ export function formatToolStartLine(name, args = {}) {
   return joinToolParts("◆", name, [formatSmallOptions(args)]);
 }
 
+export function formatToolSuccessTitle(name, result) {
+  if (name === "memory_open") {
+    const title = compactText(result?.details?.entry?.name ?? "");
+    return title ? joinToolParts("◆", name, [title]) : "";
+  }
+  return "";
+}
+
 export function formatToolSuccessSummary(name, result, out = "") {
   if (name === "grep") {
     const matches = result?.details?.results?.length ?? countMatchLines(out);
