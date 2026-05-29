@@ -25,6 +25,8 @@
     "web:dev": "node bin/march.mjs web --dev",
     "web:build": "tsc -p src/web-ui/tsconfig.json && vite build --config src/web-ui/vite.config.mjs",
     "web:preview": "npm run web:build && node src/web-ui/server.mjs",
+    "desktop:dev": "electron src/desktop/main.mjs --dev",
+    "desktop": "npm run web:build && electron src/desktop/main.mjs",
     "context": "cd .. && node march-cli/bin/march.mjs --dump-context",
     "notify:experiment": "node scripts/notify-experiment.mjs",
     "publish:env": "node scripts/npm-publish-from-env.mjs"
@@ -53,6 +55,7 @@
     "@types/react": "^18.3.29",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^6.0.2",
+    "electron": "^42.3.0",
     "typescript": "^6.0.3",
     "vite": "^8.0.14",
     "vitepress": "^1.6.4"

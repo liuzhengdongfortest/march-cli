@@ -32,6 +32,7 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
 
   assert.match(pkg, /"web:dev": "node bin\/march\.mjs web --dev"/);
   assert.match(pkg, /"web:build": "tsc -p src\/web-ui\/tsconfig\.json/);
+  assert.match(pkg, /"desktop:dev": "electron src\/desktop\/main\.mjs --dev"/);
   assert.match(pkg, /"@pierre\/trees":/);
   assert.match(args, /"web"/);
   assert.match(args, /workspace: \{ type: "string" \}/);
@@ -44,7 +45,8 @@ export async function runWebUiSmoke({ cwd = process.cwd() } = {}) {
   assert.match(webCommand, /only exposes local filesystem APIs/);
   assert.doesNotMatch(webCommand, /Choose a workspace/);
   assert.match(webCommand, /Web UI build not found/);
-  assert.match(webCommand, /runWebUiDevCommand/);
+  assert.match(webCommand, /startWebUiSession/);
+  assert.match(webCommand, /startWebUiDevSession/);
   assert.match(webCommand, /createViteDevServer/);
   assert.match(webCommand, /proxy: \{ "\/api":/);
   assert.match(webCommand, /apiPort/);
