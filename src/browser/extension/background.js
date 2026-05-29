@@ -1,5 +1,6 @@
 import { buildExecCode } from "./execute-code.js";
 import { serializeError } from "./errors.js";
+import { BROWSER_COLLECTION_ITEM_LIMIT, BROWSER_OUTPUT_CHAR_LIMIT } from "./output-limits.js";
 
 const DAEMON_WS = "ws://127.0.0.1:4328/extension";
 let socket = null;
@@ -173,15 +174,33 @@ async function executeViaCdp(tabId, expression) {
 function buildReadCode(include) {
   return `return (() => {
     const include = ${JSON.stringify(include)};
-    const page = { title: document.title, url: location.href };
-    if (include.text !== false) page.text = document.body?.innerText || "";
-    if (include.html) page.html = document.documentElement?.outerHTML || "";
-    if (include.elements !== false) page.elements = Array.from(document.querySelectorAll("a,button,input,textarea,select,[role=button],[role=link],[contenteditable=true]")).slice(0, 300).map((el, index) => {
+    const OUTPUT_CHAR_LIMIT = ${BROWSER_OUTPUT_CHAR_LIMIT};
+    const COLLECTION_ITEM_LIMIT = ${BROWSER_COLLECTION_ITEM_LIMIT};
+    const FIELD_CHAR_LIMIT = 500;
+    const page = { title: truncateText(document.title, FIELD_CHAR_LIMIT), url: location.href };
+    if (include.text !== false) page.text = truncateText(document.body?.innerText || "");
+    if (include.html) page.html = truncateText(document.documentElement?.outerHTML || "");
+    if (include.elements !== false) page.elements = Array.from(document.querySelectorAll("a,button,input,textarea,select,[role=button],[role=link],[contenteditable=true]")).slice(0, COLLECTION_ITEM_LIMIT).map((el, index) => {
       const tag = el.tagName.toLowerCase();
-      const text = (el.innerText || el.value || el.getAttribute("aria-label") || "").trim().slice(0, 200);
-      return { index, tag, type: el.getAttribute("type") || undefined, role: el.getAttribute("role") || undefined, text, placeholder: el.getAttribute("placeholder") || undefined, href: el.href || undefined, selector: selectorFor(el) };
+      const text = truncateText((el.innerText || el.value || el.getAttribute("aria-label") || "").trim(), 200);
+      return {
+        index,
+        tag,
+        type: truncateText(el.getAttribute("type") || "", FIELD_CHAR_LIMIT) || undefined,
+        role: truncateText(el.getAttribute("role") || "", FIELD_CHAR_LIMIT) || undefined,
+        text,
+        placeholder: truncateText(el.getAttribute("placeholder") || "", FIELD_CHAR_LIMIT) || undefined,
+        href: truncateText(el.href || "", FIELD_CHAR_LIMIT) || undefined,
+        selector: truncateText(selectorFor(el), FIELD_CHAR_LIMIT),
+      };
     });
     return page;
+    function truncateText(value, limit = OUTPUT_CHAR_LIMIT) {
+      const text = String(value ?? "");
+      if (text.length <= limit) return text;
+      const marker = "\\n[truncated browser output: " + text.length + " chars -> " + limit + " chars]";
+      return text.slice(0, Math.max(0, limit - marker.length)) + marker;
+    }
     function selectorFor(el) {
       if (el.id) return "#" + CSS.escape(el.id);
       const name = el.getAttribute("name");

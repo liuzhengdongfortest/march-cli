@@ -4,6 +4,7 @@ import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { toolText } from "../../agent/tool-result.mjs";
 import { callBrowserDaemon } from "../client/rpc.mjs";
+import { truncateToolText } from "../extension/output-limits.js";
 
 export function createBrowserTools({ stateRoot = join(homedir(), ".march") } = {}) {
   return [
@@ -85,5 +86,7 @@ async function safeToolJson(run) {
 }
 
 function toolJson(payload, details = {}) {
-  return toolText(JSON.stringify(payload, null, 2), details);
+  const formatted = JSON.stringify(payload, null, 2);
+  const limited = truncateToolText(formatted);
+  return toolText(limited.text, { ...details, browserOutputTruncated: limited.truncated, originalLength: limited.originalLength, returnedLength: limited.returnedLength });
 }
