@@ -27,19 +27,6 @@ march login [provider]
 - `provider accept <token>` 导入分享的 provider profile。
 - `login [provider]` 登录 OAuth provider。
 
-## Web UI
-
-```bash
-march web [path]
-march web --dev
-```
-
-常用选项：
-
-- `--host <host>` 绑定 Web UI host。
-- `--port <port>` 绑定 Web UI port。
-- `--workspace <path>` 打开初始工作区会话。
-- `--api-port <port>` 在开发模式下设置 API 后端端口。
 
 ## Web 搜索
 

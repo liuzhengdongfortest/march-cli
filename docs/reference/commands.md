@@ -27,19 +27,6 @@ march login [provider]
 - `provider accept <token>` imports a shared provider profile.
 - `login [provider]` logs in to an OAuth provider.
 
-## Web UI
-
-```bash
-march web [path]
-march web --dev
-```
-
-Useful options:
-
-- `--host <host>` binds the Web UI host.
-- `--port <port>` binds the Web UI port.
-- `--workspace <path>` opens an initial workspace session.
-- `--api-port <port>` sets the API backend port in development mode.
 
 ## Web search
 

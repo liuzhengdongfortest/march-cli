@@ -17,8 +17,6 @@ const englishSidebar = [
     items: [
       { text: 'CLI Workflow', link: '/features/cli' },
       { text: 'Tools', link: '/features/tools' },
-      { text: 'Web UI', link: '/features/web' },
-      { text: 'Desktop App', link: '/features/desktop' },
     ],
   },
   {
@@ -58,8 +56,6 @@ const chineseSidebar = [
     items: [
       { text: 'CLI 工作流', link: '/zh/features/cli' },
       { text: '工具', link: '/zh/features/tools' },
-      { text: 'Web UI', link: '/zh/features/web' },
-      { text: '桌面端', link: '/zh/features/desktop' },
     ],
   },
   {

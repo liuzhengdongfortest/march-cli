@@ -1,6 +1,5 @@
 import { runBrowserCommand } from "../../browser/cli/command.mjs";
 import { runGatewayCommand } from "../../gateway/command.mjs";
-import { runWebUiCommand } from "../../web-ui/command.mjs";
 
 export async function runConfiguredCliCommand(args, { config, cwd, stateRoot }) {
   if (args.command?.name === "browser") {
@@ -13,14 +12,6 @@ export async function runConfiguredCliCommand(args, { config, cwd, stateRoot }) 
   }
   if (args.command?.name === "gateway" && args.command.args?.[0] !== "run") {
     return { handled: true, code: await runGatewayCommand(args, { config, cwd }) };
-  }
-  if (args.command?.name === "web") {
-    try {
-      return { handled: true, code: await runWebUiCommand(args, { config, cwd, stateRoot }) };
-    } catch (err) {
-      process.stderr.write(`Error: ${err.message}\n`);
-      return { handled: true, code: 1 };
-    }
   }
   return { handled: false, code: null };
 }

@@ -31,7 +31,7 @@ export function parseCliArgs(argv) {
     allowPositionals: true,
   });
 
-  const commandName = ["login", "provider", "web", "websearch", "memory", "browser", "gateway"].includes(positionals[0]) ? positionals[0] : null;
+  const commandName = ["login", "provider", "websearch", "memory", "browser", "gateway"].includes(positionals[0]) ? positionals[0] : null;
 
   return {
     command: commandName ? { name: commandName, args: positionals.slice(1) } : null,
@@ -72,8 +72,6 @@ Usage:
   march provider remove      Remove a configured provider interactively
   march provider share [id]  Share a provider profile
   march provider accept <token>
-  march web [path]       Start the local Web UI session manager
-  march web --dev        Start Web UI with Vite hot reload
   march websearch --config   Configure web search credentials
   march memory serve [folder]
   march memory add <url>
@@ -100,11 +98,11 @@ Options:
   --no-shell-runtime   Disable interactive PTY shell tools and shell pane
   -e, --extension <path>
                        Load a pi extension path in the default runtime host (repeatable)
-  --host <host>        With memory serve/web, bind host (default: 127.0.0.1)
-  --port <port>        With memory serve/web, bind port
-  --api-port <port>    With web --dev, bind API backend port
-  --workspace <path>   With web, open an initial workspace session
-  --dev                With web, use Vite dev server and proxy /api
+  --host <host>        With memory serve, bind host (default: 127.0.0.1)
+  --port <port>        With memory serve, bind port
+  --api-port <port>    Reserved for local API commands
+  --workspace <path>   Reserved for workspace-aware commands
+  --dev                Reserved for development commands
   --name <name>        With memory serve/add, remote memory source name
   --foreground         With memory serve, run server in current process
   -h, --help           Show this help

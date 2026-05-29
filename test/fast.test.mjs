@@ -30,7 +30,6 @@ import { runSourceDirectoryLimitSmoke } from "./source-directory-limit.smoke.mjs
 import { runSourceLineLimitSmoke } from "./source-line-limit.smoke.mjs";
 import { runStartupBannerSmoke } from "./startup-banner.smoke.mjs";
 import { runAvatarsSmoke } from "./avatars.smoke.mjs";
-import { runWebUiSmoke } from "./web-ui.smoke.mjs";
 import { runRemoteMemorySmoke } from "./remote-memory.smoke.mjs";
 import { runRuntimeRestartLifecycleSmoke } from "./runtime-restart-lifecycle.smoke.mjs";
 import { runWorkspaceRegistrySmoke } from "./workspace-registry.smoke.mjs";
@@ -139,32 +138,9 @@ function stripAnsi(text) {
   const gatewayStatus = parseCliArgs(["gateway", "status"]);
   assert.deepEqual(gatewayStatus.command, { name: "gateway", args: ["status"] });
 
-  const tmpWorkspace = setupTmp();
-  const childWorkspace = resolve(tmpWorkspace, "project");
-  mkdirSync(childWorkspace, { recursive: true });
-  const web = parseCliArgs(["web", tmpWorkspace, "--host", "127.0.0.1", "--port", "4174"]);
-  assert.deepEqual(web.command, { name: "web", args: [tmpWorkspace] });
-  assert.equal(web.host, "127.0.0.1");
-  assert.equal(web.port, "4174");
-
-  const webDev = parseCliArgs(["web", "--dev", "--api-port", "5175"]);
-  assert.deepEqual(webDev.command, { name: "web", args: [] });
-  assert.equal(webDev.dev, true);
-  assert.equal(webDev.apiPort, "5175");
-
-  const webWithWorkspaceOption = parseCliArgs(["web", "--workspace", tmpWorkspace]);
-  assert.deepEqual(webWithWorkspaceOption.command, { name: "web", args: [] });
-  assert.equal(webWithWorkspaceOption.workspace, tmpWorkspace);
-  const { resolveInitialWorkspace } = await import("../src/web-ui/command.mjs");
-  try {
-    assert.equal(resolveInitialWorkspace(web, "C:/launcher"), resolve(tmpWorkspace));
-    assert.equal(resolveInitialWorkspace(parseCliArgs(["web", "project"]), tmpWorkspace), childWorkspace);
-    assert.equal(resolveInitialWorkspace(parseCliArgs(["web"]), tmpWorkspace), null);
-    assert.throws(() => resolveInitialWorkspace(parseCliArgs(["web", tmpWorkspace, "extra"]), tmpWorkspace), /Usage: march web/);
-    assert.throws(() => resolveInitialWorkspace(parseCliArgs(["web", tmpWorkspace, "--workspace", tmpWorkspace]), tmpWorkspace), /Use either/);
-  } finally {
-    cleanup(tmpWorkspace);
-  }
+  const webPrompt = parseCliArgs(["web", "hello"]);
+  assert.equal(webPrompt.command, null);
+  assert.equal(webPrompt.prompt, "web hello");
 
   assert.ok(!readFileSync("bin/march.mjs", "utf8").includes("process.exit("));
   assert.ok(!readFileSync("src/main.mjs", "utf8").includes("process.exit("));
@@ -175,7 +151,6 @@ await runSourceLineLimitSmoke();
 await runSourceDirectoryLimitSmoke();
 await runStartupBannerSmoke();
 await runAvatarsSmoke({ setupTmp, cleanup });
-await runWebUiSmoke();
 await runConfigLoadingSmoke({ setupTmp, cleanup });
 await runGatewayCoreSmoke({ setupTmp, cleanup });
 await runHistorySearchSmoke({ setupTmp, cleanup });
