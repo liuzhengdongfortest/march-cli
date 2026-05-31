@@ -87,6 +87,7 @@ async function dispatch(method, params) {
   if (method === "tabs") return { tabs: (await chrome.tabs.query({})).map(formatTab) };
   if (method === "open") return await openTab(params);
   if (method === "read") return await readTab(params);
+  if (method === "screenshot") return await screenshotTab(params);
   if (method === "script") return await runScript(params);
   throw new Error(`Unknown browser method: ${method}`);
 }
@@ -127,6 +128,18 @@ async function runScript(params) {
   const tabId = requireTabId(params.tabId, "script");
   const result = await executePageCode(tabId, String(params.code ?? ""));
   return { tabId: String(tabId), result };
+}
+
+async function screenshotTab(params) {
+  const tabId = requireTabId(params.tabId, "screenshot");
+  const tab = await chrome.tabs.get(tabId);
+  if (!tab.windowId) throw new Error(`tab has no windowId: ${tabId}`);
+  await chrome.tabs.update(tabId, { active: true });
+  await chrome.windows.update(tab.windowId, { focused: true });
+  const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" });
+  const match = /^data:(image\/png);base64,(.+)$/i.exec(dataUrl || "");
+  if (!match) throw new Error("Browser screenshot returned an unsupported data URL");
+  return { tab: formatTab(await chrome.tabs.get(tabId)), data: match[2], mimeType: match[1] };
 }
 
 async function executePageCode(tabId, code) {

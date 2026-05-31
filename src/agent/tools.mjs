@@ -7,6 +7,7 @@ import { createReadImageTool } from "./file-tools/read-image-tool.mjs";
 import { createSendBinaryTool } from "./output/send-binary-tool.mjs";
 import { createScreenTool } from "./screen-tools/screen-tool.mjs";
 import { createListWindowsTool } from "./screen-tools/list-windows-tool.mjs";
+import { createAnalyzeImagesTool } from "./vision-tools/analyze-images-tool.mjs";
 import { createShellTools } from "../shell/tools.mjs";
 import { initImageGen } from "../image-gen/index.mjs";
 import { createSuperGrokTool } from "../supergrok/tool.mjs";
@@ -16,7 +17,7 @@ import { createRuntimeRestartTool } from "./lifecycle/runtime-restart-tool.mjs";
 import { createHistorySearchTool } from "../history/tool.mjs";
 import { createAvatarTools } from "./avatars/tools.mjs";
 
-export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], historyStore = null, shellRuntime = null, lspService = null, mcpTools = [], webTools = [], lifecycle = null, authStorage = null, projectMarchDir = null, stateRoot = null, getCurrentModel = null, avatarRuntime = null }) {
+export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], historyStore = null, shellRuntime = null, lspService = null, mcpTools = [], webTools = [], lifecycle = null, authStorage = null, projectMarchDir = null, stateRoot = null, getCurrentModel = null, avatarRuntime = null, modelRegistry = null, imageModel = null }) {
   const commandExecTool = createCommandExecTool({ cwd });
   const codeSearchTool = createCodeSearchTool({ engine, stateRoot });
   const contextStatsTool = createContextStatsTool({ engine });
@@ -27,6 +28,7 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], hist
   const sendBinaryTool = createSendBinaryTool({ engine });
   const screenTool = createScreenTool({ getCurrentModel });
   const listWindowsTool = createListWindowsTool();
+  const analyzeImagesTool = createAnalyzeImagesTool({ engine, modelRegistry, imageModel });
 
   const tools = [
     readFileTool,
@@ -34,6 +36,7 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], hist
     sendBinaryTool,
     screenTool,
     listWindowsTool,
+    analyzeImagesTool,
     contextStatsTool,
     codeSearchTool,
     commandExecTool,
@@ -44,7 +47,7 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], hist
     ...mcpTools,
     ...webTools,
     ...(lifecycle ? [createRuntimeRestartTool({ lifecycle })] : []),
-    ...createBrowserTools({ stateRoot }),
+    ...createBrowserTools({ stateRoot, getCurrentModel }),
     ...createOfficeTools({ stateRoot }),
     ...(authStorage ? [createSuperGrokTool({ authStorage, projectMarchDir })] : []),
     ...(authStorage ? initImageGen({ authStorage, projectMarchDir }) : []),

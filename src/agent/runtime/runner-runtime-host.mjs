@@ -27,6 +27,7 @@ export async function createRunnerRuntimeHost({
   webTools = [],
   lifecycle = null,
   avatarRuntime = null,
+  imageModel = null,
   extensionPaths = [],
   hostedTools = {},
   extensionFactories = [],
@@ -69,6 +70,7 @@ export async function createRunnerRuntimeHost({
         projectMarchDir,
         hostedTools,
         avatarRuntime,
+        imageModel,
         getCurrentModel: () => sessionBinding.get()?.model ?? null,
       });
     },

@@ -12,6 +12,7 @@ export async function runConfigLoadingSmoke({ setupTmp, cleanup }) {
   assert.equal(empty.provider, null);
   assert.deepEqual(empty.providers, {});
   assert.equal(empty.memoryRoot, null);
+  assert.equal(empty.imageModel, null);
   assert.deepEqual(empty.webSearch, { provider: null, providers: {} });
   assert.deepEqual(empty.network, { proxy: "system", ca: "system" });
   assert.deepEqual(empty.hostedTools, {
@@ -39,6 +40,7 @@ export async function runConfigLoadingSmoke({ setupTmp, cleanup }) {
       platforms: { telegram: { enabled: true, bot_token_env: "TELEGRAM_BOT_TOKEN" } },
     },
     webSearch: { provider: "tavily", providers: { tavily: { apiKey: "tvly" } } },
+    imageModel: { provider: "openai" },
   }));
   const withRc = loadConfig(dir, { homeDir: dir });
   assert.equal(withRc.model, "test-model");
@@ -46,6 +48,7 @@ export async function runConfigLoadingSmoke({ setupTmp, cleanup }) {
   assert.deepEqual(withRc.notifications, { turnEnd: false, desktop: true, bell: true, command: null, minDurationMs: 250, sound: true });
   assert.deepEqual(withRc.network, { proxy: "direct", ca: "system" });
   assert.equal(withRc.webSearch.provider, "tavily");
+  assert.deepEqual(withRc.imageModel, { provider: "openai" });
   assert.equal(withRc.webSearch.providers.tavily.apiKey, "tvly");
   assert.equal(withRc.hostedTools.openai.webSearch, false);
   assert.equal(withRc.hostedTools.openaiCodex.webSearch, "auto");
@@ -62,10 +65,11 @@ export async function runConfigLoadingSmoke({ setupTmp, cleanup }) {
   const marchDir = join(dir, ".march");
   mkdirSync(marchDir, { recursive: true });
   writeFileSync(join(marchDir, "config"), JSON.stringify({ model: "override-model" }));
-  writeFileSync(join(marchDir, "config.json"), JSON.stringify({ providers: { deepseek: { type: "deepseek", auth: { method: "apiKey", apiKey: "sk" } } }, gateway: { default_workspace: "hermes", workspaces: { other: "./other" }, platforms: { telegram: { allowed_users: ["123"] } } }, webSearch: { provider: "brave", providers: { brave: { apiKey: "brave" } } } }));
+  writeFileSync(join(marchDir, "config.json"), JSON.stringify({ providers: { deepseek: { type: "deepseek", auth: { method: "apiKey", apiKey: "sk" } } }, gateway: { default_workspace: "hermes", workspaces: { other: "./other" }, platforms: { telegram: { allowed_users: ["123"] } } }, webSearch: { provider: "brave", providers: { brave: { apiKey: "brave" } } }, imageModel: { model: "gpt-4.1" } }));
   const withBoth = loadConfig(dir, { homeDir: dir });
   assert.equal(withBoth.model, "override-model");
   assert.equal(withBoth.providers.deepseek.type, "deepseek");
+  assert.deepEqual(withBoth.imageModel, { provider: "openai", model: "gpt-4.1" });
   assert.equal(withBoth.webSearch.provider, "brave");
   assert.equal(withBoth.webSearch.providers.tavily.apiKey, "tvly");
   assert.equal(withBoth.webSearch.providers.brave.apiKey, "brave");

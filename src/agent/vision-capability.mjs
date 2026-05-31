@@ -10,5 +10,5 @@ export function currentModelImageInputError(getCurrentModel) {
   const model = getCurrentModel();
   if (modelSupportsImageInput(model)) return null;
   const label = model ? `${model.name || model.id || "unknown"} (${model.provider || "unknown provider"})` : "unknown";
-  return `Current model does not support image input: ${label}. Switch to a vision-capable model before using read_image or screen.`;
+  return `Current model does not support image input: ${label}. Switch to a vision-capable model for direct image input, or use analyze_images with a configured imageModel for text analysis.`;
 }

@@ -1,17 +1,20 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { saveTemporaryPng } from "../../agent/image-assets/temp-png.mjs";
+import { currentModelImageInputError } from "../../agent/vision-capability.mjs";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { toolText } from "../../agent/tool-result.mjs";
 import { callBrowserDaemon } from "../client/rpc.mjs";
 import { truncateToolText } from "../extension/output-limits.js";
 
-export function createBrowserTools({ stateRoot = join(homedir(), ".march") } = {}) {
+export function createBrowserTools({ stateRoot = join(homedir(), ".march"), getCurrentModel = null } = {}) {
   return [
     browserTabsTool(stateRoot),
     browserOpenTool(stateRoot),
     browserReadTool(stateRoot),
     browserScriptTool(stateRoot),
+    browserScreenshotTool(stateRoot, getCurrentModel),
   ];
 }
 
@@ -57,6 +60,18 @@ function browserReadTool(stateRoot) {
   });
 }
 
+function browserScreenshotTool(stateRoot, getCurrentModel) {
+  return defineTool({
+    name: "browser_screenshot",
+    label: "Browser Screenshot",
+    description: "Capture the visible area of a browser tab, save it as a temporary PNG, and send it to the model as an image attachment when supported.",
+    parameters: Type.Object({
+      tabId: Type.String({ description: "Target tab id from browser_tabs or browser_open." }),
+    }),
+    execute: async (_id, params) => safeBrowserScreenshot({ stateRoot, getCurrentModel, ...params }),
+  });
+}
+
 function browserScriptTool(stateRoot) {
   return defineTool({
     name: "browser_script",
@@ -75,6 +90,36 @@ function browserScriptTool(stateRoot) {
       timeoutMs: params.timeoutMs ?? 30000,
     })),
   });
+}
+
+async function safeBrowserScreenshot({ stateRoot, getCurrentModel, tabId }) {
+  try {
+    const result = await callBrowserDaemon({ stateRoot, method: "screenshot", params: { tabId }, timeoutMs: 30000 });
+    const mimeType = result.mimeType || "image/png";
+    const path = saveTemporaryPng({ data: result.data, prefix: `browser-tab-${tabId}` });
+    const capabilityError = currentModelImageInputError(getCurrentModel);
+    const text = [
+      `Captured browser tab ${tabId} screenshot`,
+      `Path: ${path}`,
+      `MIME: ${mimeType}`,
+      result.tab?.title ? `Title: ${result.tab.title}` : null,
+      result.tab?.url ? `URL: ${result.tab.url}` : null,
+      capabilityError ? `${capabilityError} Saved a temporary PNG path; use analyze_images with this path for visual analysis.` : null,
+    ].filter(Boolean).join("\n");
+    const content = [{ type: "text", text }];
+    if (!capabilityError) content.push({ type: "image", data: result.data, mimeType });
+    return {
+      content,
+      details: {
+        tab: result.tab,
+        path,
+        mimeType,
+        unsupportedModel: capabilityError ? true : undefined,
+      },
+    };
+  } catch (err) {
+    return toolText(`Error capturing browser screenshot: ${err.message}`, { error: true, tabId });
+  }
 }
 
 async function safeToolJson(run) {

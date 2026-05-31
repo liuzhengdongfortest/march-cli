@@ -44,6 +44,7 @@ function mergeLayers(layers) {
     model: null,
     provider: null,
     serviceTier: null,
+    imageModel: null,
     providers: {},
     webSearch: { provider: null, providers: {} },
     hostedTools: {
@@ -67,6 +68,7 @@ function mergeLayers(layers) {
     if (layer.model != null) result.model = layer.model;
     if (layer.provider) result.provider = layer.provider;
     if (layer.serviceTier) result.serviceTier = layer.serviceTier;
+    if (layer.imageModel && typeof layer.imageModel === "object" && !Array.isArray(layer.imageModel)) result.imageModel = { ...(result.imageModel ?? {}), ...layer.imageModel };
     if (layer.providers && typeof layer.providers === "object" && !Array.isArray(layer.providers)) {
       result.providers = mergeProviders(result.providers, layer.providers);
     }

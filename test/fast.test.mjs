@@ -30,6 +30,7 @@ import { runSessionControllerLeaseSmoke } from "./session-controller-lease.smoke
 import { runSourceDirectoryLimitSmoke } from "./source-directory-limit.smoke.mjs";
 import { runSourceLineLimitSmoke } from "./source-line-limit.smoke.mjs";
 import { runStartupBannerSmoke } from "./startup-banner.smoke.mjs";
+import { runAnalyzeImagesToolSmoke } from "./analyze-images-tool.smoke.mjs";
 import { runAvatarsSmoke } from "./avatars.smoke.mjs";
 import { runRemoteMemorySmoke } from "./remote-memory.smoke.mjs";
 import { runRuntimeRestartLifecycleSmoke } from "./runtime-restart-lifecycle.smoke.mjs";
@@ -167,6 +168,7 @@ await runCodeSearchSmoke({ setupTmp, cleanup });
 await runReadFileToolSmoke({ setupTmp, cleanup });
 await runReadImageToolSmoke({ setupTmp, cleanup });
 await runScreenToolsSmoke();
+await runAnalyzeImagesToolSmoke({ setupTmp, cleanup });
 await runSendBinaryToolSmoke({ setupTmp, cleanup });
 await runSessionControllerLeaseSmoke({ setupTmp, cleanup });
 await runRunnerProviderRetrySettingsSmoke({ setupTmp, cleanup });
