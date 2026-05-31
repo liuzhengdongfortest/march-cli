@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runTurnEventsSmoke() {
   console.log("--- smoke: runner turn event handling ---");
-  const { compactAssistantContext, createTurnEventState, handleRunnerSessionEvent } = await import("../src/agent/turn/turn-events.mjs");
+  const { buildAssistantExecutionJson, buildUserRecallInput, compactAssistantContext, createTurnEventState, handleRunnerSessionEvent, recordAssistantRecallInput } = await import("../src/agent/turn/turn-events.mjs");
 
   const calls = [];
   const ui = {
@@ -39,6 +39,24 @@ export async function runTurnEventsSmoke() {
     { name: "read", args: { path: "a" }, status: "success" },
     { name: "command_exec", args: { command: "bad" }, status: "failed", error: { message: "Error: failed", details: { status: 1 }, excerpt: "Error: failed\nfull details" } },
   ]);
+  assert.deepEqual(state.retries, [{ attempt: 1, maxAttempts: 3, delayMs: 2000, errorMessage: "rate", status: "success", finalError: null }]);
+  assert.deepEqual(buildUserRecallInput([{ id: "mem_user", name: "User memory", description: "User recall" }]), {
+    type: "recall",
+    source: "user",
+    delivery: "turn_start",
+    customType: "march.recall",
+    content: "[recall]\n- mem_user | User memory | User recall",
+    hints: [{ id: "mem_user", name: "User memory", description: "User recall" }],
+  });
+  recordAssistantRecallInput(state, { hints: [{ id: "mem_assistant", name: "Assistant memory", description: "Assistant recall" }], report: { threshold: 0.5 }, delivery: "steer" });
+  const executionJson = buildAssistantExecutionJson(state);
+  assert.equal(executionJson.schemaVersion, 1);
+  assert.equal(executionJson.status, "success");
+  assert.equal(executionJson.result.assistantText, "hello");
+  assert.equal(executionJson.toolCalls.length, 2);
+  assert.equal(executionJson.retries.length, 1);
+  assert.equal(executionJson.contextInputs.inTurn[0].source, "assistant");
+  assert.equal(executionJson.contextInputs.inTurn[0].content, "[recall]\n- mem_assistant | Assistant memory | Assistant recall");
   assert.deepEqual(calls, [
     ["text", "hello"],
     ["thinkingStart"],

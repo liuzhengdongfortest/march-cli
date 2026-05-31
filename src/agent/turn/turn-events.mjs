@@ -1,3 +1,4 @@
+import { formatRecallHints } from "../../memory/markdown-store.mjs";
 import { formatToolStartLine, formatToolSuccessSummary } from "../tool-summary.mjs";
 
 const TOOL_ERROR_EXCERPT_LIMIT = 4000;
@@ -12,6 +13,8 @@ export function createTurnEventState() {
     assistantContextParts: [],
     activeToolContextPart: null,
     toolCalls: [],
+    retries: [],
+    assistantRecallInputs: [],
     lastAssistantStopReason: null,
     lastAssistantErrorMessage: null,
   };
@@ -37,6 +40,7 @@ export function handleRunnerSessionEvent(event, { ui, engine, state }) {
     ui.toolEnd(event.toolName, event.isError, event.result);
   }
   if (event.type === "auto_retry_start") {
+    recordRetryStart(state, event);
     ui.retryStart?.({
       attempt: event.attempt,
       maxAttempts: event.maxAttempts,
@@ -45,6 +49,7 @@ export function handleRunnerSessionEvent(event, { ui, engine, state }) {
     });
   }
   if (event.type === "auto_retry_end") {
+    recordRetryEnd(state, event);
     ui.retryEnd?.({
       success: event.success,
       attempt: event.attempt,
@@ -92,6 +97,82 @@ export function compactAssistantContext(state) {
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+export function recordAssistantRecallInput(state, { hints = [], report = null, delivery = "steer" } = {}) {
+  if (!state || hints.length === 0) return;
+  state.assistantRecallInputs ??= [];
+  state.assistantRecallInputs.push(buildRecallInput({ source: "assistant", delivery, hints, report }));
+}
+
+export function buildUserRecallInput(hints = []) {
+  if (!Array.isArray(hints) || hints.length === 0) return null;
+  return buildRecallInput({ source: "user", delivery: "turn_start", hints, report: null });
+}
+
+export function buildAssistantExecutionJson(turnState, { assistantRecall = null } = {}) {
+  const inTurn = [...(turnState.assistantRecallInputs ?? [])];
+  if ((assistantRecall?.hints ?? []).length > 0) inTurn.push(buildRecallInput({ source: "assistant", delivery: "final", hints: assistantRecall.hints ?? [], report: assistantRecall.report ?? null }));
+  return pruneEmpty({
+    schemaVersion: 1,
+    status: turnState.lastAssistantStopReason === "error" ? "failed" : "success",
+    contextInputs: pruneEmpty({ inTurn }),
+    toolCalls: cloneJson(turnState.toolCalls ?? []),
+    retries: cloneJson(turnState.retries ?? []),
+    errors: buildExecutionErrors(turnState),
+    result: pruneEmpty({ assistantText: turnState.draft ?? "" }),
+  });
+}
+
+function buildRecallInput({ source, delivery, hints = [], report = null }) {
+  return pruneEmpty({
+    type: "recall",
+    source,
+    delivery,
+    customType: "march.recall",
+    content: formatRecallHints(hints),
+    hints: cloneJson(hints ?? []),
+    report: cloneJson(report),
+  });
+}
+
+function recordRetryStart(state, event) {
+  state.retries ??= [];
+  state.retries.push(pruneEmpty({
+    attempt: event.attempt,
+    maxAttempts: event.maxAttempts,
+    delayMs: event.delayMs,
+    errorMessage: event.errorMessage ?? null,
+    status: "running",
+  }));
+}
+
+function recordRetryEnd(state, event) {
+  const retry = [...(state.retries ?? [])].reverse().find((item) => item.attempt === event.attempt && item.status === "running");
+  if (!retry) return;
+  retry.status = event.success ? "success" : "failed";
+  retry.finalError = event.finalError ?? null;
+}
+
+function buildExecutionErrors(state) {
+  if (state.lastAssistantStopReason !== "error" && !state.lastAssistantErrorMessage) return [];
+  return [pruneEmpty({
+    source: "model",
+    message: state.lastAssistantErrorMessage ?? "Model provider returned an error",
+    stopReason: state.lastAssistantStopReason ?? null,
+  })];
+}
+
+function pruneEmpty(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const result = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (item == null) continue;
+    if (Array.isArray(item) && item.length === 0) continue;
+    if (typeof item === "object" && !Array.isArray(item) && Object.keys(item).length === 0) continue;
+    result[key] = item;
+  }
+  return result;
 }
 
 function appendAssistantContextText(state, text, type) {

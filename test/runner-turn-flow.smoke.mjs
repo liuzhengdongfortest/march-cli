@@ -221,7 +221,15 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.ok(!("assistantRecallHints" in runner.engine.turns[0]));
   assert.ok(calls.some((call) => call[0] === "recall" && call[1].includes("mem_thinking") && !call[1].includes("mem_draft")));
   assert.equal(runner.engine.turns[0].assistantMessage, "draft text");
+  assert.equal(runner.engine.turns[0].assistant.content, "draft text");
   assert.equal(runner.engine.turns[0].assistantContext, "12345678\n→ read · a.txt\ndraft text");
+  assert.equal(runner.engine.turns[0].assistant.executionJson.schemaVersion, 1);
+  assert.equal(runner.engine.turns[0].assistant.executionJson.result.assistantText, "draft text");
+  assert.deepEqual(runner.engine.turns[0].assistant.executionJson.toolCalls, [{ name: "read", args: { path: "a.txt" }, status: "success" }]);
+  assert.equal(runner.engine.turns[0].assistant.executionJson.contextInputs.inTurn[0].delivery, "steer");
+  assert.equal(runner.engine.turns[0].assistant.executionJson.contextInputs.inTurn[0].hints[0].id, "mem_thinking");
+  assert.equal(runner.engine.turns[0].assistant.executionJson.contextInputs.inTurn[1].delivery, "final");
+  assert.equal(runner.engine.turns[0].assistant.executionJson.contextInputs.inTurn[1].hints[0].id, "mem_draft");
   assert.equal(runner.engine.sessionName, "hello");
   assert.deepEqual(sessionNameCalls, ["hello"]);
 
@@ -269,7 +277,9 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   const sidecar = loadPiSessionSidecar({ projectMarchDir, sessionRef: "turn-flow.jsonl" });
   assert.equal(sidecar.state.sessionName, "Manual Name");
   assert.equal(sidecar.state.turns[0].assistantMessage, "draft text");
+  assert.equal(sidecar.state.turns[0].assistant.content, "draft text");
   assert.equal(sidecar.state.turns[0].assistantContext, "12345678\n→ read · a.txt\ndraft text");
+  assert.equal(sidecar.state.turns[0].assistant.executionJson.contextInputs.inTurn[0].hints[0].id, "mem_thinking");
   assert.ok(!("summary" in sidecar.state.turns[0]));
   assert.deepEqual(sessionNameCalls, ["hello", "Manual Name"]);
   assert.ok(calls.some((call) => call[0] === "toolStart" && call[1] === "read"));

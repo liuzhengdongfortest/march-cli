@@ -21,6 +21,7 @@ import { createSessionBinding } from "./session/session-binding.mjs";
 import { maybeAutoNameSession } from "./session/session-auto-name.mjs";
 import { MARCH_BASE_TOOL_NAMES } from "./tool-names.mjs";
 import { runRunnerTurn } from "./turn/turn-runner.mjs";
+import { recordAssistantRecallInput } from "./turn/turn-events.mjs";
 import { beginLoggedTurn } from "./turn/turn-logging.mjs";
 import { appendFastVariants, createFastModelEntry, fromFastEntryModel, isFastProvider } from "./runner/fast-model.mjs";
 import { registerSuperGrokProvider } from "../supergrok/provider.mjs";
@@ -51,7 +52,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   const historyStore = createRunnerHistoryStore({ stateRoot, cwd });
   const resolvedSessionManager = resolveRunnerSessionManager(cwd, sessionManager);
   const sessionBinding = createSessionBinding(null);
-  let currentModelCallKind = "model", currentTurnId = null, currentPromptForContext = "", currentUserRequestForContext = "", currentUserRecallHints = [];
+  let currentModelCallKind = "model", currentTurnId = null, currentTurnState = null, currentPromptForContext = "", currentUserRequestForContext = "", currentUserRecallHints = [];
   const assistantRecallRuntime = createAssistantRecallRuntime({ memoryStore, engine });
   const lifecycle = createRunnerLifecycle();
   let currentTurnContextMode = "rebuild", nextTurnContextMode = "rebuild";
@@ -64,9 +65,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     getUserRecallHints: () => currentUserRecallHints, sendAssistantRecallMessage: (message) => sessionBinding.get()?.sendCustomMessage?.(message, { deliverAs: "steer" }),
     observeAssistantMessageEvent: (event) => assistantRecallRuntime.observe(event),
     flushAssistantRecall: () => assistantRecallRuntime.flushForContext(),
-    onAssistantRecall: ({ hints = [], report = null } = {}) => {
-      if (report) runtimeUi.recall?.({ hints, report, variant: "assistant" });
-    },
+    onAssistantRecall: ({ hints = [], report = null } = {}) => { recordAssistantRecallInput(currentTurnState, { hints, report, delivery: "steer" }); if (report) runtimeUi.recall?.({ hints, report, variant: "assistant" }); },
     logger,
   });
   const avatarRuntime = createRunnerAvatarRuntime({
@@ -148,6 +147,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
           autoNameSession,
           contextMode,
           recordHistory: (turn) => appendRunnerTurnHistory({ store: historyStore, turn, sessionStats: getRunnerSessionStats(sessionBinding.get(), runtimeHost), modelId: engine.modelId, provider: engine.provider }),
+          setCurrentTurnState: (state) => { currentTurnState = state; },
           flushFinalAssistantRecall: () => assistantRecallRuntime.flushFinal(),
         });
         notifyTurnEndDetached(turnNotifier, {
@@ -173,7 +173,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
         throw err;
       } finally {
         dumpCodexTransportDebug({ before: codexTransportStatsBefore, session: sessionBinding.get(), ui: runtimeUi, logger });
-        currentTurnId = null; currentUserRecallHints = []; currentTurnContextMode = "rebuild";
+        currentTurnId = null; currentTurnState = null; currentUserRecallHints = []; currentTurnContextMode = "rebuild";
       }
     },
     abort() {

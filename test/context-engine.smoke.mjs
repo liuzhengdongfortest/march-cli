@@ -142,6 +142,10 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   });
   assert.equal(engine.turns.length, 1);
   assert.equal(engine.turns[0].index, 1);
+  assert.equal(engine.turns[0].user.role, "user");
+  assert.equal(engine.turns[0].user.content, "hello");
+  assert.equal(engine.turns[0].assistant.role, "assistant");
+  assert.equal(engine.turns[0].assistant.content, "tested the engine");
   assert.deepEqual([...engine.getRecentRecallMemoryIds()].sort(), ["mem_user"]);
 
   const ctx2 = engine.buildContext("装備を確認する");
@@ -152,6 +156,29 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   assert.ok(ctx2.includes("[recall]"));
   assert.ok(ctx2.includes("mem_user | User hint | User recall hint"));
   assert.ok(!ctx2.includes("Assistant hint"));
+
+  const messageEngine = new ContextEngine({ cwd: dir, modelId: "test", provider: "deepseek" });
+  messageEngine.restoreSession({
+    turns: [{
+      index: 1,
+      user: {
+        role: "user",
+        content: "message user",
+        executionJson: { contextInputs: { turnStart: { userRecall: [{ hints: [{ id: "mem_message_user", name: "Message User" }] }] } } },
+      },
+      assistant: {
+        role: "assistant",
+        content: "message assistant",
+        executionJson: { contextInputs: { inTurn: [{ hints: [{ id: "mem_message_assistant", name: "Message Assistant" }] }] } },
+      },
+    }],
+  });
+  const messageCtx = messageEngine.buildContext("next");
+  assert.ok(messageCtx.includes("message user"));
+  assert.ok(messageCtx.includes("message assistant"));
+  assert.ok(messageCtx.includes("mem_message_user | Message User"));
+  assert.ok(!messageCtx.includes("mem_message_assistant | Message Assistant"));
+  assert.deepEqual([...messageEngine.getRecentRecallMemoryIds()].sort(), ["mem_message_assistant", "mem_message_user"]);
 
   const longUserTail = "user-tail-keep";
   const longMarchTail = "march-tail-keep";

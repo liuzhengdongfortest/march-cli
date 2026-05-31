@@ -68,11 +68,15 @@ export class ContextEngine {
     return layers;
   }
 
-  recordTurn({ userMessage, assistantMessage, assistantContext = "", userRecallHints = [] }) {
+  recordTurn({ userMessage, assistantMessage, assistantContext = "", userRecallHints = [], userExecutionJson = null, assistantExecutionJson = null }) {
+    const userContent = String(userMessage ?? "");
+    const assistantContent = String(assistantMessage ?? "");
     const turn = {
       index: this.turns.length + 1,
-      userMessage,
-      assistantMessage: assistantMessage ?? "",
+      user: buildMessage({ role: "user", content: userContent, executionJson: userExecutionJson }),
+      assistant: buildMessage({ role: "assistant", content: assistantContent, executionJson: assistantExecutionJson }),
+      userMessage: userContent,
+      assistantMessage: assistantContent,
       assistantContext: assistantContext ?? "",
       userRecallHints,
     };
@@ -87,7 +91,7 @@ export class ContextEngine {
   getRecentRecallMemoryIds() {
     const ids = new Set();
     for (const turn of this.turns) {
-      for (const hint of turn.userRecallHints ?? []) if (hint?.id) ids.add(hint.id);
+      for (const hint of getTurnRecallHints(turn)) if (hint?.id) ids.add(hint.id);
     }
     return ids;
   }
@@ -133,11 +137,11 @@ export class ContextEngine {
     const entries = [];
     for (const turn of this.turns) {
       let block = `## Turn ${turn.index}\n` +
-        `[user]\n${String(turn.userMessage ?? "")}\n`;
-      const userRecall = formatRecallHints(turn.userRecallHints ?? []);
+        `[user]\n${getTurnUserContent(turn)}\n`;
+      const userRecall = formatRecallHints(getTurnStartRecallHints(turn));
       if (userRecall) block += `\n${userRecall}\n`;
       block += `\n[assistant]\n`;
-      const assistantText = turn.assistantContext || turn.assistantMessage;
+      const assistantText = turn.assistantContext || getTurnAssistantContent(turn);
       if (assistantText) {
         block += `\n${String(assistantText ?? "")}\n`;
       }
@@ -146,6 +150,35 @@ export class ContextEngine {
     return `[recent_chat]\n${entries.join("\n\n")}`;
   }
 
+}
+
+function buildMessage({ role, content, executionJson }) {
+  const message = { role, content };
+  if (executionJson && Object.keys(executionJson).length > 0) message.executionJson = executionJson;
+  return message;
+}
+
+function getTurnUserContent(turn) {
+  return String(turn?.user?.content ?? turn?.userMessage ?? "");
+}
+
+function getTurnAssistantContent(turn) {
+  return String(turn?.assistant?.content ?? turn?.assistantMessage ?? "");
+}
+
+function getTurnStartRecallHints(turn) {
+  const fromMessage = turn?.user?.executionJson?.contextInputs?.turnStart?.userRecall
+    ?.flatMap((input) => input?.hints ?? []) ?? [];
+  return fromMessage.length > 0 ? fromMessage : (turn?.userRecallHints ?? []);
+}
+
+function getTurnRecallHints(turn) {
+  const recallInputs = [
+    ...(turn?.user?.executionJson?.contextInputs?.turnStart?.userRecall ?? []),
+    ...(turn?.assistant?.executionJson?.contextInputs?.inTurn ?? []),
+  ];
+  const hints = recallInputs.flatMap((input) => input?.hints ?? []);
+  return [...(turn?.userRecallHints ?? []), ...hints];
 }
 
 function appendCurrentUser(recentChat, userMessage) {
