@@ -7,7 +7,10 @@ export async function runImageClipboardSmoke() {
     readClipboardImage,
   } = await import("../src/cli/input/image-clipboard.mjs");
 
-  assert.ok(getWindowsClipboardImageScript().includes("Clipboard]::ContainsImage"));
+  const script = getWindowsClipboardImageScript();
+  assert.ok(script.includes("Clipboard]::ContainsImage"));
+  assert.ok(script.includes("Clipboard]::ContainsFileDropList"));
+  assert.ok(script.includes(".webp"));
   assert.deepEqual(readClipboardImage({ platform: "linux" }), {
     ok: false,
     message: "clipboard image paste is not supported on linux",
@@ -18,7 +21,7 @@ export async function runImageClipboardSmoke() {
     platform: "win32",
     spawnSyncImpl: (bin, args, options) => {
       spawnCalls.push({ bin, args, options });
-      return { status: 0, stdout: "AQID\n", stderr: "" };
+      return { status: 0, stdout: "image/png AQID\n", stderr: "" };
     },
   });
   assert.equal(ok.ok, true);
@@ -31,10 +34,10 @@ export async function runImageClipboardSmoke() {
 
   assert.deepEqual(readClipboardImage({
     platform: "win32",
-    spawnSyncImpl: () => ({ status: 2, stdout: "", stderr: "clipboard does not contain an image\n" }),
+    spawnSyncImpl: () => ({ status: 2, stdout: "", stderr: "clipboard does not contain an image or supported image file\n" }),
   }), {
     ok: false,
-    message: "clipboard does not contain an image",
+    message: "clipboard does not contain an image or supported image file",
   });
   assert.deepEqual(readClipboardImage({
     platform: "win32",
@@ -48,7 +51,7 @@ export async function runImageClipboardSmoke() {
     spawnSyncImpl: () => ({ status: 0, stdout: "not base64?!" }),
   }), {
     ok: false,
-    message: "clipboard image output was not valid base64",
+    message: "clipboard image output was not valid",
   });
   assert.deepEqual(readClipboardImage({
     platform: "win32",
