@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>March PowerPoint Bridge</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <link rel="stylesheet" href="taskpane.css" />
+</head>
+<body>
+  <main>
+    <header>
+      <h1>March Bridge</h1>
+      <span id="status" class="status">connecting</span>
+    </header>
+    <p>This add-in exposes the current PowerPoint deck to March CLI as structured tools.</p>
+    <section>
+      <h2>Bridge</h2>
+      <dl>
+        <dt>Local daemon</dt><dd>ws://127.0.0.1:4330/addin</dd>
+        <dt>Host</dt><dd id="host">unknown</dd>
+      </dl>
+    </section>
+    <section>
+      <h2>Available actions</h2>
+      <ul>
+        <li>Observe current selection / slide / deck</li>
+        <li>Set selected text</li>
+        <li>Insert text boxes</li>
+        <li>Patch selected shape geometry and text style</li>
+      </ul>
+    </section>
+  </main>
+  <script type="module" src="taskpane.js"></script>
+</body>
+</html>

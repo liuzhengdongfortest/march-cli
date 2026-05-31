@@ -11,6 +11,7 @@ import { createShellTools } from "../shell/tools.mjs";
 import { initImageGen } from "../image-gen/index.mjs";
 import { createSuperGrokTool } from "../supergrok/tool.mjs";
 import { createBrowserTools } from "../browser/tools/index.mjs";
+import { createOfficeTools } from "../office/tools/index.mjs";
 import { createRuntimeRestartTool } from "./lifecycle/runtime-restart-tool.mjs";
 import { createHistorySearchTool } from "../history/tool.mjs";
 import { createAvatarTools } from "./avatars/tools.mjs";
@@ -44,6 +45,7 @@ export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], hist
     ...webTools,
     ...(lifecycle ? [createRuntimeRestartTool({ lifecycle })] : []),
     ...createBrowserTools({ stateRoot }),
+    ...createOfficeTools({ stateRoot }),
     ...(authStorage ? [createSuperGrokTool({ authStorage, projectMarchDir })] : []),
     ...(authStorage ? initImageGen({ authStorage, projectMarchDir }) : []),
     ...(avatarRuntime ? createAvatarTools({ runtime: avatarRuntime }) : []),

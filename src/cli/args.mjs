@@ -31,7 +31,7 @@ export function parseCliArgs(argv) {
     allowPositionals: true,
   });
 
-  const commandName = ["login", "provider", "websearch", "memory", "browser", "gateway"].includes(positionals[0]) ? positionals[0] : null;
+  const commandName = ["login", "provider", "websearch", "memory", "browser", "office", "gateway"].includes(positionals[0]) ? positionals[0] : null;
 
   return {
     command: commandName ? { name: commandName, args: positionals.slice(1) } : null,
@@ -80,6 +80,9 @@ Usage:
   march browser install    Install the developer browser extension
   march browser status     Show browser daemon/extension status
   march browser restart    Restart the browser daemon
+  march office install     Install the developer PowerPoint add-in
+  march office status      Show Office daemon/add-in status
+  march office restart     Restart the Office daemon
   march gateway setup      Configure gateway interactively
   march gateway status     Show gateway configuration status
 

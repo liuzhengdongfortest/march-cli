@@ -10,6 +10,7 @@ import { runCodeSearchSmoke } from "./code-search.smoke.mjs";
 import { runCommandExecToolSmoke } from "./command-exec-tool.smoke.mjs";
 import { runConfigLoadingSmoke } from "./config-loading.smoke.mjs";
 import { runNetworkEnvironmentSmoke } from "./network-environment.smoke.mjs";
+import { runOfficeAddinInstallSmoke } from "./office-addin-install.smoke.mjs";
 import { runCustomProviderSmoke } from "./custom-provider.smoke.mjs";
 import { runEditFileToolSmoke } from "./edit-file-tool.smoke.mjs";
 import { runGatewayCoreSmoke } from "./gateway-core.smoke.mjs";
@@ -132,6 +133,9 @@ function stripAnsi(text) {
   const browserInstall = parseCliArgs(["browser", "install"]);
   assert.deepEqual(browserInstall.command, { name: "browser", args: ["install"] });
 
+  const officeInstall = parseCliArgs(["office", "install"]);
+  assert.deepEqual(officeInstall.command, { name: "office", args: ["install"] });
+
   const gatewaySetup = parseCliArgs(["gateway", "setup"]);
   assert.deepEqual(gatewaySetup.command, { name: "gateway", args: ["setup"] });
 
@@ -157,6 +161,7 @@ await runHistorySearchSmoke({ setupTmp, cleanup });
 await runNetworkEnvironmentSmoke();
 await runBrowserExtensionErrorsSmoke();
 await runBrowserExtensionInstallSmoke({ setupTmp, cleanup });
+await runOfficeAddinInstallSmoke({ setupTmp, cleanup });
 await runCommandExecToolSmoke();
 await runCodeSearchSmoke({ setupTmp, cleanup });
 await runReadFileToolSmoke({ setupTmp, cleanup });

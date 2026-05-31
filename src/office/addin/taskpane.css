@@ -1,0 +1,66 @@
+body {
+  margin: 0;
+  color: #161616;
+  background: #fafafa;
+  font: 13px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+main {
+  padding: 14px;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 16px;
+}
+
+h2 {
+  margin: 16px 0 8px;
+  font-size: 12px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+p, ul, dl {
+  margin: 8px 0;
+}
+
+dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 10px;
+}
+
+dt {
+  color: #666;
+}
+
+dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.status {
+  border-radius: 4px;
+  padding: 2px 6px;
+  background: #eee;
+  color: #666;
+}
+
+.status.connected {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status.disconnected {
+  background: #fee2e2;
+  color: #991b1b;
+}

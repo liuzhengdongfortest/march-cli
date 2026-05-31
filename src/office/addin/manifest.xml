@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+  xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
+  xsi:type="TaskPaneApp">
+  <Id>6f3461cb-8f89-4a33-88e3-63f55b706f60</Id>
+  <Version>0.1.0</Version>
+  <ProviderName>March</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="March PowerPoint Bridge"/>
+  <Description DefaultValue="Thin PowerPoint bridge for March CLI structured observation and actions."/>
+  <IconUrl DefaultValue="http://127.0.0.1:4330/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="http://127.0.0.1:4330/icon-64.png"/>
+  <SupportUrl DefaultValue="https://example.invalid/march-office"/>
+  <AppDomains>
+    <AppDomain>http://127.0.0.1:4330</AppDomain>
+  </AppDomains>
+  <Hosts>
+    <Host Name="Presentation"/>
+  </Hosts>
+  <DefaultSettings>
+    <SourceLocation DefaultValue="http://127.0.0.1:4330/taskpane.html"/>
+  </DefaultSettings>
+  <Permissions>ReadWriteDocument</Permissions>
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <Hosts>
+      <Host xsi:type="Presentation">
+        <DesktopFormFactor>
+          <GetStarted>
+            <Title resid="GetStarted.Title"/>
+            <Description resid="GetStarted.Description"/>
+            <LearnMoreUrl resid="GetStarted.Url"/>
+          </GetStarted>
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <OfficeTab id="TabHome">
+              <Group id="March.Group">
+                <Label resid="March.GroupLabel"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon.16x16"/>
+                  <bt:Image size="32" resid="Icon.32x32"/>
+                  <bt:Image size="80" resid="Icon.80x80"/>
+                </Icon>
+                <Control xsi:type="Button" id="March.OpenTaskpane">
+                  <Label resid="March.ButtonLabel"/>
+                  <Supertip>
+                    <Title resid="March.ButtonLabel"/>
+                    <Description resid="March.ButtonTip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.16x16"/>
+                    <bt:Image size="32" resid="Icon.32x32"/>
+                    <bt:Image size="80" resid="Icon.80x80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>March.OfficeBridge</TaskpaneId>
+                    <SourceLocation resid="Taskpane.Url"/>
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+    <Resources>
+      <bt:Images>
+        <bt:Image id="Icon.16x16" DefaultValue="http://127.0.0.1:4330/icon-16.png"/>
+        <bt:Image id="Icon.32x32" DefaultValue="http://127.0.0.1:4330/icon-32.png"/>
+        <bt:Image id="Icon.80x80" DefaultValue="http://127.0.0.1:4330/icon-80.png"/>
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="Taskpane.Url" DefaultValue="http://127.0.0.1:4330/taskpane.html"/>
+        <bt:Url id="GetStarted.Url" DefaultValue="https://example.invalid/march-office"/>
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="GetStarted.Title" DefaultValue="March PowerPoint Bridge"/>
+        <bt:String id="March.GroupLabel" DefaultValue="March"/>
+        <bt:String id="March.ButtonLabel" DefaultValue="March Bridge"/>
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="GetStarted.Description" DefaultValue="Open the bridge and connect it to March CLI."/>
+        <bt:String id="March.ButtonTip" DefaultValue="Expose this PowerPoint deck to March CLI as structured tools."/>
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>
