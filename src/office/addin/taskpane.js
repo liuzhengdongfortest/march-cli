@@ -48,6 +48,10 @@ function capabilities() {
     "powerpoint.observe",
     "powerpoint.actions:setSelectedText",
     "powerpoint.actions:insertTextBox",
+    "powerpoint.actions:insertShape",
+    "powerpoint.actions:insertLine",
+    "powerpoint.actions:patchShape",
+    "powerpoint.actions:deleteShape",
     "powerpoint.actions:patchSelectedShape",
   ];
 }
@@ -74,7 +78,11 @@ async function applyPowerPointActions(actions) {
 async function applyPowerPointAction(action) {
   if (action.type === "setSelectedText") return await setSelectedText(action.text ?? "");
   if (action.type === "insertTextBox") return await insertTextBox(action);
-  if (action.type === "patchSelectedShape") return await patchSelectedShape(action.patch ?? {});
+  if (action.type === "insertShape") return await insertShape(action);
+  if (action.type === "insertLine") return await insertLine(action);
+  if (action.type === "patchShape") return await patchShape(action.target ?? {}, action.patch ?? {});
+  if (action.type === "deleteShape") return await deleteShape(action.target ?? {});
+  if (action.type === "patchSelectedShape") return await patchShape({ selected: true }, action.patch ?? {});
   throw new Error(`Unsupported PowerPoint action: ${action.type}`);
 }
 
@@ -113,27 +121,57 @@ async function insertTextBox(action) {
     const slide = await selectedSlide(context);
     const shape = slide.shapes.addTextBox(String(action.text ?? ""));
     applyRect(shape, action.rect ?? {});
-    if (action.name) shape.name = String(action.name);
-    applyTextStyle(shape, action.style ?? {});
-    shape.load("id,name,type,left,top,width,height");
-    await context.sync();
-    return { ok: true, shape: formatShape(shape) };
+    applyShapeName(shape, action.name);
+    applyShapeStyle(shape, action.shapeStyle ?? {});
+    applyTextStyle(shape, action.textStyle ?? action.style ?? {});
+    return await syncAndFormatShape(context, shape);
   });
 }
 
-async function patchSelectedShape(patch) {
+async function insertShape(action) {
   return await PowerPoint.run(async (context) => {
-    const shapes = context.presentation.getSelectedShapes();
-    shapes.load("items/id,name,type,left,top,width,height");
+    const slide = await selectedSlide(context);
+    const shape = slide.shapes.addGeometricShape(normalizeEnumValue(action.shapeType ?? "Rectangle"));
+    applyRect(shape, action.rect ?? {});
+    applyShapeName(shape, action.name);
+    if (Object.hasOwn(action, "text")) shape.textFrame.textRange.text = String(action.text ?? "");
+    applyShapeStyle(shape, action.shapeStyle ?? {});
+    applyTextStyle(shape, action.textStyle ?? {});
+    return await syncAndFormatShape(context, shape);
+  });
+}
+
+async function insertLine(action) {
+  return await PowerPoint.run(async (context) => {
+    const slide = await selectedSlide(context);
+    const shape = slide.shapes.addLine(normalizeEnumValue(action.connectorType ?? "Straight"), lineOptions(action));
+    applyShapeName(shape, action.name);
+    applyShapeStyle(shape, action.shapeStyle ?? {});
+    return await syncAndFormatShape(context, shape);
+  });
+}
+
+async function patchShape(target, patch) {
+  return await PowerPoint.run(async (context) => {
+    const shape = await resolveShape(context, target);
+    applyRect(shape, patch.rect ?? {});
+    applyShapeName(shape, patch.name);
+    if (Object.hasOwn(patch, "text")) shape.textFrame.textRange.text = String(patch.text ?? "");
+    applyShapeStyle(shape, patch.shapeStyle ?? {});
+    applyTextStyle(shape, patch.textStyle ?? patch.style ?? {});
+    return await syncAndFormatShape(context, shape);
+  });
+}
+
+async function deleteShape(target) {
+  return await PowerPoint.run(async (context) => {
+    const shape = await resolveShape(context, target);
+    shape.load("id,name,type,left,top,width,height");
     await context.sync();
-    const shape = shapes.items[0];
-    if (!shape) throw new Error("No selected shape");
-    applyRect(shape, patch.rect ?? patch);
-    if (patch.name) shape.name = String(patch.name);
-    if (Object.hasOwn(patch, "text")) shape.textFrame.textRange.text = String(patch.text);
-    applyTextStyle(shape, patch.style ?? {});
+    const deleted = formatShape(shape);
+    shape.delete();
     await context.sync();
-    return { ok: true, shape: formatShape(shape) };
+    return { ok: true, deleted };
   });
 }
 
@@ -146,11 +184,83 @@ async function selectedSlide(context) {
   return slide;
 }
 
+async function resolveShape(context, target) {
+  if (target.id) {
+    const slide = await selectedSlide(context);
+    const shape = slide.shapes.getItem(String(target.id));
+    shape.load("id,name,type,left,top,width,height");
+    await context.sync();
+    return shape;
+  }
+
+  if (target.name) {
+    const slide = await selectedSlide(context);
+    const shapes = slide.shapes;
+    shapes.load("items/id,name,type,left,top,width,height");
+    await context.sync();
+    const shape = shapes.items.find((item) => item.name === String(target.name));
+    if (!shape) throw new Error(`No shape named ${target.name}`);
+    return shape;
+  }
+
+  if (target.selected) {
+    const shapes = context.presentation.getSelectedShapes();
+    shapes.load("items/id,name,type,left,top,width,height");
+    await context.sync();
+    const shape = shapes.items[0];
+    if (!shape) throw new Error("No selected shape");
+    return shape;
+  }
+
+  throw new Error("Shape target must specify id, name, or selected");
+}
+
+function lineOptions(action) {
+  if (action.from && action.to) {
+    return {
+      left: action.from.x,
+      top: action.from.y,
+      width: action.to.x - action.from.x,
+      height: action.to.y - action.from.y,
+    };
+  }
+  return rectToAddOptions(action.rect ?? {});
+}
+
+function rectToAddOptions(rect) {
+  return {
+    left: rect.x ?? rect.left ?? 0,
+    top: rect.y ?? rect.top ?? 0,
+    width: rect.w ?? rect.width ?? 0,
+    height: rect.h ?? rect.height ?? 0,
+  };
+}
+
+function normalizeEnumValue(value) {
+  return String(value).replace(/^[a-z]/, (char) => char.toUpperCase());
+}
+
+function applyShapeName(shape, name) {
+  if (name) shape.name = String(name);
+}
+
 function applyRect(shape, rect) {
   if (Number.isFinite(rect.x ?? rect.left)) shape.left = rect.x ?? rect.left;
   if (Number.isFinite(rect.y ?? rect.top)) shape.top = rect.y ?? rect.top;
   if (Number.isFinite(rect.w ?? rect.width)) shape.width = rect.w ?? rect.width;
   if (Number.isFinite(rect.h ?? rect.height)) shape.height = rect.h ?? rect.height;
+}
+
+function applyShapeStyle(shape, style) {
+  if (style.fillColor && shape.fill) shape.fill.setSolidColor(normalizeColor(style.fillColor));
+  if (Number.isFinite(style.fillTransparency) && shape.fill) shape.fill.transparency = style.fillTransparency;
+
+  const line = shape.lineFormat;
+  if (!line) return;
+  if (style.lineColor) line.color = normalizeColor(style.lineColor);
+  if (Number.isFinite(style.lineWidth)) line.weight = style.lineWidth;
+  if (Number.isFinite(style.lineTransparency)) line.transparency = style.lineTransparency;
+  if (style.lineDash) line.dashStyle = normalizeEnumValue(style.lineDash);
 }
 
 function applyTextStyle(shape, style) {
@@ -160,7 +270,17 @@ function applyTextStyle(shape, style) {
   if (Number.isFinite(style.fontSize)) font.size = style.fontSize;
   if (typeof style.bold === "boolean") font.bold = style.bold;
   if (typeof style.italic === "boolean") font.italic = style.italic;
-  if (style.color) font.color = String(style.color).replace(/^#/, "");
+  if (style.color) font.color = normalizeColor(style.color);
+}
+
+function normalizeColor(value) {
+  return String(value).replace(/^#/, "");
+}
+
+async function syncAndFormatShape(context, shape) {
+  shape.load("id,name,type,left,top,width,height");
+  await context.sync();
+  return { ok: true, shape: formatShape(shape) };
 }
 
 function formatShape(shape) {
