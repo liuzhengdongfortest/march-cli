@@ -1,8 +1,8 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { requestOfficeDaemon } from "../client/http.mjs";
-import { ensureOfficeDaemon, stopOfficeDaemon } from "../client/lifecycle.mjs";
-import { readOfficeDaemonState } from "../client/state.mjs";
+import { ensureOfficeDaemon, formatOfficeDaemonError, officeDaemonLogPath, stopOfficeDaemon } from "../client/lifecycle.mjs";
+import { officeDaemonStatePath, readOfficeDaemonState } from "../client/state.mjs";
 import { installedOfficeAddinPath, syncOfficeAddinInstall } from "../addin-install.mjs";
 import { sideloadOfficeAddin } from "./sideload.mjs";
 
@@ -56,8 +56,11 @@ async function printStatus({ stateRoot }) {
     if (status.addin) process.stdout.write(`Office host: ${status.addin.host ?? "unknown"} ${status.addin.platform ?? ""}\n`);
     process.stdout.write(`Add-in path: ${installedOfficeAddinPath(stateRoot)}\n`);
     return 0;
-  } catch {
+  } catch (err) {
     process.stdout.write("Office daemon: not running\n");
+    process.stdout.write(`Reason: ${formatOfficeDaemonError(err)}\n`);
+    process.stdout.write(`State file: ${officeDaemonStatePath(stateRoot)}\n`);
+    process.stdout.write(`Log: ${officeDaemonLogPath(stateRoot)}\n`);
     process.stdout.write(`Add-in path: ${installedOfficeAddinPath(stateRoot)}\n`);
     return 0;
   }
