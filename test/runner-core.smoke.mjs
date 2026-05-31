@@ -122,6 +122,12 @@ export async function runRunnerCoreSmoke() {
   await observerAgent.onPayload({ messages: [{ role: "user", content: [{ type: "text", text: "hello world" }] }] }, { provider: "test", id: "model" });
   assert.equal(observerOnly.length, 1);
   assert.equal(observerOnly[0].estimatedTokens, 3);
+  const imageData = `data:image/png;base64,${"a".repeat(400_000)}`;
+  const textOnlyTokens = estimateProviderPayloadTokens({ messages: [{ role: "user", content: [{ type: "text", text: "hello world" }] }] });
+  assert.equal(estimateProviderPayloadTokens({ messages: [{ role: "user", content: [{ type: "text", text: "hello world" }, { type: "input_image", image_url: imageData }] }] }), textOnlyTokens);
+  assert.equal(estimateProviderPayloadTokens({ messages: [{ role: "user", content: [{ type: "image_url", image_url: { url: imageData } }, { type: "text", text: "hello world" }] }] }), textOnlyTokens);
+  assert.equal(estimateProviderPayloadTokens({ messages: [{ role: "user", content: [{ type: "image", source: { type: "base64", media_type: "image/png", data: "a".repeat(400_000) } }, { type: "text", text: "hello world" }] }] }), textOnlyTokens);
+  assert.equal(estimateProviderPayloadTokens({ input: [{ role: "user", content: [{ type: "input_text", text: "hello world" }, { inlineData: { mimeType: "image/png", data: "a".repeat(400_000) } }] }] }), textOnlyTokens);
   const transformedAgent = { onPayload: null };
   installModelPayloadDumper({ agent: transformedAgent }, { enabled: false }, () => "user", null, (payload) => replaceProviderContextMessages(payload, {
     system: "[system_core]\nMarch system",

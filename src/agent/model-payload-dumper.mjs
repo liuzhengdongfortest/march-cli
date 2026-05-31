@@ -199,12 +199,39 @@ function googleToolName(tool) {
 
 function textChars(value) {
   if (value == null) return 0;
-  if (typeof value === "string") return value.length;
+  if (typeof value === "string") return isImageDataUrl(value) ? 0 : value.length;
   if (Array.isArray(value)) return value.reduce((sum, item) => sum + textChars(item), 0);
   if (typeof value !== "object") return String(value).length;
+  if (isImagePayloadPart(value)) return 0;
   if (typeof value.text === "string") return value.text.length;
   if (typeof value.content === "string") return value.content.length;
   if (Array.isArray(value.content)) return textChars(value.content);
-  if (value.type === "image" || value.type === "image_url") return 0;
-  return JSON.stringify(value).length;
+  return Object.entries(value).reduce((sum, [key, item]) => sum + (isImagePayloadField(key, item, value) ? 0 : textChars(item)), 0);
+}
+
+function isImagePayloadPart(value) {
+  const type = typeof value.type === "string" ? value.type : "";
+  if (["image", "image_url", "input_image"].includes(type)) return true;
+  if (type === "base64" && hasImageMime(value)) return true;
+  if (hasImageMime(value) && (typeof value.data === "string" || typeof value.image === "string" || typeof value.image_base64 === "string")) return true;
+  if (typeof value.image_url === "string" && isImageDataUrl(value.image_url)) return true;
+  if (typeof value.url === "string" && isImageDataUrl(value.url)) return true;
+  return false;
+}
+
+function isImagePayloadField(key, item, owner) {
+  if (typeof item !== "string") return false;
+  if (isImageDataUrl(item)) return true;
+  if (["image", "image_base64", "imageUrl", "image_url"].includes(key)) return true;
+  if (key === "data" && hasImageMime(owner)) return true;
+  return false;
+}
+
+function hasImageMime(value) {
+  const mime = value?.mimeType ?? value?.mime_type ?? value?.mediaType ?? value?.media_type;
+  return typeof mime === "string" && mime.toLowerCase().startsWith("image/");
+}
+
+function isImageDataUrl(value) {
+  return /^data:image\/[a-z0-9.+-]+;base64,/i.test(value);
 }
