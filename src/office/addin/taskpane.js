@@ -1,3 +1,5 @@
+import { getCurrentSlideScene, syncAndFormatShape } from "./scene.js";
+
 const DAEMON_WS = "ws://127.0.0.1:4330/addin";
 const statusEl = document.getElementById("status");
 const hostEl = document.getElementById("host");
@@ -102,19 +104,7 @@ function setSelectedText(text) {
   });
 }
 
-async function getCurrentSlideScene() {
-  return await PowerPoint.run(async (context) => {
-    const slides = context.presentation.getSelectedSlides();
-    slides.load("items/id");
-    await context.sync();
-    const slide = slides.items[0];
-    if (!slide) return { objects: [], warning: "No selected slide" };
-    const shapes = slide.shapes;
-    shapes.load("items/id,name,type,left,top,width,height");
-    await context.sync();
-    return { id: slide.id, objects: shapes.items.map(formatShape) };
-  });
-}
+
 
 async function insertTextBox(action) {
   return await PowerPoint.run(async (context) => {
@@ -166,9 +156,7 @@ async function patchShape(target, patch) {
 async function deleteShape(target) {
   return await PowerPoint.run(async (context) => {
     const shape = await resolveShape(context, target);
-    shape.load("id,name,type,left,top,width,height");
-    await context.sync();
-    const deleted = formatShape(shape);
+    const deleted = (await syncAndFormatShape(context, shape)).shape;
     shape.delete();
     await context.sync();
     return { ok: true, deleted };
@@ -277,20 +265,7 @@ function normalizeColor(value) {
   return String(value).replace(/^#/, "");
 }
 
-async function syncAndFormatShape(context, shape) {
-  shape.load("id,name,type,left,top,width,height");
-  await context.sync();
-  return { ok: true, shape: formatShape(shape) };
-}
 
-function formatShape(shape) {
-  return {
-    id: shape.id,
-    name: shape.name,
-    type: shape.type,
-    rect: { x: shape.left, y: shape.top, w: shape.width, h: shape.height },
-  };
-}
 
 function send(payload) {
   if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(payload));
