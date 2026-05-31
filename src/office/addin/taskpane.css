@@ -60,6 +60,7 @@ dd {
   color: #166534;
 }
 
+.status.reconnecting,
 .status.disconnected {
   background: #fee2e2;
   color: #991b1b;

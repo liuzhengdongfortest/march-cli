@@ -2,8 +2,9 @@ import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import WebSocket, { WebSocketServer } from "ws";
+import { WebSocketServer } from "ws";
 import { OFFICE_DAEMON_HOST, OFFICE_DAEMON_PORT } from "./constants.mjs";
+import { createAddinBridge } from "./bridge-session.mjs";
 import { writeOfficeDaemonState } from "../client/state.mjs";
 
 export function createOfficeDaemonServer({ stateRoot, port = OFFICE_DAEMON_PORT } = {}) {
@@ -43,79 +44,19 @@ export function createOfficeDaemonServer({ stateRoot, port = OFFICE_DAEMON_PORT 
   return { start, shutdown, bridge };
 }
 
-function createAddinBridge() {
-  let socket = null;
-  let info = null;
-  const pending = new Map();
-
-  function attach(ws) {
-    if (socket && socket.readyState === WebSocket.OPEN) socket.close();
-    socket = ws;
-    info = null;
-    ws.on("message", (data) => handleAddinMessage(data));
-    ws.on("close", () => {
-      if (socket === ws) {
-        socket = null;
-        info = null;
-      }
-    });
-  }
-
-  async function request(method, params = {}, timeoutMs = 30000) {
-    if (!isConnected()) throw new Error("Office add-in is not connected. Run: march office install");
-    const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-    const message = JSON.stringify({ id, method, params });
-    return await new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        pending.delete(id);
-        reject(new Error(`Office add-in request timed out: ${method}`));
-      }, timeoutMs);
-      pending.set(id, { resolve, reject, timer });
-      socket.send(message, (err) => {
-        if (!err) return;
-        clearTimeout(timer);
-        pending.delete(id);
-        reject(err);
-      });
-    });
-  }
-
-  function handleAddinMessage(data) {
-    let msg;
-    try { msg = JSON.parse(String(data)); } catch { return; }
-    if (msg.type === "hello") {
-      info = msg.info ?? null;
-      return;
-    }
-    const entry = pending.get(msg.id);
-    if (!entry) return;
-    clearTimeout(entry.timer);
-    pending.delete(msg.id);
-    msg.ok === false ? entry.reject(new Error(formatAddinError(msg.error))) : entry.resolve(msg.result);
-  }
-
-  function close() {
-    for (const [id, entry] of pending) {
-      clearTimeout(entry.timer);
-      entry.reject(new Error("Office daemon is shutting down"));
-      pending.delete(id);
-    }
-    socket?.close();
-  }
-
-  function isConnected() {
-    return Boolean(socket && socket.readyState === WebSocket.OPEN);
-  }
-
-  return { attach, request, close, isConnected, info: () => info };
-}
-
 async function handleHttp(req, res, bridge, shutdown) {
   try {
     const path = new URL(req.url, "http://localhost").pathname;
     if (req.method === "GET" && isAddinAssetPath(path)) return await sendAddinAsset(res, path);
     if (req.method === "GET" && path === "/status") {
-      return sendJson(res, 200, { ok: true, pid: process.pid, addinConnected: bridge.isConnected(), addin: bridge.info() });
+      const bridgeStatus = bridge.status();
+      return sendJson(res, 200, {
+        ok: true,
+        pid: process.pid,
+        addinConnected: bridgeStatus.connected,
+        addin: bridgeStatus.addin,
+        bridge: bridgeStatus,
+      });
     }
     if (req.method === "POST" && path === "/rpc") {
       const body = await readJson(req);
@@ -178,16 +119,3 @@ function contentType(name) {
 }
 
 const TRANSPARENT_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lQn3ZQAAAABJRU5ErkJggg==";
-
-export function formatAddinError(error) {
-  if (!error) return "Office add-in request failed";
-  if (typeof error === "string") return error;
-  const logs = Array.isArray(error.logs) && error.logs.length > 0 ? `\nLogs:\n${error.logs.map((entry) => `[${entry.level}] ${entry.message}`).join("\n")}` : "";
-  if (typeof error.stack === "string" && error.stack) return `${error.stack}${logs}`;
-  if (typeof error.message === "string" && error.message) return `${error.message}${logs}`;
-  return safeStringify(error);
-}
-
-function safeStringify(value) {
-  try { return JSON.stringify(value); } catch { return String(value); }
-}

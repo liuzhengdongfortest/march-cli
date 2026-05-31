@@ -4,6 +4,8 @@ import { extname, join } from "node:path";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { toolText } from "../../agent/tool-result.mjs";
+import { requestOfficeDaemon } from "../client/http.mjs";
+import { ensureOfficeDaemon } from "../client/lifecycle.mjs";
 import { callOfficeDaemon } from "../client/rpc.mjs";
 
 export function createOfficeTools({ stateRoot = join(homedir(), ".march") } = {}) {
@@ -16,7 +18,10 @@ function officeStatusTool(stateRoot) {
     label: "Office Status",
     description: "Check whether the March Office add-in is connected to the local Office bridge.",
     parameters: Type.Object({}),
-    execute: async () => safeToolJson(() => callOfficeDaemon({ stateRoot, method: "status", timeoutMs: 3000 })),
+    execute: async () => safeToolJson(async () => {
+      const state = await ensureOfficeDaemon({ stateRoot });
+      return await requestOfficeDaemon(state.url, "/status", null, { timeoutMs: 3000 });
+    }),
   });
 }
 

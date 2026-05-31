@@ -50,7 +50,9 @@ async function printStatus({ stateRoot }) {
   try {
     const status = await requestOfficeDaemon(state.url, "/status", null, { timeoutMs: 800 });
     process.stdout.write(`Office daemon: running pid=${status.pid}\n`);
-    process.stdout.write(`Office add-in: ${status.addinConnected ? "connected" : "not connected"}\n`);
+    const bridge = status.bridge ?? {};
+    process.stdout.write(`Office add-in: ${status.addinConnected ? "connected" : bridge.lifecycle ?? "not connected"}\n`);
+    if (bridge.lastError) process.stdout.write(`Bridge last error: ${bridge.lastError}\n`);
     if (status.addin) process.stdout.write(`Office host: ${status.addin.host ?? "unknown"} ${status.addin.platform ?? ""}\n`);
     process.stdout.write(`Add-in path: ${installedOfficeAddinPath(stateRoot)}\n`);
     return 0;
