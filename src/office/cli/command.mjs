@@ -4,27 +4,44 @@ import { requestOfficeDaemon } from "../client/http.mjs";
 import { ensureOfficeDaemon, stopOfficeDaemon } from "../client/lifecycle.mjs";
 import { readOfficeDaemonState } from "../client/state.mjs";
 import { installedOfficeAddinPath, syncOfficeAddinInstall } from "../addin-install.mjs";
+import { sideloadOfficeAddin } from "./sideload.mjs";
 
 export async function runOfficeCommand(args, { stateRoot = join(homedir(), ".march") } = {}) {
   const subcommand = args.command.args[0] ?? "status";
   if (subcommand === "install") return await installOfficeAddin({ stateRoot });
+  if (subcommand === "sideload") return await sideloadOffice({ stateRoot });
   if (subcommand === "status") return await printStatus({ stateRoot });
   if (subcommand === "restart") return await restartOfficeDaemon({ stateRoot });
   if (subcommand === "daemon" && args.foreground) return await runForegroundDaemon({ stateRoot });
-  process.stderr.write("Usage: march office install|status|restart\n");
+  process.stderr.write("Usage: march office install|sideload|status|restart\n");
   return 1;
 }
 
 async function installOfficeAddin({ stateRoot }) {
   const addinPath = syncOfficeAddinInstall(stateRoot);
   const state = await ensureOfficeDaemon({ stateRoot });
+  const manifestPath = join(addinPath, "manifest.xml");
   process.stdout.write("March Office add-in developer install\n\n");
+  process.stdout.write("Automatic sideload:\n");
+  process.stdout.write("  march office sideload\n\n");
+  process.stdout.write("Manual sideload fallback:\n");
   process.stdout.write("1. Start PowerPoint.\n");
-  process.stdout.write("2. Sideload this manifest as an Office Web Add-in:\n");
-  process.stdout.write(`   ${join(addinPath, "manifest.xml")}\n`);
-  process.stdout.write("3. Keep March running so the add-in can connect to the local bridge.\n\n");
+  process.stdout.write("2. Home > Add-ins > Advanced > Upload My Add-in.\n");
+  process.stdout.write("3. Select this manifest:\n");
+  process.stdout.write(`   ${manifestPath}\n`);
+  process.stdout.write("4. Keep March running so the add-in can connect to the local bridge.\n\n");
   process.stdout.write(`Daemon: ${state.url}\n`);
   process.stdout.write(`Add-in WebSocket: ${state.wsUrl}\n`);
+  return await printStatus({ stateRoot });
+}
+
+async function sideloadOffice({ stateRoot }) {
+  const addinPath = syncOfficeAddinInstall(stateRoot);
+  const state = await ensureOfficeDaemon({ stateRoot });
+  const manifestPath = join(addinPath, "manifest.xml");
+  process.stdout.write(`Office daemon: ${state.url}\n`);
+  process.stdout.write("Launching PowerPoint with the March add-in...\n");
+  await sideloadOfficeAddin(manifestPath);
   return await printStatus({ stateRoot });
 }
 
