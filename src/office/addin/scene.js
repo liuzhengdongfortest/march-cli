@@ -1,4 +1,4 @@
-// Scene observation owns PowerPoint read-model shape. Action execution stays in taskpane.js.
+// Scene observation owns the PowerPoint read model. JS execution stays in executor.js.
 const observedTextFrames = new WeakMap();
 
 export async function getCurrentSlideScene() {

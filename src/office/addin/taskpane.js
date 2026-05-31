@@ -1,4 +1,4 @@
-import { applyPowerPointActions, capabilities } from "./actions.js";
+import { capabilities, executePowerPointJs } from "./executor.js";
 import { getCurrentSlideScene } from "./scene.js";
 
 const DAEMON_WS = "ws://127.0.0.1:4330/addin";
@@ -42,7 +42,7 @@ async function handleMessage(data) {
 function dispatch(method, params) {
   if (method === "status") return { ok: true, addin: officeInfo, capabilities: capabilities() };
   if (method === "powerpoint.observe") return observePowerPoint(params);
-  if (method === "powerpoint.actions") return applyPowerPointActions(params.actions ?? []);
+  if (method === "powerpoint.js") return executePowerPointJs(params);
   throw new Error(`Unknown Office method: ${method}`);
 }
 
@@ -75,5 +75,5 @@ function setStatus(value) {
 }
 
 function serializeError(err) {
-  return { message: err?.message ?? String(err), stack: err?.stack };
+  return { message: err?.message ?? String(err), stack: err?.stack, logs: err?.logs };
 }

@@ -1,13 +1,13 @@
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { extname, join } from "node:path";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { toolText } from "../../agent/tool-result.mjs";
 import { callOfficeDaemon } from "../client/rpc.mjs";
 
 export function createOfficeTools({ stateRoot = join(homedir(), ".march") } = {}) {
-  return [officeStatusTool(stateRoot), officeObserveTool(stateRoot), officeActionTool(stateRoot)];
+  return [officeStatusTool(stateRoot), officeObserveTool(stateRoot), officeJsTool(stateRoot)];
 }
 
 function officeStatusTool(stateRoot) {
@@ -32,158 +32,56 @@ function officeObserveTool(stateRoot) {
   });
 }
 
-function officeActionTool(stateRoot) {
+function officeJsTool(stateRoot) {
   return defineTool({
-    name: "powerpoint_action",
-    label: "PowerPoint Action",
-    description: "Apply structured PowerPoint actions through the connected Office add-in. Use rect {x,y,w,h}; target existing shapes by id, name, or selected.",
+    name: "powerpoint_js",
+    label: "PowerPoint JS",
+    description: "Execute JavaScript inside the connected PowerPoint add-in. The code runs as an async function body with ctx, Office, PowerPoint, console, input, and assets in scope.",
     parameters: Type.Object({
-      actions: Type.Array(PowerPointAction, { description: "Ordered PowerPoint action objects." }),
-    }),
+      code: Type.String({ description: "JavaScript async function body. Use Office.js/PowerPoint.run directly and return a JSON-serializable result." }),
+      input: Type.Optional(Type.Any()),
+      assets: Type.Optional(Type.Array(PowerPointJsAsset, { description: "Optional assets exposed to the script as assets and ctx.assets. Local path assets are converted to base64 before reaching the add-in." })),
+      timeoutMs: Type.Optional(Type.Number({ description: "Request timeout in milliseconds. Default 120000." })),
+    }, { additionalProperties: false }),
     execute: async (_id, params = {}) => safeToolJson(async () => callOfficeDaemon({
       stateRoot,
-      method: "powerpoint.actions",
-      params: { ...params, actions: await normalizePowerPointActions(params.actions ?? []) },
-      timeoutMs: 60000,
+      method: "powerpoint.js",
+      params: { ...params, assets: await normalizePowerPointJsAssets(params.assets ?? []) },
+      timeoutMs: normalizeTimeout(params.timeoutMs),
     })),
   });
 }
 
-const Rect = Type.Object({
-  x: Type.Optional(Type.Number()),
-  y: Type.Optional(Type.Number()),
-  w: Type.Optional(Type.Number()),
-  h: Type.Optional(Type.Number()),
-  left: Type.Optional(Type.Number()),
-  top: Type.Optional(Type.Number()),
-  width: Type.Optional(Type.Number()),
-  height: Type.Optional(Type.Number()),
-}, { additionalProperties: false, description: "Shape rectangle in slide points. Prefer x/y/w/h; left/top/width/height are accepted aliases." });
-
-const Point = Type.Object({
-  x: Type.Number(),
-  y: Type.Number(),
-}, { additionalProperties: false });
-
-const TextStyle = Type.Object({
-  fontName: Type.Optional(Type.String()),
-  fontSize: Type.Optional(Type.Number()),
-  color: Type.Optional(Type.String()),
-  bold: Type.Optional(Type.Boolean()),
-  italic: Type.Optional(Type.Boolean()),
-}, { additionalProperties: false });
-
-const ShapeStyle = Type.Object({
-  fillColor: Type.Optional(Type.String()),
-  fillTransparency: Type.Optional(Type.Number()),
-  lineColor: Type.Optional(Type.String()),
-  lineWidth: Type.Optional(Type.Number()),
-  lineTransparency: Type.Optional(Type.Number()),
-  lineDash: Type.Optional(Type.String()),
-}, { additionalProperties: false });
-
-const ImageSource = Type.Object({
+const PowerPointJsAsset = Type.Object({
+  name: Type.String(),
+  path: Type.Optional(Type.String()),
   base64: Type.Optional(Type.String()),
   dataUrl: Type.Optional(Type.String()),
-  path: Type.Optional(Type.String()),
-}, { additionalProperties: false, description: "Image source. Local path is read by March and sent to the add-in as base64." });
+  mimeType: Type.Optional(Type.String()),
+}, { additionalProperties: false });
 
-const ZOrder = Type.Union([
-  Type.Literal("BringForward"),
-  Type.Literal("BringToFront"),
-  Type.Literal("SendBackward"),
-  Type.Literal("SendToBack"),
-]);
-
-const ShapeTarget = Type.Object({
-  id: Type.Optional(Type.String()),
-  name: Type.Optional(Type.String()),
-  selected: Type.Optional(Type.Boolean()),
-}, { additionalProperties: false, description: "Exactly one of id, name, or selected should identify the shape." });
-
-const ShapePatch = Type.Object({
-  rect: Type.Optional(Rect),
-  name: Type.Optional(Type.String()),
-  text: Type.Optional(Type.String()),
-  textStyle: Type.Optional(TextStyle),
-  shapeStyle: Type.Optional(ShapeStyle),
-  style: Type.Optional(TextStyle),
-  rotation: Type.Optional(Type.Number()),
-  zOrder: Type.Optional(ZOrder),
-}, { additionalProperties: false, description: "Patch for an existing shape. style is a legacy alias for textStyle." });
-
-const PowerPointAction = Type.Union([
-  Type.Object({
-    type: Type.Literal("clearSlide"),
-  }, { additionalProperties: false }),
-  Type.Object({
-    type: Type.Literal("setSelectedText"),
-    text: Type.String(),
-  }, { additionalProperties: false }),
-  Type.Object({
-    type: Type.Literal("insertTextBox"),
-    text: Type.Optional(Type.String()),
-    rect: Type.Optional(Rect),
-    name: Type.Optional(Type.String()),
-    textStyle: Type.Optional(TextStyle),
-    shapeStyle: Type.Optional(ShapeStyle),
-    style: Type.Optional(TextStyle),
-    rotation: Type.Optional(Type.Number()),
-    zOrder: Type.Optional(ZOrder),
-  }, { additionalProperties: false }),
-  Type.Object({
-    type: Type.Literal("insertShape"),
-    shapeType: Type.Optional(Type.String({ description: "PowerPoint geometric shape type, e.g. Rectangle, RoundRectangle, Ellipse, Chevron." })),
-    text: Type.Optional(Type.String()),
-    rect: Type.Optional(Rect),
-    name: Type.Optional(Type.String()),
-    textStyle: Type.Optional(TextStyle),
-    shapeStyle: Type.Optional(ShapeStyle),
-    rotation: Type.Optional(Type.Number()),
-    zOrder: Type.Optional(ZOrder),
-  }, { additionalProperties: false }),
-  Type.Object({
-    type: Type.Literal("insertImage"),
-    source: ImageSource,
-    rect: Type.Optional(Rect),
-    name: Type.Optional(Type.String()),
-    rotation: Type.Optional(Type.Number()),
-    zOrder: Type.Optional(ZOrder),
-  }, { additionalProperties: false }),
-  Type.Object({
-    type: Type.Literal("insertLine"),
-    connectorType: Type.Optional(Type.String({ description: "PowerPoint connector type, e.g. Straight, Elbow, Curve." })),
-    from: Type.Optional(Point),
-    to: Type.Optional(Point),
-    rect: Type.Optional(Rect),
-    name: Type.Optional(Type.String()),
-    shapeStyle: Type.Optional(ShapeStyle),
-    rotation: Type.Optional(Type.Number()),
-    zOrder: Type.Optional(ZOrder),
-  }, { additionalProperties: false }),
-  Type.Object({
-    type: Type.Literal("patchShape"),
-    target: ShapeTarget,
-    patch: ShapePatch,
-  }, { additionalProperties: false }),
-  Type.Object({
-    type: Type.Literal("patchSelectedShape"),
-    patch: ShapePatch,
-  }, { additionalProperties: false, description: "Legacy compatibility action. Prefer patchShape with an explicit target." }),
-  Type.Object({
-    type: Type.Literal("deleteShape"),
-    target: ShapeTarget,
-  }, { additionalProperties: false }),
-]);
-
-async function normalizePowerPointActions(actions) {
-  return await Promise.all(actions.map(normalizePowerPointAction));
+async function normalizePowerPointJsAssets(assets) {
+  return await Promise.all(assets.map(normalizePowerPointJsAsset));
 }
 
-async function normalizePowerPointAction(action) {
-  if (action?.type !== "insertImage" || !action.source?.path) return action;
-  const base64 = await readFile(action.source.path, "base64");
-  return { ...action, source: { ...action.source, path: undefined, base64 } };
+async function normalizePowerPointJsAsset(asset) {
+  if (!asset?.path) return asset;
+  const base64 = await readFile(asset.path, "base64");
+  const mimeType = asset.mimeType || inferMimeType(asset.path);
+  return { ...asset, path: undefined, base64, dataUrl: `data:${mimeType};base64,${base64}`, mimeType };
+}
+
+function normalizeTimeout(value) {
+  return Number.isFinite(value) && value > 0 ? value : 120000;
+}
+
+function inferMimeType(path) {
+  const ext = extname(path).toLowerCase();
+  if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
+  if (ext === ".webp") return "image/webp";
+  if (ext === ".gif") return "image/gif";
+  if (ext === ".svg") return "image/svg+xml";
+  return "image/png";
 }
 
 async function safeToolJson(run) {

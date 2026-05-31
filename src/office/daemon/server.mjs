@@ -150,7 +150,7 @@ function sendJson(res, status, payload) {
 }
 
 function isAddinAssetPath(path) {
-  return ["/", "/taskpane.html", "/taskpane.js", "/actions.js", "/scene.js", "/taskpane.css", "/manifest.xml", "/icon-16.png", "/icon-32.png", "/icon-64.png", "/icon-80.png"].includes(path);
+  return ["/", "/taskpane.html", "/taskpane.js", "/executor.js", "/scene.js", "/taskpane.css", "/manifest.xml", "/icon-16.png", "/icon-32.png", "/icon-64.png", "/icon-80.png"].includes(path);
 }
 
 async function sendAddinAsset(res, path) {
@@ -182,8 +182,9 @@ const TRANSPARENT_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAA
 export function formatAddinError(error) {
   if (!error) return "Office add-in request failed";
   if (typeof error === "string") return error;
-  if (typeof error.stack === "string" && error.stack) return error.stack;
-  if (typeof error.message === "string" && error.message) return error.message;
+  const logs = Array.isArray(error.logs) && error.logs.length > 0 ? `\nLogs:\n${error.logs.map((entry) => `[${entry.level}] ${entry.message}`).join("\n")}` : "";
+  if (typeof error.stack === "string" && error.stack) return `${error.stack}${logs}`;
+  if (typeof error.message === "string" && error.message) return `${error.message}${logs}`;
   return safeStringify(error);
 }
 

@@ -17,9 +17,9 @@ export async function runOfficeAddinInstallSmoke({ setupTmp, cleanup }) {
     assert.equal(syncedPath, addinPath);
     assert.ok(existsSync(join(addinPath, "manifest.xml")));
     assert.ok(existsSync(join(addinPath, "taskpane.html")));
-    assert.ok(existsSync(join(addinPath, "actions.js")));
+    assert.ok(existsSync(join(addinPath, "executor.js")));
     assert.ok(readFileSync(join(addinPath, "manifest.xml"), "utf8").includes("March PowerPoint Bridge"));
-    assert.ok(readFileSync(join(addinPath, "taskpane.js"), "utf8").includes("./actions.js"));
+    assert.ok(readFileSync(join(addinPath, "taskpane.js"), "utf8").includes("./executor.js"));
     assert.equal(existsSync(join(addinPath, "stale.txt")), false);
   } finally {
     cleanup(stateRoot);
