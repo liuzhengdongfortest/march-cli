@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawnCommand } from "../../platform/spawn-command.mjs";
 
 export async function sideloadOfficeAddin(manifestPath, { app = "powerpoint" } = {}) {
   await runCommand(npxCommand(), [
@@ -14,7 +14,7 @@ export async function sideloadOfficeAddin(manifestPath, { app = "powerpoint" } =
 
 function runCommand(command, args) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { stdio: "inherit", windowsHide: false });
+    const child = spawnCommand(command, args, { stdio: "inherit", windowsHide: false });
     child.once("error", reject);
     child.once("exit", (code, signal) => {
       if (code === 0) return resolve();
