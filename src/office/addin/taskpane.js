@@ -1,5 +1,6 @@
 import { capabilities, executePowerPointJs } from "./executor.js";
 import { getCurrentSlideScene } from "./scene.js";
+import { readPowerPointSelection } from "./selection.js";
 
 const DAEMON_WS = "ws://127.0.0.1:4330/addin";
 const statusEl = document.getElementById("status");
@@ -47,22 +48,14 @@ function dispatch(method, params) {
 }
 
 async function observePowerPoint({ scope = "slide" } = {}) {
-  const selectionText = await getSelectedText().catch((err) => ({ error: err.message }));
+  const selection = await readPowerPointSelection({ office: Office, powerpoint: PowerPoint }).catch((err) => ({ status: "error", message: err.message }));
   const slideScene = scope === "selection" ? null : await getCurrentSlideScene().catch((err) => ({ error: err.message }));
   return {
     host: officeInfo,
     scope,
-    selection: typeof selectionText === "string" ? { text: selectionText } : selectionText,
+    selection,
     slide: slideScene,
   };
-}
-
-function getSelectedText() {
-  return new Promise((resolve, reject) => {
-    Office.context.document.getSelectedDataAsync(Office.CoercionType.Text, (result) => {
-      result.status === Office.AsyncResultStatus.Succeeded ? resolve(result.value ?? "") : reject(new Error(result.error?.message || "Cannot read selected text"));
-    });
-  });
 }
 
 function send(payload) {
