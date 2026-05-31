@@ -33,7 +33,7 @@ export function formatToolStartLine(name, args = {}) {
 
 export function formatToolSuccessTitle(name, result) {
   if (name === "memory_open") {
-    const title = compactText(result?.details?.entry?.name ?? "");
+    const title = compactText(extractMemoryOpenName(result));
     return title ? joinToolParts("◆", name, [title]) : "";
   }
   return "";
@@ -53,7 +53,60 @@ export function formatToolSuccessSummary(name, result, out = "") {
     return `${matches} file${matches === 1 ? "" : "s"}`;
   }
   if (name === "memory_open") {
-    return compactText(result?.details?.entry?.name ?? compactPath(result?.details?.path ?? ""));
+    return compactText(extractMemoryOpenName(result) || compactPath(extractMemoryOpenPath(result) ?? ""));
+  }
+  return "";
+}
+
+function extractMemoryOpenName(result) {
+  return firstCompactValue([
+    result?.details?.entry?.name,
+    result?.details?.name,
+    result?.details?.memory?.name,
+    result?.details?.opened?.entry?.name,
+    result?.details?.frontmatter?.name,
+    extractMemoryNameFromToolText(extractToolText(result)),
+  ]);
+}
+
+function extractMemoryOpenPath(result) {
+  return firstCompactValue([
+    result?.details?.path,
+    result?.details?.relativePath,
+    result?.details?.memory?.path,
+    result?.details?.opened?.path,
+  ]);
+}
+
+function extractToolText(result) {
+  const content = result?.content;
+  if (!Array.isArray(content)) return "";
+  return content.filter((item) => item?.type === "text").map((item) => item.text ?? "").join("\n");
+}
+
+function extractMemoryNameFromToolText(text) {
+  const content = String(text ?? "");
+  const marker = content.indexOf("\ncontent:\n");
+  const memoryText = marker >= 0 ? content.slice(marker + "\ncontent:\n".length) : content;
+  if (!memoryText.startsWith("---\n")) return "";
+  const end = memoryText.indexOf("\n---", 4);
+  if (end < 0) return "";
+  const match = memoryText.slice(4, end).match(/^name:\s*(.+)$/m);
+  return match ? unquoteSimpleYamlScalar(match[1]) : "";
+}
+
+function unquoteSimpleYamlScalar(value) {
+  const text = String(value ?? "").trim();
+  if ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'"))) {
+    return text.slice(1, -1);
+  }
+  return text;
+}
+
+function firstCompactValue(values) {
+  for (const value of values) {
+    const text = String(value ?? "").replace(/\s+/g, " ").trim();
+    if (text) return text;
   }
   return "";
 }

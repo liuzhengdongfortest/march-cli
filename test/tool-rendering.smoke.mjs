@@ -49,6 +49,11 @@ export async function runToolRenderingSmoke() {
   assert.equal(formatToolSuccessTitle("memory_open", { details: { entry: { name: "Project Overview" } } }), "◆ memory_open · Project Overview");
   assert.equal(formatToolSuccessSummary("memory_open", { details: { entry: { name: "Project Overview" } } }), "Project Overview");
   assert.equal(formatToolSuccessSummary("memory_open", { details: { path: "D:\\memories\\2026\\05\\project-overview.md" } }), "memories\\2026\\05\\project-overview.md");
+  const contentOnlyMemoryOpen = {
+    content: [{ type: "text", text: "path: D:\\memories\\project-overview.md\ncontent:\n---\nid: mem_123\nname: Project Overview\ndescription: test\ntags:\n  - test\n---\n\nbody" }],
+  };
+  assert.equal(formatToolSuccessTitle("memory_open", contentOnlyMemoryOpen), "◆ memory_open · Project Overview");
+  assert.equal(formatToolSuccessSummary("memory_open", contentOnlyMemoryOpen), "Project Overview");
 
   const rendered = writeToolEnd({
     output,
