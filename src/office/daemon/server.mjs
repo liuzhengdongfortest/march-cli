@@ -150,7 +150,7 @@ function sendJson(res, status, payload) {
 }
 
 function isAddinAssetPath(path) {
-  return ["/", "/taskpane.html", "/taskpane.js", "/scene.js", "/taskpane.css", "/manifest.xml", "/icon-16.png", "/icon-32.png", "/icon-64.png", "/icon-80.png"].includes(path);
+  return ["/", "/taskpane.html", "/taskpane.js", "/actions.js", "/scene.js", "/taskpane.css", "/manifest.xml", "/icon-16.png", "/icon-32.png", "/icon-64.png", "/icon-80.png"].includes(path);
 }
 
 async function sendAddinAsset(res, path) {

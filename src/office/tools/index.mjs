@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { defineTool } from "@earendil-works/pi-coding-agent";
@@ -39,7 +40,12 @@ function officeActionTool(stateRoot) {
     parameters: Type.Object({
       actions: Type.Array(PowerPointAction, { description: "Ordered PowerPoint action objects." }),
     }),
-    execute: async (_id, params = {}) => safeToolJson(() => callOfficeDaemon({ stateRoot, method: "powerpoint.actions", params, timeoutMs: 60000 })),
+    execute: async (_id, params = {}) => safeToolJson(async () => callOfficeDaemon({
+      stateRoot,
+      method: "powerpoint.actions",
+      params: { ...params, actions: await normalizePowerPointActions(params.actions ?? []) },
+      timeoutMs: 60000,
+    })),
   });
 }
 
@@ -76,6 +82,19 @@ const ShapeStyle = Type.Object({
   lineDash: Type.Optional(Type.String()),
 }, { additionalProperties: false });
 
+const ImageSource = Type.Object({
+  base64: Type.Optional(Type.String()),
+  dataUrl: Type.Optional(Type.String()),
+  path: Type.Optional(Type.String()),
+}, { additionalProperties: false, description: "Image source. Local path is read by March and sent to the add-in as base64." });
+
+const ZOrder = Type.Union([
+  Type.Literal("BringForward"),
+  Type.Literal("BringToFront"),
+  Type.Literal("SendBackward"),
+  Type.Literal("SendToBack"),
+]);
+
 const ShapeTarget = Type.Object({
   id: Type.Optional(Type.String()),
   name: Type.Optional(Type.String()),
@@ -89,9 +108,14 @@ const ShapePatch = Type.Object({
   textStyle: Type.Optional(TextStyle),
   shapeStyle: Type.Optional(ShapeStyle),
   style: Type.Optional(TextStyle),
+  rotation: Type.Optional(Type.Number()),
+  zOrder: Type.Optional(ZOrder),
 }, { additionalProperties: false, description: "Patch for an existing shape. style is a legacy alias for textStyle." });
 
 const PowerPointAction = Type.Union([
+  Type.Object({
+    type: Type.Literal("clearSlide"),
+  }, { additionalProperties: false }),
   Type.Object({
     type: Type.Literal("setSelectedText"),
     text: Type.String(),
@@ -104,6 +128,8 @@ const PowerPointAction = Type.Union([
     textStyle: Type.Optional(TextStyle),
     shapeStyle: Type.Optional(ShapeStyle),
     style: Type.Optional(TextStyle),
+    rotation: Type.Optional(Type.Number()),
+    zOrder: Type.Optional(ZOrder),
   }, { additionalProperties: false }),
   Type.Object({
     type: Type.Literal("insertShape"),
@@ -113,6 +139,16 @@ const PowerPointAction = Type.Union([
     name: Type.Optional(Type.String()),
     textStyle: Type.Optional(TextStyle),
     shapeStyle: Type.Optional(ShapeStyle),
+    rotation: Type.Optional(Type.Number()),
+    zOrder: Type.Optional(ZOrder),
+  }, { additionalProperties: false }),
+  Type.Object({
+    type: Type.Literal("insertImage"),
+    source: ImageSource,
+    rect: Type.Optional(Rect),
+    name: Type.Optional(Type.String()),
+    rotation: Type.Optional(Type.Number()),
+    zOrder: Type.Optional(ZOrder),
   }, { additionalProperties: false }),
   Type.Object({
     type: Type.Literal("insertLine"),
@@ -122,6 +158,8 @@ const PowerPointAction = Type.Union([
     rect: Type.Optional(Rect),
     name: Type.Optional(Type.String()),
     shapeStyle: Type.Optional(ShapeStyle),
+    rotation: Type.Optional(Type.Number()),
+    zOrder: Type.Optional(ZOrder),
   }, { additionalProperties: false }),
   Type.Object({
     type: Type.Literal("patchShape"),
@@ -137,6 +175,16 @@ const PowerPointAction = Type.Union([
     target: ShapeTarget,
   }, { additionalProperties: false }),
 ]);
+
+async function normalizePowerPointActions(actions) {
+  return await Promise.all(actions.map(normalizePowerPointAction));
+}
+
+async function normalizePowerPointAction(action) {
+  if (action?.type !== "insertImage" || !action.source?.path) return action;
+  const base64 = await readFile(action.source.path, "base64");
+  return { ...action, source: { ...action.source, path: undefined, base64 } };
+}
 
 async function safeToolJson(run) {
   try {
