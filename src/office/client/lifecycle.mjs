@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
-import { dirname, resolve } from "node:path";
+import { mkdirSync, openSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { requestOfficeDaemon } from "./http.mjs";
 import { readOfficeDaemonState, removeOfficeDaemonState } from "./state.mjs";
@@ -9,9 +10,11 @@ export async function ensureOfficeDaemon({ stateRoot, quiet = true } = {}) {
   if (await pingOfficeDaemon(state.url)) return state;
 
   removeOfficeDaemonState(stateRoot);
+  const logPath = officeDaemonLogPath(stateRoot);
+  const stdio = quiet ? ["ignore", openLogFd(logPath), openLogFd(logPath)] : "inherit";
   const child = spawn(process.execPath, [daemonEntryPath(), "--state-root", stateRoot], {
     detached: true,
-    stdio: quiet ? "ignore" : "inherit",
+    stdio,
     windowsHide: true,
   });
   child.once("error", () => {});
@@ -28,7 +31,7 @@ export async function ensureOfficeDaemon({ stateRoot, quiet = true } = {}) {
       lastError = err;
     }
   }
-  throw new Error(`Office daemon did not start${lastError ? `: ${lastError.message}` : ""}`);
+  throw new Error(`Office daemon did not start${lastError ? `: ${lastError.message}` : ""}. Log: ${logPath}`);
 }
 
 export async function pingOfficeDaemon(url) {
@@ -45,11 +48,29 @@ export async function stopOfficeDaemon({ stateRoot } = {}) {
   try {
     await requestOfficeDaemon(state.url, "/shutdown", {}, { timeoutMs: 1500 });
   } catch {}
+  await waitForOfficeDaemonStopped(state.url);
   removeOfficeDaemonState(stateRoot);
+}
+
+async function waitForOfficeDaemonStopped(url) {
+  const deadline = Date.now() + 2500;
+  while (Date.now() < deadline) {
+    if (!await pingOfficeDaemon(url)) return;
+    await sleep(100);
+  }
 }
 
 function daemonEntryPath() {
   return resolve(dirname(fileURLToPath(import.meta.url)), "../daemon/entry.mjs");
+}
+
+function officeDaemonLogPath(stateRoot) {
+  return join(stateRoot, "office-daemon.log");
+}
+
+function openLogFd(path) {
+  mkdirSync(dirname(path), { recursive: true });
+  return openSync(path, "a");
 }
 
 function sleep(ms) {
