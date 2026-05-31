@@ -51,9 +51,9 @@ export async function runStartupResumeSmoke({ setupTmp, cleanup }) {
   });
   assert.equal(result.source, "pi");
   assert.equal(switchedPath, piSessionPath);
-  assert.equal(engine.turns[0].assistantMessage, "answer");
-  assert.equal(result.transcriptTurns[0].userMessage, "hello");
-  assert.equal(result.transcriptTurns[0].assistantMessage, "answer");
+  assert.equal(engine.turns[0].assistant.content, "answer");
+  assert.equal(result.transcriptTurns[0].user.content, "hello");
+  assert.equal(result.transcriptTurns[0].assistant.content, "answer");
   assert.ok(statuses.includes("Resumed pi session: pi-start"));
 
   // No resumeId case

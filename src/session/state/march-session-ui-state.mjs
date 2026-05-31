@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { getMarchSessionStatePath, loadMarchSessionState, normalizeSessionId } from "./march-session-state.mjs";
+import { getTurnAssistantContent, getTurnUserContent } from "../turn-record.mjs";
 
 export const TUI_SESSION_TIMELINE_VERSION = 1;
 
@@ -77,10 +78,12 @@ function loadLegacyCoreRenderTimeline({ projectMarchDir, sessionId }) {
 function renderTimelineFromTurns(turns) {
   return turns.flatMap((turn) => {
     const events = [];
-    if (turn.userMessage) events.push({ method: "writeln", args: [turn.userMessage], at: null });
-    if (turn.assistantMessage) {
+    const userContent = getTurnUserContent(turn);
+    const assistantContent = getTurnAssistantContent(turn);
+    if (userContent) events.push({ method: "writeln", args: [userContent], at: null });
+    if (assistantContent) {
       events.push({ method: "turnStart", args: [], at: null });
-      events.push({ method: "textDelta", args: [turn.assistantMessage], at: null });
+      events.push({ method: "textDelta", args: [assistantContent], at: null });
       events.push({ method: "assistantReplyEnd", args: [], at: null });
       events.push({ method: "turnEnd", args: [], at: null });
     }

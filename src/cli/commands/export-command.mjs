@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { getTurnAssistantContent, getTurnUserContent } from "../../session/turn-record.mjs";
 
 export function parseExportCommand(input) {
   if (input !== "/export" && !input.startsWith("/export ")) return { type: "none" };
@@ -130,8 +131,8 @@ export function buildSessionJsonlRecords({ engine, sessionStats, sessionState, s
     records.push({
       type: "turn",
       index: turn.index,
-      userMessage: turn.userMessage ?? "",
-      assistantMessage: turn.assistantMessage ?? "",
+      userMessage: getTurnUserContent(turn),
+      assistantMessage: getTurnAssistantContent(turn),
     });
   }
 

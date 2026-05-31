@@ -178,7 +178,7 @@ export async function runWorkspaceRegistrySmoke({ setupTmp, cleanup }) {
     await supervisor.activateWorkspaceSession({ project: projectB, session: targetSession });
     assert.equal(acquiredLeases.at(-1).session.sessionPath, targetSession.path);
     assert.equal(supervisor.runner.engine.cwd, resolve(rootB));
-    assert.deepEqual(supervisor.getActive().runner.lastRestoreState.turns, [{ index: 1, userMessage: "hello b", assistantMessage: "answer b" }]);
+    assert.deepEqual(supervisor.getActive().runner.lastRestoreState.turns, [{ index: 1, user: { role: "user", content: "hello b" }, assistant: { role: "assistant", content: "answer b" } }]);
     assert.deepEqual(activated, [projectB.projectId]);
     assert.equal(viewSessionState.sessionId, "s-b");
     const summaries = supervisor.getRuntimeSummaries();

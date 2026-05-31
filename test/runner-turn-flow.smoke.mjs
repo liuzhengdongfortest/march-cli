@@ -220,9 +220,9 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.ok(providerMessageText(providerPayloads[1].messages.at(-1)).includes("mem_thinking | Thinking memory | Matched from thinking text."));
   assert.ok(!("assistantRecallHints" in runner.engine.turns[0]));
   assert.ok(calls.some((call) => call[0] === "recall" && call[1].includes("mem_thinking") && !call[1].includes("mem_draft")));
-  assert.equal(runner.engine.turns[0].assistantMessage, "draft text");
+  assert.ok(!("assistantMessage" in runner.engine.turns[0]));
   assert.equal(runner.engine.turns[0].assistant.content, "draft text");
-  assert.equal(runner.engine.turns[0].assistantContext, "12345678\n→ read · a.txt\ndraft text");
+  assert.ok(!("assistantContext" in runner.engine.turns[0]));
   assert.equal(runner.engine.turns[0].assistant.executionJson.schemaVersion, 1);
   assert.equal(runner.engine.turns[0].assistant.executionJson.result.assistantText, "draft text");
   assert.deepEqual(runner.engine.turns[0].assistant.executionJson.toolCalls, [{ name: "read", args: { path: "a.txt" }, status: "success" }]);
@@ -261,7 +261,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.ok(!providerPayloads[3].messages[0].content.includes("[recent_chat]"));
   assert.ok(providerMessageText(providerPayloads[3].messages.at(-1)).includes("[recent_chat]"));
   assert.ok(providerMessageText(providerPayloads[3].messages.at(-1)).includes("draft text"));
-  assert.ok(providerMessageText(providerPayloads[3].messages.at(-1)).includes("→ read · a.txt"));
+  assert.ok(!providerMessageText(providerPayloads[3].messages.at(-1)).includes("→ read · a.txt"));
   assert.ok(!providerMessageText(providerPayloads[3].messages.at(-1)).includes("mem_thinking"));
   assert.ok(!providerMessageText(providerPayloads[3].messages.at(-1)).includes("mem_draft"));
   assert.ok(!providerMessageText(providerPayloads[3].messages.at(-1)).includes("file body"));
@@ -276,9 +276,9 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.equal(recallCalls, 3);
   const sidecar = loadPiSessionSidecar({ projectMarchDir, sessionRef: "turn-flow.jsonl" });
   assert.equal(sidecar.state.sessionName, "Manual Name");
-  assert.equal(sidecar.state.turns[0].assistantMessage, "draft text");
+  assert.ok(!("assistantMessage" in sidecar.state.turns[0]));
   assert.equal(sidecar.state.turns[0].assistant.content, "draft text");
-  assert.equal(sidecar.state.turns[0].assistantContext, "12345678\n→ read · a.txt\ndraft text");
+  assert.ok(!("assistantContext" in sidecar.state.turns[0]));
   assert.equal(sidecar.state.turns[0].assistant.executionJson.contextInputs.inTurn[0].hints[0].id, "mem_thinking");
   assert.ok(!("summary" in sidecar.state.turns[0]));
   assert.deepEqual(sessionNameCalls, ["hello", "Manual Name"]);

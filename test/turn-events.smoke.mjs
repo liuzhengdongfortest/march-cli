@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 
 export async function runTurnEventsSmoke() {
   console.log("--- smoke: runner turn event handling ---");
-  const { buildAssistantExecutionJson, buildUserRecallInput, compactAssistantContext, createTurnEventState, handleRunnerSessionEvent, recordAssistantRecallInput } = await import("../src/agent/turn/turn-events.mjs");
+  const { buildAssistantExecutionJson, buildUserRecallInput, createTurnEventState, handleRunnerSessionEvent, recordAssistantRecallInput } = await import("../src/agent/turn/turn-events.mjs");
 
   const calls = [];
   const ui = {
@@ -34,7 +34,7 @@ export async function runTurnEventsSmoke() {
   assert.equal(state.draft, "hello");
   assert.equal(state.thinkingText, "");
   assert.equal(state.thinkingAccumulator, "12345678end-only");
-  assert.equal(compactAssistantContext(state), "hello\n12345678\n→ read · a\n◆ command_exec · bad (failed)\nend-only");
+
   assert.deepEqual(state.toolCalls, [
     { name: "read", args: { path: "a" }, status: "success" },
     { name: "command_exec", args: { command: "bad" }, status: "failed", error: { message: "Error: failed", details: { status: 1 }, excerpt: "Error: failed\nfull details" } },

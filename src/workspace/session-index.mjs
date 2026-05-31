@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { listPiSessionInfos } from "../session/pi-manager.mjs";
+import { getTurnUserContent } from "../session/turn-record.mjs";
 import { listMarchSessionStates } from "../session/state/march-session-state.mjs";
 import { listRegisteredProjects } from "./project-registry.mjs";
 
@@ -91,7 +92,7 @@ function mergeMarchSessionStates({ projectMarchDir, backendSessions }) {
       cwd: state.cwd,
       name: state.sessionName || backend?.name || "",
       turnCount: state.turns?.length ?? backend?.turnCount ?? 0,
-      firstMessage: state.turns?.[0]?.userMessage ?? backend?.firstMessage ?? "",
+      firstMessage: getTurnUserContent(state.turns?.[0]) || backend?.firstMessage || "",
       parentSessionPath: backend?.parentSessionPath ?? null,
       backend,
     };

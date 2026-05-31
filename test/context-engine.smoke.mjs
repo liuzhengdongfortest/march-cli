@@ -137,8 +137,10 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
   engine.recordTurn({
     userMessage: "hello",
     assistantMessage: "tested the engine",
-    assistantContext: "looked around\n→ read · src\\context\\engine.mjs\nfinal context answer",
-    userRecallHints: [{ id: "mem_user", name: "User hint", description: "User recall hint" }],
+    userExecutionJson: {
+      schemaVersion: 1,
+      contextInputs: { turnStart: { userRecall: [{ hints: [{ id: "mem_user", name: "User hint", description: "User recall hint" }] }] } },
+    },
   });
   assert.equal(engine.turns.length, 1);
   assert.equal(engine.turns[0].index, 1);
@@ -150,8 +152,8 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
 
   const ctx2 = engine.buildContext("装備を確認する");
   assert.ok(ctx2.includes("[assistant]"));
-  assert.ok(ctx2.includes("looked around\n→ read · src\\context\\engine.mjs\nfinal context answer"));
-  assert.ok(!ctx2.includes("tested the engine"));
+  assert.ok(ctx2.includes("tested the engine"));
+  assert.ok(!ctx2.includes("looked around"));
   assert.ok(!ctx2.includes("WorkSummary"));
   assert.ok(ctx2.includes("[recall]"));
   assert.ok(ctx2.includes("mem_user | User hint | User recall hint"));
@@ -196,16 +198,19 @@ export async function runContextEngineSmoke({ setupTmp, cleanup }) {
     engine.recordTurn({ userMessage: `extra ${i}`, assistantMessage: `answer ${i}` });
   }
   assert.equal(engine.turns.length, 11);
-  assert.equal(engine.turns[0].userMessage, "hello");
-  assert.equal(engine.turns.at(-1).userMessage, "extra 9");
+  assert.equal(engine.turns[0].user.content, "hello");
+  assert.equal(engine.turns.at(-1).user.content, "extra 9");
 
   for (let i = 10; i < 15; i++) {
     engine.recordTurn({ userMessage: `extra ${i}`, assistantMessage: `answer ${i}` });
   }
-  assert.equal(engine.turns.length, 10);
-  assert.equal(engine.turns[0].userMessage, "extra 5");
-  assert.equal(engine.turns.at(-1).userMessage, "extra 14");
-  assert.deepEqual([...engine.getRecentRecallMemoryIds()], []);
+  assert.equal(engine.turns.length, 16);
+  assert.equal(engine.turns[0].user.content, "hello");
+  assert.equal(engine.turns.at(-1).user.content, "extra 14");
+  assert.deepEqual([...engine.getRecentRecallMemoryIds()], ["mem_user"]);
+  const trimmedRecentCtx = engine.buildContext("");
+  assert.ok(!trimmedRecentCtx.includes("[user]\nhello"));
+  assert.ok(trimmedRecentCtx.includes("[user]\nextra 0"));
 
   // diagnostics are available to runtime services, but not injected into context.
   const diagnosticEngine = new ContextEngine({

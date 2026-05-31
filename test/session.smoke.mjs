@@ -82,7 +82,7 @@ export async function runPiSessionSidecarSmoke({ setupTmp, cleanup }) {
 
   const loaded = loadPiSessionSidecar({ projectMarchDir, sessionRef: "2026-05-10T00-00-00-000Z_test" });
   assert.equal(loaded.path, saved.path);
-  assert.equal(loaded.state.turns[0].assistantMessage, "answer");
+  assert.equal(loaded.state.turns[0].assistant.content, "answer");
   assert.equal(loadPiSessionSidecar({ projectMarchDir, sessionRef: "missing" }), null);
 
   const staleSessionPath = join(projectMarchDir, "pi-sessions", "stale.jsonl");
@@ -93,7 +93,7 @@ export async function runPiSessionSidecarSmoke({ setupTmp, cleanup }) {
   ].join("\n"), "utf8");
   savePiSessionSidecar({ projectMarchDir, sessionRef: staleSessionPath, engine: new ContextEngine({ cwd: dir, modelId: "model" }) });
   const contextState = loadPiSessionContextState({ projectMarchDir, sessionRef: staleSessionPath });
-  assert.deepEqual(contextState.state.turns, [{ index: 1, userMessage: "from transcript", assistantMessage: "restored answer" }]);
+  assert.deepEqual(contextState.state.turns, [{ index: 1, user: { role: "user", content: "from transcript" }, assistant: { role: "assistant", content: "restored answer" } }]);
 
   const invalidPath = getPiSidecarPath(projectMarchDir, "invalid");
   mkdirSync(join(invalidPath, ".."), { recursive: true });
@@ -152,7 +152,7 @@ export async function runPiSessionSidecarSyncSmoke({ setupTmp, cleanup }) {
   assert.equal(loaded.state.sessionId, "pi1");
   assert.equal(loaded.state.backend.runtimeHost, true);
   assert.equal(loaded.state.thinkingLevel, "high");
-  assert.equal(loaded.state.turns[0].assistantMessage, "answer");
+  assert.equal(loaded.state.turns[0].assistant.content, "answer");
   assert.equal(Object.hasOwn(loaded.state, "renderTimeline"), false);
   assert.deepEqual(loadMarchSessionRenderTimeline({ projectMarchDir, sessionId: "pi1" }).renderTimeline.map((event) => event.method), ["writeln", "turnStart", "textDelta", "assistantReplyEnd", "turnEnd"]);
 
@@ -193,8 +193,8 @@ export async function runPiSessionTranscriptSmoke({ setupTmp, cleanup }) {
 
   const turns = loadPiSessionTranscriptTurns(sessionFile);
   assert.equal(turns.length, 20);
-  assert.equal(turns[0].userMessage, "user 3");
-  assert.equal(turns.at(-1).assistantMessage, "assistant 22");
+  assert.equal(turns[0].user.content, "user 3");
+  assert.equal(turns.at(-1).assistant.content, "assistant 22");
 
   const plainOutput = new OutputBuffer();
   writeTranscriptToOutput(plainOutput, turns.slice(-1));

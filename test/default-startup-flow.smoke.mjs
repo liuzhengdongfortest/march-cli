@@ -118,7 +118,7 @@ export async function runDefaultStartupFlowSmoke({ setupTmp, cleanup }) {
 
   const savedSidecar = loadPiSessionSidecar({ projectMarchDir, sessionRef: "default-a.jsonl" });
   assert.equal(savedSidecar.state.sessionId, "default-a");
-  assert.equal(savedSidecar.state.turns[0].assistantMessage, "answer default-a");
+  assert.equal(savedSidecar.state.turns[0].assistant.content, "answer default-a");
   assert.ok(!("summary" in savedSidecar.state.turns[0]));
 
   const secondCalls = [];
@@ -133,13 +133,13 @@ export async function runDefaultStartupFlowSmoke({ setupTmp, cleanup }) {
     projectMarchDir,
   });
   assert.deepEqual(resumeLines, ["Resumed pi session: default-a"]);
-  assert.equal(second.engine.turns[0].assistantMessage, "answer default-a");
+  assert.equal(second.engine.turns[0].assistant.content, "answer default-a");
 
   await second.runTurn("next", "next");
   const resumedSidecar = loadPiSessionSidecar({ projectMarchDir, sessionRef: "default-a.jsonl" });
   assert.equal(resumedSidecar.state.sessionId, "default-a");
   assert.equal(resumedSidecar.state.turns.length, 2);
-  assert.equal(resumedSidecar.state.turns[1].assistantMessage, "answer default-a");
+  assert.equal(resumedSidecar.state.turns[1].assistant.content, "answer default-a");
   assert.ok(secondCalls.some((call) => call[0] === "turnStart"));
   second.dispose();
 

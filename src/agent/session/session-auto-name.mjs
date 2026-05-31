@@ -1,3 +1,5 @@
+import { getTurnAssistantContent, getTurnUserContent } from "../../session/turn-record.mjs";
+
 const MAX_SESSION_NAME_LENGTH = 60;
 
 export function maybeAutoNameSession({ engine, session, setSessionName }) {
@@ -11,7 +13,7 @@ export function maybeAutoNameSession({ engine, session, setSessionName }) {
 }
 
 export function generateSessionName(turn) {
-  const text = normalizeTitleSource(turn?.userMessage) || normalizeTitleSource(turn?.assistantMessage);
+  const text = normalizeTitleSource(getTurnUserContent(turn)) || normalizeTitleSource(getTurnAssistantContent(turn));
   if (!text) return "New session";
   return truncateTitle(stripPromptNoise(text), MAX_SESSION_NAME_LENGTH) || "New session";
 }

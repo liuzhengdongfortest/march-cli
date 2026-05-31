@@ -1,5 +1,5 @@
 import { resolveImageAttachmentReferences } from "../../session/attachment-references.mjs";
-import { buildAssistantExecutionJson, buildUserRecallInput, closeAssistantReply, compactAssistantContext, createTurnEventState, handleRunnerSessionEvent } from "./turn-events.mjs";
+import { buildAssistantExecutionJson, buildUserRecallInput, closeAssistantReply, createTurnEventState, handleRunnerSessionEvent } from "./turn-events.mjs";
 import { buildInitialPiPrompt, resetPiMessageHistory } from "./pi-turn-context.mjs";
 
 export async function runRunnerTurn({
@@ -138,8 +138,6 @@ async function finalizeTurn({ prompt, userMessage, userRecallHints, memoryStore,
   const turn = engine.recordTurn({
     userMessage: userMessage ?? prompt.slice(0, 300),
     assistantMessage: turnState.draft,
-    assistantContext: compactAssistantContext(turnState),
-    userRecallHints,
     userExecutionJson: userRecallInput ? {
       schemaVersion: 1,
       contextInputs: { turnStart: { userRecall: [userRecallInput] } },

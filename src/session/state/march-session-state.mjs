@@ -1,8 +1,9 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { loadPiSessionTranscriptTurns } from "../transcript.mjs";
+import { normalizeTurnRecords } from "../turn-record.mjs";
 
-export const MARCH_SESSION_STATE_VERSION = 1;
+export const MARCH_SESSION_STATE_VERSION = 2;
 
 export function getMarchSessionStateRoot(projectMarchDir) {
   return join(projectMarchDir, "sessions");
@@ -29,7 +30,7 @@ export function captureMarchSessionState(engine, { sessionId, backend = null, me
     sessionName: engine.sessionName ?? "",
     thinkingLevel: engine.thinkingLevel,
     namespace: engine.namespace,
-    turns: engine.turns,
+    turns: normalizeTurnRecords(engine.turns),
   };
 }
 
@@ -139,7 +140,8 @@ function isValidMarchSessionState(state) {
 
 function normalizeMarchSessionStateForSave(state) {
   const { renderTimeline: _renderTimeline, renderTimelineUpdatedAt: _renderTimelineUpdatedAt, ...coreState } = state ?? {};
-  return coreState;
+  const version = coreState.version === 1 || coreState.version === MARCH_SESSION_STATE_VERSION ? MARCH_SESSION_STATE_VERSION : coreState.version;
+  return { ...coreState, version, turns: normalizeTurnRecords(coreState.turns) };
 }
 
 function normalizeSessionRef(sessionRef) {

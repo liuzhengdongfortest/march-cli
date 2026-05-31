@@ -1,4 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
+import { getTurnAssistantContent } from "../../session/turn-record.mjs";
 
 export function copyLastAssistantMessage({ engine, writeClipboard = writeSystemClipboard } = {}) {
   const message = findLastAssistantMessage(engine);
@@ -11,8 +12,8 @@ export function copyLastAssistantMessage({ engine, writeClipboard = writeSystemC
 export function findLastAssistantMessage(engine) {
   const turns = engine?.turns ?? [];
   for (let i = turns.length - 1; i >= 0; i -= 1) {
-    const text = turns[i]?.assistantMessage;
-    if (typeof text === "string" && text.trim()) return text;
+    const text = getTurnAssistantContent(turns[i]);
+    if (text.trim()) return text;
   }
   return "";
 }

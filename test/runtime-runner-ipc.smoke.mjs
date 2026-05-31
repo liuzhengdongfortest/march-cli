@@ -23,8 +23,8 @@ export async function runRuntimeRunnerIpcSmoke() {
   assert.deepEqual(remote.getLspStatus(), { ready: true });
   assert.deepEqual(remote.engine.getRecentRecallMemoryIds(), ["mem_recent"]);
   assert.deepEqual(calls, [["create", "D:/repo"]]);
-  assert.deepEqual(await remote.switchPiSession("session.jsonl", { turns: [{ assistantMessage: "restored" }] }), { sessionPath: "session.jsonl" });
-  assert.equal(remote.engine.turns[0].assistantMessage, "restored");
+  assert.deepEqual(await remote.switchPiSession("session.jsonl", { turns: [{ assistant: { role: "assistant", content: "restored" } }] }), { sessionPath: "session.jsonl" });
+  assert.equal(remote.engine.turns[0].assistant.content, "restored");
   assert.deepEqual(await remote.runTurn("prompt", "hello", { currentProject: "repo" }), { draft: "ok:hello" });
   assert.equal(remote.engine.sessionName, "after-turn");
   assert.equal(await remote.setSessionName("named"), "named");
@@ -79,8 +79,8 @@ function createFakeRunner({ calls, options }) {
     provider: "test",
     thinkingLevel: "medium",
     sessionName: "initial",
-    turns: [{ userRecallHints: [{ id: "mem_recent" }] }],
-    getRecentRecallMemoryIds() { return new Set(this.turns.flatMap((turn) => (turn.userRecallHints ?? []).map((hint) => hint.id))); },
+    turns: [{ user: { role: "user", content: "", executionJson: { contextInputs: { turnStart: { userRecall: [{ hints: [{ id: "mem_recent" }] }] } } } }, assistant: { role: "assistant", content: "" } }],
+    getRecentRecallMemoryIds() { return new Set(this.turns.flatMap((turn) => turn.user?.executionJson?.contextInputs?.turnStart?.userRecall?.flatMap((input) => input.hints ?? []).map((hint) => hint.id) ?? [])); },
   };
   return {
     engine,

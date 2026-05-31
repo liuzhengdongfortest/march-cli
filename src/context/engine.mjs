@@ -5,6 +5,7 @@ import { buildInjectionsLayer } from "./injections.mjs";
 import { buildProjectContext } from "./project-context.mjs";
 import { buildProfileLayers } from "./profiles.mjs";
 import { formatRecallHints } from "../memory/markdown-store.mjs";
+import { buildTurnRecord, getTurnAssistantContent, getTurnRecallHints, getTurnStartRecallHints, getTurnUserContent, normalizeTurnRecords } from "../session/turn-record.mjs";
 
 export class ContextEngine {
   constructor({ cwd, modelId, provider = "deepseek", thinkingLevel = "medium", namespace = "", memoryRoot = null, remoteMemorySources = [], profilePaths = null, shellRuntime = null, lspService = null, injections = [], maxTurns, trimBatch }) {
@@ -68,23 +69,15 @@ export class ContextEngine {
     return layers;
   }
 
-  recordTurn({ userMessage, assistantMessage, assistantContext = "", userRecallHints = [], userExecutionJson = null, assistantExecutionJson = null }) {
-    const userContent = String(userMessage ?? "");
-    const assistantContent = String(assistantMessage ?? "");
-    const turn = {
+  recordTurn({ userMessage, assistantMessage, userExecutionJson = null, assistantExecutionJson = null }) {
+    const turn = buildTurnRecord({
       index: this.turns.length + 1,
-      user: buildMessage({ role: "user", content: userContent, executionJson: userExecutionJson }),
-      assistant: buildMessage({ role: "assistant", content: assistantContent, executionJson: assistantExecutionJson }),
-      userMessage: userContent,
-      assistantMessage: assistantContent,
-      assistantContext: assistantContext ?? "",
-      userRecallHints,
-    };
+      userContent: userMessage,
+      assistantContent: assistantMessage,
+      userExecutionJson,
+      assistantExecutionJson,
+    });
     this.turns.push(turn);
-    if (this.turns.length > this.maxTurns) {
-      const keep = Math.max(1, this.maxTurns - this.trimBatch);
-      this.turns = this.turns.slice(-keep);
-    }
     return turn;
   }
 
@@ -119,7 +112,7 @@ export class ContextEngine {
       this.turns = [];
       this.sessionName = "";
     }
-    if (data.turns) this.turns = data.turns;
+    if (data.turns) this.turns = normalizeTurnRecords(data.turns);
     if (typeof data.sessionName === "string") this.sessionName = data.sessionName;
     this.setRuntimeState(data);
   }
@@ -135,13 +128,14 @@ export class ContextEngine {
       return `[recent_chat]\n(no prior turns)`;
     }
     const entries = [];
-    for (const turn of this.turns) {
+    const recentTurns = this.turns.slice(-this.maxTurns);
+    for (const turn of recentTurns) {
       let block = `## Turn ${turn.index}\n` +
         `[user]\n${getTurnUserContent(turn)}\n`;
       const userRecall = formatRecallHints(getTurnStartRecallHints(turn));
       if (userRecall) block += `\n${userRecall}\n`;
       block += `\n[assistant]\n`;
-      const assistantText = turn.assistantContext || getTurnAssistantContent(turn);
+      const assistantText = getTurnAssistantContent(turn);
       if (assistantText) {
         block += `\n${String(assistantText ?? "")}\n`;
       }
@@ -152,34 +146,7 @@ export class ContextEngine {
 
 }
 
-function buildMessage({ role, content, executionJson }) {
-  const message = { role, content };
-  if (executionJson && Object.keys(executionJson).length > 0) message.executionJson = executionJson;
-  return message;
-}
 
-function getTurnUserContent(turn) {
-  return String(turn?.user?.content ?? turn?.userMessage ?? "");
-}
-
-function getTurnAssistantContent(turn) {
-  return String(turn?.assistant?.content ?? turn?.assistantMessage ?? "");
-}
-
-function getTurnStartRecallHints(turn) {
-  const fromMessage = turn?.user?.executionJson?.contextInputs?.turnStart?.userRecall
-    ?.flatMap((input) => input?.hints ?? []) ?? [];
-  return fromMessage.length > 0 ? fromMessage : (turn?.userRecallHints ?? []);
-}
-
-function getTurnRecallHints(turn) {
-  const recallInputs = [
-    ...(turn?.user?.executionJson?.contextInputs?.turnStart?.userRecall ?? []),
-    ...(turn?.assistant?.executionJson?.contextInputs?.inTurn ?? []),
-  ];
-  const hints = recallInputs.flatMap((input) => input?.hints ?? []);
-  return [...(turn?.userRecallHints ?? []), ...hints];
-}
 
 function appendCurrentUser(recentChat, userMessage) {
   const currentUser = String(userMessage ?? "").trimEnd();

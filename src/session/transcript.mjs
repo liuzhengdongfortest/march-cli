@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { buildTurnRecord, getTurnAssistantContent, getTurnUserContent } from "./turn-record.mjs";
 
 export const DEFAULT_TRANSCRIPT_TURN_LIMIT = 20;
 
@@ -11,40 +12,42 @@ export function loadPiSessionTranscriptTurns(sessionPath, { limit = DEFAULT_TRAN
     if (entry?.type !== "message") continue;
     const message = entry.message;
     if (message?.role === "user") {
-      current = { userMessage: extractMessageText(message), assistantMessage: "" };
+      current = { userContent: extractMessageText(message), assistantContent: "" };
       turns.push(current);
       continue;
     }
     if (message?.role === "assistant") {
       const text = extractMessageText(message);
       if (!current) {
-        current = { userMessage: "", assistantMessage: text };
+        current = { userContent: "", assistantContent: text };
         turns.push(current);
-      } else if (current.assistantMessage) {
-        current.assistantMessage += `\n\n${text}`;
+      } else if (current.assistantContent) {
+        current.assistantContent += `\n\n${text}`;
       } else {
-        current.assistantMessage = text;
+        current.assistantContent = text;
       }
     }
   }
 
   const normalized = turns
-    .filter((turn) => turn.userMessage || turn.assistantMessage)
-    .map((turn, index) => ({ index: index + 1, ...turn }));
+    .filter((turn) => turn.userContent || turn.assistantContent)
+    .map((turn, index) => buildTurnRecord({ index: index + 1, userContent: turn.userContent, assistantContent: turn.assistantContent }));
   return normalized.slice(-Math.max(0, limit));
 }
 
 export function writeTranscriptToOutput(output, turns) {
   if (!Array.isArray(turns) || turns.length === 0) return;
   for (const turn of turns) {
-    if (turn.userMessage) {
+    const userContent = getTurnUserContent(turn);
+    const assistantContent = getTurnAssistantContent(turn);
+    if (userContent) {
       output.writeln("You");
-      for (const line of String(turn.userMessage).split(/\r?\n/)) output.writeln(line);
+      for (const line of String(userContent).split(/\r?\n/)) output.writeln(line);
     }
-    if (turn.assistantMessage) {
+    if (assistantContent) {
       output.writeln("");
       output.writeln("March");
-      output.writeMarkdown(String(turn.assistantMessage));
+      output.writeMarkdown(String(assistantContent));
       output.ensureNewline();
       output.sealCurrentText();
     }

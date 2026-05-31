@@ -183,7 +183,7 @@ export async function runPiSessionSwitchCommandSmoke() {
   assert.deepEqual(await resumePiSessionById("abc", { runner, sessions, projectMarchDir }), ["Resumed pi session: abc123"]);
   assert.equal(switchedPath, "abc.jsonl");
   assert.equal(engine.thinkingLevel, "high");
-  assert.equal(engine.turns[0].assistantMessage, "answer");
+  assert.equal(engine.turns[0].assistant.content, "answer");
   assert.deepEqual(await resumePiSessionById("missing", { runner, sessions, projectMarchDir }), ["Error: pi session not found: missing"]);
   assert.deepEqual(await resumePiSessionById("a", { runner, sessions: [{ id: "aa", path: "1" }, { id: "ab", path: "2" }], projectMarchDir }), [
     "Error: pi session id is ambiguous: a (aa, ab)",

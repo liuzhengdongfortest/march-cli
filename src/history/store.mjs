@@ -2,6 +2,7 @@ import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { basename, join } from "node:path";
 import { searchMarkdownRoot } from "../memory/search.mjs";
+import { getTurnAssistantContent, getTurnStartRecallHints, getTurnToolCalls, getTurnUserContent } from "../session/turn-record.mjs";
 
 const DEFAULT_HISTORY_LIMIT = 20;
 const MAX_HISTORY_LIMIT = 50;
@@ -66,13 +67,13 @@ export class HistoryStore {
       sessionStats.sessionName ? `- session_name: ${sessionStats.sessionName}` : null,
       "",
       "### User",
-      safeBlock(turn.userMessage),
-      formatRecallSection("User memory recall", turn.userRecallHints),
+      safeBlock(getTurnUserContent(turn)),
+      formatRecallSection("User memory recall", getTurnStartRecallHints(turn)),
       "### Assistant",
-      safeBlock(turn.assistantMessage),
+      safeBlock(getTurnAssistantContent(turn)),
       turn.thinking ? ["### Thinking", safeBlock(turn.thinking)].join("\n") : null,
       "### Tool calls",
-      formatToolCalls(turn.toolCalls),
+      formatToolCalls(getTurnToolCalls(turn)),
       "",
     ].filter(Boolean).join("\n");
   }
