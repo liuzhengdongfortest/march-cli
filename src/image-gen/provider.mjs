@@ -1,5 +1,6 @@
 import { getOAuthProvider } from "@earendil-works/pi-ai/oauth";
 import { saveGeneratedImageAttachment } from "../session/attachments.mjs";
+import { prepareReferenceImages } from "./reference-images.mjs";
 
 const CODEX_BASE_URL = "https://chatgpt.com/backend-api/codex/responses";
 const JWT_CLAIM_PATH = "https://api.openai.com/auth";
@@ -36,11 +37,11 @@ function buildHeaders(token, accountId) {
   };
 }
 
-function buildRequestBody(prompt, quality, size) {
+function buildRequestBody({ prompt, quality, size, referenceImages = [] }) {
   return {
     model: "gpt-5.4",
     instructions: "You are an assistant that must fulfill image generation requests by using the image_generation tool when provided.",
-    input: [{ type: "message", role: "user", content: [{ type: "input_text", text: prompt }] }],
+    input: [{ type: "message", role: "user", content: buildInputContent({ prompt, referenceImages }) }],
     stream: true,
     store: false,
     tools: [
@@ -60,6 +61,18 @@ function buildRequestBody(prompt, quality, size) {
       tools: [{ type: "image_generation" }],
     },
   };
+}
+
+function buildInputContent({ prompt, referenceImages }) {
+  const content = [{ type: "input_text", text: prompt }];
+  for (const image of referenceImages) {
+    content.push({
+      type: "input_image",
+      image_url: `data:${image.mimeType};base64,${image.data}`,
+      detail: "high",
+    });
+  }
+  return content;
 }
 
 async function* parseSSE(response) {
@@ -98,6 +111,7 @@ export async function generateImage({
   prompt,
   quality = "medium",
   aspectRatio = "1:1",
+  referenceImages = [],
   authStorage,
   projectMarchDir,
   fetchImpl = fetch,
@@ -121,11 +135,12 @@ export async function generateImage({
 
   const accountId = extractAccountId(apiKey);
   const size = ASPECT_RATIO_MAP[aspectRatio] || "1024x1024";
+  const preparedReferenceImages = prepareReferenceImages({ referenceImages, projectMarchDir });
 
   const response = await fetchImpl(CODEX_BASE_URL, {
     method: "POST",
     headers: buildHeaders(apiKey, accountId),
-    body: JSON.stringify(buildRequestBody(prompt, quality, size)),
+    body: JSON.stringify(buildRequestBody({ prompt, quality, size, referenceImages: preparedReferenceImages })),
   });
 
   if (!response.ok) {

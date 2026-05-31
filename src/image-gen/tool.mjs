@@ -17,16 +17,25 @@ export function createImageGenTool({
     description:
       "Generate an image using ChatGPT's image generation engine (gpt-image-2). " +
       "Three quality levels: low (~15s, drafts), medium (~40s, default), high (~2min, highest detail). " +
-      "Supported aspect ratios: 1:1, 16:9, 4:3, 3:2. Default: 1:1.",
-    promptSnippet: "image_generate(prompt, quality?, aspectRatio?, auto_open?) - Generate an image using ChatGPT",
+      "Supported aspect ratios: 1:1, 16:9, 4:3, 3:2. Default: 1:1. " +
+      "Supports optional local reference images for image-guided generation.",
+    promptSnippet: "image_generate(prompt, reference_images?, quality?, aspectRatio?, auto_open?) - Generate an image using ChatGPT",
     promptGuidelines: [
       "When the user asks you to generate or draw an image, use the image_generate tool.",
+      "Use reference_images when the user provides local image paths or March attachment markers to guide the generation.",
       "Describe what you want to generate in detail for best results.",
     ],
     parameters: Type.Object({
       prompt: Type.String({
         description: "Detailed description of the image to generate",
       }),
+      reference_images: Type.Optional(
+        Type.Array(Type.String({
+          description: "Local image path or @.march/attachments/... marker to use as a visual reference",
+        }), {
+          description: "Optional reference images for image-guided generation. Supports png, jpg/jpeg, webp, and gif.",
+        })
+      ),
       quality: Type.Optional(
         Type.String({
           enum: ["low", "medium", "high"],
@@ -47,8 +56,8 @@ export function createImageGenTool({
     }),
     execute: async (_toolCallId, params) => {
       try {
-        const { prompt, quality = "medium", aspectRatio = "1:1", auto_open: autoOpen = true } = params;
-        const image = await generateImageImpl({ prompt, quality, aspectRatio, authStorage, projectMarchDir });
+        const { prompt, reference_images: referenceImages = [], quality = "medium", aspectRatio = "1:1", auto_open: autoOpen = true } = params;
+        const image = await generateImageImpl({ prompt, referenceImages, quality, aspectRatio, authStorage, projectMarchDir });
         const outputResult = autoOpen ? await deliverGeneratedImage(image, sendBinary) : { opened: false, delivered: false };
         return toolJson({
           success: true,
@@ -58,6 +67,7 @@ export function createImageGenTool({
           prompt,
           aspectRatio,
           quality,
+          referenceImages,
           ...outputResult,
         }, { ...image, ...outputResult });
       } catch (err) {
