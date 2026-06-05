@@ -64,6 +64,23 @@ export async function runTurnNotifierSmoke({ setupTmp, cleanup }) {
   assert.equal(spawned[0].options.windowsHide, false);
   assert.deepEqual(spawned[0].options.stdio, ["ignore", "pipe", "pipe"]);
 
+  const syncThrowSpawned = [];
+  const syncThrowFallback = await createDesktopTurnNotifier({
+    platform: "win32",
+    toastNotifier: { notify: () => { throw new Error("notifications are disabled"); } },
+    spawnProcess: (command, args, options) => {
+      syncThrowSpawned.push({ command, args, options });
+      const child = new EventEmitter();
+      child.stderr = new EventEmitter();
+      setImmediate(() => child.emit("close", 0, null));
+      return child;
+    },
+  }).notifyTurnEnd({ status: "success", draft: "Synchronous toast failure" });
+  assert.equal(syncThrowFallback.ok, true);
+  assert.equal(syncThrowFallback.results[0].fallback, "balloon");
+  assert.equal(syncThrowFallback.results[0].toastReason, "notifications are disabled");
+  assert.equal(syncThrowSpawned[0].command, "powershell.exe");
+
   assert.equal((await createDesktopTurnNotifier({ enabled: false }).notifyTurnEnd({})).reason, "disabled");
   assert.equal((await createDesktopTurnNotifier({ platform: "linux" }).notifyTurnEnd({})).reason, "unsupported-platform");
   assert.equal((await createDesktopTurnNotifier({ config: { minDurationMs: 50 } }).notifyTurnEnd({ durationMs: 10 })).reason, "min-duration");

@@ -163,14 +163,18 @@ function sendWindowsToastNotification({ toastNotifier = nodeNotifier, title, mes
 
     let settled = false;
     const timeout = setTimeout(() => finish({ ok: false, reason: "toast-timeout" }), DEFAULT_BALLOON_TIMEOUT_MS + 5000);
-    notify.call(toastNotifier, buildWindowsToastOptions({ title, message, iconPath, sound, activation }), (err, response, metadata) => {
-      if (err) {
-        finish({ ok: false, reason: err?.message ?? String(err) });
-        return;
-      }
-      if (isNotificationActivation(response, metadata)) onActivation?.(activation);
-      finish({ ok: true, activated: isNotificationActivation(response, metadata) });
-    });
+    try {
+      notify.call(toastNotifier, buildWindowsToastOptions({ title, message, iconPath, sound, activation }), (err, response, metadata) => {
+        if (err) {
+          finish({ ok: false, reason: err?.message ?? String(err) });
+          return;
+        }
+        if (isNotificationActivation(response, metadata)) onActivation?.(activation);
+        finish({ ok: true, activated: isNotificationActivation(response, metadata) });
+      });
+    } catch (err) {
+      finish({ ok: false, reason: err?.message ?? String(err) });
+    }
 
     function finish(result) {
       if (settled) return;
