@@ -1,25 +1,25 @@
-# March Architecture Boundaries
+# March 架构边界
 
 March 的核心架构不是“CLI 里调用一堆工具”，而是：**CLI 只做交互外壳；Runner 子进程承载 Agent Runtime；pi-agent 执行模型循环；March 通过 Context、Tool、Session、Workspace 四个边界接入能力。**
 
-## 1. Main runtime chain
+## 1. 主运行链路
 
 ```mermaid
 flowchart LR
-  User[User input / CLI command / TUI action]
-  Shell[CLI Shell\ninteraction, rendering, commands]
-  App[App Runtime\nconfig, auth, workspace wiring]
-  Client[Runner Process Client\nIPC proxy, restart boundary]
-  Runner[Agent Runtime Core\nAgent Run orchestration]
-  Pi[pi-agent Session\nmodel loop, transcript, tool calls]
-  Provider[Model Provider\nauth + transport]
+  User[用户输入 / CLI 参数 / TUI 操作]
+  Shell[CLI Shell\n交互、渲染、命令]
+  App[App Runtime\n配置、认证、workspace 组装]
+  Client[Runner Process Client\nIPC 代理、重启边界]
+  Runner[Agent Runtime Core\nAgent Run 编排]
+  Pi[pi-agent Session\n模型循环、transcript、tool call]
+  Provider[Model Provider\n鉴权与传输]
   User --> Shell --> App --> Client --> Runner --> Pi --> Provider
   Provider --> Pi --> Runner --> Client --> Shell --> User
 ```
 
-**Boundary rule:** CLI 只路由输入和渲染事件，不拥有 Agent 行为。Runtime 行为从 runner 子进程边界之后开始。
+**边界规则：** CLI 只路由输入和渲染事件，不拥有 Agent 行为。Runtime 行为从 runner 子进程边界之后开始。
 
-## 2. Agent Run lifecycle
+## 2. Agent Run 生命周期
 
 ```mermaid
 sequenceDiagram
@@ -29,47 +29,47 @@ sequenceDiagram
   participant Pi as pi-agent Session
   participant Tools as Tool Capabilities
   participant Store as Session / History / Memory
-  CLI->>Runner: runTurn(user request)
-  Runner->>Context: build provider context
+  CLI->>Runner: runTurn(用户请求)
+  Runner->>Context: 组装 provider context
   Context-->>Runner: system prompt + user context layers
-  Runner->>Pi: prompt(initial context + user request)
-  loop Model Call loop owned by pi-agent
-    Pi->>Pi: append assistant message
-    Pi->>Tools: execute requested tool call
-    Tools-->>Pi: tool result entry
-    Pi->>Pi: prepare next provider payload
+  Runner->>Pi: prompt(初始上下文 + 用户请求)
+  loop pi-agent 拥有 Model Call 循环
+    Pi->>Pi: 追加 assistant message
+    Pi->>Tools: 执行模型请求的 tool call
+    Tools-->>Pi: 返回 tool result entry
+    Pi->>Pi: 准备下一次 provider payload
   end
-  Pi-->>Runner: final assistant message
-  Runner->>Store: record turn, history, session state
-  Runner-->>CLI: render final output and status
+  Pi-->>Runner: 最终 assistant message
+  Runner->>Store: 记录 turn、history、session state
+  Runner-->>CLI: 渲染最终输出和状态
 ```
 
-**Boundary rule:** `runTurn` 协调一次 Agent Run，但不重写模型/工具循环；循环属于 pi-agent。
+**边界规则：** `runTurn` 协调一次 Agent Run，但不重写模型/工具循环；循环属于 pi-agent。
 
-## 3. Context boundary
+## 3. Context 边界
 
 ```mermaid
 flowchart TB
-  Start[Agent Run start] --> Engine[ContextEngine]
-  Engine --> System[system_core\nmodel-specific March rules]
-  Engine --> Inject[injections\nMCP / extension instructions]
-  Engine --> Identity[session_identity\ncwd, workspace, platform]
-  Engine --> Project[project_context\nAGENTS.md and project rules]
-  Engine --> Profiles[profiles\nagent + user profile]
-  Engine --> Recent[recent_chat\nrecent turns + recall hints]
-  System --> Prompt[Initial pi prompt]
+  Start[Agent Run 开始] --> Engine[ContextEngine]
+  Engine --> System[system_core\n模型专属 March 规则]
+  Engine --> Inject[injections\nMCP / extension 指令]
+  Engine --> Identity[session_identity\ncwd、workspace、platform]
+  Engine --> Project[project_context\nAGENTS.md 和项目规则]
+  Engine --> Profiles[profiles\nagent profile + user profile]
+  Engine --> Recent[recent_chat\n近期 turn + recall hints]
+  System --> Prompt[初始 pi prompt]
   Inject --> Prompt
   Identity --> Prompt
   Project --> Prompt
   Profiles --> Prompt
   Recent --> Prompt
-  Prompt --> Transcript[pi transcript\nassistant, tools, results, steer messages]
-  Transcript --> Payload[Provider payload hooks\nhosted tools, guards, transport tweaks]
+  Prompt --> Transcript[pi transcript\nassistant、tools、results、steer messages]
+  Transcript --> Payload[Provider payload hooks\nhosted tools、guards、transport tweaks]
 ```
 
-**Boundary rule:** March context 在 Agent Run 起点组装；后续 Model Call 继续 pi-agent transcript。provider hook 只能调整 transport payload，不能重建 March context layers。
+**边界规则：** March context 在 Agent Run 起点组装；后续 Model Call 继续 pi-agent transcript。provider hook 只能调整 transport payload，不能重建 March context layers。
 
-## 4. Runtime capability boundary
+## 4. Runtime capability 边界
 
 ```mermaid
 flowchart LR
@@ -103,13 +103,13 @@ flowchart LR
   Registry --> PiTools[pi-agent tool definitions]
 ```
 
-**Boundary rule:** high-level runtime code 只装配能力。每个 capability 拥有自身行为；runner 不应该增长 capability-specific branches。
+**边界规则：** high-level runtime code 只装配能力。每个 capability 拥有自身行为；runner 不应该增长 capability-specific branches。
 
-## 5. Workspace and process boundary
+## 5. Workspace 与进程边界
 
 ```mermaid
 flowchart TB
-  TUI[Active TUI] --> Router[Workspace Output Router]
+  TUI[当前 TUI] --> Router[Workspace Output Router]
   TUI --> Supervisor[Workspace Session Supervisor]
   subgraph ProjectA[Project runtime A]
     RunnerA[Runner process] --> SessionA[March session state] --> PiA[pi session]
@@ -123,21 +123,21 @@ flowchart TB
   Router --> ProjectB
 ```
 
-**Boundary rule:** workspace supervision 选择 active project/session 并路由输出；单个 Agent Runtime 不关心全局 workspace 展示策略。
+**边界规则：** workspace supervision 选择 active project/session 并路由输出；单个 Agent Runtime 不关心全局 workspace 展示策略。
 
-## 6. State boundary
+## 6. State 边界
 
 ```mermaid
 flowchart LR
-  Request[User request]
+  Request[用户请求]
   subgraph MarchState[March-owned state]
-    MSession[March session\nsession id, timeline, restore data]
-    ContextTurns[Context turns\nrecent_chat source]
-    History[History store\nsearchable past turns]
-    Memory[Markdown memory\nlong-term knowledge]
+    MSession[March session\nsession id、timeline、restore data]
+    ContextTurns[Context turns\nrecent_chat 来源]
+    History[History store\n可搜索历史 turn]
+    Memory[Markdown memory\n长期知识]
   end
   subgraph PiState[pi-agent-owned state]
-    Transcript[Transcript\ndialog entries, tool calls, results]
+    Transcript[Transcript\ndialog entries、tool calls、results]
     SessionFile[pi session file]
   end
   Request --> MSession
@@ -147,9 +147,9 @@ flowchart LR
   Memory --> ContextTurns
 ```
 
-**Boundary rule:** March session、pi session、ContextEngine turns、history、memory 相关但不能混成一个状态对象；混用会导致 stale context 和难排查的恢复行为。
+**边界规则：** March session、pi session、ContextEngine turns、history、memory 相关但不能混成一个状态对象；混用会导致 stale context 和难排查的恢复行为。
 
-## 7. Provider boundary
+## 7. Provider 边界
 
 ```mermaid
 flowchart TB
@@ -162,13 +162,13 @@ flowchart TB
   SystemCore --> Context[ContextEngine]
 ```
 
-**Boundary rule:** provider 负责 auth、model discovery、quota/product transport 和 request execution；它不决定 March context 结构，`modelId` 只影响 model-specific system prompt。
+**边界规则：** provider 负责 auth、model discovery、quota/product transport 和 request execution；它不决定 March context 结构，`modelId` 只影响 model-specific system prompt。
 
-## Architectural invariants
+## 架构不变量
 
-1. **Shell is not Agent Runtime.** CLI/TUI handles interaction, commands, and rendering; Agent behavior lives behind the runner boundary.
-2. **Runtime wires, capabilities execute.** Core passes capability contracts into pi-agent; capability modules own behavior.
-3. **Context is reconstructed, transcript is continued.** ContextEngine builds initial March context; pi-agent transcript carries in-run continuity.
-4. **Provider is transport, not policy.** Provider code handles model connection concerns, not March context policy.
-5. **Workspace is supervision, not execution.** Workspace code selects and routes project runtimes; individual runtimes execute Agent Runs.
-6. **State stays layered.** March state, pi state, history, and memory remain separate so resume, recall, and rendering stay predictable.
+1. **Shell 不是 Agent Runtime。** CLI/TUI 处理交互、命令和渲染；Agent 行为在 runner 边界之后。
+2. **Runtime 只装配，capability 负责执行。** Core 把 capability contract 接入 pi-agent；capability module 拥有具体行为。
+3. **Context 重新组装，transcript 继续推进。** ContextEngine 构造初始 March context；pi-agent transcript 承载运行中的连续性。
+4. **Provider 是传输边界，不是策略边界。** Provider 处理模型连接问题，不处理 March context policy。
+5. **Workspace 是监督边界，不是执行边界。** Workspace 代码选择和路由 project runtime；单个 runtime 执行 Agent Run。
+6. **State 必须分层。** March state、pi state、history、memory 保持分离，resume、recall 和渲染才可预测。
