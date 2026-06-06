@@ -8,7 +8,7 @@ import {
   walkMarkdownFiles,
 } from "./markdown/markdown-format.mjs";
 import { toHint } from "./markdown/markdown-recall.mjs";
-import { lexicalRecall, mergeRecallRankings, toRecallCandidates } from "./markdown/lexical-recall.mjs";
+import { hybridRecall, toRecallCandidates } from "./markdown/lexical-recall.mjs";
 import { SemanticMemoryRecallIndex } from "./markdown/semantic-recall.mjs";
 import { clearMarkdownMemoryIndex, loadMarkdownMemoryIndex, openMarkdownMemoryIndex, replaceMarkdownMemoryIndex } from "./markdown/sqlite-index.mjs";
 import { softDeleteMemoryFile } from "./markdown/markdown-delete.mjs";
@@ -210,11 +210,10 @@ export class MarkdownMemoryStore {
     if (!this.semanticRecall?.enabled) return returnReport ? empty : [];
     try {
       const result = await this.semanticRecall.search(text, { entries: this.entries, excluded, limit, candidateLimit });
-      const lexical = lexicalRecall(text, { entries: this.entries, excluded, minScore: this.semanticRecall.minScore });
-      const ranked = mergeRecallRankings(result.recalled, lexical, limit);
+      const ranked = hybridRecall(result.candidates, text, { entries: this.entries, excluded, minScore: this.semanticRecall.minScore, limit });
       const hints = ranked.map(({ entry, score }) => toHint(entry, { score }));
       const recalledIds = new Set(ranked.map(({ entry }) => entry.id));
-      const candidates = toRecallCandidates(mergeRecallRankings(result.candidates, lexical, Math.max(limit, candidateLimit)), recalledIds);
+      const candidates = toRecallCandidates(hybridRecall(result.candidates, text, { entries: this.entries, excluded, minScore: 0, limit: Math.max(limit, candidateLimit) }), recalledIds);
       const report = {
         threshold: result.threshold,
         vectorizerStatus: result.vectorizerStatus,

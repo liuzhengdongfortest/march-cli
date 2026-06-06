@@ -123,7 +123,7 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
   assert.equal(store.lastUserRecallReport.candidates[0].recalled, false);
   assert.deepEqual(formatRecallLines(belowThreshold, store.lastUserRecallReport).slice(0, 2), [
     "✦ Memory Recall · 0 recalled · 1 candidate · threshold 0.90",
-    "  × 0.58 Recall hint dedup",
+    "  × 0.70 Recall hint dedup",
   ]);
   store.semanticRecall.minScore = 0.5;
   store.semanticRecall.vectorizer = new ResilientVectorizer({
@@ -157,6 +157,37 @@ export async function runMarkdownMemorySmoke({ setupTmp, cleanup }) {
     "✦ Memory Recall · 0 recalled · 0 candidates · threshold 0.50",
     "  no candidates",
   ]);
+
+  const aggregateDir = setupTmp();
+  const aggregateStore = new MarkdownMemoryStore({
+    root: aggregateDir,
+    semanticVectorizer: new KeywordVectorizer(["alpha", "beta", "metadata", "phantom"]),
+  });
+  const aggregateBody = [
+    `${"filler ".repeat(220)}alpha beta`,
+    `${"padding ".repeat(220)}alpha`,
+  ].join("\n\n");
+  const aggregateEntry = aggregateStore.save({
+    name: "Chunk aggregation probe",
+    description: "Body chunk scoring should use正文 only.",
+    body: aggregateBody,
+    tags: ["memory/aggregation"],
+  });
+  const metadataEntry = aggregateStore.save({
+    name: "Metadata phantom probe",
+    description: "metadata phantom should score as document metadata, not copied chunk text.",
+    body: "正文没有对应关键词。",
+    tags: ["memory/metadata-phantom"],
+  });
+  const aggregateResult = await aggregateStore.semanticRecall.search("alpha beta", { entries: aggregateStore.entries, limit: 2, candidateLimit: 2 });
+  const aggregateCandidate = aggregateResult.candidates.find(({ entry: item }) => item.id === aggregateEntry.id);
+  assert.equal(aggregateCandidate.topChunkScores.length, 2);
+  assert.equal(aggregateStore.semanticRecall.bodyChunks.some((chunk) => chunk.entry.id === aggregateEntry.id && chunk.text.includes("Chunk aggregation probe")), false);
+  const metadataResult = await aggregateStore.semanticRecall.search("metadata phantom", { entries: aggregateStore.entries, limit: 2, candidateLimit: 2 });
+  const metadataCandidate = metadataResult.candidates.find(({ entry: item }) => item.id === metadataEntry.id);
+  assert.equal(metadataCandidate.bodyScore, 0);
+  assert.ok(metadataCandidate.metadataScore > 0);
+  aggregateStore.close();
 
   const tools = createMarkdownMemoryTools(store);
   const search = tools.find((tool) => tool.name === "memory_search");

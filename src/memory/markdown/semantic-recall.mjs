@@ -7,6 +7,7 @@ import { parseMemoryMarkdown } from "./markdown-format.mjs";
 export const POTION_RETRIEVAL_MODEL_ID = "minishlab/potion-retrieval-32M";
 
 const MAX_CHUNK_CHARS = 1800;
+const BODY_CHUNK_WEIGHTS = [0.65, 0.25, 0.1];
 export const DEFAULT_MEMORY_RECALL_MIN_SCORE = 0.5;
 
 export class SemanticMemoryRecallIndex {
@@ -15,8 +16,10 @@ export class SemanticMemoryRecallIndex {
     this.minScore = minScore;
     this.vectorizer = vectorizer ?? createDefaultVectorizer({ stateRoot, modelId, modelDir });
     this.signature = "";
-    this.chunks = [];
-    this.vectors = [];
+    this.bodyChunks = [];
+    this.bodyVectors = [];
+    this.metadataDocs = [];
+    this.metadataVectors = [];
   }
 
   get enabled() {
@@ -47,23 +50,37 @@ export class SemanticMemoryRecallIndex {
     const [queryVector] = await this.vectorizer.encode([query]);
     if (!queryVector || queryVector.norm === 0) return empty;
 
-    const bestByEntry = new Map();
-    for (let index = 0; index < this.vectors.length; index += 1) {
-      const chunk = this.chunks[index];
+    const byEntry = new Map();
+    for (let index = 0; index < this.metadataVectors.length; index += 1) {
+      const doc = this.metadataDocs[index];
+      if (excluded.has(doc.entry.id)) continue;
+      const metadataScore = cosineSimilarity(queryVector, this.metadataVectors[index]);
+      if (metadataScore > 0) byEntry.set(doc.entry.id, { entry: doc.entry, metadataScore, bodyChunkScores: [] });
+    }
+    for (let index = 0; index < this.bodyVectors.length; index += 1) {
+      const chunk = this.bodyChunks[index];
       if (excluded.has(chunk.entry.id)) continue;
-      const score = cosineSimilarity(queryVector, this.vectors[index]);
-      const prev = bestByEntry.get(chunk.entry.id);
-      if (!prev || score > prev.score) bestByEntry.set(chunk.entry.id, { entry: chunk.entry, score });
+      const chunkScore = cosineSimilarity(queryVector, this.bodyVectors[index]);
+      if (chunkScore <= 0) continue;
+      const prev = byEntry.get(chunk.entry.id) ?? { entry: chunk.entry, metadataScore: 0, bodyChunkScores: [] };
+      prev.bodyChunkScores.push(chunkScore);
+      byEntry.set(chunk.entry.id, prev);
     }
 
-    const ranked = [...bestByEntry.values()]
+    const ranked = [...byEntry.values()]
+      .map((item) => {
+        const topChunkScores = item.bodyChunkScores.sort((a, b) => b - a).slice(0, BODY_CHUNK_WEIGHTS.length);
+        const bodyScore = weightedTopChunkScore(topChunkScores);
+        const score = Math.max(bodyScore, item.metadataScore);
+        return { entry: item.entry, score, bodyScore, metadataScore: item.metadataScore, topChunkScores };
+      })
       .filter(({ score }) => Number.isFinite(score) && score > 0)
       .sort((a, b) => b.score - a.score || a.entry.name.localeCompare(b.entry.name));
     const recalled = ranked.filter(({ score }) => score >= this.minScore).slice(0, limit);
     const recalledIds = new Set(recalled.map(({ entry }) => entry.id));
     const candidates = ranked
       .slice(0, Math.max(limit, candidateLimit))
-      .map(({ entry, score }) => ({ entry, score, recalled: recalledIds.has(entry.id) }));
+      .map((item) => ({ ...item, recalled: recalledIds.has(item.entry.id) }));
     return {
       recalled,
       candidates,
@@ -76,9 +93,13 @@ export class SemanticMemoryRecallIndex {
   async #ensureIndex(entries) {
     const signature = entries.map(entrySignature).join("\n");
     if (signature === this.signature) return;
-    this.chunks = entries.flatMap(memoryChunks);
-    this.vectors = this.chunks.length > 0
-      ? await this.vectorizer.encode(this.chunks.map((chunk) => chunk.text))
+    this.bodyChunks = entries.flatMap(memoryBodyChunks);
+    this.metadataDocs = entries.map(memoryMetadataDoc).filter((doc) => doc.text);
+    this.bodyVectors = this.bodyChunks.length > 0
+      ? await this.vectorizer.encode(this.bodyChunks.map((chunk) => chunk.text))
+      : [];
+    this.metadataVectors = this.metadataDocs.length > 0
+      ? await this.vectorizer.encode(this.metadataDocs.map((doc) => doc.text))
       : [];
     this.signature = signature;
   }
@@ -101,20 +122,15 @@ function createDefaultVectorizer({ stateRoot, modelId, modelDir }) {
   });
 }
 
-function memoryChunks(entry) {
-  const body = readMemoryBody(entry);
-  const sections = splitMarkdownBody(body);
-  const chunks = sections.length > 0 ? sections : [""];
-  return chunks.map((section, index) => ({
+function memoryBodyChunks(entry) {
+  return splitMarkdownBody(readMemoryBody(entry)).map((section, index) => ({ entry, index, text: section }));
+}
+
+function memoryMetadataDoc(entry) {
+  return {
     entry,
-    index,
-    text: [
-      entry.name,
-      entry.description,
-      entry.tags.join(" "),
-      section,
-    ].filter(Boolean).join("\n"),
-  }));
+    text: [entry.name, entry.description, entry.tags.join(" ")].filter(Boolean).join("\n"),
+  };
 }
 
 function readMemoryBody(entry) {
@@ -155,6 +171,13 @@ function splitOversizedChunk(text) {
     chunks.push(text.slice(index, index + MAX_CHUNK_CHARS));
   }
   return chunks;
+}
+
+function weightedTopChunkScore(scores) {
+  if (scores.length === 0) return 0;
+  const weights = BODY_CHUNK_WEIGHTS.slice(0, scores.length);
+  const weightTotal = weights.reduce((sum, weight) => sum + weight, 0);
+  return scores.reduce((sum, score, index) => sum + score * weights[index], 0) / weightTotal;
 }
 
 function entrySignature(entry) {
