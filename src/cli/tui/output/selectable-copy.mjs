@@ -1,6 +1,7 @@
 import { visibleWidth } from "@earendil-works/pi-tui";
 import { marked } from "marked";
 import { renderMarkdown } from "../markdown-renderer.mjs";
+import { sliceColumns } from "../selection/ansi-range.mjs";
 
 export function appendSelectableEntries(entries, block, lines, width) {
   if (block.type !== "markdown") {
@@ -13,7 +14,8 @@ export function appendSelectableEntries(entries, block, lines, width) {
     const baseRow = entries.length;
     const fragmentSource = fragmentRanges.find((range) => baseRow >= range.startRow && baseRow <= range.endRow) ?? null;
     const codeSource = fragmentSource?.kind === "code" ? fragmentSource : null;
-    entries.push({ line, source, codeSource, fragmentSource, baseRow });
+    const codeSlice = codeSource?.lineMap.get(baseRow) ?? null;
+    entries.push({ line, source, codeSource, codeSlice, fragmentSource, baseRow });
   }
 }
 
@@ -30,6 +32,8 @@ export function copySourceTextForRange(entries, range) {
   const selected = trimEmptyBoundaryEntries(entries.slice(range.start.row, range.end.row + 1));
   const codeText = copyCompleteCodeSource(selected, entries, range);
   if (codeText) return codeText;
+  const codeFragmentText = copyCodeSourceFragment(selected, range);
+  if (codeFragmentText) return codeFragmentText;
   const fragmentText = copyCompleteFragmentSource(selected, entries, range);
   if (fragmentText) return fragmentText;
   if (!selected.length || selected.some((entry) => !entry.source)) return "";
@@ -70,6 +74,41 @@ function copyCompleteFragmentSource(selected, entries, range) {
   return sources[0].text;
 }
 
+function copyCodeSourceFragment(selected, range) {
+  const sources = uniqueSources(selected, "codeSource");
+  if (sources.length !== 1 || selected.some((entry) => entry.codeSource !== sources[0])) return "";
+  const source = sources[0];
+  const parts = [];
+  let currentLine = null;
+  let currentText = "";
+  for (const entry of selected) {
+    if (!entry.codeSlice) continue;
+    const text = selectedCodeSliceText(source, entry, range);
+    if (!text) continue;
+    if (currentLine === entry.codeSlice.sourceLine) {
+      currentText += text;
+      continue;
+    }
+    if (currentLine != null) parts.push(currentText);
+    currentLine = entry.codeSlice.sourceLine;
+    currentText = text;
+  }
+  if (currentLine != null) parts.push(currentText);
+  return parts.join("\n");
+}
+
+function selectedCodeSliceText(source, entry, range) {
+  const slice = entry.codeSlice;
+  const displayLine = stripAnsi(entry.line);
+  const displayStart = entry.baseRow === range.start.row ? range.start.col : 0;
+  const displayEnd = entry.baseRow === range.end.row ? range.end.col : visibleWidth(displayLine);
+  const contentStart = Math.max(0, displayStart - source.contentColumn);
+  const contentEnd = Math.min(slice.endCol - slice.startCol, Math.max(0, displayEnd - source.contentColumn));
+  if (contentEnd <= contentStart) return "";
+  const line = source.lines[slice.sourceLine] ?? "";
+  return sliceColumns(line, slice.startCol + contentStart, slice.startCol + contentEnd);
+}
+
 function sourceIsFullySelected(source, entries, range, key) {
   const startIndex = entries.findIndex((entry) => entry[key] === source && entry.baseRow === source.startRow);
   const endIndex = entries.findLastIndex((entry) => entry[key] === source && entry.baseRow === source.endRow);
@@ -89,17 +128,64 @@ function renderedFragmentRanges(markdown, width, baseRow) {
   for (const token of tokens) {
     const raw = token.raw ?? token.text ?? "";
     const lineCount = renderMarkdown(raw, width).length;
-    const range = sourceRangeForToken(token, raw, row, lineCount);
+    const range = sourceRangeForToken(token, raw, row, lineCount, width);
     if (range) ranges.push(range);
     row += lineCount;
   }
   return ranges;
 }
 
-function sourceRangeForToken(token, raw, row, lineCount) {
-  if (token.type === "code") return { kind: "code", text: String(token.text ?? ""), startRow: row, endRow: row + lineCount - 1 };
+function sourceRangeForToken(token, raw, row, lineCount, width) {
+  if (token.type === "code") return codeSourceRange(token, row, lineCount, width);
   if (token.type === "table") return { kind: "table", text: String(raw).trimEnd(), startRow: row, endRow: row + lineCount - 1 };
   return null;
+}
+
+function codeSourceRange(token, row, lineCount, width) {
+  const text = String(token.text ?? "");
+  const innerWidth = Math.max(1, width - 4);
+  return {
+    kind: "code",
+    text,
+    lines: text.split("\n"),
+    contentColumn: 2,
+    lineMap: codeLineMap(text, row + 1, innerWidth),
+    startRow: row,
+    endRow: row + lineCount - 1,
+  };
+}
+
+
+function codeLineMap(text, firstContentRow, innerWidth) {
+  const map = new Map();
+  let row = firstContentRow;
+  String(text ?? "").split("\n").forEach((line, sourceLine) => {
+    for (const slice of wrapSourceLine(line, innerWidth)) {
+      map.set(row, { sourceLine, startCol: slice.startCol, endCol: slice.endCol });
+      row += 1;
+    }
+  });
+  return map;
+}
+
+function wrapSourceLine(line, maxWidth) {
+  if (!line) return [{ startCol: 0, endCol: 0 }];
+  const result = [];
+  let startCol = 0;
+  let width = 0;
+  let col = 0;
+  for (const ch of String(line)) {
+    const charWidth = visibleWidth(ch);
+    if (width + charWidth > maxWidth && col > startCol) {
+      result.push({ startCol, endCol: col });
+      startCol = col;
+      width = 0;
+    }
+    width += charWidth;
+    col += charWidth;
+  }
+  result.push({ startCol, endCol: col });
+  return result;
 }
 
 function stripAnsi(text) {
