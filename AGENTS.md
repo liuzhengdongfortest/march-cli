@@ -56,15 +56,17 @@
 
 
 
-## 名词定义
+## 术语表
 
-- **Agent Run（运行轮次）**：一次用户输入触发的完整智能体执行过程。一个 Agent Run 可以包含一个或多个 model call、零个或多个 tool call；当模型不再请求工具并产出最终回复时，该 Agent Run 结束。
-- **Model call（模型调用）**：March 将当前组装后的上下文发送给模型，并接收一次模型输出的过程。一个 Agent Run 内，模型输出 tool call 后会执行工具，并继续产生后续 model call，直到形成最终回复。
-- **Dialog Entry（对话条目）**：单次 model call 的 payload 中 `messages` 数组里的单个元素，包含 `role` 和 `content`。全称 Dialog Entry，简称 Entry。一个 model call 包含多个 dialog entry，其中 `role=tool` 的 entry 即 tool call。
-- **Tool call（工具调用）**：模型请求 March 执行一个工具的动作。tool call 不是 Agent Run，也不是 model call；它通常发生在一次 model call 的输出之后。
-- **Context assembly（上下文组装）**：为一次 model call 准备最终 prompt / messages 的总过程。
-- **Agent-run-start context assembly（运行轮次开始上下文组装）**：在一个 Agent Run 开始时，从各 context layer 读取当前事实，组装该 Agent Run 的初始上下文。
-- **In-run context reassembly（运行轮次内上下文重组装）**：在同一个 Agent Run 内，工具调用、模型输出或 pi session 状态变化之后，为后续 model call 重新组装上下文。
-- **Layer（上下文层）**：组成最终 prompt / messages 的独立上下文模块。每个 layer 以 `[name]` 格式的 header 开头，后接该层对应的结构化文本。当前 layers 包括 `system_core`、`injections`、`session_identity`、`project_context`、`recent_chat` 五个。Agent-run-start context assembly 按固定顺序将这些 layers 组装为初始上下文。
-- **Diagnostic（诊断信息）**：编译器、类型检查器、linter 或语言服务器对当前工作区产生的错误、警告和提示，等价于 VS Code Problems 面板里的结构化问题列表。
-- **Model-specific system prompt（模型专属系统提示）**：`system_core` 中针对具体 `modelId` 选择的 prompt 文件；用于适配不同模型的行为差异，不按 provider 区分。provider 只负责请求路由、鉴权和 transport，不参与 prompt 选择。
+| 术语 | 中文名 | 定义 |
+|---|---|---|
+| Agent Run | 运行轮次 | 一次用户输入触发的完整智能体执行过程。一个 Agent Run 可以包含一个或多个 model call、零个或多个 tool call；当模型不再请求工具并产出最终回复时，该 Agent Run 结束。 |
+| Model call | 模型调用 | March 将当前组装后的上下文发送给模型，并接收一次模型输出的过程。一个 Agent Run 内，模型输出 tool call 后会执行工具，并继续产生后续 model call，直到形成最终回复。 |
+| Dialog Entry | 对话条目 | 单次 model call 的 payload 中 `messages` 数组里的单个元素，包含 `role` 和 `content`。全称 Dialog Entry，简称 Entry。一个 model call 包含多个 dialog entry，其中 `role=tool` 的 entry 即 tool call。 |
+| Tool call | 工具调用 | 模型请求 March 执行一个工具的动作。tool call 不是 Agent Run，也不是 model call；它通常发生在一次 model call 的输出之后。 |
+| Context assembly | 上下文组装 | 为一次 model call 准备最终 prompt / messages 的总过程。 |
+| Agent-run-start context assembly | 运行轮次开始上下文组装 | 在一个 Agent Run 开始时，从各 context layer 读取当前事实，组装该 Agent Run 的初始上下文。 |
+| In-run context reassembly | 运行轮次内上下文重组装 | 在同一个 Agent Run 内，工具调用、模型输出或 pi session 状态变化之后，为后续 model call 重新组装上下文。 |
+| Layer | 上下文层 | 组成最终 prompt / messages 的独立上下文模块。每个 layer 以 `[name]` 格式的 header 开头，后接该层对应的结构化文本。当前 layers 包括 `system_core`、`injections`、`session_identity`、`project_context`、`recent_chat` 五个。Agent-run-start context assembly 按固定顺序将这些 layers 组装为初始上下文。 |
+| Diagnostic | 诊断信息 | 编译器、类型检查器、linter 或语言服务器对当前工作区产生的错误、警告和提示，等价于 VS Code Problems 面板里的结构化问题列表。 |
+| Model-specific system prompt | 模型专属系统提示 | `system_core` 中针对具体 `modelId` 选择的 prompt 文件；用于适配不同模型的行为差异，不按 provider 区分。provider 只负责请求路由、鉴权和 transport，不参与 prompt 选择。 |
