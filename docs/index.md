@@ -66,7 +66,7 @@ outline: false
     <div class="docs-links">
       <a href="./start/install">Start with installation</a>
       <a href="./features/cli">Use the CLI workflow</a>
-      <a href="./philosophy/token-efficiency">Understand token efficiency</a>
+      <a href="./architecture-boundaries">View architecture boundaries</a>
       <a href="./reference/commands">Browse CLI commands</a>
     </div>
   </section>

@@ -23,6 +23,7 @@ const englishSidebar = [
     text: 'Concepts',
     items: [
       { text: 'Token Efficiency', link: '/philosophy/token-efficiency' },
+      { text: 'Architecture Boundaries', link: '/architecture-boundaries' },
       { text: 'Context Model', link: '/concepts/context' },
       { text: 'Runtime Core Boundary', link: '/concepts/runtime-core' },
       { text: 'Memory System', link: '/concepts/memory' },
@@ -63,6 +64,7 @@ const chineseSidebar = [
     text: '概念',
     items: [
       { text: 'Token 效率', link: '/zh/philosophy/token-efficiency' },
+      { text: '架构边界', link: '/architecture-boundaries' },
       { text: '上下文模型', link: '/zh/concepts/context' },
       { text: '记忆系统', link: '/zh/concepts/memory' },
     ],

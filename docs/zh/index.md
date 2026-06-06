@@ -66,7 +66,7 @@ outline: false
     <div class="docs-links">
       <a href="./start/install">从安装开始</a>
       <a href="./features/cli">使用 CLI 工作流</a>
-      <a href="./philosophy/token-efficiency">理解 Token 效率</a>
+      <a href="../architecture-boundaries">查看架构边界</a>
       <a href="./reference/commands">浏览 CLI 命令</a>
     </div>
   </section>
