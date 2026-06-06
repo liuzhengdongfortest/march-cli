@@ -1,8 +1,8 @@
 import { strict as assert } from "node:assert";
 
 export async function runTurnEventsSmoke() {
-  console.log("--- smoke: runner turn event handling ---");
-  const { buildAssistantExecutionJson, buildUserRecallInput, createTurnEventState, handleRunnerSessionEvent, recordAssistantRecallInput } = await import("../src/agent/turn/turn-events.mjs");
+  console.log("--- smoke: agent run event handling ---");
+  const { buildAssistantExecutionJson, buildUserRecallInput, createAgentRunEventState, handleRunnerSessionEvent, recordAssistantRecallInput } = await import("../src/agent/agent-run/agent-run-events.mjs");
 
   const calls = [];
   const ui = {
@@ -16,7 +16,7 @@ export async function runTurnEventsSmoke() {
     retryEnd: (event) => calls.push(["retryEnd", event.success, event.attempt, event.finalError]),
   };
   const engine = {};
-  const state = createTurnEventState();
+  const state = createAgentRunEventState();
 
   handleRunnerSessionEvent(textDelta("hello"), { ui, engine, state });
   handleRunnerSessionEvent({ type: "message_update", assistantMessageEvent: { type: "thinking_start" } }, { ui, engine, state });

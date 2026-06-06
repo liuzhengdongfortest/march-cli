@@ -1,8 +1,8 @@
 import { resolveImageAttachmentReferences } from "../../session/attachment-references.mjs";
-import { buildAssistantExecutionJson, buildUserRecallInput, closeAssistantReply, createTurnEventState, handleRunnerSessionEvent } from "./turn-events.mjs";
-import { buildInitialPiPrompt, resetPiMessageHistory } from "./pi-turn-context.mjs";
+import { buildAssistantExecutionJson, buildUserRecallInput, closeAssistantReply, createAgentRunEventState, handleRunnerSessionEvent } from "./agent-run-events.mjs";
+import { buildInitialPiPrompt, resetPiMessageHistory } from "./pi-agent-run-context.mjs";
 
-export async function runRunnerTurn({
+export async function runAgentRun({
   prompt,
   userMessage,
   options = {},
@@ -18,18 +18,18 @@ export async function runRunnerTurn({
   autoNameSession,
   contextMode = "rebuild",
   recordHistory = null,
-  setCurrentTurnState = null,
+  setCurrentAgentRunState = null,
   flushFinalAssistantRecall = null,
 }) {
   const {
     userRecallHints = [],
   } = options;
   const activeSession = sessionBinding.get();
-  const turnState = createTurnEventState();
-  setCurrentTurnState?.(turnState);
+  const agentRunState = createAgentRunEventState();
+  setCurrentAgentRunState?.(agentRunState);
   ui.turnStart();
   setPhase?.("subscribed");
-  logger?.event("turn.ui.start");
+  logger?.event("agent_run.ui.start");
 
   const unsubscribe = activeSession.subscribe((event) => {
     logSessionEvent(logger, event);
@@ -48,7 +48,7 @@ export async function runRunnerTurn({
     if (event.type === "message_update") {
       setPhase?.("model_streaming");
     }
-    handleRunnerSessionEvent(event, { ui, engine, state: turnState });
+    handleRunnerSessionEvent(event, { ui, engine, state: agentRunState });
   });
 
   try {
@@ -56,7 +56,7 @@ export async function runRunnerTurn({
       text: userMessage ?? prompt,
       projectMarchDir,
     });
-    logger?.event("turn.attachments.resolved", { imageCount: attachmentReferences.images.length });
+    logger?.event("agent_run.attachments.resolved", { imageCount: attachmentReferences.images.length });
     setModelCallKind("user");
     setPhase?.("model_request");
     logger?.event("model.prompt.start", { contextMode });
@@ -69,38 +69,38 @@ export async function runRunnerTurn({
         piPrompt,
         attachmentReferences.images.length > 0 ? { images: attachmentReferences.images } : undefined,
       );
-      throwIfAssistantEndedWithError(turnState);
+      throwIfAssistantEndedWithError(agentRunState);
     } finally {
       setModelCallKind("model");
       logger?.event("model.prompt.end");
     }
 
     setPhase?.("finalizing");
-    await finalizeTurn({
+    await finalizeAgentRun({
       prompt,
       userMessage,
       userRecallHints,
       memoryStore,
       engine,
       ui,
-      turnState,
+      agentRunState,
       syncCurrentMarchSessionState,
       autoNameSession,
       recordHistory,
       flushFinalAssistantRecall,
     });
-    return { draft: turnState.draft };
+    return { draft: agentRunState.draft };
   } finally {
-    logger?.event("turn.ui.end");
-    setCurrentTurnState?.(null);
+    logger?.event("agent_run.ui.end");
+    setCurrentAgentRunState?.(null);
     ui.turnEnd();
     unsubscribe();
   }
 }
 
-function throwIfAssistantEndedWithError(turnState) {
-  if (turnState.lastAssistantStopReason !== "error") return;
-  const error = new Error(turnState.lastAssistantErrorMessage || "Model provider returned an error");
+function throwIfAssistantEndedWithError(agentRunState) {
+  if (agentRunState.lastAssistantStopReason !== "error") return;
+  const error = new Error(agentRunState.lastAssistantErrorMessage || "Model provider returned an error");
   error.code = "MODEL_PROVIDER_ERROR";
   throw error;
 }
@@ -129,55 +129,55 @@ function logSessionEvent(logger, event) {
   });
 }
 
-async function finalizeTurn({ prompt, userMessage, userRecallHints, memoryStore, engine, ui, turnState, syncCurrentMarchSessionState, autoNameSession, recordHistory, flushFinalAssistantRecall }) {
-  closeAssistantReply({ ui, state: turnState });
-  const assistantRecall = await (flushFinalAssistantRecall?.(turnState) ?? flushAssistantRecall({ memoryStore, engine, turnState }));
+async function finalizeAgentRun({ prompt, userMessage, userRecallHints, memoryStore, engine, ui, agentRunState, syncCurrentMarchSessionState, autoNameSession, recordHistory, flushFinalAssistantRecall }) {
+  closeAssistantReply({ ui, state: agentRunState });
+  const assistantRecall = await (flushFinalAssistantRecall?.(agentRunState) ?? flushAssistantRecall({ memoryStore, engine, agentRunState }));
   if (assistantRecall.report) ui.recall?.({ hints: assistantRecall.hints, report: assistantRecall.report, variant: "assistant" });
 
   const userRecallInput = buildUserRecallInput(userRecallHints);
   const turn = engine.recordTurn({
     userMessage: userMessage ?? prompt.slice(0, 300),
-    assistantMessage: turnState.draft,
+    assistantMessage: agentRunState.draft,
     userExecutionJson: userRecallInput ? {
       schemaVersion: 1,
       contextInputs: { turnStart: { userRecall: [userRecallInput] } },
     } : null,
-    assistantExecutionJson: buildAssistantExecutionJson(turnState, { assistantRecall }),
+    assistantExecutionJson: buildAssistantExecutionJson(agentRunState, { assistantRecall }),
   });
-  recordHistory?.({ ...turn, thinking: assistantThinkingText(turnState), toolCalls: turnState.toolCalls });
+  recordHistory?.({ ...turn, thinking: assistantThinkingText(agentRunState), toolCalls: agentRunState.toolCalls });
 
   autoNameSession?.();
   syncCurrentMarchSessionState();
 }
 
-export async function flushAssistantRecall({ memoryStore, engine, turnState }) {
+export async function flushAssistantRecall({ memoryStore, engine, agentRunState }) {
   if (!memoryStore) return { hints: [], report: null };
-  const text = assistantRecallDeltaText(turnState);
-  advanceAssistantRecallCursor(turnState);
+  const text = assistantRecallDeltaText(agentRunState);
+  advanceAssistantRecallCursor(agentRunState);
   if (!text.trim()) return { hints: [], report: null };
   return await memoryStore.recallForAssistant(text, {
     excludedIds: engine.getRecentRecallMemoryIds?.() ?? [],
   });
 }
 
-function assistantRecallDeltaText(turnState) {
-  const cursor = turnState.recallCursor ?? { draftLength: 0, thinkingLength: 0 };
-  const thinking = assistantThinkingText(turnState);
+function assistantRecallDeltaText(agentRunState) {
+  const cursor = agentRunState.recallCursor ?? { draftLength: 0, thinkingLength: 0 };
+  const thinking = assistantThinkingText(agentRunState);
   return [
-    turnState.draft.slice(cursor.draftLength),
+    agentRunState.draft.slice(cursor.draftLength),
     thinking.slice(cursor.thinkingLength),
   ]
     .filter(Boolean)
     .join("\n");
 }
 
-function advanceAssistantRecallCursor(turnState) {
-  turnState.recallCursor = {
-    draftLength: turnState.draft.length,
-    thinkingLength: assistantThinkingText(turnState).length,
+function advanceAssistantRecallCursor(agentRunState) {
+  agentRunState.recallCursor = {
+    draftLength: agentRunState.draft.length,
+    thinkingLength: assistantThinkingText(agentRunState).length,
   };
 }
 
-function assistantThinkingText(turnState) {
-  return `${turnState.thinkingAccumulator}${turnState.thinkingText}`;
+function assistantThinkingText(agentRunState) {
+  return `${agentRunState.thinkingAccumulator}${agentRunState.thinkingText}`;
 }

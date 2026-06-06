@@ -5,8 +5,8 @@ import { resolveRunnerSessionOptions } from "../session/session-options.mjs";
 import { installModelPayloadDumper } from "../model-payload-dumper.mjs";
 import { createMarchPiContextExtension } from "../runner/context/pi-context-extension.mjs";
 import { createMarchPiResourceLoader } from "../runtime/resource/context-resource-loader.mjs";
-import { buildInitialPiPrompt, resetPiMessageHistory } from "../turn/pi-turn-context.mjs";
-import { createTurnEventState, handleRunnerSessionEvent } from "../turn/turn-events.mjs";
+import { buildInitialPiPrompt, resetPiMessageHistory } from "../agent-run/pi-agent-run-context.mjs";
+import { createAgentRunEventState, handleRunnerSessionEvent } from "../agent-run/agent-run-events.mjs";
 import { createInheritedContextEngineOptions, formatParentCurrentState, restoreInheritedContext } from "./snapshot.mjs";
 
 export async function runAvatarSession({
@@ -97,10 +97,10 @@ export async function runAvatarSession({
     () => ({ avatar: definition.name, avatar_job_id: jobId, parent_session_id: contextSnapshot?.parent_session_id ?? null })
   );
 
-  const turnState = createTurnEventState();
+  const agentRunState = createAgentRunEventState();
   const silentUi = createSilentUi();
   const unsubscribe = session.subscribe?.((event) => {
-    handleRunnerSessionEvent(event, { ui: silentUi, engine: childEngine, state: turnState });
+    handleRunnerSessionEvent(event, { ui: silentUi, engine: childEngine, state: agentRunState });
   }) ?? (() => {});
   const abortOnSignal = () => session.abort?.();
   try {
@@ -110,12 +110,12 @@ export async function runAvatarSession({
     resetPiMessageHistory(session);
     await session.prompt(buildInitialPiPrompt(childEngine, currentPrompt));
     if (budget.exceeded) throw new Error(`Avatar exceeded max_model_calls=${definition.maxModelCalls}`);
-    if (turnState.lastAssistantStopReason === "error") {
-      throw new Error(turnState.lastAssistantErrorMessage || "Avatar model provider returned an error");
+    if (agentRunState.lastAssistantStopReason === "error") {
+      throw new Error(agentRunState.lastAssistantErrorMessage || "Avatar model provider returned an error");
     }
     return {
-      draft: turnState.draft.trim(),
-      toolCalls: turnState.toolCalls,
+      draft: agentRunState.draft.trim(),
+      toolCalls: agentRunState.toolCalls,
       model: session.model ?? sessionOptions.model,
       thinkingLevel: session.thinkingLevel ?? sessionOptions.thinkingLevel,
     };

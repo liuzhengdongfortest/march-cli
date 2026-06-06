@@ -2,7 +2,7 @@ import { formatRecallHints } from "../../memory/markdown-store.mjs";
 
 const TOOL_ERROR_EXCERPT_LIMIT = 4000;
 
-export function createTurnEventState() {
+export function createAgentRunEventState() {
   return {
     draft: "",
     thinkingText: "",
@@ -91,20 +91,21 @@ export function recordAssistantRecallInput(state, { hints = [], report = null, d
 
 export function buildUserRecallInput(hints = []) {
   if (!Array.isArray(hints) || hints.length === 0) return null;
+  // Persisted execution JSON still uses the historical turn_start/inTurn schema keys; runtime code owns Agent Run semantics.
   return buildRecallInput({ source: "user", delivery: "turn_start", hints, report: null });
 }
 
-export function buildAssistantExecutionJson(turnState, { assistantRecall = null } = {}) {
-  const inTurn = [...(turnState.assistantRecallInputs ?? [])];
-  if ((assistantRecall?.hints ?? []).length > 0) inTurn.push(buildRecallInput({ source: "assistant", delivery: "final", hints: assistantRecall.hints ?? [], report: assistantRecall.report ?? null }));
+export function buildAssistantExecutionJson(agentRunState, { assistantRecall = null } = {}) {
+  const inRunRecallInputs = [...(agentRunState.assistantRecallInputs ?? [])];
+  if ((assistantRecall?.hints ?? []).length > 0) inRunRecallInputs.push(buildRecallInput({ source: "assistant", delivery: "final", hints: assistantRecall.hints ?? [], report: assistantRecall.report ?? null }));
   return pruneEmpty({
     schemaVersion: 1,
-    status: turnState.lastAssistantStopReason === "error" ? "failed" : "success",
-    contextInputs: pruneEmpty({ inTurn }),
-    toolCalls: cloneJson(turnState.toolCalls ?? []),
-    retries: cloneJson(turnState.retries ?? []),
-    errors: buildExecutionErrors(turnState),
-    result: pruneEmpty({ assistantText: turnState.draft ?? "" }),
+    status: agentRunState.lastAssistantStopReason === "error" ? "failed" : "success",
+    contextInputs: pruneEmpty({ inTurn: inRunRecallInputs }),
+    toolCalls: cloneJson(agentRunState.toolCalls ?? []),
+    retries: cloneJson(agentRunState.retries ?? []),
+    errors: buildExecutionErrors(agentRunState),
+    result: pruneEmpty({ assistantText: agentRunState.draft ?? "" }),
   });
 }
 
