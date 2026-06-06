@@ -10,11 +10,12 @@ export function resolveRunnerSessionOptions(options = {}) {
     throw new Error(`Runtime session cwd mismatch: engine=${engine.cwd}, session=${cwd}`);
   }
 
-  const availableModels = modelRegistry.getAvailable?.() ?? [];
+  const scopedModels = provider
+    ? (modelRegistry.getAll?.() ?? modelRegistry.getAvailable?.() ?? []).filter((model) => model.provider === provider)
+    : [];
   const model = (provider && modelId ? modelRegistry.find(provider, modelId) : null)
-    ?? availableModels[0]
     ?? (provider && modelId ? getModel(provider, modelId) : null);
-  if (!model) throw new Error(`Model not found: ${provider}/${modelId}`);
+  if (!model) throw new Error(`Model not configured. Run: march provider --config`);
 
   const allowed = allowedToolNames ? new Set(allowedToolNames) : null;
   const customTools = createMarchCustomTools({
@@ -34,6 +35,6 @@ export function resolveRunnerSessionOptions(options = {}) {
     thinkingLevel: "medium",
     customTools,
     tools,
-    scopedModels: availableModels.map((model) => ({ model })),
+    scopedModels: scopedModels.map((model) => ({ model })),
   };
 }

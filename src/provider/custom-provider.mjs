@@ -1,3 +1,5 @@
+import { isLiteralSecret } from "../auth/storage.mjs";
+
 const CUSTOM_PROVIDER_TYPE = "openai-compatible";
 const DEFAULT_API = "openai-completions";
 const SUPPORTED_APIS = new Set(["openai-completions", "openai-responses"]);
@@ -27,7 +29,7 @@ function toProviderConfig(providerId, profile) {
   return omitUndefined({
     name: typeof profile.name === "string" && profile.name.trim() ? profile.name : providerId,
     baseUrl,
-    apiKey: profile.auth?.method === "apiKey" ? profile.auth.apiKey : undefined,
+    apiKey: profile.auth?.method === "apiKey" && isLiteralSecret(profile.auth.apiKey) ? profile.auth.apiKey : undefined,
     api,
     headers: normalizeHeaders(providerId, profile.headers),
     authHeader: typeof profile.authHeader === "boolean" ? profile.authHeader : undefined,

@@ -1,5 +1,5 @@
 import { createAgentSession, ModelRegistry, SettingsManager } from "@earendil-works/pi-coding-agent";
-import { createMarchAuthStorage } from "../auth/storage.mjs";
+import { createConfigOnlyAuthStorage, createMarchAuthStorage } from "../auth/storage.mjs";
 import { ContextEngine } from "../context/engine.mjs";
 import { createMarchLifecycleAdapter } from "../extensions/lifecycle-adapter.mjs";
 import { syncMarchSessionState } from "../session/state/march-session-sync.mjs";
@@ -36,14 +36,16 @@ export { createDefaultSessionManager, resolveRunnerSessionManager } from "./runn
 export async function createRunner({ cwd, modelId = null, provider = null, providers = {}, stateRoot, ui, memoryRoot = null, profilePaths = null, memoryStore = null, memoryTools = [], remoteMemorySources = [], shellRuntime = null, mcpTools = [], mcpInjections = [], mcpClientManager = null, webTools = [], namespace = "", sessionManager = null, useRuntimeHost = false, projectMarchDir = null, syncMarchSessionState: syncMarchSessionStateEnabled = false, syncPiSidecar = syncMarchSessionStateEnabled, extensionPaths = [], lifecycleHooks = [], lifecycleDiagnostics = [], authStorage = null, modelContextDumper = null, turnNotifier = null, logger = null, onModelPayload = null, onLspStatusChange = null, createAgentSessionImpl = createAgentSession, createAgentSessionRuntimeImpl, createRuntimeServices, createRuntimeSessionFromServices, maxTurns, trimBatch, serviceTier = null, hostedTools = {}, imageModel = null, notificationContext = null }) {
   installRunnerProcessGuards();
   if (!useRuntimeHost && extensionPaths.length > 0) throw new Error("--extension requires the default pi runtime host path");
-  const authConfig = authStorage ? { authStorage, hasAuth: true } : createMarchAuthStorage({ provider: provider ?? "deepseek", providers, cwd });
+  const authConfig = authStorage
+    ? { authStorage: createConfigOnlyAuthStorage(authStorage), hasAuth: true }
+    : createMarchAuthStorage({ provider: provider ?? "deepseek", providers, cwd });
   if (!authConfig.hasAuth) throw new Error("No providers configured. Run: march provider --config");
   const resolvedAuth = authConfig.authStorage;
   const modelRegistry = ModelRegistry.create(resolvedAuth);
   registerSuperGrokProvider(modelRegistry);
   registerCustomProviders(modelRegistry, providers);
-  const selectedModel = resolveInitialModel({ modelRegistry, provider, modelId });
-  if (!selectedModel) throw new Error("No authenticated models available. Run: march provider --config");
+  const selectedModel = resolveInitialModel({ modelRegistry, provider, modelId, providers });
+  if (!selectedModel) throw new Error("No model provider configured. Run: march provider --config");
   provider = selectedModel.provider;
   modelId = selectedModel.id;
   const settingsManager = SettingsManager.inMemory({ compaction: { enabled: false }, retry: { enabled: true, maxRetries: 3, baseDelayMs: 2000, provider: { timeoutMs: 20000, maxRetries: 3, maxRetryDelayMs: 60000 } } });
@@ -209,7 +211,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       return model;
     },
     getScopedModels() { return appendFastVariants(sessionBinding.get().scopedModels); },
-    getConfiguredProviders() { return [...new Set([...Object.values(providers ?? {}).map((profile) => profile?.type).filter(Boolean), ...(modelRegistry.getAvailable?.() ?? []).map((model) => model.provider)])]; },
+    getConfiguredProviders() { return [...new Set([provider, ...Object.keys(providers ?? {})].filter(Boolean))]; },
     getSessionStats() { return getRunnerSessionStats(sessionBinding.get(), runtimeHost); },
     getLastNotificationResult() { return lastNotificationResult; },
     async notifyTest({ title = "March", message = "If you see this, March runtime notifications work." } = {}) {
