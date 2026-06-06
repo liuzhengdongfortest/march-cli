@@ -19,7 +19,9 @@ export async function runAuthStorageSmoke({ setupTmp, cleanup }) {
     authStorage,
   });
   assert.equal(resolved.hasAuth, false);
-  assert.equal(resolved.authStorage, authStorage);
+  assert.notEqual(resolved.authStorage, authStorage);
+  assert.equal(Object.getPrototypeOf(resolved.authStorage), authStorage);
+  assert.equal(typeof resolved.authStorage.hasAuth, "function");
   assert.equal(resolved.authPath, getMarchAuthPath(dir));
   assert.deepEqual(resolved.diagnostics, []);
 
@@ -39,6 +41,7 @@ export async function runAuthStorageSmoke({ setupTmp, cleanup }) {
   const stored = createMarchAuthStorage({
     homeDir: dir,
     authStorage: {
+      data: { "openai-codex": { type: "api_key", key: "stored-key" } },
       setRuntimeApiKey: () => {},
       list: () => ["openai-codex"],
     },

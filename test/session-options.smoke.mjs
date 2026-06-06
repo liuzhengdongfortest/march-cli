@@ -5,7 +5,7 @@ export async function runSessionOptionsSmoke() {
   const { resolveRunnerSessionOptions } = await import("../src/agent/session/session-options.mjs");
   const { createRunnerSessionBoundary } = await import("../src/agent/session/session-boundary.mjs");
 
-  const model = { id: "fake-model" };
+  const model = { id: "fake-model", provider: "test" };
   const options = resolveRunnerSessionOptions(createRunnerSessionBoundary({
     core: {
       cwd: "D:/repo",

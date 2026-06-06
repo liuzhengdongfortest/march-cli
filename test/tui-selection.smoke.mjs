@@ -65,7 +65,7 @@ export async function runTuiSelectionSmoke() {
   const codeEnd = codeSelectable.lines.findIndex((line, index) => index > codeStart && line.includes("╰"));
   assert.equal(codeSelectable.copyText({ start: { row: codeStart, col: 0 }, end: { row: codeEnd, col: 80 } }), "const x = 1;");
   assert.equal(codeSelectable.copyText({ start: { row: codeStart + 1, col: 0 }, end: { row: codeEnd - 1, col: 80 } }), "const x = 1;");
-  assert.equal(codeSelectable.copyText({ start: { row: codeStart + 1, col: 8 }, end: { row: codeStart + 1, col: 13 } }), "st x ");
+  assert.equal(codeSelectable.copyText({ start: { row: codeStart + 1, col: 5 }, end: { row: codeStart + 1, col: 10 } }), "st x ");
 
   const multiCodeOutput = new OutputBuffer();
   multiCodeOutput.writeMarkdown("```js\nconst x = 1;\nconst y = x + 2;\n```\n");
@@ -73,7 +73,7 @@ export async function runTuiSelectionSmoke() {
   const multiCodeSelectable = multiCodeOutput.renderSelectable(40);
   const multiCodeStart = multiCodeSelectable.lines.findIndex((line) => line.includes("╭"));
   assert.equal(multiCodeSelectable.copyText({ start: { row: multiCodeStart + 1, col: 2 }, end: { row: multiCodeStart + 2, col: 40 } }), "const x = 1;\nconst y = x + 2;");
-  assert.equal(multiCodeSelectable.copyText({ start: { row: multiCodeStart + 1, col: 8 }, end: { row: multiCodeStart + 2, col: 9 } }), "st x = 1;\nconst");
+  assert.equal(multiCodeSelectable.copyText({ start: { row: multiCodeStart + 1, col: 5 }, end: { row: multiCodeStart + 2, col: 7 } }), "st x = 1;\nconst");
 
   const tableOutput = new OutputBuffer();
   const tableMarkdown = "Before\n\n| 功能 | 状态 | 备注 |\n| --- | --- | --- |\n| 复制 Markdown | ✅ 通过 | 包含标题、正文和表格 |\n| 表格对齐 | ✅ 通过 | 第二列右对齐 |\n\nAfter";

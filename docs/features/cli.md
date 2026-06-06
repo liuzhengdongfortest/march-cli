@@ -49,6 +49,16 @@ March will locate the relevant files, open the parts it needs, and only then ans
 
 For project-specific rules, keep an `AGENTS.md` file in the repository. March loads it as part of project context so repeated instructions do not have to be pasted into every prompt.
 
+## Copy code from the TUI
+
+Assistant answers may render fenced code blocks with borders and wrapping for readability. When you select text inside a code block, March copies the underlying source range instead of the decorated terminal cells:
+
+- borders, padding, and ANSI styling are not copied;
+- wrapped visual lines are merged back into the original source line;
+- partial line selections preserve the selected source columns.
+
+This keeps small snippets usable when you copy only part of a generated command, function, or config block.
+
 ## Resume or inspect sessions
 
 Use `--resume <id>` when you want to start from a previous pi session id:
