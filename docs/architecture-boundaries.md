@@ -163,6 +163,21 @@ flowchart TB
 
 **边界规则：** provider 负责 auth、model discovery、quota/product transport 和 request execution；它不决定 March context 结构，`modelId` 只影响 model-specific system prompt。
 
+## 8. Daemon 与子进程边界
+
+```mermaid
+flowchart TB
+  CLI[March CLI 主进程] --> Runner[Runner Runtime 子进程\nAgent Runtime 隔离边界]
+  CLI --> Browser[Browser daemon\n浏览器扩展桥]
+  CLI --> Gateway[Gateway daemon\n外部消息入口]
+  CLI --> MemoryServe[Remote Memory server\n显式 memory API]
+  Runner --> LSP[LSP server processes\n按需诊断子进程]
+  Runner --> Pty[Shell / PTY\n用户显式工具进程]
+  Runner -. deprecated .-> Office[Office archive\n不再注册 tools / daemon]
+```
+
+**边界规则：** browser、gateway、memory serve 是 daemon-like 服务；runner 是运行时隔离子进程；LSP、PTY、command_exec 是按需进程。Office 当前是弃用归档，不属于运行期 capability。
+
 ## 架构不变量
 
 1. **Shell 不是 Agent Runtime。** CLI/TUI 处理交互、命令和渲染；Agent 行为在 runner 边界之后。
@@ -170,4 +185,5 @@ flowchart TB
 3. **Context 重新组装，transcript 继续推进。** ContextEngine 构造初始 March context；pi-agent transcript 承载运行中的连续性。
 4. **Provider 是传输边界，不是策略边界。** Provider 处理模型连接问题，不处理 March context policy。
 5. **Workspace 是监督边界，不是执行边界。** Workspace 代码选择和路由 project runtime；单个 runtime 执行 Agent Run。
-6. **State 必须分层。** March state、pi state、history、memory 保持分离，resume、recall 和渲染才可预测。
+6. **Process 边界不能混用。** Daemon、runner 子进程和按需 spawned process 的生命周期不同，不能用同一套状态假设处理。
+7. **State 必须分层。** March state、pi state、history、memory 保持分离，resume、recall 和渲染才可预测。
