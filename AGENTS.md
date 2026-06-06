@@ -48,6 +48,7 @@
 ### 发布形态
 
 - 发布形态保持源码发布：npm 包带 `bin/` 和 `src/`，资源文件随源码目录一起发布；不优先追求单文件 bundle。
+- 每次发布版本前，必须至少新增或实质修改一篇 GitHub/VitePress 文档；不能只是发布日志，优先补充 March 内部机制剖析或使用指南，例如 provider 配置、provider share/reuse、runtime/context/tool/memory/browser/office/gateway 边界。
 
 
 ### 编码原则
