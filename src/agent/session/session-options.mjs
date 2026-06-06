@@ -1,29 +1,11 @@
 import { getModel } from "@earendil-works/pi-ai";
 import { MARCH_BASE_TOOL_NAMES } from "../tool-names.mjs";
 import { createMarchCustomTools } from "../tools.mjs";
+import { createRunnerSessionBoundary } from "./session-boundary.mjs";
 
-export function resolveRunnerSessionOptions({
-  cwd,
-  provider,
-  modelId,
-  modelRegistry,
-  engine,
-  ui,
-  memoryTools = [],
-  historyStore = null,
-  shellRuntime = null,
-  lspService = null,
-  mcpTools = [],
-  webTools = [],
-  lifecycle = null,
-  authStorage = null,
-  projectMarchDir = null,
-  stateRoot = null,
-  getCurrentModel = null,
-  avatarRuntime = null,
-  allowedToolNames = null,
-  imageModel = null,
-}) {
+export function resolveRunnerSessionOptions(options = {}) {
+  const boundary = createRunnerSessionBoundary(options);
+  const { cwd, provider, modelId, modelRegistry, engine, ui, stateRoot, getCurrentModel, allowedToolNames } = boundary.core;
   if (engine.cwd !== cwd) {
     throw new Error(`Runtime session cwd mismatch: engine=${engine.cwd}, session=${cwd}`);
   }
@@ -34,7 +16,11 @@ export function resolveRunnerSessionOptions({
     ?? (provider && modelId ? getModel(provider, modelId) : null);
   if (!model) throw new Error(`Model not found: ${provider}/${modelId}`);
 
-  const allCustomTools = createMarchCustomTools({ cwd, engine, ui, memoryTools, historyStore, shellRuntime, lspService, mcpTools, webTools, lifecycle, authStorage, projectMarchDir, stateRoot, getCurrentModel: () => getCurrentModel?.() ?? model, avatarRuntime, modelRegistry, imageModel });
+  const allCustomTools = createMarchCustomTools({
+    core: { cwd, engine, ui, stateRoot, modelRegistry, getCurrentModel: () => getCurrentModel?.() ?? model },
+    capabilities: boundary.capabilities,
+    infrastructure: boundary.infrastructure,
+  });
   const allowed = allowedToolNames ? new Set(allowedToolNames) : null;
   const customTools = allowed ? allCustomTools.filter((tool) => allowed.has(tool.name)) : allCustomTools;
   const customToolNames = customTools.map((tool) => tool.name);

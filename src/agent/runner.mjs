@@ -17,6 +17,7 @@ import { dumpCodexTransportDebug, getCodexTransportDebugSnapshot } from "./runne
 import { createMarchPiContextExtension } from "./runner/context/pi-context-extension.mjs";
 import { createAssistantRecallRuntime } from "./runner/recall/assistant-recall-runtime.mjs";
 import { resolveRunnerSessionOptions } from "./session/session-options.mjs";
+import { createRunnerSessionBoundary } from "./session/session-boundary.mjs";
 import { createSessionBinding } from "./session/session-binding.mjs";
 import { maybeAutoNameSession } from "./session/session-auto-name.mjs";
 import { MARCH_BASE_TOOL_NAMES } from "./tool-names.mjs";
@@ -74,6 +75,11 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     getCurrentUserRequest: () => currentUserRequestForContext, getCurrentModel: () => _currentFastEntry ?? sessionBinding.get()?.model ?? selectedModel,
     namespace, shellRuntime, lspService, webTools, hostedTools, modelContextDumper, onModelPayload: onLoggedModelPayload, logger,
   });
+  const sessionBoundary = createRunnerSessionBoundary({
+    core: { cwd, stateRoot, provider, modelId, modelRegistry, engine, ui: runtimeUi, getCurrentModel: () => sessionBinding.get()?.model ?? selectedModel },
+    capabilities: { memoryTools, mcpTools, webTools, avatarRuntime, imageModel },
+    infrastructure: { historyStore, shellRuntime, lspService, lifecycle, authStorage: resolvedAuth, projectMarchDir },
+  });
   if (useRuntimeHost) {
     runtimeHost = await createRunnerRuntimeHost({
       cwd, stateRoot, provider, modelId,
@@ -81,7 +87,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       providers,
       sessionManager: resolvedSessionManager, sessionBinding, engine, ui: runtimeUi,
       projectMarchDir,
-      memoryTools, memoryStore, historyStore, shellRuntime, lspService, mcpTools, webTools,
+      sessionBoundary,
       lifecycle, extensionPaths, hostedTools, imageModel, avatarRuntime, extensionFactories: [marchPiContextExtension],
       onRebind: (session) => {
         installModelPayloadDumper(session, modelContextDumper, () => currentModelCallKind, onLoggedModelPayload);
@@ -92,13 +98,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       createFromServices: createRuntimeSessionFromServices,
     });
   } else {
-    const sessionOptions = resolveRunnerSessionOptions({
-      cwd, stateRoot, provider, modelId, modelRegistry, engine, ui: runtimeUi,
-      memoryTools, historyStore, shellRuntime, lspService, mcpTools, webTools, lifecycle,
-      authStorage: resolvedAuth, projectMarchDir,
-      getCurrentModel: () => sessionBinding.get()?.model ?? selectedModel,
-      avatarRuntime, imageModel,
-    });
+    const sessionOptions = resolveRunnerSessionOptions(sessionBoundary);
     const resourceLoader = await createMarchPiResourceLoader({ cwd, agentDir: stateRoot, settingsManager, extraOptions: { extensionFactories: [marchPiContextExtension] } });
     const { session } = await createAgentSessionImpl({
       cwd, agentDir: stateRoot, ...sessionOptions,

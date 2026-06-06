@@ -2,6 +2,7 @@ import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { ContextEngine } from "../../context/engine.mjs";
 import { createSessionBinding } from "../session/session-binding.mjs";
 import { resolveRunnerSessionOptions } from "../session/session-options.mjs";
+import { createRunnerSessionBoundary } from "../session/session-boundary.mjs";
 import { installModelPayloadDumper } from "../model-payload-dumper.mjs";
 import { createMarchPiContextExtension } from "../runner/context/pi-context-extension.mjs";
 import { createMarchPiResourceLoader } from "../runtime/resource/context-resource-loader.mjs";
@@ -56,21 +57,21 @@ export async function runAvatarSession({
     logger,
   });
   const budget = createAvatarBudget(definition.maxModelCalls);
-  const sessionOptions = resolveRunnerSessionOptions({
-    cwd,
-    stateRoot,
-    provider,
-    modelId,
-    modelRegistry,
-    engine: childEngine,
-    ui: createSilentUi(),
-    shellRuntime,
-    lspService,
-    webTools,
-    authStorage,
-    allowedToolNames: definition.tools,
-    getCurrentModel: () => childBinding.get()?.model ?? null,
-  });
+  const sessionOptions = resolveRunnerSessionOptions(createRunnerSessionBoundary({
+    core: {
+      cwd,
+      stateRoot,
+      provider,
+      modelId,
+      modelRegistry,
+      engine: childEngine,
+      ui: createSilentUi(),
+      allowedToolNames: definition.tools,
+      getCurrentModel: () => childBinding.get()?.model ?? null,
+    },
+    capabilities: { webTools },
+    infrastructure: { shellRuntime, lspService, authStorage },
+  }));
   const resourceLoader = await createMarchPiResourceLoader({
     cwd,
     agentDir: stateRoot,

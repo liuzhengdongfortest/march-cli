@@ -2,6 +2,7 @@ import { createAgentSessionRuntime } from "@earendil-works/pi-coding-agent";
 import { createMarchRuntimeFactory } from "./runtime-factory.mjs";
 import { createRuntimeHost } from "./runtime-host.mjs";
 import { resolveRunnerSessionOptions } from "../session/session-options.mjs";
+import { createRunnerSessionBoundary } from "../session/session-boundary.mjs";
 import { registerSuperGrokProvider } from "../../supergrok/provider.mjs";
 import { registerCustomProviders } from "../../provider/custom-provider.mjs";
 
@@ -31,6 +32,7 @@ export async function createRunnerRuntimeHost({
   extensionPaths = [],
   hostedTools = {},
   extensionFactories = [],
+  sessionBoundary = null,
   onRebind = null,
   createAgentSessionRuntimeImpl = createAgentSessionRuntime,
   createServices,
@@ -51,28 +53,21 @@ export async function createRunnerRuntimeHost({
       const activeModelRegistry = services.modelRegistry ?? modelRegistry;
       registerSuperGrokProvider(activeModelRegistry);
       registerCustomProviders(activeModelRegistry, providers);
-      return resolveRunnerSessionOptions({
-        cwd: sessionCwd,
-        stateRoot,
-        provider,
-        modelId,
-        modelRegistry: activeModelRegistry,
-        engine,
-        ui,
-        memoryTools,
-        historyStore,
-        shellRuntime,
-        lspService,
-        mcpTools,
-        webTools,
-        lifecycle,
-        authStorage,
-        projectMarchDir,
-        hostedTools,
-        avatarRuntime,
-        imageModel,
-        getCurrentModel: () => sessionBinding.get()?.model ?? null,
-      });
+      return resolveRunnerSessionOptions(createRunnerSessionBoundary({
+        core: {
+          ...(sessionBoundary?.core ?? {}),
+          cwd: sessionCwd,
+          provider,
+          modelId,
+          modelRegistry: activeModelRegistry,
+          engine,
+          ui,
+          stateRoot,
+          getCurrentModel: () => sessionBinding.get()?.model ?? null,
+        },
+        capabilities: sessionBoundary?.capabilities ?? { memoryTools, mcpTools, webTools, avatarRuntime, imageModel },
+        infrastructure: sessionBoundary?.infrastructure ?? { historyStore, shellRuntime, lspService, lifecycle, authStorage, projectMarchDir },
+      }));
     },
   });
 

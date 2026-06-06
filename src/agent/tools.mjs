@@ -16,8 +16,13 @@ import { createOfficeTools } from "../office/tools/index.mjs";
 import { createRuntimeRestartTool } from "./lifecycle/runtime-restart-tool.mjs";
 import { createHistorySearchTool } from "../history/tool.mjs";
 import { createAvatarTools } from "./avatars/tools.mjs";
+import { createRunnerSessionBoundary } from "./session/session-boundary.mjs";
 
-export function createMarchCustomTools({ cwd, engine, ui, memoryTools = [], historyStore = null, shellRuntime = null, lspService = null, mcpTools = [], webTools = [], lifecycle = null, authStorage = null, projectMarchDir = null, stateRoot = null, getCurrentModel = null, avatarRuntime = null, modelRegistry = null, imageModel = null }) {
+export function createMarchCustomTools(options = {}) {
+  const boundary = createRunnerSessionBoundary(options);
+  const { cwd, engine, ui, stateRoot, getCurrentModel, modelRegistry } = boundary.core;
+  const { memoryTools, mcpTools, webTools, avatarRuntime, imageModel } = boundary.capabilities;
+  const { historyStore, shellRuntime, lspService, lifecycle, authStorage, projectMarchDir } = boundary.infrastructure;
   const commandExecTool = createCommandExecTool({ cwd });
   const codeSearchTool = createCodeSearchTool({ engine, stateRoot });
   const contextStatsTool = createContextStatsTool({ engine });

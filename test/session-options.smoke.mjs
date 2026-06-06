@@ -3,6 +3,7 @@ import { strict as assert } from "node:assert";
 export async function runSessionOptionsSmoke() {
   console.log("--- smoke: runner session options ---");
   const { resolveRunnerSessionOptions } = await import("../src/agent/session/session-options.mjs");
+  const { createRunnerSessionBoundary } = await import("../src/agent/session/session-boundary.mjs");
 
   const model = { id: "fake-model" };
   const options = resolveRunnerSessionOptions({
@@ -33,6 +34,21 @@ export async function runSessionOptionsSmoke() {
   assert.ok(options.tools.includes("terminal_read"));
   assert.ok(options.tools.includes("terminal_snapshot"));
   assert.ok(options.tools.includes("remember"));
+
+  const boundaryOptions = resolveRunnerSessionOptions(createRunnerSessionBoundary({
+    core: {
+      cwd: "D:/repo",
+      provider: "test",
+      modelId: "model",
+      modelRegistry: { find: () => model, getAvailable: () => [model] },
+      engine: { cwd: "D:/repo" },
+      ui: { editDiff: () => {} },
+    },
+    capabilities: { memoryTools: [{ name: "boundary_memory" }] },
+    infrastructure: { shellRuntime: { listShells: () => [] } },
+  }));
+  assert.ok(boundaryOptions.tools.includes("boundary_memory"));
+  assert.ok(boundaryOptions.tools.includes("terminal_spawn"));
 
   assert.throws(
     () => resolveRunnerSessionOptions({
