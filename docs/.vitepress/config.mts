@@ -24,6 +24,7 @@ const englishSidebar = [
     items: [
       { text: 'Token Efficiency', link: '/philosophy/token-efficiency' },
       { text: 'Context Model', link: '/concepts/context' },
+      { text: 'Runtime Core Boundary', link: '/concepts/runtime-core' },
       { text: 'Memory System', link: '/concepts/memory' },
     ],
   },

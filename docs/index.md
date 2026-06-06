@@ -6,7 +6,7 @@ outline: false
 <div class="march-home">
   <section class="march-hero">
     <p class="eyebrow">Terminal-native coding agent</p>
-    <h1>A coding workspace that rebuilds context every turn.</h1>
+    <h1>A coding workspace that rebuilds context at Agent Run start.</h1>
     <p class="lead">
       March works inside your repository, reads the project state on demand, edits files through explicit tools, and keeps long-term knowledge as plain Markdown.
     </p>
@@ -22,7 +22,7 @@ outline: false
     <article>
       <p class="kicker">Context</p>
       <h2>Fresh context, not stale chat.</h2>
-      <p>Each turn is assembled from stable layers: system rules, project context, session facts, recent chat, and recall hints.</p>
+      <p>Each Agent Run starts from stable layers: system rules, project context, session facts, recent chat, and recall hints.</p>
       <ul>
         <li>Repository-aware by default</li>
         <li>Clear dialog entries and tool calls</li>

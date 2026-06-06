@@ -1,3 +1,4 @@
+// Builds only the user-facing initial prompt projection. The system prompt is attached by pi-context-extension at Agent Run start.
 export function buildInitialPiPrompt(engine, prompt) {
   const providerContext = engine.buildProviderContext(prompt);
   return (providerContext.userMessages ?? [])

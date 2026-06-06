@@ -22,7 +22,7 @@ outline: false
     <article>
       <p class="kicker">上下文</p>
       <h2>新鲜上下文，而不是陈旧聊天记录。</h2>
-      <p>每个 turn 都从稳定层组装：系统规则、项目上下文、会话事实、近期对话和召回的记忆 hint。</p>
+      <p>每个 Agent Run 开始时从稳定层组装：系统规则、项目上下文、会话事实、近期对话和召回的记忆 hint。</p>
       <ul>
         <li>默认理解当前仓库</li>
         <li>清晰区分 dialog entry 和 tool call</li>

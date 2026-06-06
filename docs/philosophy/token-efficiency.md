@@ -1,12 +1,12 @@
 # Token Efficiency
 
-Most coding agents slowly fill the prompt with old conversation, old tool output, and old guesses about the repository. March takes the opposite path: every turn should start from a small, clean context and rebuild the facts it needs.
+Most coding agents slowly fill the prompt with old conversation, old tool output, and old guesses about the repository. March takes the opposite path: each Agent Run should start from a small, clean context and rebuild the facts it needs.
 
 ```text
-Previous turn
+Previous Agent Run
   → keep the user request and final answer
   → discard intermediate tool noise
-  → next turn rebuilds current facts from the repo
+  → next Agent Run rebuilds current facts from the repo
 ```
 
 ## The core idea
@@ -17,7 +17,7 @@ March keeps stable instructions and recent conversation, then reads files, comma
 
 ## What gets smaller
 
-March tries not to carry these across turns:
+March tries not to carry these across Agent Runs:
 
 - long command output that was only useful during debugging
 - intermediate failed attempts

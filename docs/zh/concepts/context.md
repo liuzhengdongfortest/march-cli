@@ -1,6 +1,6 @@
 # 上下文模型
 
-March 把上下文当作每次重新构造的状态，而不是不断增长的聊天记录。
+March 把 Agent Run 的初始上下文当作每次重新构造的状态。Agent Run 过程中，pi-agent 通过追加模型输出、工具调用、工具结果和隐藏 steer message 推进 transcript。
 
 ```text
 稳定指令
@@ -19,6 +19,6 @@ March 把上下文当作每次重新构造的状态，而不是不断增长的�
 - `system_core`：March 行为、安全规则和模型专属补充提示
 - `injections`：MCP 或扩展明确注入的外部指令
 - `session_identity`：cwd、workspace root、memory root、平台和 shell
-- `recent_chat`：最近 turn，加上紧凑的 recall hints
+- `recent_chat`：最近 Agent Runs，加上紧凑的 recall hints
 
-完整设计笔记见 [上下文核心模型](/context-core)。
+运行时边界见 [Runtime Core Boundary](/concepts/runtime-core)。完整设计笔记见 [上下文核心模型](/context-core)。

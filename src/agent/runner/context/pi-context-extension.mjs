@@ -17,6 +17,7 @@ export function createMarchPiContextExtension({
   logger = null,
 }) {
   return async function marchPiContextExtension(pi) {
+    // Runtime core boundary: March context is assembled at Agent Run start; in-run Model Calls use pi-agent's appended transcript.
     pi.on("before_agent_start", () => {
       const result = {};
       if (getContextMode() !== "continueExistingPiTranscript") {
@@ -37,6 +38,7 @@ export function createMarchPiContextExtension({
       await steerAssistantRecallMessage(pi, { flushAssistantRecall, onAssistantRecall, sendAssistantRecallMessage, logger });
     });
 
+    // Provider payload hooks may adjust transport payloads, but must not rebuild March context layers.
     pi.on("before_provider_request", (event, ctx) => {
       let payload = injectHostedTools(event.payload, ctx.model, hostedTools);
       payload = applyCodexLargeContextGuardToPayload(payload, { model: ctx.model, session: sessionBinding.get() });

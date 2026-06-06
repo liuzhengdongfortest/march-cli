@@ -236,7 +236,7 @@ return top hints with score=0.xx
 
 ## 被动召回
 
-被动召回结果写进 `[recent_chat]` 的消息后面，不作为独立 `[memory]` 层。
+被动召回结果以轻量 hint 形式进入上下文：用户 recall 在 Agent Run 开始时注入；assistant recall 在有工具的中间轮结束后以隐藏 steer message 注入，最终 Agent Run 结束时只记录。
 
 用户消息触发：
 
@@ -245,8 +245,8 @@ return top hints with score=0.xx
 搜索：semantic vector index
 数量：最多 3 条
 输出：id / score / name / short_description
-位置：user message 后
-去重：rolling suppression window，默认最近 10 个用户 turn
+位置：Agent Run 开始时的隐藏 recall message
+去重：rolling suppression window，默认最近 10 个 Agent Runs
 ```
 
 assistant 输出触发：
@@ -256,11 +256,11 @@ assistant 输出触发：
 搜索：semantic vector index
 注入：最多 2 条过阈值 memory
 UI：无论是否过阈值，轻量显示最多 3 条候选；不展示 description
-位置：turn 内下一次 model call 的 messages 末尾；turn 结束后的结果只进入下一轮 rebuild 的 recent_chat
-去重：当前 turn 内去重
+位置：有工具调用/工具结果的中间 assistant 轮结束后，作为隐藏 steer message 进入后续 Model Call；Agent Run 最终结束后的结果只记录，不再注入模型
+去重：当前 Agent Run 内去重
 ```
 
-同一 turn 内还维护 `turnSeenMemoryIds`，避免用户消息召回和 assistant 输出召回重复附加同一条记忆。
+同一 Agent Run 内还维护 seen memory ids，避免用户消息召回和 assistant 输出召回重复提示同一条记忆。
 
 上下文展示形态：
 
@@ -270,13 +270,13 @@ UI：无论是否过阈值，轻量显示最多 3 条候选；不展示 descript
 
 [recall]
 - mem_01hx_context_cache | score=0.62 | Context cache ordering | 高频变化层不能放在大块稳定上下文前面
-- mem_01hx_recall_dedup | score=0.57 | Passive recall dedup | 用户召回按最近 turn 做滚动抑制
+- mem_01hx_recall_dedup | score=0.57 | Passive recall dedup | 用户召回按最近 Agent Runs 做滚动抑制
 
 [assistant]
 这里的 user/assistant 只是触发时机，匹配方式统一走向量检索...
 
 [recall]
-- mem_01hx_turn_seen | score=0.59 | Turn seen set | 同一 turn 内 user/assistant recall 不重复
+- mem_01hx_run_seen | score=0.59 | Agent Run seen set | 同一 Agent Run 内 user/assistant recall 不重复
 ```
 
 ## 主动回忆工具
