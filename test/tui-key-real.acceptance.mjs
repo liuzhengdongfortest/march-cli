@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,8 +9,9 @@ const esc = "\x1b";
 const ctrlC = "\x03";
 const ctrlT = "\x14";
 const testDir = mkdtempSync(resolve(tmpdir(), "march-tui-key-"));
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const binPath = resolve(repoRoot, "march-cli", "bin", "march.mjs");
+writeTestProviderConfig(testDir, process.env.DEEPSEEK_API_KEY || "dummy-key-for-tui-key-acceptance");
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const binPath = resolve(repoRoot, "bin", "march.mjs");
 
 const term = pty.spawn(process.execPath, [
   binPath,
@@ -79,6 +80,21 @@ try {
   clearTimeout(hardTimer);
   cleanupTempDir(testDir);
   process.exit(process.exitCode ?? 0);
+}
+
+function writeTestProviderConfig(cwd, apiKey) {
+  const marchDir = resolve(cwd, ".march");
+  mkdirSync(marchDir, { recursive: true });
+  writeFileSync(resolve(marchDir, "config.json"), JSON.stringify({
+    provider: "deepseek",
+    model: "deepseek-v4-pro",
+    providers: {
+      deepseek: {
+        type: "deepseek",
+        auth: { method: "apiKey", apiKey },
+      },
+    },
+  }), "utf8");
 }
 
 async function waitForText(text, timeoutMs) {
