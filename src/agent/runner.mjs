@@ -20,9 +20,9 @@ import { resolveRunnerSessionOptions } from "./session/session-options.mjs";
 import { createSessionBinding } from "./session/session-binding.mjs";
 import { maybeAutoNameSession } from "./session/session-auto-name.mjs";
 import { MARCH_BASE_TOOL_NAMES } from "./tool-names.mjs";
-import { runAgentRun } from "./agent-run/agent-runner.mjs";
-import { recordAssistantRecallInput } from "./agent-run/agent-run-events.mjs";
-import { beginLoggedAgentRun } from "./agent-run/agent-run-logging.mjs";
+import { runRunnerTurn } from "./turn/turn-runner.mjs";
+import { recordAssistantRecallInput } from "./turn/turn-events.mjs";
+import { beginLoggedTurn } from "./turn/turn-logging.mjs";
 import { appendFastVariants, createFastModelEntry, fromFastEntryModel, isFastProvider } from "./runner/fast-model.mjs";
 import { registerSuperGrokProvider } from "../supergrok/provider.mjs";
 import { registerCustomProviders } from "../provider/custom-provider.mjs";
@@ -52,20 +52,20 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   const historyStore = createRunnerHistoryStore({ stateRoot, cwd });
   const resolvedSessionManager = resolveRunnerSessionManager(cwd, sessionManager);
   const sessionBinding = createSessionBinding(null);
-  let currentModelCallKind = "model", currentAgentRunId = null, currentAgentRunState = null, currentPromptForContext = "", currentUserRequestForContext = "", currentUserRecallHints = [];
+  let currentModelCallKind = "model", currentTurnId = null, currentTurnState = null, currentPromptForContext = "", currentUserRequestForContext = "", currentUserRecallHints = [];
   const assistantRecallRuntime = createAssistantRecallRuntime({ memoryStore, engine });
   const lifecycle = createRunnerLifecycle();
-  let currentAgentRunContextMode = "rebuild", nextAgentRunContextMode = "rebuild";
+  let currentTurnContextMode = "rebuild", nextTurnContextMode = "rebuild";
   let lastNotificationResult = null, runtimeHost = null, lifecycleAdapter = null, _currentFastEntry = null;
   const marchPiContextExtension = createMarchPiContextExtension({
     engine, sessionBinding, hostedTools,
     getCurrentPrompt: () => currentPromptForContext,
-    getContextMode: () => currentAgentRunContextMode,
+    getContextMode: () => currentTurnContextMode,
     getFastEntry: () => _currentFastEntry,
     getUserRecallHints: () => currentUserRecallHints, sendAssistantRecallMessage: (message) => sessionBinding.get()?.sendCustomMessage?.(message, { deliverAs: "steer" }),
     observeAssistantMessageEvent: (event) => assistantRecallRuntime.observe(event),
     flushAssistantRecall: () => assistantRecallRuntime.flushForContext(),
-    onAssistantRecall: ({ hints = [], report = null } = {}) => { recordAssistantRecallInput(currentAgentRunState, { hints, report, delivery: "steer" }); if (report) runtimeUi.recall?.({ hints, report, variant: "assistant" }); },
+    onAssistantRecall: ({ hints = [], report = null } = {}) => { recordAssistantRecallInput(currentTurnState, { hints, report, delivery: "steer" }); if (report) runtimeUi.recall?.({ hints, report, variant: "assistant" }); },
     logger,
   });
   const avatarRuntime = createRunnerAvatarRuntime({
@@ -128,59 +128,59 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     runtimeUiEvents,
     async runTurn(prompt, userMessage, { userRecallHints = [], currentProject = "" } = {}) {
       currentPromptForContext = prompt; currentUserRequestForContext = userMessage ?? prompt; currentUserRecallHints = userRecallHints;
-      const contextMode = nextAgentRunContextMode;
-      currentAgentRunContextMode = contextMode;
+      const contextMode = nextTurnContextMode;
+      currentTurnContextMode = contextMode;
       assistantRecallRuntime.reset();
-      nextAgentRunContextMode = "rebuild";
+      nextTurnContextMode = "rebuild";
       lifecycle.clearPendingAction();
-      const agentRunStartedAt = Date.now();
+      const turnStartedAt = Date.now();
       const codexTransportStatsBefore = getCodexTransportDebugSnapshot(sessionBinding.get());
-      const agentRunLog = beginLoggedAgentRun({ logger, engine, modelId, provider, contextMode, userMessage, userRecallHints, startedAt: agentRunStartedAt }); currentAgentRunId = agentRunLog.agentRunId;
+      const turnLog = beginLoggedTurn({ logger, engine, modelId, provider, contextMode, userMessage, userRecallHints, startedAt: turnStartedAt }); currentTurnId = turnLog.turnId;
       try {
-        const result = await runAgentRun({
+        const result = await runRunnerTurn({
           prompt, userMessage, options: { userRecallHints, currentProject },
           sessionBinding, engine, ui: runtimeUi, projectMarchDir, memoryStore,
           setModelCallKind: (kind) => { currentModelCallKind = kind; },
-          logger: agentRunLog.logger,
-          setPhase: agentRunLog.setPhase,
+          logger: turnLog.logger,
+          setPhase: turnLog.setPhase,
           syncCurrentMarchSessionState,
           autoNameSession,
           contextMode,
           recordHistory: (turn) => appendRunnerTurnHistory({ store: historyStore, turn, sessionStats: getRunnerSessionStats(sessionBinding.get(), runtimeHost), modelId: engine.modelId, provider: engine.provider }),
-          setCurrentAgentRunState: (state) => { currentAgentRunState = state; },
+          setCurrentTurnState: (state) => { currentTurnState = state; },
           flushFinalAssistantRecall: () => assistantRecallRuntime.flushFinal(),
         });
         notifyTurnEndDetached(turnNotifier, {
           status: "success",
           sessionName: engine.sessionName,
           draft: result?.draft ?? "",
-          durationMs: Date.now() - agentRunStartedAt,
+          durationMs: Date.now() - turnStartedAt,
           activation: buildNotificationActivation({ notificationContext, sessionStats: getRunnerSessionStats(sessionBinding.get(), runtimeHost) }),
         }, (notificationResult) => { lastNotificationResult = notificationResult; });
         const lifecycleAction = lifecycle.takePendingAction();
         if (lifecycleAction) result.lifecycleAction = lifecycleAction;
-        agentRunLog.endSuccess(result);
+        turnLog.endSuccess(result);
         return result;
       } catch (err) {
         notifyTurnEndDetached(turnNotifier, {
           status: "error",
           sessionName: engine.sessionName,
           errorMessage: err?.message ?? String(err),
-          durationMs: Date.now() - agentRunStartedAt,
+          durationMs: Date.now() - turnStartedAt,
           activation: buildNotificationActivation({ notificationContext, sessionStats: getRunnerSessionStats(sessionBinding.get(), runtimeHost) }),
         }, (notificationResult) => { lastNotificationResult = notificationResult; });
-        agentRunLog.endError(err);
+        turnLog.endError(err);
         throw err;
       } finally {
         dumpCodexTransportDebug({ before: codexTransportStatsBefore, session: sessionBinding.get(), ui: runtimeUi, logger });
-        currentAgentRunId = null; currentAgentRunState = null; currentUserRecallHints = []; currentAgentRunContextMode = "rebuild";
+        currentTurnId = null; currentTurnState = null; currentUserRecallHints = []; currentTurnContextMode = "rebuild";
       }
     },
     abort() {
       const activeSession = sessionBinding.get();
       activeSession.abortRetry?.();
       const result = activeSession.abort();
-      nextAgentRunContextMode = "continueExistingPiTranscript";
+      nextTurnContextMode = "continueExistingPiTranscript";
       return result;
     },
     async cycleModel() {
@@ -231,7 +231,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     canSwitchPiSession() { return Boolean(runtimeHost); },
     async startNewSession() {
       if (!runtimeHost) throw new Error("pi runtime host is not enabled");
-      nextAgentRunContextMode = "rebuild";
+      nextTurnContextMode = "rebuild";
       syncCurrentMarchSessionState();
       const result = await runtimeHost.newSession();
       if (result?.cancelled) return { cancelled: true };
@@ -245,7 +245,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     getLspStatus() { return lspService.snapshot(); },
     async switchPiSession(sessionPath, restoreState = null) {
       if (!runtimeHost) throw new Error("pi runtime host is not enabled");
-      nextAgentRunContextMode = "rebuild";
+      nextTurnContextMode = "rebuild";
       const result = await runtimeHost.switchSession(sessionPath);
       if (!result?.cancelled && restoreState) engine.restoreSession(restoreState, null, { replace: true });
       return result;
@@ -293,7 +293,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
     });
   }
   function onLoggedModelPayload(event) {
-    logger?.event("model.payload", { kind: event.kind, provider: event.model?.provider, model: event.model?.id, estimatedTokens: event.estimatedTokens, turnId: currentAgentRunId, agentRunId: currentAgentRunId });
+    logger?.event("model.payload", { kind: event.kind, provider: event.model?.provider, model: event.model?.id, estimatedTokens: event.estimatedTokens, turnId: currentTurnId });
     onModelPayload?.(event);
   }
 }
