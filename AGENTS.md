@@ -60,13 +60,14 @@
 
 | 术语 | 中文名 | 定义 |
 |---|---|---|
-| Agent Run | 运行轮次 | 一次用户输入触发的完整智能体执行过程。一个 Agent Run 可以包含一个或多个 model call、零个或多个 tool call；当模型不再请求工具并产出最终回复时，该 Agent Run 结束。 |
-| Model call | 模型调用 | March 将当前组装后的上下文发送给模型，并接收一次模型输出的过程。一个 Agent Run 内，模型输出 tool call 后会执行工具，并继续产生后续 model call，直到形成最终回复。 |
-| Dialog Entry | 对话条目 | 单次 model call 的 payload 中 `messages` 数组里的单个元素，包含 `role` 和 `content`。全称 Dialog Entry，简称 Entry。一个 model call 包含多个 dialog entry，其中 `role=tool` 的 entry 即 tool call。 |
-| Tool call | 工具调用 | 模型请求 March 执行一个工具的动作。tool call 不是 Agent Run，也不是 model call；它通常发生在一次 model call 的输出之后。 |
-| Context assembly | 上下文组装 | 为一次 model call 准备最终 prompt / messages 的总过程。 |
-| Agent-run-start context assembly | 运行轮次开始上下文组装 | 在一个 Agent Run 开始时，从各 context layer 读取当前事实，组装该 Agent Run 的初始上下文。 |
-| In-run context reassembly | 运行轮次内上下文重组装 | 在同一个 Agent Run 内，工具调用、模型输出或 pi session 状态变化之后，为后续 model call 重新组装上下文。 |
-| Layer | 上下文层 | 组成最终 prompt / messages 的独立上下文模块。每个 layer 以 `[name]` 格式的 header 开头，后接该层对应的结构化文本。当前 layers 包括 `system_core`、`injections`、`session_identity`、`project_context`、`recent_chat` 五个。Agent-run-start context assembly 按固定顺序将这些 layers 组装为初始上下文。 |
+| Agent Run | 运行轮次 | 一次用户输入触发的完整智能体执行过程。一个 Agent Run 可以包含一个或多个 Model Call、零个或多个 Tool Call；当模型不再请求工具并产出最终回复时，该 Agent Run 结束。 |
+| Model Call | 模型调用 | pi-agent 基于当前 transcript / provider payload 向模型发起的一次请求，并接收一次模型输出。一个 Agent Run 内可能发生多次 Model Call。 |
+| Dialog Entry | 对话条目 | 单次 Model Call 的 payload 中 `messages` 数组里的单个元素，包含 `role` 和 `content`。全称 Dialog Entry，简称 Entry。一个 Model Call 可以包含多个 Dialog Entry，其中 `role=tool` 的 Entry 即工具结果条目。 |
+| Tool Call | 工具调用 | 模型请求 March 执行一个工具的动作。Tool Call 不是 Agent Run，也不是 Model Call；它通常发生在一次 Model Call 的输出之后。 |
+| Context Assembly | 上下文组装 | March 在 Agent Run 开始时，从各 context layer 读取当前事实并生成初始上下文的过程。当前实现不是每次 Model Call 都重新组装 March context。 |
+| Agent-run-start Context Assembly | 运行轮次开始上下文组装 | Agent Run 开始时执行的 Context Assembly；当前会生成初始 system prompt / user context，并注入 user recall。 |
+| Pi Transcript Append | Pi 对话追加 | Agent Run 过程中，pi-agent 将 assistant 输出、Tool Call、工具结果、hidden steer message 等追加到当前 transcript，用于后续 Model Call。 |
+| Provider Payload Assembly | Provider 请求组装 | 每次 Model Call 前，pi/provider 将当前 transcript、工具定义和 provider 选项转换成最终 provider request payload 的过程。March 可在 `before_provider_request` 做有限 payload 调整。 |
+| Layer | 上下文层 | 组成初始上下文的独立上下文模块。每个 layer 以 `[name]` 格式的 header 开头，后接该层对应的结构化文本。当前 layers 包括 `system_core`、`injections`、`session_identity`、`project_context`、`recent_chat` 五个。Agent-run-start Context Assembly 按固定顺序将这些 layers 组装为 Agent Run 的初始上下文。 |
 | Diagnostic | 诊断信息 | 编译器、类型检查器、linter 或语言服务器对当前工作区产生的错误、警告和提示，等价于 VS Code Problems 面板里的结构化问题列表。 |
 | Model-specific system prompt | 模型专属系统提示 | `system_core` 中针对具体 `modelId` 选择的 prompt 文件；用于适配不同模型的行为差异，不按 provider 区分。provider 只负责请求路由、鉴权和 transport，不参与 prompt 选择。 |
