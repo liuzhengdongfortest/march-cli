@@ -82,13 +82,12 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
   });
   if (useRuntimeHost) {
     runtimeHost = await createRunnerRuntimeHost({
-      cwd, stateRoot, provider, modelId,
+      cwd, stateRoot,
       authStorage: resolvedAuth, settingsManager, modelRegistry,
       providers,
-      sessionManager: resolvedSessionManager, sessionBinding, engine, ui: runtimeUi,
-      projectMarchDir,
+      sessionManager: resolvedSessionManager, sessionBinding,
       sessionBoundary,
-      lifecycle, extensionPaths, hostedTools, imageModel, avatarRuntime, extensionFactories: [marchPiContextExtension],
+      extensionPaths, extensionFactories: [marchPiContextExtension],
       onRebind: (session) => {
         installModelPayloadDumper(session, modelContextDumper, () => currentModelCallKind, onLoggedModelPayload);
         syncEngineSessionState(engine, session);

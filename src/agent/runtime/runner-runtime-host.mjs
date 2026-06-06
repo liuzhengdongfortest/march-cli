@@ -9,38 +9,27 @@ import { registerCustomProviders } from "../../provider/custom-provider.mjs";
 export async function createRunnerRuntimeHost({
   cwd,
   stateRoot,
-  provider,
-  modelId,
   authStorage,
   settingsManager,
   modelRegistry,
   providers = {},
   sessionManager,
   sessionBinding,
-  engine,
-  ui,
-  projectMarchDir = null,
-  memoryTools = [],
-  historyStore = null,
-  shellRuntime = null,
-  lspService = null,
-  mcpTools = [],
-  webTools = [],
-  lifecycle = null,
-  avatarRuntime = null,
-  imageModel = null,
   extensionPaths = [],
-  hostedTools = {},
   extensionFactories = [],
-  sessionBoundary = null,
+  sessionBoundary,
   onRebind = null,
   createAgentSessionRuntimeImpl = createAgentSessionRuntime,
   createServices,
   createFromServices,
 }) {
+  if (!sessionBoundary) throw new Error("createRunnerRuntimeHost requires a session boundary");
+  const baseBoundary = createRunnerSessionBoundary(sessionBoundary);
+  const runtimeAuthStorage = authStorage ?? baseBoundary.infrastructure.authStorage;
+
   const createRuntime = createMarchRuntimeFactory({
     agentDir: stateRoot,
-    authStorage,
+    authStorage: runtimeAuthStorage,
     settingsManager,
     modelRegistry,
     createServices,
@@ -55,18 +44,13 @@ export async function createRunnerRuntimeHost({
       registerCustomProviders(activeModelRegistry, providers);
       return resolveRunnerSessionOptions(createRunnerSessionBoundary({
         core: {
-          ...(sessionBoundary?.core ?? {}),
+          ...baseBoundary.core,
           cwd: sessionCwd,
-          provider,
-          modelId,
           modelRegistry: activeModelRegistry,
-          engine,
-          ui,
-          stateRoot,
-          getCurrentModel: () => sessionBinding.get()?.model ?? null,
+          getCurrentModel: baseBoundary.core.getCurrentModel ?? (() => sessionBinding.get()?.model ?? null),
         },
-        capabilities: sessionBoundary?.capabilities ?? { memoryTools, mcpTools, webTools, avatarRuntime, imageModel },
-        infrastructure: sessionBoundary?.infrastructure ?? { historyStore, shellRuntime, lspService, lifecycle, authStorage, projectMarchDir },
+        capabilities: baseBoundary.capabilities,
+        infrastructure: baseBoundary.infrastructure,
       }));
     },
   });

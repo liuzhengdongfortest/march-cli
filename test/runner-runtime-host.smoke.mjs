@@ -5,6 +5,7 @@ export async function runRunnerRuntimeHostSmoke() {
   const { createRunner } = await import("../src/agent/runner.mjs");
   const { createRunnerRuntimeHost } = await import("../src/agent/runtime/runner-runtime-host.mjs");
   const { createSessionBinding } = await import("../src/agent/session/session-binding.mjs");
+  const { createRunnerSessionBoundary } = await import("../src/agent/session/session-boundary.mjs");
 
   const calls = [];
   const rebound = [];
@@ -17,16 +18,24 @@ export async function runRunnerRuntimeHostSmoke() {
   const host = await createRunnerRuntimeHost({
     cwd: "D:/repo",
     stateRoot: "D:/state",
-    provider: "test",
-    modelId: "model",
     authStorage: { id: "auth" },
     settingsManager: { id: "settings" },
     modelRegistry,
     sessionManager,
     sessionBinding: binding,
-    engine: { cwd: "D:/repo" },
-    ui: { editDiff: () => {} },
-    memoryTools: [{ name: "remember" }],
+    sessionBoundary: createRunnerSessionBoundary({
+      core: {
+        cwd: "D:/repo",
+        stateRoot: "D:/state",
+        provider: "test",
+        modelId: "model",
+        modelRegistry,
+        engine: { cwd: "D:/repo" },
+        ui: { editDiff: () => {} },
+      },
+      capabilities: { memoryTools: [{ name: "remember" }] },
+      infrastructure: { authStorage: { id: "auth" } },
+    }),
     extensionPaths: ["D:/repo/ext.ts"],
     onRebind: (session) => rebound.push(session.id),
     createServices: async (options) => {
