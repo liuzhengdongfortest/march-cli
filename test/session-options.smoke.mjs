@@ -52,6 +52,23 @@ export async function runSessionOptionsSmoke() {
   assert.ok(boundaryOptions.tools.includes("boundary_memory"));
   assert.ok(boundaryOptions.tools.includes("terminal_spawn"));
 
+  const readonlyOptions = resolveRunnerSessionOptions(createRunnerSessionBoundary({
+    core: {
+      cwd: "D:/repo",
+      provider: "test",
+      modelId: "model",
+      modelRegistry: { find: () => model, getAvailable: () => [model] },
+      engine: { cwd: "D:/repo" },
+      ui: { editDiff: () => {} },
+      allowedToolNames: ["read", "grep", "find", "ls", "code_search"],
+    },
+    infrastructure: { shellRuntime: { listShells: () => [] } },
+  }));
+  assert.deepEqual(readonlyOptions.tools, ["read", "grep", "find", "ls", "code_search"]);
+  assert.ok(readonlyOptions.customTools.some((tool) => tool.name === "code_search"));
+  assert.ok(!readonlyOptions.customTools.some((tool) => tool.name === "terminal_spawn"));
+  assert.ok(!readonlyOptions.customTools.some((tool) => tool.name === "browser_tabs"));
+
   assert.throws(
     () => resolveRunnerSessionOptions(createRunnerSessionBoundary({
       core: {

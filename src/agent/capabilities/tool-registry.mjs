@@ -20,20 +20,34 @@ import { createSuperGrokTool } from "../../supergrok/tool.mjs";
 // Capability providers are the only place where tool families attach to a session boundary.
 // Keep Agent Runtime Core out of individual provider wiring decisions.
 const TOOL_CAPABILITY_PROVIDERS = [
-  createCodingToolCapability,
-  createRuntimeToolCapability,
-  createMemoryToolCapability,
-  createShellToolCapability,
-  createWebToolCapability,
-  createBrowserToolCapability,
-  createOfficeToolCapability,
-  createAuthToolCapability,
-  createAvatarToolCapability,
+  provider("coding", ["read", "read_image", "send_binary", "screen", "list_windows", "analyze_images", "context_stats", "code_search", "command_exec", "edit_file"], createCodingToolCapability),
+  provider("runtime", ["request_runtime_restart"], createRuntimeToolCapability),
+  provider("memory", null, createMemoryToolCapability),
+  provider("shell", ["terminal_spawn", "terminal_send", "terminal_list", "terminal_kill", "terminal_resize", "terminal_clear", "terminal_search", "terminal_read", "terminal_snapshot"], createShellToolCapability),
+  provider("web", null, createWebToolCapability),
+  provider("browser", ["browser_tabs", "browser_open", "browser_read", "browser_script", "browser_screenshot"], createBrowserToolCapability),
+  provider("office", ["office_status", "powerpoint_observe", "powerpoint_js"], createOfficeToolCapability),
+  provider("auth", ["supergrok", "image_generate"], createAuthToolCapability),
+  provider("avatar", ["DispatchAvatar", "AvatarStatus", "AvatarResult", "AvatarCancel"], createAvatarToolCapability),
 ];
 
 export function createToolsFromCapabilities(boundary) {
-  return TOOL_CAPABILITY_PROVIDERS.flatMap((provider) => provider(boundary));
+  const allowed = boundary.core.allowedToolNames ? new Set(boundary.core.allowedToolNames) : null;
+  return TOOL_CAPABILITY_PROVIDERS
+    .filter((candidate) => isProviderAllowed(candidate, allowed))
+    .flatMap((candidate) => candidate.createTools(boundary))
+    .filter((tool) => !allowed || allowed.has(tool.name));
 }
+
+function provider(id, toolNames, createTools) {
+  return { id, toolNames, createTools };
+}
+
+function isProviderAllowed(candidate, allowed) {
+  if (!allowed || !candidate.toolNames) return true;
+  return candidate.toolNames.some((name) => allowed.has(name));
+}
+
 
 function createCodingToolCapability(boundary) {
   const { cwd, engine, ui, stateRoot, getCurrentModel, modelRegistry } = boundary.core;

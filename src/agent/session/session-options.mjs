@@ -16,13 +16,12 @@ export function resolveRunnerSessionOptions(options = {}) {
     ?? (provider && modelId ? getModel(provider, modelId) : null);
   if (!model) throw new Error(`Model not found: ${provider}/${modelId}`);
 
-  const allCustomTools = createMarchCustomTools({
-    core: { cwd, engine, ui, stateRoot, modelRegistry, getCurrentModel: () => getCurrentModel?.() ?? model },
+  const allowed = allowedToolNames ? new Set(allowedToolNames) : null;
+  const customTools = createMarchCustomTools({
+    core: { cwd, engine, ui, stateRoot, modelRegistry, allowedToolNames, getCurrentModel: () => getCurrentModel?.() ?? model },
     capabilities: boundary.capabilities,
     infrastructure: boundary.infrastructure,
   });
-  const allowed = allowedToolNames ? new Set(allowedToolNames) : null;
-  const customTools = allowed ? allCustomTools.filter((tool) => allowed.has(tool.name)) : allCustomTools;
   const customToolNames = customTools.map((tool) => tool.name);
   const tools = [
     ...customToolNames.filter((name) => name === "read"),
