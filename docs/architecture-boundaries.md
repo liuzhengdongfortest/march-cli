@@ -84,7 +84,6 @@ flowchart LR
     Shell[shell / command]
     Memory[memory]
     Web[web / browser]
-    Office[office]
     Image[image]
     Avatar[avatar]
     MCP[MCP]

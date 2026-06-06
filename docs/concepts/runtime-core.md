@@ -15,7 +15,6 @@ Capabilities
   ├── Coding tools
   ├── Memory
   ├── Web / Browser
-  ├── Office
   ├── Image
   ├── Avatar
   └── MCP
@@ -41,7 +40,7 @@ Infrastructure
 
 | Area | Owner |
 |---|---|
-| Tool implementation details | Capability modules such as shell, memory, web, browser, office, image, avatar, and MCP. |
+| Tool implementation details | Capability modules such as shell, memory, web, browser, image, avatar, and MCP. |
 | Auth, config, logging, persistence, IPC | Infrastructure modules. |
 | TUI / workspace rendering | CLI shell and workspace runtime. |
 | Provider-specific product behavior | Provider modules and pi/provider integration hooks. |

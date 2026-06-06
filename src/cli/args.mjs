@@ -80,10 +80,7 @@ Usage:
   march browser install    Install the developer browser extension
   march browser status     Show browser daemon/extension status
   march browser restart    Restart the browser daemon
-  march office install     Prepare the developer PowerPoint add-in
-  march office sideload    Launch PowerPoint with the add-in loaded
-  march office status      Show Office daemon/add-in status
-  march office restart     Restart the Office daemon
+  march office             Deprecated and disabled
   march gateway setup      Configure gateway interactively
   march gateway status     Show gateway configuration status
 

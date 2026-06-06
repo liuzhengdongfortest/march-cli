@@ -1,6 +1,5 @@
 import { createBrowserTools } from "../../../browser/tools/index.mjs";
 import { initImageGen } from "../../../image-gen/index.mjs";
-import { createOfficeTools } from "../../../office/tools/index.mjs";
 import { createShellTools } from "../../../shell/tools.mjs";
 import { createSuperGrokTool } from "../../../supergrok/tool.mjs";
 
@@ -19,11 +18,6 @@ export const EXTERNAL_TOOL_CAPABILITY_PROVIDERS = [
     id: "browser",
     toolNames: ["browser_tabs", "browser_open", "browser_read", "browser_script", "browser_screenshot"],
     createTools: createBrowserToolCapability,
-  },
-  {
-    id: "office",
-    toolNames: ["office_status", "powerpoint_observe", "powerpoint_js"],
-    createTools: createOfficeToolCapability,
   },
   {
     id: "auth",
@@ -46,11 +40,6 @@ function createWebToolCapability(boundary) {
 function createBrowserToolCapability(boundary) {
   const { stateRoot, getCurrentModel } = boundary.core;
   return createBrowserTools({ stateRoot: stateRoot ?? undefined, getCurrentModel });
-}
-
-function createOfficeToolCapability(boundary) {
-  const { stateRoot } = boundary.core;
-  return createOfficeTools({ stateRoot: stateRoot ?? undefined });
 }
 
 function createAuthToolCapability(boundary) {

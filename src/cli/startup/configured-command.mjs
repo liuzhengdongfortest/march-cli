@@ -1,6 +1,5 @@
 import { runBrowserCommand } from "../../browser/cli/command.mjs";
 import { runGatewayCommand } from "../../gateway/command.mjs";
-import { runOfficeCommand } from "../../office/cli/command.mjs";
 
 export async function runConfiguredCliCommand(args, { config, cwd, stateRoot }) {
   if (args.command?.name === "browser") {
@@ -12,12 +11,8 @@ export async function runConfiguredCliCommand(args, { config, cwd, stateRoot }) 
     }
   }
   if (args.command?.name === "office") {
-    try {
-      return { handled: true, code: await runOfficeCommand(args, { stateRoot }) };
-    } catch (err) {
-      process.stderr.write(`Error: ${err.message}\n`);
-      return { handled: true, code: 1 };
-    }
+    process.stderr.write("Error: march office is deprecated and disabled. Office integration is no longer exposed by March.\n");
+    return { handled: true, code: 1 };
   }
   if (args.command?.name === "gateway" && args.command.args?.[0] !== "run") {
     return { handled: true, code: await runGatewayCommand(args, { config, cwd }) };

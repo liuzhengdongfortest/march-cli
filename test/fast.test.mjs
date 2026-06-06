@@ -10,10 +10,6 @@ import { runCodeSearchSmoke } from "./code-search.smoke.mjs";
 import { runCommandExecToolSmoke } from "./command-exec-tool.smoke.mjs";
 import { runConfigLoadingSmoke } from "./config-loading.smoke.mjs";
 import { runNetworkEnvironmentSmoke } from "./network-environment.smoke.mjs";
-import { runOfficeAddinInstallSmoke } from "./office-addin-install.smoke.mjs";
-import { runOfficeBridgeSessionSmoke } from "./office-bridge-session.smoke.mjs";
-import { runOfficeDaemonLifecycleSmoke } from "./office-daemon-lifecycle.smoke.mjs";
-import { runOfficeSelectionSmoke } from "./office-selection.smoke.mjs";
 import { runCustomProviderSmoke } from "./custom-provider.smoke.mjs";
 import { runEditFileToolSmoke } from "./edit-file-tool.smoke.mjs";
 import { runGatewayCoreSmoke } from "./gateway-core.smoke.mjs";
@@ -140,6 +136,23 @@ function stripAnsi(text) {
   const officeInstall = parseCliArgs(["office", "install"]);
   assert.deepEqual(officeInstall.command, { name: "office", args: ["install"] });
 
+  const { EXTERNAL_TOOL_CAPABILITY_PROVIDERS } = await import("../src/agent/capabilities/tool-providers/external-tools.mjs");
+  assert.equal(EXTERNAL_TOOL_CAPABILITY_PROVIDERS.some((provider) => provider.id === "office"), false);
+  assert.equal(EXTERNAL_TOOL_CAPABILITY_PROVIDERS.flatMap((provider) => provider.toolNames ?? []).some((name) => name.includes("office") || name.includes("powerpoint")), false);
+
+  const { runConfiguredCliCommand } = await import("../src/cli/startup/configured-command.mjs");
+  const originalWrite = process.stderr.write;
+  const officeStateRoot = setupTmp();
+  let stderr = "";
+  process.stderr.write = (chunk) => { stderr += String(chunk); return true; };
+  try {
+    assert.deepEqual(await runConfiguredCliCommand(officeInstall, { config: {}, cwd: process.cwd(), stateRoot: officeStateRoot }), { handled: true, code: 1 });
+  } finally {
+    process.stderr.write = originalWrite;
+    cleanup(officeStateRoot);
+  }
+  assert.match(stderr, /deprecated and disabled/);
+
   const gatewaySetup = parseCliArgs(["gateway", "setup"]);
   assert.deepEqual(gatewaySetup.command, { name: "gateway", args: ["setup"] });
 
@@ -165,10 +178,6 @@ await runHistorySearchSmoke({ setupTmp, cleanup });
 await runNetworkEnvironmentSmoke();
 await runBrowserExtensionErrorsSmoke();
 await runBrowserExtensionInstallSmoke({ setupTmp, cleanup });
-await runOfficeAddinInstallSmoke({ setupTmp, cleanup });
-await runOfficeBridgeSessionSmoke();
-await runOfficeDaemonLifecycleSmoke({ setupTmp, cleanup });
-await runOfficeSelectionSmoke();
 await runCommandExecToolSmoke();
 await runCodeSearchSmoke({ setupTmp, cleanup });
 await runReadFileToolSmoke({ setupTmp, cleanup });
