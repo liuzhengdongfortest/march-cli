@@ -11,6 +11,7 @@ export async function runScreenToolsSmoke() {
   const { captureScreenTool, createScreenTool } = await import("../src/agent/screen-tools/screen-tool.mjs");
   const { listWindowsTool, createListWindowsTool } = await import("../src/agent/screen-tools/list-windows-tool.mjs");
   const { createMarchCustomTools } = await import("../src/agent/tools.mjs");
+  const { createRunnerSessionBoundary } = await import("../src/agent/session/session-boundary.mjs");
 
   const visionModel = { id: "vision", provider: "test", input: ["text", "image"] };
   const textModel = { id: "text", provider: "test", input: ["text"] };
@@ -51,7 +52,9 @@ export async function runScreenToolsSmoke() {
 
   assert.equal(createScreenTool({ getCurrentModel: () => visionModel, captureScreenImpl: captureImpl }).name, "screen");
   assert.equal(createListWindowsTool({ listWindowsImpl: () => ({ ok: true, windows: [] }) }).name, "list_windows");
-  const tools = createMarchCustomTools({ cwd: process.cwd(), engine: {}, ui: {}, getCurrentModel: () => visionModel });
+  const tools = createMarchCustomTools(createRunnerSessionBoundary({
+    core: { cwd: process.cwd(), engine: {}, ui: {}, getCurrentModel: () => visionModel },
+  }));
   assert.ok(tools.some((tool) => tool.name === "screen"));
   assert.ok(tools.some((tool) => tool.name === "list_windows"));
   assert.ok(tools.some((tool) => tool.name === "analyze_images"));

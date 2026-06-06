@@ -6,16 +6,18 @@ export async function runSessionOptionsSmoke() {
   const { createRunnerSessionBoundary } = await import("../src/agent/session/session-boundary.mjs");
 
   const model = { id: "fake-model" };
-  const options = resolveRunnerSessionOptions({
-    cwd: "D:/repo",
-    provider: "test",
-    modelId: "model",
-    modelRegistry: { find: (provider, modelId) => (provider === "test" && modelId === "model" ? model : null), getAvailable: () => [model] },
-    engine: { cwd: "D:/repo" },
-    ui: { editDiff: () => {} },
-    memoryTools: [{ name: "remember" }],
-    shellRuntime: { listShells: () => [] },
-  });
+  const options = resolveRunnerSessionOptions(createRunnerSessionBoundary({
+    core: {
+      cwd: "D:/repo",
+      provider: "test",
+      modelId: "model",
+      modelRegistry: { find: (provider, modelId) => (provider === "test" && modelId === "model" ? model : null), getAvailable: () => [model] },
+      engine: { cwd: "D:/repo" },
+      ui: { editDiff: () => {} },
+    },
+    capabilities: { memoryTools: [{ name: "remember" }] },
+    infrastructure: { shellRuntime: { listShells: () => [] } },
+  }));
 
   assert.equal(options.model, model);
   assert.deepEqual(options.scopedModels, [{ model }]);
@@ -51,15 +53,21 @@ export async function runSessionOptionsSmoke() {
   assert.ok(boundaryOptions.tools.includes("terminal_spawn"));
 
   assert.throws(
-    () => resolveRunnerSessionOptions({
-      cwd: "D:/other",
-      provider: "test",
-      modelId: "model",
-      modelRegistry: { find: () => model },
-      engine: { cwd: "D:/repo" },
-      ui: { editDiff: () => {} },
-    }),
+    () => resolveRunnerSessionOptions(createRunnerSessionBoundary({
+      core: {
+        cwd: "D:/other",
+        provider: "test",
+        modelId: "model",
+        modelRegistry: { find: () => model },
+        engine: { cwd: "D:/repo" },
+        ui: { editDiff: () => {} },
+      },
+    })),
     /cwd mismatch/,
+  );
+  assert.throws(
+    () => createRunnerSessionBoundary({ cwd: "D:/repo", engine: { cwd: "D:/repo" } }),
+    /only accepts core\/capabilities\/infrastructure/,
   );
   console.log("  PASS");
 }

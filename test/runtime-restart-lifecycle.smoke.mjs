@@ -4,16 +4,17 @@ export async function runRuntimeRestartLifecycleSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: runtime restart lifecycle ---");
   const { createMarchCustomTools } = await import("../src/agent/tools.mjs");
   const { runSingleShotPrompt } = await import("../src/cli/repl-loop.mjs");
+  const { createRunnerSessionBoundary } = await import("../src/agent/session/session-boundary.mjs");
 
   let requestedAction = null;
-  const tools = createMarchCustomTools({
-    cwd: process.cwd(),
-    engine: {},
-    ui: {},
-    lifecycle: {
-      requestRuntimeRestart: (action) => { requestedAction = action; },
+  const tools = createMarchCustomTools(createRunnerSessionBoundary({
+    core: { cwd: process.cwd(), engine: {}, ui: {} },
+    infrastructure: {
+      lifecycle: {
+        requestRuntimeRestart: (action) => { requestedAction = action; },
+      },
     },
-  });
+  }));
   const restartTool = tools.find((tool) => tool.name === "request_runtime_restart");
   assert.ok(restartTool);
   const toolResult = await restartTool.execute("call-1", { reason: "changed tools" });

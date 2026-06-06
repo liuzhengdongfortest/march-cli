@@ -6,6 +6,7 @@ export async function runSendBinaryToolSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: send binary tool ---");
   const { createSendBinaryTool, normalizeBinaryOutput } = await import("../src/agent/output/send-binary-tool.mjs");
   const { createMarchCustomTools } = await import("../src/agent/tools.mjs");
+  const { createRunnerSessionBoundary } = await import("../src/agent/session/session-boundary.mjs");
   const { withBinaryOutputSink, sendBinaryOutput } = await import("../src/agent/output/binary-output-sink.mjs");
   const dir = setupTmp();
   try {
@@ -36,7 +37,9 @@ export async function runSendBinaryToolSmoke({ setupTmp, cleanup }) {
     const bad = await tool.execute("call", { type: "image", path: "nested" });
     assert.equal(bad.details.error, true);
 
-    const tools = createMarchCustomTools({ cwd: dir, engine, ui: {} });
+    const tools = createMarchCustomTools(createRunnerSessionBoundary({
+      core: { cwd: dir, engine, ui: {} },
+    }));
     assert.ok(tools.some((candidate) => candidate.name === "send_binary"));
   } finally {
     cleanup(dir);

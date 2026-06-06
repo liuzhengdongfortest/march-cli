@@ -8,6 +8,7 @@ export async function runReadImageToolSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: read image tool ---");
   const { createReadImageTool, readImageFile } = await import("../src/agent/file-tools/read-image-tool.mjs");
   const { createMarchCustomTools } = await import("../src/agent/tools.mjs");
+  const { createRunnerSessionBoundary } = await import("../src/agent/session/session-boundary.mjs");
   const dir = setupTmp();
   const engine = { resolvePath: (value) => value };
 
@@ -42,7 +43,9 @@ export async function runReadImageToolSmoke({ setupTmp, cleanup }) {
     const blockedTool = createReadImageTool({ engine, getCurrentModel: () => ({ id: "text", provider: "test", input: ["text"] }) });
     const blocked = await blockedTool.execute("call", { path: imagePath });
     assert.equal(blocked.details.unsupportedModel, true);
-    const tools = createMarchCustomTools({ cwd: dir, engine, ui: {}, getCurrentModel: () => ({ id: "vision", provider: "test", input: ["text", "image"] }) });
+    const tools = createMarchCustomTools(createRunnerSessionBoundary({
+      core: { cwd: dir, engine, ui: {}, getCurrentModel: () => ({ id: "vision", provider: "test", input: ["text", "image"] }) },
+    }));
     assert.ok(tools.some((candidate) => candidate.name === "read_image"));
   } finally {
     cleanup(dir);
