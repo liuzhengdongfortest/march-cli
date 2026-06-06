@@ -152,10 +152,6 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
         return { hints: [{ id: "mem_thinking", name: "Thinking memory", description: "Matched from thinking text." }], report: { threshold: 0.5, candidates: [{ id: "mem_thinking", name: "Thinking memory", score: 0.9, recalled: true }] } };
       }
       if (recallCalls === 2) {
-        assert.equal(text, "draft text");
-        return { hints: [{ id: "mem_draft", name: "Draft memory", description: "Matched from visible assistant text." }], report: { threshold: 0.5, candidates: [{ id: "mem_draft", name: "Draft memory", score: 0.8, recalled: true }] } };
-      }
-      if (recallCalls === 3) {
         assert.equal(text, "late thinking memory text");
         return { hints: [{ id: "mem_late_thinking", name: "Late thinking memory", description: "Matched from thinking end content." }], report: { threshold: 0.5, candidates: [{ id: "mem_late_thinking", name: "Late thinking memory", score: 0.85, recalled: true }] } };
       }
@@ -228,8 +224,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.deepEqual(runner.engine.turns[0].assistant.executionJson.toolCalls, [{ name: "read", args: { path: "a.txt" }, status: "success" }]);
   assert.equal(runner.engine.turns[0].assistant.executionJson.contextInputs.inTurn[0].delivery, "steer");
   assert.equal(runner.engine.turns[0].assistant.executionJson.contextInputs.inTurn[0].hints[0].id, "mem_thinking");
-  assert.equal(runner.engine.turns[0].assistant.executionJson.contextInputs.inTurn[1].delivery, "final");
-  assert.equal(runner.engine.turns[0].assistant.executionJson.contextInputs.inTurn[1].hints[0].id, "mem_draft");
+  assert.equal(runner.engine.turns[0].assistant.executionJson.contextInputs.inTurn.length, 1);
   assert.equal(runner.engine.sessionName, "hello");
   assert.deepEqual(sessionNameCalls, ["hello"]);
 
@@ -273,7 +268,7 @@ export async function runRunnerTurnFlowSmoke({ setupTmp, cleanup }) {
   assert.ok(providerPayloads[4].messages.some((message) => message.role === "tool" && providerMessageText(message).includes("tool only body")));
   assert.equal(providerPayloads[4].messages.filter((message) => providerMessageText(message).includes("mem_late_thinking")).length, 1);
   assert.ok(providerMessageText(providerPayloads[4].messages.at(-1)).includes("mem_late_thinking"));
-  assert.equal(recallCalls, 3);
+  assert.equal(recallCalls, 2);
   const sidecar = loadPiSessionSidecar({ projectMarchDir, sessionRef: "turn-flow.jsonl" });
   assert.equal(sidecar.state.sessionName, "Manual Name");
   assert.ok(!("assistantMessage" in sidecar.state.turns[0]));

@@ -10,7 +10,6 @@ export async function runRunnerTurn({
   engine,
   ui,
   projectMarchDir,
-  memoryStore,
   setModelCallKind,
   logger = null,
   setPhase = null,
@@ -19,7 +18,6 @@ export async function runRunnerTurn({
   contextMode = "rebuild",
   recordHistory = null,
   setCurrentTurnState = null,
-  flushFinalAssistantRecall = null,
 }) {
   const {
     userRecallHints = [],
@@ -80,14 +78,12 @@ export async function runRunnerTurn({
       prompt,
       userMessage,
       userRecallHints,
-      memoryStore,
       engine,
       ui,
       turnState,
       syncCurrentMarchSessionState,
       autoNameSession,
       recordHistory,
-      flushFinalAssistantRecall,
     });
     return { draft: turnState.draft };
   } finally {
@@ -129,10 +125,8 @@ function logSessionEvent(logger, event) {
   });
 }
 
-async function finalizeTurn({ prompt, userMessage, userRecallHints, memoryStore, engine, ui, turnState, syncCurrentMarchSessionState, autoNameSession, recordHistory, flushFinalAssistantRecall }) {
+async function finalizeTurn({ prompt, userMessage, userRecallHints, engine, ui, turnState, syncCurrentMarchSessionState, autoNameSession, recordHistory }) {
   closeAssistantReply({ ui, state: turnState });
-  const assistantRecall = await (flushFinalAssistantRecall?.(turnState) ?? flushAssistantRecall({ memoryStore, engine, turnState }));
-  if (assistantRecall.report) ui.recall?.({ hints: assistantRecall.hints, report: assistantRecall.report, variant: "assistant" });
 
   const userRecallInput = buildUserRecallInput(userRecallHints);
   const turn = engine.recordTurn({
@@ -142,42 +136,13 @@ async function finalizeTurn({ prompt, userMessage, userRecallHints, memoryStore,
       schemaVersion: 1,
       contextInputs: { turnStart: { userRecall: [userRecallInput] } },
     } : null,
-    assistantExecutionJson: buildAssistantExecutionJson(turnState, { assistantRecall }),
+    assistantExecutionJson: buildAssistantExecutionJson(turnState),
   });
   recordHistory?.({ ...turn, thinking: assistantThinkingText(turnState), toolCalls: turnState.toolCalls });
 
   autoNameSession?.();
   syncCurrentMarchSessionState();
 }
-
-export async function flushAssistantRecall({ memoryStore, engine, turnState }) {
-  if (!memoryStore) return { hints: [], report: null };
-  const text = assistantRecallDeltaText(turnState);
-  advanceAssistantRecallCursor(turnState);
-  if (!text.trim()) return { hints: [], report: null };
-  return await memoryStore.recallForAssistant(text, {
-    excludedIds: engine.getRecentRecallMemoryIds?.() ?? [],
-  });
-}
-
-function assistantRecallDeltaText(turnState) {
-  const cursor = turnState.recallCursor ?? { draftLength: 0, thinkingLength: 0 };
-  const thinking = assistantThinkingText(turnState);
-  return [
-    turnState.draft.slice(cursor.draftLength),
-    thinking.slice(cursor.thinkingLength),
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
-
-function advanceAssistantRecallCursor(turnState) {
-  turnState.recallCursor = {
-    draftLength: turnState.draft.length,
-    thinkingLength: assistantThinkingText(turnState).length,
-  };
-}
-
 function assistantThinkingText(turnState) {
   return `${turnState.thinkingAccumulator}${turnState.thinkingText}`;
 }

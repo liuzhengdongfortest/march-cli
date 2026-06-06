@@ -7,7 +7,6 @@ export function createTurnEventState() {
     draft: "",
     thinkingText: "",
     thinkingAccumulator: "",
-    recallCursor: { draftLength: 0, thinkingLength: 0 },
     assistantReplyOpen: false,
     toolCalls: [],
     retries: [],
@@ -94,9 +93,8 @@ export function buildUserRecallInput(hints = []) {
   return buildRecallInput({ source: "user", delivery: "turn_start", hints, report: null });
 }
 
-export function buildAssistantExecutionJson(turnState, { assistantRecall = null } = {}) {
+export function buildAssistantExecutionJson(turnState) {
   const inTurn = [...(turnState.assistantRecallInputs ?? [])];
-  if ((assistantRecall?.hints ?? []).length > 0) inTurn.push(buildRecallInput({ source: "assistant", delivery: "final", hints: assistantRecall.hints ?? [], report: assistantRecall.report ?? null }));
   return pruneEmpty({
     schemaVersion: 1,
     status: turnState.lastAssistantStopReason === "error" ? "failed" : "success",

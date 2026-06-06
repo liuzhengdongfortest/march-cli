@@ -138,7 +138,7 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
       try {
         const result = await runRunnerTurn({
           prompt, userMessage, options: { userRecallHints, currentProject },
-          sessionBinding, engine, ui: runtimeUi, projectMarchDir, memoryStore,
+          sessionBinding, engine, ui: runtimeUi, projectMarchDir,
           setModelCallKind: (kind) => { currentModelCallKind = kind; },
           logger: turnLog.logger,
           setPhase: turnLog.setPhase,
@@ -147,7 +147,6 @@ export async function createRunner({ cwd, modelId = null, provider = null, provi
           contextMode,
           recordHistory: (turn) => appendRunnerTurnHistory({ store: historyStore, turn, sessionStats: getRunnerSessionStats(sessionBinding.get(), runtimeHost), modelId: engine.modelId, provider: engine.provider }),
           setCurrentTurnState: (state) => { currentTurnState = state; },
-          flushFinalAssistantRecall: () => assistantRecallRuntime.flushFinal(),
         });
         notifyTurnEndDetached(turnNotifier, {
           status: "success",

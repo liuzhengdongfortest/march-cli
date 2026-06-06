@@ -23,9 +23,6 @@ export function createAssistantRecallRuntime({ memoryStore, engine }) {
     flushForContext() {
       return recallForAssistantText({ memoryStore, engine, text: consume() });
     },
-    flushFinal() {
-      return recallForAssistantText({ memoryStore, engine, text: consume() });
-    },
   };
 
   function append(text) {
