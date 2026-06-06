@@ -1,6 +1,6 @@
 {
   "name": "march-cli",
-  "version": "0.1.55",
+  "version": "0.1.56",
   "description": "March CLI — terminal-native coding agent with context reconstruction",
   "type": "module",
   "packageManager": "npm@11.13.0",
