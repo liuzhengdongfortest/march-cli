@@ -3,6 +3,7 @@
   "version": "0.1.55",
   "description": "March CLI — terminal-native coding agent with context reconstruction",
   "type": "module",
+  "packageManager": "npm@11.13.0",
   "main": "./src/main.mjs",
   "bin": {
     "march": "bin/march.mjs"
@@ -33,13 +34,13 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@pierre/trees": "^1.0.0-beta.4",
     "@xterm/headless": "^5.5.0",
-    "marked": "^18.0.3",
+    "marked": "^18.0.5",
     "node-notifier": "^10.0.1",
     "node-pty": "^1.1.0",
-    "typebox": "^1.0.58",
-    "undici": "^7.25.0",
-    "web-tree-sitter": "^0.26.8",
-    "ws": "^8.20.1"
+    "typebox": "^1.2.1",
+    "undici": "^7.27.1",
+    "web-tree-sitter": "^0.26.9",
+    "ws": "^8.21.0"
   },
   "optionalDependencies": {
     "@vscode/ripgrep": "^1.18.0"
