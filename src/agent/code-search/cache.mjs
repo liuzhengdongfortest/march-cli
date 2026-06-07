@@ -32,11 +32,11 @@ export class CodeSearchIndexCache {
     let reusedFiles = 0;
     let indexedFiles = 0;
     for (const file of files) {
-      const signature = fileSignature(file);
+      const signature = fileContentSignature(file);
       const key = fileCacheKey(file);
       const cached = this.fileChunks.get(key);
       if (cached?.signature === signature) {
-        chunks.push(...cached.chunks);
+        chunks.push(...rebaseChunks(cached.chunks, file));
         reusedFiles += 1;
         continue;
       }
@@ -71,7 +71,7 @@ export class CodeSearchIndexCache {
 
   indexSignature(files, { includeVector }) {
     const vectorKey = includeVector ? this.vectorizer.id : "lexical";
-    return [vectorKey, ...files.map(fileSignature)].join("\n");
+    return [vectorKey, ...files.map(fileIndexSignature)].join("\n");
   }
 
   clear() {
@@ -133,10 +133,24 @@ export class CodeSearchIndexCache {
 
 export const defaultCodeSearchIndexCache = new CodeSearchIndexCache();
 
-function fileSignature(file) {
+function fileContentSignature(file) {
   return `${fileCacheKey(file)}:${file.size ?? 0}:${Math.trunc(file.mtimeMs ?? 0)}`;
 }
 
 function fileCacheKey(file) {
   return file.absPath ?? file.relPath;
+}
+
+function fileIndexSignature(file) {
+  return `${file.relPath}:${fileContentSignature(file)}`;
+}
+
+function rebaseChunks(chunks, file) {
+  return chunks.map((chunk) => ({
+    ...chunk,
+    id: `${file.relPath}:${chunk.start_line}-${chunk.end_line}`,
+    file_path: file.relPath,
+    abs_path: file.absPath,
+    language: file.language,
+  }));
 }

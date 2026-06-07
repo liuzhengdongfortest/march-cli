@@ -1,4 +1,5 @@
-import { join } from "node:path";
+import { stat } from "node:fs/promises";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { toolText } from "../tool-result.mjs";
@@ -37,12 +38,33 @@ export function createCodeSearchTool({ engine, stateRoot = null }) {
 
 export async function executeCodeSearch({ engine, cache, query, path = ".", top_k, mode = "auto", include_tests = false, related_to }) {
   try {
-    const root = engine.cwd;
-    const searchPath = path === "." ? "." : engine.resolvePath(path);
-    const result = await searchCode({ root, query, path: searchPath, top_k, mode, include_tests, related_to, cache });
+    const scope = await resolveSearchScope({ engine, path });
+    const result = await searchCode({ root: scope.root, query, path: scope.path, top_k, mode, include_tests, related_to, cache });
     return toolText(formatSearchOutput(result), result);
   } catch (err) {
     return toolText(`Error running code_search: ${err.message}`, { error: true });
+  }
+}
+
+async function resolveSearchScope({ engine, path = "." }) {
+  const workspaceRoot = resolve(engine.cwd);
+  if (path === "." || path == null || path === "") return { root: workspaceRoot, path: "." };
+  const resolvedPath = resolve(engine.resolvePath(path));
+  const workspaceRel = relative(workspaceRoot, resolvedPath);
+  if (!workspaceRel.startsWith("..") && !isAbsolute(workspaceRel)) {
+    return { root: workspaceRoot, path: resolvedPath };
+  }
+
+  const root = await externalSearchRoot(resolvedPath);
+  return { root, path: resolvedPath };
+}
+
+async function externalSearchRoot(path) {
+  try {
+    const info = await stat(path);
+    return info.isDirectory() ? path : dirname(path);
+  } catch {
+    return path;
   }
 }
 

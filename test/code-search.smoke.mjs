@@ -1,10 +1,11 @@
 import { strict as assert } from "node:assert";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 export async function runCodeSearchSmoke({ setupTmp, cleanup }) {
   console.log("--- smoke: code search ---");
   const root = setupTmp();
+  let externalRoot = null;
   try {
     mkdirSync(join(root, "src"), { recursive: true });
     mkdirSync(join(root, "test"), { recursive: true });
@@ -112,13 +113,41 @@ export async function runCodeSearchSmoke({ setupTmp, cleanup }) {
 
     const { executeCodeSearch } = await import("../src/agent/code-search/tool.mjs");
     const toolResult = await executeCodeSearch({
-      engine: { cwd: root, resolvePath: (path) => join(root, path) },
+      engine: { cwd: root, resolvePath: (path) => resolve(root, path) },
       query: "sign jwt payload",
       top_k: 1,
     });
     assert.match(toolResult.content[0].text, /code_search/);
     assert.equal(toolResult.details.results.length, 1);
+
+    externalRoot = setupTmp();
+    mkdirSync(join(externalRoot, "src"), { recursive: true });
+    const externalFile = join(externalRoot, "src", "external-service.mjs");
+    writeFileSync(externalFile, [
+      "export function createExternalInvoice(customer) {",
+      "  return { customerId: customer.id, source: 'external-project' };",
+      "}",
+    ].join("\n"));
+    const externalResult = await executeCodeSearch({
+      engine: { cwd: root, resolvePath: (path) => resolve(root, path) },
+      path: externalRoot,
+      query: "external invoice customer",
+      top_k: 1,
+    });
+    assert.equal(externalResult.details.error, undefined);
+    assert.equal(externalResult.details.results[0].file_path, "src/external-service.mjs");
+    assert.match(externalResult.details.results[0].snippet, /createExternalInvoice/);
+
+    const externalFileResult = await executeCodeSearch({
+      engine: { cwd: root, resolvePath: (path) => resolve(root, path) },
+      path: externalFile,
+      query: "create external invoice",
+      top_k: 1,
+    });
+    assert.equal(externalFileResult.details.error, undefined);
+    assert.equal(externalFileResult.details.results[0].file_path, "external-service.mjs");
   } finally {
+    if (externalRoot) cleanup(externalRoot);
     cleanup(root);
   }
   console.log("  PASS");
