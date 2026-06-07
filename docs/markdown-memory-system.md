@@ -1,6 +1,6 @@
 # Markdown 记忆系统设计
 
-最后更新：2026-05-14
+最后更新：2026-06-07
 
 ---
 
@@ -161,19 +161,30 @@ status != active 的文件默认不参与搜索和召回
 
 ## 索引源
 
-March 内部被动召回索引轻量 metadata 和正文分块：
+March 内部被动召回索引把文档级 metadata、正文分块和稀疏词项分开处理：
 
 ```text
-name + description + tags + body section
+Memory Markdown
+  ├─ metadata: name + description + tags
+  │     ↓
+  │   document-level dense signal
+  │
+  ├─ body chunks: body paragraphs only
+  │     ↓
+  │   top chunk dense signal
+  │
+  └─ BM25 document terms: weighted metadata + body
+        ↓
+      sparse exact-match signal
 ```
 
 `id`、`status`、`path` 是元数据，不参与语义匹配。`description` 仍然是给 AI 和用户看的自然语言摘要，不应该为了搜索效果写成关键词堆砌文本。
 
-body 会按段落切成有限长度 chunk。被动召回仍只返回 hint，不直接注入正文；如果 AI 需要细节，再调用 `memory_open(id)` 读取原文。
+body 会按段落切成有限长度 chunk。正文 chunk 只包含正文，不重复塞入 `name / description / tags`，避免标题或标签命中时把多个 chunk 都伪装成相关正文。被动召回仍只返回 hint，不直接注入正文；如果 AI 需要细节，再调用 `memory_open(id)` 读取原文。
 
 ## 被动召回索引
 
-被动召回使用本地 semantic vector index。索引不写回 Markdown；当 memory 文件的 path、mtime 或 size 变化时，向量索引会按当前 active memory 重新构建。
+被动召回使用本地 hybrid recall index。索引不写回 Markdown；当 memory 文件的 path、mtime 或 size 变化时，派生索引会按当前 active memory 重新构建。
 
 普通 SQLite metadata 表只保存扫描缓存和同步所需字段：
 
@@ -190,30 +201,43 @@ CREATE TABLE memory_index (
 );
 ```
 
-语义 chunk 形态：
+dense 语义信号分两类：
 
 ```text
-entry.name
-entry.description
-entry.tags.join(" ")
-body section
+metadata document = name + description + tags
+body chunk        = body section only
 ```
 
-这样 tags、摘要和正文经验都能参与匹配，但最终注入仍保持为短 hint。
+sparse 信号使用文档级 BM25：
+
+```text
+BM25 document terms = metadata × 2 + body
+```
+
+metadata 在 BM25 中加权重复，用于增强标题、摘要和 tag 这种精确信号；但它不会被复制进每个正文 chunk。
 
 ## 被动召回匹配
 
-March 内部被动召回统一查询 semantic vector index。`user` 和 `assistant` 只是触发时机，不对应不同匹配算法。
+March 内部被动召回统一查询 hybrid index。`user` 和 `assistant` 只是触发时机，不对应不同匹配算法。
 
 打分来源：
 
 ```text
-query embedding ↔ memory chunk embedding
+query
+  ├─ dense metadata score
+  │    query embedding ↔ metadata embedding
+  │
+  ├─ dense body score
+  │    query embedding ↔ body chunk embeddings
+  │    top chunks weighted: 0.65 / 0.25 / 0.10
+  │
+  └─ sparse BM25 score
+       document-level BM25, normalized to 0..1
         ↓
-cosine similarity
-        ↓
-min score threshold
+final score = available dense score × 0.7 + available BM25 score × 0.3
 ```
+
+body dense score 取最高几个正文 chunk 的加权结果；chunk 不足时按已有权重重新归一。dense 文档分数取 body dense 与 metadata dense 的较高值。最终 hybrid 分数只按存在的信号归一：dense-only 或 BM25-only 的候选不会因为缺少另一路信号而被固定权重压低。
 
 默认阈值是 `0.5`，可用 `MARCH_MEMORY_RECALL_MIN_SCORE` 覆盖。
 
@@ -221,9 +245,9 @@ min score threshold
 ```text
 用户消息 / assistant output
   ↓
-encode query
+compute dense metadata/body scores + BM25 document scores
   ↓
-search memory chunks: name + description + tags + body section
+hybrid rank active memories
   ↓
 filter status = active
   ↓
