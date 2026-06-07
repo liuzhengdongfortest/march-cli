@@ -38,28 +38,26 @@ function buildHeaders(token, accountId) {
 }
 
 function buildRequestBody({ prompt, quality, size, referenceImages = [] }) {
+  const hasReferenceImages = referenceImages.length > 0;
   return {
     model: "gpt-5.4",
     instructions: "You are an assistant that must fulfill image generation requests by using the image_generation tool when provided.",
     input: [{ type: "message", role: "user", content: buildInputContent({ prompt, referenceImages }) }],
     stream: true,
     store: false,
-    tools: [
-      {
-        type: "image_generation",
-        model: "gpt-image-2",
-        size,
-        quality: quality || "medium",
-        output_format: "png",
-        background: "opaque",
-        partial_images: 1,
-      },
-    ],
-    tool_choice: {
-      type: "allowed_tools",
-      mode: "required",
-      tools: [{ type: "image_generation" }],
-    },
+    tools: [buildImageGenerationTool({ quality, size, hasReferenceImages })],
+  };
+}
+
+function buildImageGenerationTool({ quality, size, hasReferenceImages }) {
+  return {
+    type: "image_generation",
+    action: hasReferenceImages ? "auto" : "generate",
+    size,
+    quality: quality || "medium",
+    output_format: "png",
+    background: "opaque",
+    partial_images: 1,
   };
 }
 

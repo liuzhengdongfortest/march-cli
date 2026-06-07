@@ -53,9 +53,11 @@ export async function runImageGenSmoke({ setupTmp, cleanup }) {
     assert.equal(requestBody.input[0].type, "message");
     assert.deepEqual(requestBody.input[0].content, [{ type: "input_text", text: "draw a cat" }]);
     assert.equal(requestBody.tools[0].type, "image_generation");
+    assert.equal(requestBody.tools[0].action, "generate");
     assert.equal(requestBody.tools[0].size, "1792x1024");
     assert.equal(requestBody.tools[0].output_format, "png");
-    assert.deepEqual(requestBody.tool_choice.tools, [{ type: "image_generation" }]);
+    assert.equal("model" in requestBody.tools[0], false);
+    assert.equal("tool_choice" in requestBody, false);
     assert.equal(result.marker, "@.march/attachments/generated/2026-05-10T00-00-03-000Z_img-1.png");
     assert.equal(existsSync(result.filePath), true);
     assert.deepEqual([...readFileSync(result.filePath)], [1, 2, 3, 4]);
@@ -75,6 +77,7 @@ export async function runImageGenSmoke({ setupTmp, cleanup }) {
     });
 
     assert.equal(guidedResult.marker, "@.march/attachments/generated/2026-05-10T00-00-04-000Z_img-2.png");
+    assert.equal(requestBody.tools[0].action, "auto");
     assert.deepEqual(requestBody.input[0].content, [
       { type: "input_text", text: "draw a cat like the reference" },
       { type: "input_image", image_url: `data:image/png;base64,${referenceBase64}`, detail: "high" },
