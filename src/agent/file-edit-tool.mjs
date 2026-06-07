@@ -158,12 +158,13 @@ function prepareTextEdit(content, edit, path) {
   if (first < 0) return { error: formatMissingOldTextError(content, edit.oldText, path) };
   const second = content.indexOf(edit.oldText, first + edit.oldText.length);
   if (second >= 0) return { error: `Error: oldText is not unique in ${path}. Use replace_range or include more context.` };
+  const newText = normalizePatchLineEndings(edit.newText, inferLineEnding(edit.oldText) ?? inferLineEnding(content));
   return {
     edit: {
       start: first,
       end: first + edit.oldText.length,
       oldText: edit.oldText,
-      newText: edit.newText,
+      newText,
       startLine: lineNumberForOffset(content, first),
     },
   };
@@ -239,7 +240,10 @@ function prepareRangeEdit(content, edit, path) {
     return { error: `Error: line range ${startLine}-${endLine} out of bounds (file has ${lines.length} lines)` };
   }
   const oldText = lines.slice(startLine - 1, endLine).join("\n");
-  const newText = normalizeRangeNewText(edit.newText, endLine, lines.length);
+  const newText = normalizeRangePatchLineEndings(normalizeRangeNewText(edit.newText, endLine, lines.length), {
+    eol: inferLineEnding(content),
+    endsBeforeExistingNewline: endLine < lines.length,
+  });
   return {
     edit: {
       start: offsetForLine(lines, startLine),
@@ -254,6 +258,21 @@ function prepareRangeEdit(content, edit, path) {
 function normalizeRangeNewText(newText, endLine, lineCount) {
   if (endLine < lineCount && /\r?\n$/.test(newText)) return newText.replace(/\r?\n$/, "");
   return newText;
+}
+
+function normalizePatchLineEndings(text, eol) {
+  if (eol !== "\r\n") return text;
+  return String(text ?? "").replace(/\r?\n/g, "\r\n");
+}
+
+function normalizeRangePatchLineEndings(text, { eol, endsBeforeExistingNewline }) {
+  const normalized = normalizePatchLineEndings(text, eol);
+  if (eol !== "\r\n" || !endsBeforeExistingNewline || normalized === "" || normalized.endsWith("\r")) return normalized;
+  return `${normalized}\r`;
+}
+
+function inferLineEnding(text) {
+  return String(text ?? "").includes("\r\n") ? "\r\n" : null;
 }
 
 function lineNumberForOffset(content, offset) {

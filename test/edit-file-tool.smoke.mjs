@@ -60,6 +60,38 @@ export async function runEditFileToolSmoke({ setupTmp, cleanup }) {
   assert.deepEqual(diffs[0].diff.map((line) => line.lineNum), [2, 3, 2, 3]);
   assert.deepEqual(touched, [file]);
 
+  const crlfFile = join(dir, "messages.ts");
+  writeFileSync(crlfFile, [
+    "export const messages = {",
+    '  "nav.agents": "Agents",',
+    '  "nav.tools": "Tools",',
+    '  "nav.providers": "Providers",',
+    "};",
+  ].join("\r\n"), "utf8");
+  result = await executeEditFile({
+    params: {
+      path: crlfFile,
+      edits: [{
+        type: "replace_range",
+        startLine: 2,
+        endLine: 4,
+        newText: [
+          '  "nav.agents": "Agents",',
+          '  "nav.memory": "Memory",',
+          '  "nav.tools": "Tools",',
+          '  "nav.providers": "Providers",',
+        ].join("\n"),
+      }],
+    },
+    engine,
+    ui,
+    lspService: { touchFile: (path) => touched.push(path) },
+  });
+  assert.equal(result.details.error, undefined);
+  assert.ok(readFileSync(crlfFile, "utf8").includes('"nav.agents": "Agents",\r\n  "nav.memory": "Memory",\r\n  "nav.tools": "Tools",'));
+  assert.deepEqual(diffs.at(-1).diff.map((line) => line.type), ["ctx", "add", "ctx", "ctx"]);
+  assert.equal(diffs.at(-1).diff.filter((line) => line.type === "add").length, 1);
+
   let snapshotCalls = 0;
   result = await executeEditFile({
     params: {
